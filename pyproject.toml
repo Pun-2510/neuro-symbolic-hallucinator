@@ -1,0 +1,73 @@
+# =====================================================================
+# pyproject.toml — packaging + tooling config
+# =====================================================================
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "essay-integrity-checker"
+version = "0.1.0"
+description = "Neuro-Symbolic system for citation integrity scoring and hallucinated reference detection in student essays"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Nguyễn Bảo Minh", email = "523H0054@student.tdtu.edu.vn" },
+    { name = "Trần Gia Thành", email = "523H0096@student.tdtu.edu.vn" },
+]
+keywords = ["citation", "hallucination", "neuro-symbolic", "nlp", "education"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+
+[project.scripts]
+essay-check = "integrity_checker.pipeline.integrity_pipeline:main"
+
+# --- Tooling ---
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["web/", "node_modules/", "build/", "dist/"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "ASYNC", "SIM"]
+ignore = ["E501"]  # line-length handled by formatter
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "integration: tests cần network/IO thật",
+    "slow: tests chậm (skipped by default)",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["integrity_checker*"]

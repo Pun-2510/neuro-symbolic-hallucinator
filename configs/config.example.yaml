@@ -1,0 +1,103 @@
+# =====================================================================
+# config.example.yaml — runtime configuration
+# Copy sang `configs/config.yaml` để override defaults.
+# =====================================================================
+
+app:
+  name: "Essay Integrity Checker"
+  version: "0.1.0"
+  env: development
+  debug: true
+  log_level: INFO
+
+# --- Persistence ---
+database:
+  url: "sqlite:///./data/app.db"
+  echo: false
+
+# --- Paths ---
+paths:
+  data_dir: "./data"
+  essays_dir: "./data/essays"
+  cache_dir: "./data/cache"
+  ground_truth: "./data/ground_truth/gold_dataset.json"
+
+# --- PDF parsing ---
+extraction:
+  # chọn parser: mupdf | pdfplumber | hybrid (mupdf primary, pdfplumber fallback)
+  parser: hybrid
+  fallback_to_ocr: false
+  min_text_length: 50  # dưới ngưỡng này → PDF scan / encrypted
+
+# --- Multi-source retrieval ---
+retrieval:
+  sources:
+    crossref: true
+    openalex: true
+    semantic_scholar: true
+    arxiv: true
+  per_source_top_k: 5
+  parallel: true
+  cache:
+    enabled: true
+    ttl_seconds: 86400  # 24h
+  rate_limits:
+    crossref_per_sec: 50
+    openalex_per_sec: 10
+    semantic_scholar_per_sec: 1.0  # polite default
+    arxiv_per_sec: 3.0
+  contact_email: "student@tdtu.edu.vn"  # cho Crossref polite pool
+
+# --- Matching thresholds ---
+# TODO(user): tối ưu trên validation set trong tuần 10–11
+matching:
+  title_sim_verified: 0.9
+  title_sim_metadata_error: 0.6
+  author_jaccard_verified: 0.5
+  year_tolerance: 1
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"  # CPU-friendly
+  fuzzy:
+    token_set_ratio_threshold: 0.85
+    partial_ratio_threshold: 0.80
+
+# --- Symbolic rules + abstention ---
+# TODO(user): tinh chỉnh confidence thresholds + abstention band
+logic:
+  abstention_low: 0.4
+  abstention_high: 0.6
+  require_consensus_for_verified: 2  # số nguồn đồng thuận tối thiểu
+  require_consensus_for_metadata_error: 1
+
+# --- Citation Integrity Score weights ---
+# TỔNG các trọng số = 1.0
+# TODO(user): tối ưu trên validation set hoặc theo rubric GVHD
+cis:
+  weights:
+    verified_ratio: 0.45
+    metadata_accuracy: 0.25
+    in_text_bib_consistency: 0.15
+    format_consistency: 0.10
+    identifier_validity: 0.05
+
+# --- Decision-support disclaimer ---
+# BẮT BUỘC hiển thị trên mọi UI + report export
+disclaimer:
+  short: "Decision-support only — not a final grade."
+  long: >
+    Hệ thống này chỉ hỗ trợ giảng viên rà soát trích dẫn. Kết quả là gợi ý
+    dựa trên bằng chứng từ các cơ sở dữ liệu học thuật công khai (Crossref,
+    OpenAlex, Semantic Scholar, arXiv). Giảng viên là người ra quyết định
+    cuối cùng. Hệ thống KHÔNG tự động kết luận gian lận học thuật.
+
+# --- Out-of-scope (ghi rõ để tránh scope creep) ---
+out_of_scope:
+  - "Chấm điểm content / organization / language / vocabulary / mechanics"
+  - "AES rubric (QWK, holistic scoring)"
+  - "Phát hiện đạo văn"
+  - "Phát hiện toàn bộ văn bản do AI tạo"
+  - "Tự động kết luận gian lận học thuật"
+  - "Claim-level verification toàn diện"
+  - "OCR scanned PDF (mở rộng)"
+  - "Sách / ISBN (mở rộng)"
+  - "Google Scholar / SerpAPI (bị loại)"
+  - "GROBID (mở rộng, đã có adapter slot)"

@@ -1,0 +1,65 @@
+"""Text preprocessing — Unicode normalization, ligature, line-break fix."""
+
+from __future__ import annotations
+
+import re
+import unicodedata
+
+
+class TextPreprocessor:
+    """Chuẩn hóa text trước khi regex match.
+
+    Lý do cần:
+        - PDF hay chứa ligature (ﬁ → fi, ﬂ → fl)
+        - Xuống dòng trong citation có thể cắt giữa chừng
+        - Whitespace không nhất quán
+        - Unicode accents có thể bị tách (Naïve → Naiïve)
+    """
+
+    # Ligature map (mở rộng khi cần)
+    LIGATURES = {
+        "ﬁ": "fi",
+        "ﬂ": "fl",
+        "ﬀ": "ff",
+        "ﬃ": "ffi",
+        "ﬄ": "ffl",
+        "ﬅ": "ft",
+        "ﬆ": "st",
+    }
+
+    # Pattern thấy line-break giữa chữ thường → nối lại
+    BROKEN_LINE_RE = re.compile(r"([a-záàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ])\s*\n\s*([a-záàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ])")
+
+    def normalize(self, text: str) -> str:
+        """Pipeline normalize đầy đủ."""
+        if not text:
+            return ""
+        text = self._fix_ligatures(text)
+        text = self._normalize_unicode(text)
+        text = self._fix_broken_lines(text)
+        text = self._collapse_whitespace(text)
+        return text.strip()
+
+    def _fix_ligatures(self, text: str) -> str:
+        for lig, expanded in self.LIGATURES.items():
+            text = text.replace(lig, expanded)
+        return text
+
+    def _normalize_unicode(self, text: str) -> str:
+        # NFC: chuẩn hóa ký tự có dấu về dạng precomposed
+        return unicodedata.normalize("NFC", text)
+
+    def _fix_broken_lines(self, text: str) -> str:
+        # Nối các xuống dòng giữa chữ thường (vd: "machine\nlearning" → "machine learning")
+        return self.BROKEN_LINE_RE.sub(r"\1 \2", text)
+
+    def _collapse_whitespace(self, text: str) -> str:
+        # Gộp nhiều space thành 1, giữ \n
+        text = re.sub(r"[ \t]+", " ", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text
+
+    def split_paragraphs(self, text: str) -> list[str]:
+        """Tách text thành đoạn văn (heuristic)."""
+        raw = re.split(r"\n\s*\n", text)
+        return [p.strip() for p in raw if p.strip() and len(p.strip()) > 20]

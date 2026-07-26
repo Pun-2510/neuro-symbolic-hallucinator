@@ -1,0 +1,100 @@
+{
+  "annotation_guideline_version": "1.0",
+  "created_at": "2026-07-26T07:58:12.919982+00:00",
+  "annotators": [
+    "523H0054",
+    "523H0096"
+  ],
+  "items": [
+    {
+      "essay": "essay_01_real_only.pdf",
+      "citations": [
+        {
+          "raw_text": "LeCun, Bengio, & Hinton, 2015",
+          "true_label": "verified"
+        },
+        {
+          "raw_text": "He, Zhang, Ren, & Sun, 2016",
+          "true_label": "verified"
+        },
+        {
+          "raw_text": "Vaswani et al., 2017",
+          "true_label": "verified"
+        },
+        {
+          "raw_text": "Devlin et al., 2019",
+          "true_label": "verified"
+        },
+        {
+          "raw_text": "Brown et al., 2020",
+          "true_label": "verified"
+        }
+      ]
+    },
+    {
+      "essay": "essay_02_mixed.pdf",
+      "citations": [
+        {
+          "raw_text": "Vaswani et al., 2017",
+          "true_label": "verified"
+        },
+        {
+          "raw_text": "Devlin et al., 2018",
+          "true_label": "metadata_error",
+          "note": "Year wrong"
+        },
+        {
+          "raw_text": "He, Zhang, Ren, & Sun, 2016",
+          "true_label": "verified"
+        },
+        {
+          "raw_text": "Smith & Doe, 2024",
+          "true_label": "suspected_hallucination"
+        }
+      ]
+    },
+    {
+      "essay": "essay_03_fabricated.pdf",
+      "citations": [
+        {
+          "raw_text": "Smith & Doe, 2024",
+          "true_label": "suspected_hallucination"
+        },
+        {
+          "raw_text": "Nguyen et al., 2023",
+          "true_label": "suspected_hallucination"
+        },
+        {
+          "raw_text": "Anderson and Brown, 2025",
+          "true_label": "suspected_hallucination"
+        }
+      ]
+    },
+    {
+      "essay": "essay_04_real_small.pdf",
+      "citations": [
+        {
+          "raw_text": "LeCun et al., 2015",
+          "true_label": "verified"
+        },
+        {
+          "raw_text": "Vaswani et al., 2017",
+          "true_label": "verified"
+        }
+      ]
+    },
+    {
+      "essay": "essay_05_edge_doi_only.pdf",
+      "citations": [
+        {
+          "raw_text": "10.48550/arXiv.1706.03762",
+          "true_label": "verified"
+        },
+        {
+          "raw_text": "10.1038/nature14539",
+          "true_label": "verified"
+        }
+      ]
+    }
+  ]
+}

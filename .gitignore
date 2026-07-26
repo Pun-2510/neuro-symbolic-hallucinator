@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Node / Vite
+node_modules/
+web/dist/
+web/.vite/
+web/.env.local
+web/.env.*.local
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.DS_Store
+Thumbs.db
+
+# Data — generated, không commit
+data/essays/*.pdf
+!data/essays/.gitkeep
+data/cache/*.json
+data/cache/*.sqlite
+data/app.db
+data/app.*.db
+logs/
+
+# Reports
+reports/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,44 @@
+# =====================================================================
+# Runtime dependencies — Essay Integrity Checker
+# Pinned major versions; allow patch updates.
+# =====================================================================
+
+# --- Core ---
+pydantic>=2.6,<3.0
+pydantic-settings>=2.2,<3.0
+PyYAML>=6.0,<7.0
+python-dotenv>=1.0,<2.0
+typing-extensions>=4.9,<5.0
+
+# --- HTTP / async ---
+httpx>=0.27,<1.0
+aiohttp>=3.9,<4.0
+aiofiles>=23.2,<25.0
+
+# --- PDF parsing ---
+PyMuPDF>=1.24,<2.0
+pdfplumber>=0.10,<1.0
+
+# --- NLP / embeddings ---
+sentence-transformers>=2.6,<4.0
+rapidfuzz>=3.6,<4.0
+
+# --- Scholarly API clients ---
+arxiv>=2.0,<3.0
+# Crossref, OpenAlex, Semantic Scholar: gọi qua httpx (không cần SDK riêng)
+
+# --- Backend ---
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.27,<1.0
+python-multipart>=0.0.9,<1.0
+
+# --- Database ---
+SQLAlchemy>=2.0,<3.0
+alembic>=1.13,<2.0  # dùng cho migrations tương lai (MVP dùng create_all)
+
+# --- Report generation ---
+reportlab>=4.0,<5.0  # dùng cho PDF report export + gen_sample_essays
+
+# --- Utilities ---
+tenacity>=8.2,<9.0
+loguru>=0.7,<1.0
