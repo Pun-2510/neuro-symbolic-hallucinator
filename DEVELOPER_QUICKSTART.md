@@ -66,26 +66,22 @@ cd web && npm install && npm run dev
 ## 4. Chạy tests
 
 ```bash
-pytest tests/unit/ -v            # 84 tests (~0.3s, 2 deferred xem KNOWN_ISSUES §6.1)
+pytest tests/unit/ -v            # 225 tests (~0.5s, 0 deferred)
 pytest tests/integration/ -v     # 8 tests, cần sample PDFs, ~40s
 ```
 
-**Test breakdown (2026-08-17):**
+**Test breakdown (2026-08-24):**
 
 | Module | File test | Pass/Total |
 |---|---|---|
 | `section_segmenter.py` | `test_section_segmenter.py` | 15/15 |
 | `author_parser.py` | `test_author_parser.py` | 27/27 |
-| `reference_parser.py` (mở rộng) | `test_reference_parser.py` | 15/17 (2 deferred — #18) |
+| `reference_parser.py` (mở rộng) | `test_reference_parser.py` | 21/21 (backlog #18 closed) |
 | `grobid_parser.py` | `test_grobid_parser.py` | 15/15 |
 | `style_detector.py` | `test_style_detector.py` | 12/12 |
-| Skeleton cũ (v1.1) | nhiều | 29/29 (subset kế thừa) |
-
-Sau khi scaffold `linking/` (tuần 8), thêm:
-```bash
-pytest tests/unit/test_citation_linker.py -v
-pytest tests/unit/test_duplicate_detector.py -v
-```
+| `linking/` (tuần 8) | `test_linking_statuses.py` + `test_citation_linker.py` + `test_duplicate_detector.py` | 62/62 |
+| `document_parser.py` (tuần 8) | `test_document_parser.py` | 10/10 |
+| Skeleton cũ (v1.1) | nhiều | 63/63 (subset kế thừa, include citation_extractor + author_parser) |
 
 ## 5. Lộ trình 18 tuần (v1.2 §5.2)
 

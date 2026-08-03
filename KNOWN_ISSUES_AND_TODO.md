@@ -1,12 +1,10 @@
 # Known Issues & TODO — Essay Integrity Checker
 
-> **Ngày cập nhật:** 2026-08-17 (Asia/Ho_Chi_Minh)
+> **Ngày cập nhật:** 2026-08-24 (Asia/Ho_Chi_Minh)
 >
-> **Trạng thái project:** v1.2 — đã hoàn thành **Tuần 6 (extraction)** và **Tuần 7 (style detection)**. Citation parser, SectionSegmenter, GROBID adapter, AuthorParser, StyleDetector đều có unit tests pass. Pipeline end-to-end trên sample PDF vẫn chạy, các module mới đã được export qua `extraction/` package.
+> **Trạng thái project:** v1.2 — đã hoàn thành **Tuần 6–7 (extraction + style)** và **Tuần 8 (linking/ scaffold + DocumentParser + close backlog #18)**. Citation parser, SectionSegmenter, GROBID adapter, AuthorParser, StyleDetector, linking/, DocumentParser đều có unit tests pass. Backlog #18 (ReferenceListParser Dutch + 2-line APA) đã closed. Pipeline end-to-end trên sample PDF vẫn chạy, các module mới đã được export qua `extraction/` + `linking/` packages.
 >
 > Mục tiêu cũ — "citation-only, GROBID là mở rộng tương lai" — đã được thay bằng mục tiêu v1.2 — **full-text + style detection + bidirectional linking** (xem `final (1).docx`).
->
-> 2 test case trong ReferenceListParser vẫn fail (Dutch multi-word single entry + 2-line APA split) — tracked tại task #18 (backlog).
 >
 > **Weekly session recaps:** xem `docs/progress/` (mỗi tuần 1 file `SESSION_SUMMARY_WEEK{N}_{M}.md` + README index).
 
@@ -124,16 +122,28 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 - [x] **Tạo `matching/author_parser.py`** (2026-08-12): chuẩn hoá last-name + initials + full-name + Dutch particles (`van der`, `de la`) + Vietnamese (Nguyễn Văn A) + suffixes (Jr/III). 27/27 unit tests pass. Xem 1.1.
 - [x] **Tạo `extraction/grobid_parser.py`** (2026-08-15): TEI XML parser (defusedxml chống XXE) + HTTP client injectable + SHA256 cache + JSON serialize/deserialize. 15/15 unit tests pass. Docker adapter thật (week 8 task riêng).
 - [x] **Tạo `extraction/style_detector.py`** (2026-08-17): document-level profile (APA-like / IEEE-like / MIXED / UNKNOWN + confidence + features + ratios + explanation). 12/12 unit tests pass.
-- [x] **Mở rộng `extraction/reference_parser.py`** (2026-08-13): APA + IEEE + Vancouver parsers, extract `title` + `title_normalized` + `numeric_index` + `year_suffix` + `order_index`. 15/17 unit tests pass — 2 fail (Dutch + 2-line) tracked #18.
-- [BLOCKER] **Tạo `linking/` package** (chưa bắt đầu — task tách riêng):
-  - `linking/statuses.py` — enum `CitationMappingStatus` (7 trạng thái) + `STYLE_INCONSISTENT`.
+- [x] **Mở rộng `extraction/reference_parser.py`** (2026-08-13, fixed 2026-08-24): APA + IEEE + Vancouver parsers, extract `title` + `title_normalized` + `numeric_index` + `year_suffix` + `order_index`. 21/21 unit tests pass — **backlog #18 closed** (Dutch multi-word + 2-line APA split fixed). Xem §3.4 trong SESSION_SUMMARY_WEEK8.md.
+
+### 2.3a Tuần 8 — linking/ scaffold + DocumentParser + backlog #18
+
+> **Tiến độ 2026-08-24:** Hoàn thành tuần 8. `linking/` package scaffolded (62 tests pass: statuses 38 + citation_linker 14 + duplicate_detector 10). `DocumentParser` orchestrator scaffolded (10 tests pass). ReferenceListParser backlog #18 closed (21/21 tests pass). Tổng 225 tests / 0 deferred.
+
+- [x] **Tạo `linking/` package** (2026-08-22, task #20):
+  - `linking/statuses.py` — enum `CitationMappingStatus` (7 trạng thái) + `STYLE_INCONSISTENT`, color hints cho UI, integrity flag.
   - `linking/citation_linker.py` — bidirectional linker (in-text ↔ reference entry).
-  - `linking/duplicate_detector.py` — exact DOI/arXiv → normalized title + author + year + threshold cẩn trọng.
-  - `linking/__init__.py`.
-- [BLOCKER] **Tạo `extraction/document_parser.py`** (chưa bắt đầu) — orchestrator: PDF → muPDF text + GROBID TEI → fused Document. Có thể tận dụng GROBID output để bypass 2 ReferenceListParser edge cases.
-- [BLOCKER] **GROBID Docker adapter thật** — phần trên (grobid_parser.py) chỉ wrap HTTP. Cần viết script `scripts/grobid_docker_setup.sh` (theo v1.2 §5.2).
-- [NICE] Mở rộng `extraction/text_preprocessor.py` để sửa wrap dòng cho DOI, URL, số thứ tự, ký tự gạch nối. (Hiện có light normalize trong ReferenceListParser workaround.)
-- [MILESTONE M3] PDF → style profile → citation graph → candidate top-K chạy end-to-end trên bộ mẫu đầu tiên. (Phụ thuộc linking/.)
+  - `linking/duplicate_detector.py` — exact DOI/arXiv → fuzzy title + author + year fallback.
+  - `linking/__init__.py` — re-export surface.
+- [x] **Mở rộng models** (backward compatible):
+  - `models/validation.py`: + `MappingMethod` enum + `CitationLink` dataclass.
+  - `models/citation.py`: + `reference_id: Optional[str]`.
+- [x] **Tạo `extraction/document_parser.py`** (2026-08-23, task #21): orchestrator fuse PyMuPDF + GROBID + SectionSegmenter. `ParsedDocument` unify body_citations / references / appendix_citations / sections / parser_warnings. 10/10 unit tests pass. Fallback chain: GROBID OK → priority, GROBID fail → regex, both fail → empty + warnings.
+- [x] **Fix ReferenceListParser backlog #18** (2026-08-24, task #22):
+  - Dutch multi-word: thêm negative lookahead `(?!PARTICLE\b)` vào `BROKEN_LINE_RE` để skip particle starts (van, de, von, der, ...).
+  - 2-line APA split: `_APA_ENTRY_RE` thêm `re.MULTILINE`; `_split_entries` dùng `author_start_re` detect START of new author block thay vì END of previous.
+  - 4 new edge case tests: van der / de la / von / Dutch + regular mix.
+- [BLOCKER] **GROBID Docker adapter thật** — `grobid_parser.py` chỉ wrap HTTP. Cần viết script `scripts/grobid_docker_setup.sh` (theo v1.2 §5.2).
+- [BLOCKER] **Tích hợp DocumentParser vào `pipeline/integrity_pipeline.py`** — hiện pipeline chưa dùng DocumentParser (vẫn qua regex only).
+- [MILESTONE M3] PDF → style profile → citation graph → candidate top-K chạy end-to-end trên bộ mẫu đầu tiên. (Phụ thuộc integration DocumentParser + retrieval/.)
 
 ### 2.4 Tuần 8–9 — Retrieval (Tầng 3)
 
@@ -291,7 +301,7 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 
 ## 6. Testing gaps
 
-### 6.1 Tests chưa có — update 2026-08-17
+### 6.1 Tests chưa có — update 2026-08-24
 
 | File test | Status | Note |
 |---|---|---|
@@ -299,9 +309,11 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 | `tests/unit/test_section_segmenter.py` | ✅ DONE (2026-08-10) | 15/15 pass — body / bib / appendix / footnote / multi-style header EN+VI+ZH |
 | `tests/unit/test_grobid_parser.py` | ✅ DONE (2026-08-15) | 15/15 pass — header / authors / abstract / sections / citations / bibliography / serialize round-trip / XXE entity attack |
 | `tests/unit/test_author_parser.py` | ✅ DONE (2026-08-12) | 27/27 pass — APA / multi-author / Dutch / Vietnamese / suffix / full name |
-| `tests/unit/test_reference_parser.py` | ⚠️ PARTIAL (2026-08-13) | 15/17 pass — 2 fail tracked #18 |
-| `tests/unit/test_citation_linker.py` | ❌ NOT STARTED | Phụ thuộc linking/ package (chưa scaffold) |
-| `tests/unit/test_duplicate_detector.py` | ❌ NOT STARTED | Phụ thuộc linking/ package |
+| `tests/unit/test_reference_parser.py` | ✅ DONE (2026-08-24) | 21/21 pass — backlog #18 closed (Dutch + 2-line APA fixed). +4 edge case tests. |
+| `tests/unit/test_linking_statuses.py` | ✅ DONE (2026-08-22) | 38/38 pass — 7-status enum + color hints + integrity flags + CitationLink + LinkingResult |
+| `tests/unit/test_citation_linker.py` | ✅ DONE (2026-08-22) | 14/14 pass — 7-status coverage of CitationLinker |
+| `tests/unit/test_duplicate_detector.py` | ✅ DONE (2026-08-22) | 10/10 pass — DOI exact + arXiv exact + title-author-year fuzzy |
+| `tests/unit/test_document_parser.py` | ✅ DONE (2026-08-23) | 10/10 pass — fallback chain (GROBID OK / fail / disabled / PyMuPDF fail / both fail) |
 | `tests/unit/test_extraction_preprocessor.py` | ❌ NOT STARTED | |
 | `tests/unit/test_semantic_matcher.py` | ❌ NOT STARTED | Tuần 10–11 |
 | `tests/unit/test_retrieval_orchestrator.py` | ❌ NOT STARTED | Tuần 8–9 |
@@ -309,11 +321,11 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 | `tests/unit/test_calibration.py` | ❌ NOT STARTED | Tuần 12–13 |
 | `tests/unit/test_explanation.py` | ❌ NOT STARTED | Tuần 12–13 |
 | `tests/unit/test_db_repository.py` | ❌ NOT STARTED | |
-| `tests/integration/test_full_pdf_pipeline_v12.py` | ❌ NOT STARTED | Sau linking/ + retrieval/ |
+| `tests/integration/test_full_pdf_pipeline_v12.py` | ❌ NOT STARTED | Sau DocumentParser integration + retrieval/ |
 | `tests/integration/test_api_upload.py` | ❌ NOT STARTED | |
 | `tests/integration/test_baselines_b0_b5.py` | ❌ NOT STARTED | Tuần 16–17 |
 
-**Tổng test count (2026-08-17):** 84 unit tests pass / 2 deferred. Xem §9 lịch sử.
+**Tổng test count (2026-08-24):** 225 unit tests pass / 0 deferred. Xem §9 lịch sử.
 
 ### 6.2 Coverage tụt so với v1.1
 - `pipeline/integrity_pipeline.py`: chỉ test happy path. Cần test:
@@ -405,19 +417,25 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 | 2026-08-15 | **Tuần 6 — `extraction/grobid_parser.py`**: TEI XML parser (defusedxml XXE-safe) + HTTP client injectable + SHA256 cache + JSON serialize/deserialize. 15/15 unit tests pass. |
 | 2026-08-17 | **Tuần 7 — `extraction/style_detector.py`**: document-level profile (APA-like / IEEE-like / MIXED / UNKNOWN) + confidence + features + ratios + explanation. 12/12 unit tests pass. |
 | 2026-08-17 | **Tổng kết tuần 6–7**: 84 unit tests pass / 2 deferred. 5 commit, 4 module mới + 1 mở rộng. Cập nhật tài liệu (.md files) + push GitHub. |
+| 2026-08-22 | **Tuần 8 — `linking/` package scaffold** (task #20): `statuses.py` (7 statuses + color hints + integrity flags), `citation_linker.py` (bidirectional), `duplicate_detector.py` (DOI → arXiv → fuzzy fallback). Mở rộng `models/validation.py` (+ `MappingMethod` enum + `CitationLink` dataclass) và `models/citation.py` (+ `reference_id`). 62/62 unit tests pass. |
+| 2026-08-23 | **Tuần 8 — `extraction/document_parser.py`** (task #21): orchestrator fuse PyMuPDF + GROBID + SectionSegmenter. `ParsedDocument` unified output với body_citations, references, appendix_citations, sections, parser_warnings. Fallback chain GROBID OK → priority, GROBID fail → regex, both fail → empty. 10/10 unit tests pass. |
+| 2026-08-24 | **Tuần 8 — close backlog #18** (task #22): ReferenceListParser Dutch + 2-line APA split. Root cause #1: `BROKEN_LINE_RE` join `"References\nvan der Berg"` — fix bằng negative lookahead particle list. Root cause #2: `_APA_ENTRY_RE` thiếu `re.MULTILINE` + boundary heuristic đặt sai vị trí — fix bằng MULTILINE flag + `author_start_re`. +4 edge case tests (van der / de la / von / Dutch-mixed). 21/21 reference_parser tests pass. |
+| 2026-08-24 | **Tổng kết tuần 8**: 225 unit tests pass / 0 deferred. backlog #18 closed. 3 commit (linking/, DocumentParser, Dutch fix) + 4 .md docs (SESSION_SUMMARY_WEEK8.md + KNOWN_ISSUES + progress README). |
 
 ---
 
 ## 10. Action items ngay tuần này
 
-**Sinh viên (thứ tự ưu tiên) — 2026-08-17:**
+**Sinh viên (thứ tự ưu tiên) — 2026-08-24:**
 
-1. Đọc `README.md` (v1.2) + `docs/CHANGES_VS_V1.1.md` + file này.
+1. Đọc `README.md` (v1.2) + `docs/CHANGES_VS_V1.1.md` + file này + `docs/progress/SESSION_SUMMARY_WEEK8.md`.
 2. `make setup` → `make sample` → `make demo` → `make test` — xác nhận skeleton vẫn chạy.
 3. ✅ Tuần 6 hoàn thành: SectionSegmenter + AuthorParser + ReferenceListParser (mở rộng) + GROBID adapter.
 4. ✅ Tuần 7 hoàn thành: StyleDetector.
-5. ⏳ Tuần 8 — scaffold `linking/` package (statuses + citation_linker + duplicate_detector) — **chưa bắt đầu**.
-6. ⏳ Backlog #18 — ReferenceListParser Dutch + 2-line APA split (mình đã thử nhiều heuristic regex, đều fail — có thể cần approach mới dựa trên GROBID output hoặc citation graph).
+5. ✅ Tuần 8 hoàn thành: `linking/` scaffold + `DocumentParser` + backlog #18 closed.
+6. ⏳ **Tuần 8 tiếp theo — GROBID Docker adapter thật** (`scripts/grobid_docker_setup.sh`) — blocker.
+7. ⏳ **Tuần 8 tiếp theo — Tích hợp DocumentParser vào pipeline** — milestone M3.
+8. ⏳ **Tuần 8–9 — Real HTTP clients cho 4 retrieval connectors** (Crossref, OpenAlex, Semantic Scholar, arXiv) — blocker. Hiện cả 4 đều stub → pipeline rơi vào UNRESOLVED.
 
 **GVHD (cần xin ý kiến) — vẫn pending:**
 

@@ -12,6 +12,7 @@ Các file trong thư mục:
 |---|---|---|---|
 | `SESSION_SUMMARY.md` | 2026-07-26 | v1.1 — skeleton | Tạo 115 files skeleton + 29 unit tests + 8 integration tests. |
 | `SESSION_SUMMARY_WEEK6_7.md` | 2026-08-17 | v1.2 — Tuần 6–7 | SectionSegmenter + AuthorParser + ReferenceListParser (mở rộng) + GROBID adapter + StyleDetector. 84 tests pass. |
+| `SESSION_SUMMARY_WEEK8.md` | 2026-08-24 | v1.2 — Tuần 8 | `linking/` scaffold (statuses + citation_linker + duplicate_detector) + `DocumentParser` orchestrator + close backlog #18 (ReferenceListParser Dutch + 2-line APA). 225 tests pass / 0 deferred. |
 
 **Lưu ý:** File docs gốc ở root repo (`README.md`, `KNOWN_ISSUES_AND_TODO.md`, `DEVELOPER_QUICKSTART.md`, `LICENSE`) là reference docs dài hạn — **không move** vào đây. Chỉ recap theo tuần mới vào thư mục này.
 
