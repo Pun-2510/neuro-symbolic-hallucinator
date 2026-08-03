@@ -7,6 +7,7 @@ Bao gồm:
 - CitationExtractor (regex + heuristics)
 - ReferenceListParser (parse "References" section cuối bài)
 - SectionSegmenter (phân vùng body / bibliography / appendix) — MỚI v1.2
+- GROBID adapter (TEI XML → GrobidOutput) — MỚI v1.2
 """
 
 from integrity_checker.extraction.base import BasePDFParser, Document
@@ -14,6 +15,15 @@ from integrity_checker.extraction.citation_extractor import CitationExtractor
 from integrity_checker.extraction.mupdf_parser import MuPdfParser
 from integrity_checker.extraction.pdfplumber_parser import PdfPlumberParser
 from integrity_checker.extraction.reference_parser import ReferenceListParser
+from integrity_checker.extraction.grobid_parser import (
+    GrobidAuthor,
+    GrobidBibEntry,
+    GrobidCitation,
+    GrobidOutput,
+    GrobidSection,
+    call_grobid_fulltext,
+    parse_tei,
+)
 from integrity_checker.extraction.regex_patterns import CitationPattern, get_all_patterns
 from integrity_checker.extraction.section_segmenter import (
     DocumentSection,
@@ -35,4 +45,11 @@ __all__ = [
     "DocumentSection",
     "SectionSegmenter",
     "SectionType",
+    "GrobidAuthor",
+    "GrobidBibEntry",
+    "GrobidCitation",
+    "GrobidOutput",
+    "GrobidSection",
+    "call_grobid_fulltext",
+    "parse_tei",
 ]
