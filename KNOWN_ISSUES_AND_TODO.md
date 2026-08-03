@@ -1,41 +1,38 @@
 # Known Issues & TODO — Essay Integrity Checker
 
-> **Ngày cập nhật cuối:** 2026-07-26 (Asia/Ho_Chi_Minh)
+> **Ngày cập nhật:** 2026-08-03 (Asia/Ho_Chi_Minh)
 >
-> **Trạng thái project:** Skeleton Phase 1 hoàn tất. Có thể chạy end-to-end trên sample PDF, nhưng **4 API client đều là stub** → verdict toàn UNRESOLVED. Logic Neuro-Symbolic, CIS, regex extraction, FastAPI đều chạy được.
+> **Trạng thái project:** Skeleton v1.2 (re-scoped từ v1.1 sau khi chốt với GVHD). Mục tiêu cũ — "citation-only, GROBID là mở rộng tương lai" — đã được thay bằng mục tiêu v1.2 — **full-text + style detection + bidirectional linking** (xem `final (1).docx`).
+>
+> Pipeline end-to-end trên sample PDF vẫn chạy được, nhưng một số module đang ở dạng stub — được liệt kê dưới đây theo từng tuần của kế hoạch 18 tuần (v1.2 §5.2).
 
 File này liệt kê:
 
-1. **Critical bugs / sai logic** cần fix trước khi dùng thật
-2. **Missing implementations** (đã đánh dấu TODO trong code)
-3. **Caveats kỹ thuật** (thiết kế hiện tại chưa tối ưu, sẽ refactor sau)
-4. **Out-of-scope** (không làm, để tránh scope creep)
-5. **Testing gaps** (chỗ chưa có test hoặc coverage thấp)
-6. **Security / privacy notes**
+1. **Critical bugs / sai logic** cần fix sớm
+2. **TODOs mới** theo từng tuần của kế hoạch 18 tuần (v1.2)
+3. **Re-scoped từ v1.1** — những thứ "mở rộng" nay đã trở thành must-have
+4. **Caveats kỹ thuật** (thiết kế hiện tại chưa tối ưu, sẽ refactor sau)
+5. **Out-of-scope** (ghi rõ để tránh scope creep)
+6. **Testing gaps**
+7. **Security / privacy notes**
 
 ---
 
-## 1. Critical bugs / sai logic — fix NGAY (tuần 3)
+## 1. Critical bugs / sai logic — fix NGAY
 
-> Những phát hiện trong lúc smoke-test ngày 2026-07-26.
+### 1.1 ❌ `Citation.to_search_query()` lấy last-name sai cho một số biến thể APA
 
-### 1.1 ❌ `Citation.to_search_query()` lấy last-name sai cho APA format
+**Vấn đề:** Logic hiện tại xử lý `"Smith, A."` (lấy token trước dấu phẩy) và fallback `"Smith A."` (lấy token cuối), nhưng vẫn chưa robust:
 
-**Vấn đề:** Logic ban đầu lấy `split()[-1]` (token cuối). Nhưng APA format `"Vaswani, A."` có last-name ở **token đầu**, không phải cuối. Đã fix 1 phần (xử lý có dấu phẩy), nhưng vẫn chưa robust cho các biến thể:
-
-```python
-# Chưa xử lý:
-# - "Smith, J. K."        → last-name = "Smith"          ✓ handled
-# - "Smith, John K."      → last-name = "Smith"          ✓ handled
-# - "van der Berg, J."    → last-name = "van der Berg"   ❌ (chỉ lấy "van")
-# - "O'Brien, M."         → last-name = "O'Brien"        ✓ handled
-# - "Smith J. K."         → last-name = "Smith"          ❌ (không có dấu phẩy)
-# - "J. K. Smith"         → last-name = "Smith"          ❌ (không có dấu phẩy)
+```
+"van der Berg, J."   → last-name = "van der Berg"   ❌ (chỉ lấy "van")
+"Smith J. K."         → last-name = "Smith"         ❌ (không có dấu phẩy)
+"J. K. Smith"         → last-name = "Smith"         ❌ (không có dấu phẩy)
 ```
 
-**Fix proposal:** Author parser riêng (tuần 4–5) — module `matching/author_parser.py` chuẩn hoá last-name + initials + full-name.
+**Fix proposal (tuần 4–5):** Tách `matching/author_parser.py` chuẩn hoá last-name + initials + full-name, có test cho 6–8 biến thể phổ biến.
 
-### 1.2 ❌ `datetime.utcnow()` deprecated trong Python 3.14
+### 1.2 ❌ `datetime.utcnow()` deprecated (Python 3.14)
 
 ```
 DeprecationWarning: datetime.datetime.utcnow() is deprecated
@@ -43,7 +40,7 @@ DeprecationWarning: datetime.datetime.utcnow() is deprecated
 
 **Vị trí:** `src/integrity_checker/pipeline/integrity_pipeline.py:178`.
 
-**Fix:** Đổi thành `datetime.now(timezone.utc)`.
+**Fix:** Đổi sang `datetime.now(timezone.utc)`.
 
 ### 1.3 ⚠️ `pytest` không nhận `asyncio_mode = "auto"` config option
 
@@ -51,7 +48,7 @@ DeprecationWarning: datetime.datetime.utcnow() is deprecated
 PytestConfigWarning: Unknown config option: asyncio_mode
 ```
 
-**Fix:** Cài `pytest-asyncio` rồi đảm bảo `[tool.pytest.ini_options]` có đúng format (đã có trong pyproject.toml, vấn đề là dependency chưa có khi chạy bằng system python).
+**Fix:** Cài `pytest-asyncio` rồi đảm bảo `[tool.pytest.ini_options]` có đúng format.
 
 ### 1.4 ⚠️ SwigPyObject/SwigPyPacked deprecation warning từ PyMuPDF
 
@@ -59,7 +56,7 @@ PytestConfigWarning: Unknown config option: asyncio_mode
 DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
 ```
 
-**Fix:** Không cần — warning từ PyMuPDF upstream, không ảnh hưởng logic.
+**Fix:** Bỏ qua — warning từ PyMuPDF upstream, không ảnh hưởng logic.
 
 ### 1.5 ⚠️ FastAPI TestClient + httpx deprecation warning
 
@@ -69,177 +66,280 @@ StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprec
 
 **Fix:** Chuyển sang `httpx2` khi stable. Hiện tại bỏ qua.
 
----
+### 1.6 ❌ `CISComponents.in_text_bib_consistency` và `format_consistency` đang là STUB
 
-## 2. Missing implementations — theo tuần
+**Vị trí:** `src/integrity_checker/logic/cis.py:78, 81`.
 
-### 2.1 Tuần 3 — CitationExtractor hoàn chỉnh
-- [ ] Author parsing chuẩn (xem 1.1)
-- [ ] Vietnamese citation support (regex riêng cho format VN)
-- [ ] Numeric superscript citations (`^1`, `^2,3`)
-- [ ] Citation với page numbers (`(Smith, 2020, p. 45)`)
-- [ ] Author groups chuẩn (`Smith, J., & Jones, A.`)
+**Hiện tại:**
+```python
+in_text_bib_consistency = 0.8 if n > 0 else 0.0   # placeholder
+format_consistency = 0.85 if n > 0 else 0.0       # placeholder
+```
 
-### 2.2 Tuần 4–5 — Regex patterns
-- [ ] MLA regex pattern
-- [ ] Chicago (notes-bibliography + author-date) patterns
-- [ ] IEEE numeric range (`[1-5]`)
-- [ ] Harvard (author-date, UK style)
+**Vấn đề (theo v1.2 §3.9):** Hai thành phần này phải được tính từ module `linking/` (bidirectional linker) và `StyleDetector` (style profile) thật, không phải constant. Tổng trọng số của 2 stub này = **35%** CIS — đang là "ảo".
 
-### 2.3 Tuần 6 — Reference list parser đa style
-- [ ] `MLARefParser`, `ChicagoRefParser`, `IEEERefParser`
-- [ ] Title trong ngoặc kép vs. italics detection
-- [ ] DOI/URL cuối entry
+**Fix:** Triển khai tuần 6–7 cho linker, tuần 12–13 cho CIS.
 
-### 2.4 Tuần 7 — Pipeline
-- [ ] Batch processing nhiều PDF
-- [ ] Persistent cache (key = SHA256 của citation + content)
+### 1.7 ⚠️ Output schema không tách integrity vs source
 
-### 2.5 Tuần 9–10 — **Critical: 4 API clients**
+**Vấn đề:** Hiện `CitationVerdict` chỉ chứa 1 nhãn (`ValidationLabel`) cho 1 citation. Theo v1.2 §3.2.2, phải tách thành `CitationMappingStatus` (integrity) + `ValidationLabel` (source) — vì `MISSING_REFERENCE` không phải hallucination và `SUSPECTED_HALLUCINATION` không phải lỗi sử dụng.
 
-| File | Status | Cần làm |
-|---|---|---|
-| `crossref_client.py` | ❌ STUB | `GET /works/{doi}` exact + `/works?query.bibliographic=...` |
-| `openalex_client.py` | ❌ STUB | `GET /works?search=...&filter=...` |
-| `semantic_scholar_client.py` | ❌ STUB | `GET /paper/search?query=...&fields=...` |
-| `arxiv_client.py` | ❌ STUB | `arxiv.Search(query=..., max_results=5)` qua SDK |
-
-**Hiện tại:** tất cả 4 client đều trả `SourceCandidate(found=False)` → pipeline luôn rơi vào nhánh `UNRESOLVED`.
-
-### 2.6 Tuần 11 — Matching tuning
-- [ ] Author normalization (last-name canonical, diacritics)
-- [ ] Venue normalization (viết tắt vs đầy đủ)
-- [ ] Fuzzy threshold tuning trên validation set
-
-### 2.7 Tuần 12 — Symbolic rules
-- [ ] Thêm rule: DOI resolve nhưng title mismatch → `METADATA_ERROR` (đã có, cần test thêm)
-- [ ] Tuning thresholds trên validation set
-- [ ] Abstention band tối ưu (ECE-driven)
-
-### 2.8 Tuần 13 — CIS weights
-- [ ] Optimization trên validation set (GridSearch hoặc theo rubric GVHD)
-- [ ] In-text ↔ bib consistency thật (cần map citation in-text ↔ reference list entry)
-- [ ] Format consistency thật (cần style detector)
-
-### 2.9 Tuần 14 — IAA
-- [ ] 2 SV cùng annotate 100 citation
-- [ ] Tính Cohen's kappa — target ≥0.7
-- [ ] `data/ground_truth/iaa_template.csv` hiện tại chỉ là stub
-
-### 2.10 Tuần 15 — Web UI polish
-- [ ] Chạy `npx shadcn@latest add button card table dialog` để sinh components
-- [ ] `HistoryPage` cần backend endpoint `GET /api/essays` (list) — chưa có
-- [ ] `DecisionSupportDisclaimer` đang fetch từ `/api/health` mỗi lần mount — OK nhưng có thể cache
-- [ ] Override verdict UI (giảng viên sửa nhãn → log vào `audit_logs`) — chưa có
-
-### 2.11 Tuần 16 — Baselines + Metrics
-- [ ] B0: Link/DOI only (chỉ check DOI resolve)
-- [ ] B1: Crossref top-1
-- [ ] B2: Fuzzy matching (title + author)
-- [ ] B3: Embedding only (cosine similarity)
-- [ ] B4: ML classifier (LogisticRegression / XGBoost)
-- [ ] Proposed: Multi-source + neural + symbolic + abstention
-- [ ] So sánh P/R/F1 trên gold dataset
+**Fix:** Mở rộng `models/validation.py` (tuần 6) và schema trả về của pipeline.
 
 ---
 
-## 3. Caveats kỹ thuật — refactor sau
+## 2. TODOs theo kế hoạch 18 tuần (v1.2 §5.2)
 
-### 3.1 PDF parsing
-- ⚠️ **Hybrid parser chain** đã có (`chain_parsers([MuPdfParser(), PdfPlumberParser()])`) nhưng `BasePDFParser.is_supported()` chỉ check extension `.pdf` — chưa check magic bytes.
-- ⚠️ **OCR fallback** (`fallback_to_ocr: false`): hiện tại nếu PDF là scan (không có text layer), pipeline fail im lặng. Cần raise exception rõ ràng hoặc integrate OCR.
-- ⚠️ **Encrypted PDF**: chưa handle — sẽ raise exception từ PyMuPDF.
+> Mỗi mục có ghi `[BLOCKER]` (chặn end-to-end) / `[MILESTONE]` (mốc nghiệm thu) / `[NICE]` (chỉnh trang).
 
-### 3.2 Retrieval
-- ⚠️ **Retry logic**: hiện tại không có. Khi API timeout/5xx sẽ fail. Cần integrate `tenacity` retry exponential backoff.
-- ⚠️ **Cache key**: hiện tại `DiskCache._key_to_path` chỉ dùng SHA256-style hash của raw text. Chưa truyền source name vào key → có thể conflict giữa Crossref và OpenAlex cùng return cùng record.
-- ⚠️ **Rate limiter**: dùng spacing cố định. Khi chạy song song (`parallel=True`), spacing giữa các source name khác nhau → vẫn OK, nhưng **không sliding-window**. Sẽ vỡ rate limit nếu gọi đột biến.
+### 2.1 Tuần 1–2 — Khảo sát (đã chốt scope, đang thực hiện)
 
-### 3.3 Logic
-- ⚠️ **In-text ↔ bib consistency** (CIS component): hiện tại stub `0.8` — **KHÔNG phản ánh thật**. Cần implement ở tuần 13.
-- ⚠️ **Format consistency** (CIS component): hiện tại stub `0.85` — **KHÔNG phản ánh thật**. Cần implement ở tuần 13.
+- [BLOCKER] **[NOW]** Cập nhật 4 file: `README.md`, `KNOWN_ISSUES_AND_TODO.md`, `DEVELOPER_QUICKSTART.md`, `configs/config.example.yaml` cho khớp v1.2. _(đang làm)_
+- [BLOCKER] **[NOW]** Viết `docs/CHANGES_VS_V1.1.md` để GVHD thấy rõ đã đối chiếu những gì.
+- [BLOCKER] **[NOW]** Literature matrix v1.2 (style families, taxonomy, định nghĩa "dư thừa", kiến trúc 5 tầng).
+- [MILESTONE M1] GVHD chốt phạm vi, 2 lớp taxonomy, dữ liệu và tiêu chí nghiệm thu.
+
+### 2.2 Tuần 3–5 — Dữ liệu
+
+- [BLOCKER] Mở rộng `data/ground_truth/gold_dataset.json` lên **3 mức nhãn**:
+  - **Mức 1 (document)**: style profile (APA-like / IEEE-like / MIXED / UNKNOWN) + confidence + evidence.
+  - **Mức 2 (span + link)**: mỗi in-text span (raw, page, section, context, bounding box) + `CitationMappingStatus` (7 trạng thái) + `CitationLink` (occurrence_id, reference_id, conf, method).
+  - **Mức 3 (source)**: mỗi reference entry có nhãn 1 trong 4 nhãn + record chuẩn + evidence URL + ngày kiểm tra + lý do.
+- [BLOCKER] Viết `annotation_guideline_v2.md` tích hợp **5 trạng thái mapping** + **4 nhãn nguồn** + **4 style label** + 6–10 edge case (citation gộp, 2024a/2024b, table-marker giả, họ 2 từ "van der Berg", DOI bị wrap, v.v.).
+- [BLOCKER] Pilot 30–50 tiểu luận mẫu thật đã ẩn danh.
+- [BLOCKER] 2 SV cùng annotate 100 citation → Cohen's kappa / Krippendorff's alpha target ≥ 0.7.
+- [BLOCKER] Train/val/test split **theo tiểu luận** (không phải theo citation) để tránh rò rỉ nguồn lặp.
+- [BLOCKER] Khóa test set trước khi tối ưu threshold, trọng số, rule.
+- [NICE] Hypothesis property-based test cho parser.
+
+### 2.3 Tuần 6–7 — Full-text audit (Tầng 1 + Tầng 2)
+
+- [BLOCKER] **Tạo `linking/` package** (mới):
+  - `linking/statuses.py` — enum `CitationMappingStatus` (7 trạng thái) + `STYLE_INCONSISTENT`.
+  - `linking/citation_linker.py` — bidirectional linker (in-text ↔ reference entry).
+  - `linking/duplicate_detector.py` — exact DOI/arXiv → normalized title + author + year + threshold cẩn trọng.
+  - `linking/__init__.py`.
+- [BLOCKER] **Tạo `extraction/style_detector.py`** (mới): document-level profile (APA-like / IEEE-like / MIXED / UNKNOWN + confidence + features) — kết hợp tín hiệu thân bài + bibliography.
+- [BLOCKER] **Tạo `extraction/document_parser.py`** + GROBID Docker adapter (v1.1 để "mở rộng tương lai" — nay đã vào MVP).
+- [BLOCKER] **Tạo `extraction/section_segmenter.py`**: phân vùng body / bibliography / appendix / footnote / figure caption.
+- [BLOCKER] Mở rộng `extraction/text_preprocessor.py` để sửa wrap dòng cho DOI, URL, số thứ tự, ký tự gạch nối.
+- [BLOCKER] Author parser chuẩn (`matching/author_parser.py`) — xem 1.1.
+- [BLOCKER] IEEENumericRefParser + IEEENumericCitationExtractor (mở rộng regex).
+- [MILESTONE M3] PDF → style profile → citation graph → candidate top-K chạy end-to-end trên bộ mẫu đầu tiên.
+
+### 2.4 Tuần 8–9 — Retrieval (Tầng 3)
+
+- [BLOCKER] **Điền HTTP call thật** cho 4 connector (đã có interface đúng):
+  - `retrieval/crossref_client.py`: `GET /works/{doi}` + `GET /works?query.bibliographic=...`.
+  - `retrieval/openalex_client.py`: `GET /works?search=...&filter=...`.
+  - `retrieval/semantic_scholar_client.py`: `GET /paper/search?query=...&fields=...`.
+  - `retrieval/arxiv_client.py`: `arxiv.Search(query=..., max_results=5)` qua SDK.
+- Hiện tại cả 4 đều stub → pipeline rơi vào nhánh `UNRESOLVED`. Đây là lúc verdict bắt đầu phân hóa thật sự.
+- [BLOCKER] Tenacity retry + exponential backoff với riêng từng nguồn.
+- [BLOCKER] Cache key bao gồm `source_name` để tránh trộn nhầm Crossref vs OpenAlex.
+- [BLOCKER] Health check + `UNRESOLVED` khi `sources_failed` chiếm đa số.
+
+### 2.5 Tuần 10–11 — Matching (Tầng 4)
+
+- [BLOCKER] Author normalization (last-name canonical, diacritics, "van der" multi-token).
+- [BLOCKER] Venue normalization (viết tắt vs. đầy đủ).
+- [BLOCKER] Source consensus (đếm số nguồn độc lập trả về cùng DOI/title-author-year).
+- [BLOCKER] Fuzzy threshold tuning trên validation set.
+- [BLOCKER] Build B0–B5 baselines (xem 2.7).
+
+### 2.6 Tuần 12–13 — Logic (Tầng 4 + Tầng 5)
+
+- [BLOCKER] Mở rộng `logic/rules.py` thêm rule cho `AMBIGUOUS_MAPPING`, `STYLE_INCONSISTENT`, **DOMAIN-EXCEPTION** (URL lỗi nhưng scholarly record tồn tại → giữ nhãn tồn tại + `BROKEN_LINK`).
+- [BLOCKER] Abstention band tối ưu (ECE-driven).
+- [BLOCKER] Calibration (Brier, ECE, coverage-accuracy).
+- [BLOCKER] **Sửa `logic/cis.py`**:
+  - Weights `35/25/25/10/5` (đã cập nhật trong config).
+  - Hai thành phần `in_text_bib_consistency` + `format_consistency` phải **real** (tính từ linker + StyleDetector).
+  - Tách output schema: `CitationMappingStatus` (integrity) + `ValidationLabel` (source) — xem 1.7.
+- [BLOCKER] `ExplanationGenerator` sinh lý do bằng tiếng Việt có cấu trúc (rule + field + score).
+- [MILESTONE M4] Có mapping statuses, 4 nhãn nguồn, evidence, abstention + validation report.
+
+### 2.7 Tuần 16–17 — Baselines + Metrics (đã chốt trong v1.2)
+
+| Baseline | Mô tả |
+|---|---|
+| **B0** | Pattern-only audit — Regex style + exact author-year/index + 1 chiều. |
+| **B1** | Link/DOI only — chỉ HTTP/DOI resolution. |
+| **B2** | Single-source top-1 — chỉ lấy kết quả đầu tiên từ Crossref / 1 nguồn chính. |
+| **B3** | Fuzzy matching — weighted title-author-year, không embedding + không symbolic. |
+| **B4** | Embedding only — cosine similarity tiêu đề, chọn top-1. |
+| **B5** | ML classifier — Logistic Regression / XGBoost trên tập feature. |
+| **Proposed** | Full-text style inference + bidirectional linking + multi-source + neural/statistical similarity + symbolic rules + abstention. |
+
+**Metrics cần đo (per v1.2 §3.10.2):**
+
+| Module | Metric |
+|---|---|
+| Style detection | Document-level Accuracy, Macro-F1 |
+| In-text extraction | Span-level P/R/F1 |
+| Citation-reference linking | Link Accuracy/F1; per-status P/R/F1 |
+| Reference extraction | Boundary F1; field-level P/R/F1 |
+| Candidate retrieval | Recall@1, Recall@5, MRR |
+| Nguồn phân loại | Per-class P/R/F1, Macro-F1, confusion matrix |
+| Confidence/abstention | Brier, ECE, coverage-accuracy |
+| CIS | Spearman / weighted kappa / MAE với rubric GVHD |
+| Hệ thống | Latency/PDF, API error rate, cache hit rate |
+| Usability | Thời gian task, SUS, bảng hỏi 5–7 tiêu chí |
+
+### 2.8 Tuần 14 — IAA
+
+- 2 SV cùng annotate 100 citation (đã lên lịch ở tuần 3–5, đo ở đây).
+- Cohen's kappa / Krippendorff's alpha target ≥ 0.7.
+- `data/ground_truth/iaa_template.csv` hiện tại chỉ là stub.
+
+### 2.9 Tuần 14–15 — Web UI
+
+- [BLOCKER] Style profile view (badge + conf + features hỗ trợ).
+- [BLOCKER] Citation graph view (2 chiều) + filter theo `MISSING/UNCITED/MISMATCH/DUPLICATE/AMBIGUOUS`.
+- [BLOCKER] Override mapping/labels UI (giảng viên sửa → log vào `audit_logs`).
+- [BLOCKER] Evidence drawer mở rộng: opening record từ Crossref/OpenAlex/S2/arXiv + source provenance + thời điểm kiểm tra.
+- [BLOCKER] Export PDF/CSV/JSON — JSON phải chứa 2 lớp output tách rời (integrity vs source).
+- [NICE] `npx shadcn@latest add button card table dialog` để sinh components (placeholder hiện tại).
+- [NICE] `react-dropzone` đang thiếu trong `package.json` — cần `npm install` trước khi dev.
+- [MILESTONE M5] Web MVP chạy bằng Docker; demo không phụ thuộc thao tác thủ công ẩn.
+
+### 2.10 Tuần 17 — Error analysis + usability
+
+- [BLOCKER] Error analysis theo từng mô-đun (extraction / linking / retrieval / classification).
+- [BLOCKER] Test với 3–5 giảng viên (nếu tiếp cận được) — thời gian task, SUS, góp ý.
+- [MILESTONE M6] Đóng băng kết quả, hoàn thành baseline/ablation/error analysis.
+
+---
+
+## 3. Re-scoped từ v1.1 (nay đã vào MVP)
+
+| Thứ cũ v1.1 | Nay trong v1.2 |
+|---|---|
+| GROBID là "mở rộng tương lai" | **Must-have cho MVP** (§3.4) — cần Docker adapter + GROBID client. |
+| Đọc PDF chỉ để trích citation | **Đọc toàn văn, phân vùng body/bibliography** (§3.4). |
+| Chỉ verify reference entry | **Có 2 lớp output** (integrity + source) (§3.2.2). |
+| Style detection ẩn / không bắt buộc | **Document-level style profile + confidence** (§3.5). |
+| Mapping một chiều hoặc không có | **Bidirectional linking + 7 trạng thái** (§3.5). |
+| "Dư thừa" = mặc định cứng | **Định nghĩa lại**: `UNCITED ∪ DUPLICATE`; KHÔNG coi trích nhiều lần là dư thừa. |
+| CIS weights 45/25/15/10/5 | **35/25/25/10/5** (§3.9). |
+| 2 CIS component là stub | **Phải tính thật** từ linker + style detector (§3.9). |
+| Gold set 1 mức (source label) | **3 mức**: style / span-link / source (§3.2). |
+| Baselines mơ hồ | **B0–B5 chốt cụ thể** (§3.10.1). |
+| Roadmap 1A/1B (citation-only) | **Roadmap 18 tuần chốt mốc M1–M7** (§5.2). |
+
+---
+
+## 4. Caveats kỹ thuật — refactor sau
+
+### 4.1 PDF parsing
+- ⚠️ `BasePDFParser.is_supported()` chỉ check extension `.pdf` — chưa check magic bytes `%PDF-`.
+- ⚠️ `fallback_to_ocr: false` — nếu PDF là scan (không có text layer), pipeline fail im lặng. Spec v1.2 ghi rõ:** scan PDF = unsupported trong MVP**, OCR là mở rộng.
+- ⚠️ Encrypted PDF chưa handle — sẽ raise exception từ PyMuPDF.
+- ⚠️ Khi có GROBID (tuần 6–7), cần cache kết quả GROBID theo `sha256(file)` để tránh gọi lại.
+
+### 4.2 Retrieval
+- ⚠️ Retry logic chưa có — khi API timeout/5xx sẽ fail. Cần `tenacity` retry exponential backoff.
+- ⚠️ Cache key hiện chỉ dùng SHA256 của raw text. Chưa truyền `source_name` → Crossref và OpenAlex cùng return có thể đụng key.
+- ⚠️ Rate limiter dùng spacing cố định, chưa sliding-window → sẽ vỡ rate limit nếu gọi đột biến.
+
+### 4.3 Logic
 - ⚠️ **`NeuroSymbolicChecker` thiếu classifier ML** (đã đánh dấu TODO tuần 12–13).
+- ⚠️ Story abstraction `best_candidate()` chỉ dùng `max(confidence)` — không tính consensus. Cần thêm `consensus_count()` vào ranking.
+- ⚠️ Calibration (`calibration.py`) hiện stub — cần Brier + ECE thật.
 
-### 3.4 Pipeline
-- ⚠️ **`asyncio.run` trong sync wrapper**: nếu gọi `pipeline.run()` từ trong async context (vd. từ FastAPI endpoint đã có event loop), sẽ raise `RuntimeError: asyncio.run() cannot be called from a running event loop`. Cần detect và dùng `loop.run_until_complete` hoặc `loop.run_in_executor`.
+### 4.4 Pipeline
+- ⚠️ `asyncio.run` trong sync wrapper — nếu gọi `pipeline.run()` từ trong FastAPI endpoint (đã có event loop), sẽ raise. Cần detect + dùng `loop.run_until_complete` hoặc `loop.run_in_executor`.
+- ⚠️ Cần thêm module `linking/` orchestrator (chưa có) để pipeline gọi sau `extraction/` trước `retrieval/`.
 
-### 3.5 DB
-- ⚠️ **Không có Alembic migrations** — dùng `Base.metadata.create_all()` lúc startup. OK cho MVP, nhưng khi schema đổi sẽ khó migrate.
-- ⚠️ **SQLite only** — production cần PostgreSQL. Settings đã có `database.url` configurable.
-- ⚠️ **`audit_logs` table có nhưng chưa có API để log override**.
+### 4.5 DB
+- ⚠️ Không có Alembic migrations — dùng `Base.metadata.create_all()` lúc startup. OK cho MVP, schema đổi sẽ khó migrate.
+- ⚠️ SQLite only — production cần PostgreSQL. Settings đã có `database.url` configurable.
+- ⚠️ `audit_logs` table có nhưng chưa có API để log override mapping/labels.
 
-### 3.6 Web
-- ⚠️ **shadcn components** chưa được generate thật (`src/components/ui/placeholder.ts`). Hiện tại UI dùng Tailwind classes trực tiếp. Cần chạy `npx shadcn@latest add` tuần 15.
-- ⚠️ **`react-dropzone` chưa có trong package.json** — thiếu dependency! UI sẽ fail compile.
-- ⚠️ **`useEssayAnalysis` hook** không có polling — chỉ fetch 1 lần.
-- ⚠️ **`VITE_API_BASE_URL` mặc định** = `/api` (qua Vite proxy) — OK cho dev, cần override cho prod.
-
----
-
-## 4. Out-of-scope (ghi rõ để tránh scope creep)
-
-Theo đề cương + user chốt 2026-07-26:
-
-- ❌ Chấm điểm content / organization / language / vocabulary / mechanics
-- ❌ AES rubric (Quadratic Weighted Kappa, holistic scoring)
-- ❌ Phát hiện đạo văn
-- ❌ Phát hiện toàn bộ văn bản do AI tạo
-- ❌ **Tự động kết luận gian lận học thuật** — hệ thống là decision-support
-- ❌ Claim-level verification toàn diện
-- ❌ OCR scanned PDF (mở rộng tương lai)
-- ❌ Sách / ISBN (mở rộng tương lai)
-- ❌ Google Scholar / SerpAPI (bị loại — không có API công khai, vi phạm TOS)
-- ❌ GROBID (mở rộng tương lai — đã có adapter slot)
-- ❌ **Auto-grade toàn bài tiểu luận** (dù GVHD có nói lỏng lẻo trong đề cương, các mục tiêu/tiêu chí/công nghệ đều nói citation-only — user đã xác nhận 2026-07-26)
+### 4.6 Web
+- ⚠️ shadcn components chưa được generate thật (`src/components/ui/placeholder.ts`).
+- ⚠️ `useEssayAnalysis` hook không có polling — chỉ fetch 1 lần.
+- ⚠️ `VITE_API_BASE_URL` mặc định = `/api` (qua Vite proxy) — OK cho dev, cần override cho prod.
+- ⚠️ CSS colors hiện đang hardcode theo 4 nhãn `ValidationLabel` — cần thêm bảng màu cho 7 trạng thái `CitationMappingStatus`.
 
 ---
 
-## 5. Testing gaps
+## 5. Out-of-scope (v1.2, ghi rõ để tránh scope creep)
 
-### 5.1 Tests chưa có
+- ❌ Chấm điểm content / organization / language / vocabulary / mechanics.
+- ❌ AES rubric (QWK, holistic scoring).
+- ❌ Phát hiện đạo văn.
+- ❌ Phát hiện toàn bộ văn bản do AI tạo.
+- ❌ **Tự động kết luận gian lận học thuật** — hệ thống là decision-support.
+- ❌ **Claim-level verification toàn diện** — chỉ kiểm tra author/year/number/index, KHÔNG kiểm tra câu văn có được nguồn hỗ trợ về ngữ nghĩa.
+- ❌ **Phán xét việc trích cùng một nguồn nhiều lần là "dư thừa"** — chỉ `UNCITED` + `DUPLICATE` mới là dư thừa.
+- ❌ OCR scanned PDF (mở rộng tương lai).
+- ❌ Sách / ISBN (mở rộng tương lai).
+- ❌ Highlight trực tiếp lên PDF (mở rộng — mở đúng trang + bảng page/context là đủ cho MVP).
+- ❌ Google Scholar / SerpAPI (bị loại).
+- ❌ **Auto-grade toàn bài tiểu luận** (dù GVHD có nói lỏng lẻo trong v1.1, v1.2 đã chốt rõ: 3 lớp kiểm tra, không chấm tổng).
+
+---
+
+## 6. Testing gaps
+
+### 6.1 Tests chưa có
+- [ ] `tests/unit/test_style_detector.py` (document-level, mix & unknown)
+- [ ] `tests/unit/test_citation_linker.py` (7 trạng thái)
+- [ ] `tests/unit/test_duplicate_detector.py` (DOI exact + title-author-year fallback)
+- [ ] `tests/unit/test_section_segmenter.py` (body / bibliography / appendix)
+- [ ] `tests/unit/test_grobid_parser.py` (mock GROBID container)
 - [ ] `tests/unit/test_extraction_preprocessor.py` (Unicode, ligature)
 - [ ] `tests/unit/test_semantic_matcher.py` (lazy-load model)
 - [ ] `tests/unit/test_retrieval_orchestrator.py` (parallel + dedupe)
-- [ ] `tests/unit/test_consensus.py`
+- [ ] `tests/unit/test_consensus.py` (≥2 nguồn đồng thuận)
 - [ ] `tests/unit/test_calibration.py` (ECE/Brier math)
 - [ ] `tests/unit/test_explanation.py` (Vietnamese template)
 - [ ] `tests/unit/test_db_repository.py`
-- [ ] `tests/integration/test_full_pdf_pipeline.py` (nhiều PDF batch)
+- [ ] `tests/integration/test_full_pdf_pipeline_v12.py` (nhiều PDF batch, 2 lớp output)
 - [ ] `tests/integration/test_api_upload.py` (upload thật qua multipart)
+- [ ] `tests/integration/test_baselines_b0_b5.py` (so sánh từng baseline)
 
-### 5.2 Coverage thấp
-- `pipeline/integrity_pipeline.py`: chỉ test happy path. Chưa test:
+### 6.2 Coverage tụt so với v1.1
+- `pipeline/integrity_pipeline.py`: chỉ test happy path. Cần test:
   - 0 citations extracted
   - 1 citation duy nhất
-  - Toàn bộ API fail (đã test qua SymbolicRules)
+  - Toàn bộ API fail
+  - `MISSING_REFERENCE` & `UNCITED_REFERENCE` realistic
 - `db/repository.py`: chưa có test thật.
 
-### 5.3 Property-based tests chưa có
+### 6.3 Property-based tests
 - Có thể thêm `hypothesis` library để test parser với input random.
+
+### 6.4 IAA measurement
+- File `data/ground_truth/iaa_template.csv` hiện stub — cần chạy thật ở tuần 14.
 
 ---
 
-## 6. Security / Privacy notes
+## 7. Security / privacy notes
 
-### 6.1 Quyền riêng tư
-- ⚠️ **Tiểu luận SV là dữ liệu nhạy cảm**. Mặc dù đề cương có ghi "đã được ẩn danh", vẫn cần:
-  - Không commit essay thật vào git
-  - Không gửi essay qua API bên thứ ba nếu không cần thiết
-  - Cache TTL 24h — sau 24h sẽ bị xoá
-- ⚠️ **Gold dataset cũng có thể chứa thông tin nhạy cảm** — cần review trước khi công khai
+### 7.1 Quyền riêng tư
+- ⚠️ **Tiểu luận SV là dữ liệu nhạy cảm**. Mặc dù đề cương ghi "đã được ẩn danh", vẫn cần:
+  - Không commit essay thật vào git.
+  - Không gửi essay qua API bên thứ ba nếu không cần thiết (v1.2 §3.4 đã chốt: **không gửi toàn văn ra scholarly APIs**, chỉ gửi truy vấn thư mục tối thiểu sau khi đã phân vùng + ẩn danh).
+  - Cache TTL 24h — sau 24h sẽ bị xoá.
+- ⚠️ **Gold dataset cũng có thể chứa thông tin nhạy cảm** — cần review trước khi công khai.
+- ⚠️ **Hash tên tệp** (filename hash) trước khi lưu DB.
+- ⚠️ **Tách kho tệp gốc khỏi dataset nghiên cứu**; dataset chia sẻ chỉ chứa marker + reference + mã liên kết + ngữ cảnh tối thiểu đã được phép.
 
-### 6.2 API keys
-- ⚠️ `S2_API_KEY` chỉ optional, không commit
-- ⚠️ `CONTACT_EMAIL` đang mặc định `student@tdtu.edu.vn` — đổi sang email thật của nhóm trước khi demo
+### 7.2 API keys
+- ⚠️ `S2_API_KEY` chỉ optional, không commit.
+- ⚠️ `CONTACT_EMAIL` đang mặc định `student@tdtu.edu.vn` — đổi sang email thật của nhóm trước khi demo.
 
-### 6.3 Disclaimer bắt buộc
-- ⚠️ Mọi page web PHẢI có `<DecisionSupportDisclaimer />`
-- ⚠️ Mọi report export PHẢI có disclaimer đầu trang (đã có trong `_json_response` và `_csv_response`)
-- ⚠️ FastAPI `/api/health` PHẢI trả disclaimer (đã có)
+### 7.3 Disclaimer bắt buộc
+- ⚠️ Mọi page web PHẢI có `<DecisionSupportDisclaimer />`.
+- ⚠️ Mọi report export PHẢI có disclaimer đầu trang (đã có trong `_json_response` và `_csv_response`).
+- ⚠️ FastAPI `/api/health` PHẢI trả disclaimer (đã có).
+- ⚠️ **Phải ghi rõ trong UI**: "Không tự động kết luận gian lận" + "SUSPECTED_HALLUCINATION chỉ là suspect, GVHD là người quyết định cuối".
 
-### 6.4 Security findings (từ automated review 2026-07-26) — KHÔNG fix trong skeleton phase
+### 7.4 Security findings (từ automated review 2026-07-26) — KHÔNG fix trong skeleton phase
 
-> Background security review phát hiện 8 issues ở mức MEDIUM/HIGH. **Tôi không fix** theo yêu cầu của user (chỉ là skeleton — security chưa trong scope MVP). Cần xử lý **trước khi deploy production**, ước lượng 1–2 tuần.
+> Background security review phát hiện 8 issues ở mức MEDIUM/HIGH. **Chưa fix** theo yêu cầu của user (skeleton — security chưa trong scope MVP). Cần xử lý **trước khi deploy production**, ước lượng 1–2 tuần.
 
 | Severity | File | Issue | Fix proposal |
 |---|---|---|---|
@@ -253,12 +353,12 @@ Theo đề cương + user chốt 2026-07-26:
 | MEDIUM | `api/routes/essays.py` | No semaphore — concurrent uploads có thể OOM | `asyncio.Semaphore` + `ThreadPoolExecutor` bounded |
 
 **Caveats:**
-- Hệ thống MVP chỉ dùng **trong nội bộ nhóm TDTU** — authentication thật (qua SSO TDTU) sẽ tích hợp ở tuần 15–16 khi deploy.
+- Hệ thống MVP chỉ dùng **trong nội bộ nhóm TDTU** — authentication thật (qua SSO TDTU) sẽ tích hợp ở tuần 14–15 khi deploy.
 - `findings` này đã được ghi nhận, không bỏ qua. Sẽ address trước khi production.
 
 ---
 
-## 7. Dependencies — pinned versions cần update
+## 8. Dependencies — pinned versions cần update
 
 | Package | Pinned | Lưu ý |
 |---|---|---|
@@ -272,31 +372,43 @@ Theo đề cương + user chốt 2026-07-26:
 | `arxiv` | `>=2.0,<3` | OK |
 | `rapidfuzz` | `>=3.6,<4` | OK |
 | `httpx` | `>=0.27,<1` | Có deprecation warning với starlette.testclient |
+| `grobid-client` | TBD | **Cần thêm** — Docker compose cho GROBID service |
+| `tenacity` | TBD | **Cần thêm** — retry + exponential backoff |
 
 ---
 
-## 8. Lịch sử thay đổi
+## 9. Lịch sử thay đổi
 
 | Ngày | Thay đổi |
 |---|---|
-| 2026-07-26 | Skeleton Phase 1 — tạo 115 files. 29/29 unit tests pass, 8/8 integration tests pass. CLI demo chạy end-to-end. CIS = 45.5/100 (vì API stub → toàn UNRESOLVED). |
+| 2026-07-26 | Skeleton v1.1 — tạo 115 files. 29/29 unit tests pass, 8/8 integration tests pass. CLI demo chạy end-to-end. CIS = 45.5/100 (vì API stub → toàn UNRESOLVED). |
 | 2026-07-26 | Fix bug `to_search_query()` cho APA format. Fix `out_of_scope` config shape (YAML list). |
+| 2026-08-03 | **Re-scope sang v1.2** (sau khi chốt với GVHD). README / KNOWN_ISSUES / Quickstart / config được đồng bộ sang v1.2: full-text + GROBID, style detection, bidirectional linking, 7 trạng thái mapping, 4 nhãn nguồn, CIS weights 35/25/25/10/5, 18-tuần roadmap. Chưa có code thay đổi ở phase này. |
 
 ---
 
-## 9. Action items ngay sau skeleton
+## 10. Action items ngay tuần này
 
-**Tuần 1–2 (SV làm):**
-1. Đọc `README.md` + `DEVELOPER_QUICKSTART.md` + file này.
-2. `make setup` → `make sample` → `make demo` → `make test`.
-3. Mỗi SV đọc `data/ground_truth/annotation_guideline.md` và bắt đầu thu thập 30–50 tiểu luận mẫu thật (đã ẩn danh) để bổ sung cho `data/essays/`.
+**Sinh viên (thứ tự ưu tiên):**
 
-**Tuần 3 (SV làm):**
-1. Implement author parser chuẩn (`matching/author_parser.py`).
-2. Thêm Vietnamese regex patterns.
-3. Fix `datetime.utcnow()` deprecation warning.
+1. Đọc `README.md` (v1.2) + `docs/CHANGES_VS_V1.1.md` + file này.
+2. Cập nhật `configs/config.example.yaml` sang v1.2 weights (đã có trong task list #9).
+3. Cập nhật `DEVELOPER_QUICKSTART.md` sang v1.2 roadmap (đã có trong task list #8).
+4. `make setup` → `make sample` → `make demo` → `make test` — xác nhận skeleton vẫn chạy.
+5. Bắt đầu scaffold `linking/` package và `extraction/style_detector.py` (tuần 6–7).
+
+**GVHD (cần xin ý kiến):**
+
+- Tên đề tài tiếng Việt/Anh và cách dùng thuật ngữ "ảo giác".
+- MVP ngoài APA-like / IEEE-like có cần hỗ trợ style families nào không (Chicago, Harvard, Vancouver...).
+- Có chấp nhận `MIXED` / `UNKNOWN` như cơ chế an toàn không.
+- Nhóm được tiếp cận bao nhiêu tiểu luận và quy trình ẩn danh / lưu trữ.
+- Định nghĩa "dư thừa" = `UNCITED ∪ DUPLICATE` đã OK chưa.
+- CIS có cần so sánh với điểm thật hay chỉ là thống kê hỗ trợ.
+- Tiêu chí tối thiểu về accuracy, tốc độ, số mẫu, usability.
 
 ---
 
 **Maintained by:** Nguyễn Bảo Minh (523H0054) & Trần Gia Thành (523H0096)
 **GVHD:** ThS. Võ Thị Kim Anh
+**Đề cương:** v1.2 đã chốt 2026-08-03

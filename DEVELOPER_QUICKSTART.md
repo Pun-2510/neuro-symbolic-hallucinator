@@ -1,13 +1,17 @@
 # Developer Quickstart
 
 > Cho 2 SV thực hiện đồ án. Đọc file này **trước khi** code.
+>
+> **Đề cương hiện hành:** v1.2 (chốt với GVHD ngày 2026-08-03, xem `../final (1).docx`).
+> So với v1.1, v1.2 thêm 3 cụm: **full-text extraction + GROBID**, **citation style detection**, **bidirectional linking** với 7 trạng thái mapping tách khỏi 4 nhãn nguồn.
 
 ## 0. Vài quyết định KHÔNG thay đổi được
 
-- **Citation-only** (đề cương v1.1 đã duyệt). KHÔNG chấm điểm toàn bài.
-- **API stack**: Crossref + OpenAlex + Semantic Scholar + arXiv. KHÔNG Google Scholar / SerpAPI.
-- **PDF parsing**: PyMuPDF + pdfplumber. GROBID bỏ MVP (để adapter slot).
-- **Decision-support**: hệ thống không tự kết luận gian lận — giảng viên quyết định cuối.
+- **Decision-support, không tự kết luận gian lận** — giảng viên quyết định cuối. Mọi label là "suspected" / "gợi ý" / "cần kiểm tra".
+- **API stack**: Crossref + OpenAlex + Semantic Scholar + arXiv. **KHÔNG** dùng Google Scholar / SerpAPI.
+- **PDF parsing (v1.2 — đã thay đổi)**: **GROBID + PyMuPDF + pdfplumber** (GROBID nay đã vào MVP, không còn "mở rộng tương lai").
+- **Không chấm toàn bài tiểu luận** — chỉ kiểm tra 3 lớp: style, citation-graph integrity, source verification.
+- **"Trích dẫn dư thừa" = `UNCITED_REFERENCE` ∪ `DUPLICATE_REFERENCE`** — KHÔNG mặc định cứng việc trích cùng một nguồn nhiều lần là dư thừa.
 
 ## 1. Setup (5 phút)
 
@@ -41,7 +45,7 @@ Output mẫu:
   ? [unresolved] conf=30% raw=...   ← vì API stub, tất cả unresolved
 ```
 
-> **Lưu ý**: hiện tại verdict toàn `unresolved` là do **4 API client là stub** (chưa implement). Đây là expected. Xem mục 5 để biết implement tuần nào.
+> Hiện tại verdict toàn `unresolved` vì **4 API client là stub** (chưa implement). Đây là expected. Sau v1.2 tuần 6–7, output schema sẽ tách thêm **mapping statuses** (MATCHED/MISSING/UNCITED/...) — phần này sẽ xuất hiện trong JSON ngay cả khi chưa có retrieval thật.
 
 ## 3. Chạy web (1 phút)
 
@@ -57,6 +61,8 @@ cd web && npm install && npm run dev
 # → http://localhost:5173
 ```
 
+> Lưu ý `web/package.json` hiện thiếu `react-dropzone` — `npm install` sẽ fail ở màn hình Upload. Cần `npm install react-dropzone` trước.
+
 ## 4. Chạy tests
 
 ```bash
@@ -64,61 +70,94 @@ pytest tests/unit/ -v            # 29 tests, ~0.2s
 pytest tests/integration/ -v     # 8 tests, cần sample PDFs, ~40s
 ```
 
-## 5. Lộ trình 18 tuần — tuần nào làm gì
+Sau khi scaffold `linking/` (tuần 6–7), thêm:
+```bash
+pytest tests/unit/test_citation_linker.py -v
+pytest tests/unit/test_duplicate_detector.py -v
+pytest tests/unit/test_style_detector.py -v
+```
 
-| Tuần | Nội dung | Module |
+## 5. Lộ trình 18 tuần (v1.2 §5.2)
+
+| Tuần | Giai đoạn | Công việc | Module | Mốc |
+|---|---|---|---|---|
+| 1–2 | Khảo sát | Chốt vấn đề, literature matrix, scope, style families, taxonomy và schema chung. | — | **M1**: GVHD chốt phạm vi, style families, 2 lớp taxonomy, dữ liệu, tiêu chí nghiệm thu. |
+| 3–5 | Dữ liệu | Thu thập / ẩn danh; guideline 3 mức (document / span-link / source); pilot; đo agreement. | `data/ground_truth/` | **M2**: Gold pilot 3 mức đủ tốt; guideline khóa. |
+| 6–7 | **Full-text audit** ⭐ | Phân vùng PDF (GROBID + PyMuPDF); in-text/reference extraction; **StyleDetector**; **CitationLinker** + DuplicateDetector + 7 trạng thái. | `extraction/`, `linking/` (MỚI) | — |
+| 8–9 | Retrieval | Crossref, OpenAlex, S2, arXiv thật; cache; hợp nhất candidate; tenacity retry. | `retrieval/` | **M3**: PDF → style profile → citation graph → candidate top-K chạy end-to-end trên bộ mẫu. |
+| 10–11 | Matching | Fuzzy/embedding features; author/year/venue normalization; consensus; build B0–B5 baselines. | `matching/`, `evaluation/` | — |
+| 12–13 | Logic | Symbolic rules cho mapping + nguồn; abstention; calibration; **CIS weights 35/25/25/10/5** real (không còn stub). | `logic/` | **M4**: Có mapping statuses + 4 nhãn nguồn + evidence + abstention + validation report. |
+| 14 | IAA | 2 SV cùng annotate; Cohen's kappa / Krippendorff's alpha target ≥ 0.7. | `data/ground_truth/` | — |
+| 14–15 | Ứng dụng | Style profile view + citation graph view + override mapping/labels + export PDF/CSV/JSON; Docker. | `web/`, `Dockerfile`, `docker-compose.yml` | **M5**: Web MVP chạy bằng Docker. |
+| 16–17 | Thực nghiệm | Baseline B0–B5; ablation; calibration; error analysis theo từng mô-đun; usability test. | `evaluation/` | **M6**: Đóng băng kết quả. |
+| 18 | Hoàn thiện | Báo cáo tốt nghiệp, poster, slide, video, rehearsal, đóng gói. | `docs/`, `README.md` | **M7**: Bản nộp + mã nguồn + dữ liệu được phép chia sẻ + video demo. |
+
+### Bảng phân công (v1.2 §5.1)
+
+| SV1 — Document & Application | SV2 — Retrieval & Verification | Chung |
 |---|---|---|
-| 1–2 | EDA, đọc lit review, thu thập tiểu luận mẫu thật | — |
-| 3 | CitationExtractor hoàn chỉnh, author parsing | `extraction/` |
-| 4–5 | Regex patterns (APA/MLA/IEEE/Chicago/Vietnamese) | `extraction/regex_patterns.py` |
-| 6 | Reference list parser đa style | `extraction/reference_parser.py` |
-| 7 | Pipeline orchestrator | `pipeline/integrity_pipeline.py` |
-| 8 | **Mid-term demo** — pipeline end-to-end trên 20 PDF | — |
-| 9 | CrossrefClient thật | `retrieval/crossref_client.py` |
-| 10 | OpenAlex + Semantic Scholar + arXiv clients | `retrieval/{openalex,semantic_scholar,arxiv}_client.py` |
-| 11 | Author parsing chuẩn, fuzzy/semantic tuning | `matching/` |
-| 12 | Symbolic rules tuning (decision table) | `logic/rules.py` |
-| 13 | CIS weights optimization trên validation set | `logic/cis.py` |
-| 14 | IAA: 2 SV cùng annotate 100 citation, tính Cohen's kappa | `data/ground_truth/` |
-| 15 | Web UI polish, shadcn components đầy đủ | `web/src/components/ui/` |
-| 16 | Baselines B0–B4, đo P/R/F1 trên gold dataset | `evaluation/` |
-| 17 | Final experiments + viết thesis Ch. 4 (Results) | — |
-| 18 | **Bảo vệ** | — |
+| Full-text/PDF parsing (GROBID + PyMuPDF). Phân vùng body/bibliography. **StyleDetector**. In-text extraction. **CitationLinker** + DuplicateDetector. Bounding box + highlight (nếu có). FastAPI/Streamlit. Đánh giá style / span / link. | Scholarly APIs (4 connector thật). Candidate retrieval. Fuzzy/embedding features. Author/year/venue normalization. Source consensus. Logic checker (rules + abstention + calibration). Đánh giá retrieval/classification. | Literature review. Annotation guideline 3 mức. Gán nhãn + IAA. Thiết kế thực nghiệm (B0–B5 + ablation). Tích hợp + viết báo cáo. Demo + bảo vệ. |
 
 ## 6. Quy tắc code
 
 - **Mỗi module** có docstring ở đầu file + `# TODO(user, week X):` cho phần cần implement.
 - **Mỗi public function/class** có docstring ngắn gọn.
+- **Tách 2 lớp output rõ ràng**: không trộn `CitationMappingStatus` (integrity) với `ValidationLabel` (source) trong cùng một dataclass, trừ khi cố ý làm ở layer tổng hợp.
 - **Test trước khi commit**: `pytest tests/unit/ -v` phải pass.
 - **Git**: nhánh riêng cho mỗi module, PR review lẫn nhau.
-- **KHÔNG commit**: `.env`, `data/cache/`, `data/app.db`, `node_modules/`, `.venv/`.
+- **KHÔNG commit**: `.env`, `data/cache/`, `data/app.db`, `node_modules/`, `.venv/`, essay thật (kể cả đã ẩn danh nếu chưa được phép).
 
-## 7. Resources
+## 7. Mở rộng v1.1 → v1.2 (cần biết)
 
-- **Đề cương v1.1** (canonical source): `../docs/de_cuong_template.md`
-- **Lit review**: `../docs/NGHIEN_CUU_LITERATURE_REVIEW.md`
-- **Roadmap**: `../docs/ROADMAP_ZERO_TO_HERO.md`
-- **Annotation guideline**: `data/ground_truth/annotation_guideline.md`
-- **Sample essays**: `data/essays/README.md`
-- **API docs của các nguồn**:
+Đọc `docs/CHANGES_VS_V1.1.md` (sẽ viết trong tuần 1–2) hoặc xem §3 trong `KNOWN_ISSUES_AND_TODO.md`. Tóm tắt:
+
+| Thứ cũ (v1.1) | Nay (v1.2) | Action |
+|---|---|---|
+| GROBID là mở rộng | MVP must-have | Tạo Docker adapter + client tuần 6–7 |
+| Đọc PDF chỉ để trích citation | Đọc toàn văn + phân vùng body/bibliography | Tạo `extraction/section_segmenter.py` tuần 6–7 |
+| Style detection ẩn | Document-level style profile + confidence | Tạo `extraction/style_detector.py` tuần 6–7 |
+| Mapping 1 chiều hoặc không có | Bidirectional + 7 trạng thái | Tạo `linking/` package tuần 6–7 |
+| "Dư thừa" mặc định cứng | `UNCITED ∪ DUPLICATE` | Cập nhật annotation guideline tuần 3–5 |
+| CIS weights `45/25/15/10/5` | `35/25/25/10/5` | Đã cập nhật `configs/config.example.yaml` |
+| 2 CIS component là stub | Real (tính từ linker + style) | Triển khai tuần 12–13 |
+| 1 lớp output (nhãn nguồn) | 2 lớp (integrity + source) | Mở rộng `models/validation.py` tuần 6 |
+
+## 8. Resources
+
+- **Đề cương v1.2** (canonical): `../final (1).docx`.
+- **Lit review**: `../docs/NGHIEN_CUU_LITERATURE_REVIEW.md`.
+- **Roadmap tổng**: `../docs/ROADMAP_ZERO_TO_HERO.md` (lập theo v1.1, đã bị thay thế một phần).
+- **Annotation guideline v2**: `data/ground_truth/annotation_guideline.md` (sẽ viết lại ở tuần 3–5).
+- **Sample essays**: `data/essays/README.md`.
+- **API docs**:
   - Crossref: https://api.crossref.org
   - OpenAlex: https://docs.openalex.org
   - Semantic Scholar: https://api.semanticscholar.org
   - arXiv: https://arxiv.org/help/api
+  - **GROBID** (MỚI trong v1.2): https://grobid.readthedocs.io
 
-## 8. Câu hỏi thường gặp
+## 9. Câu hỏi thường gặp
 
 **Q: Tại sao tất cả citation đều `unresolved` khi chạy demo?**
-A: Vì 4 API client là stub (TODO tuần 9–10). Implement thật sẽ tự động sinh verdict phân hóa.
+A: Vì 4 API client là stub (xem `KNOWN_ISSUES_AND_TODO.md` §2.4). Implement thật ở tuần 8–9 sẽ tự động sinh verdict phân hóa.
 
-**Q: Tại sao bỏ GROBID?**
-A: Theo quyết định chốt 2B. Adapter slot đã có sẵn — muốn dùng lại chỉ cần tạo `GrobidParser(BasePDFParser)`.
+**Q: CIS có phải điểm tiểu luận không?**
+A: KHÔNG. CIS = Citation Integrity Score, chỉ đo phần trích dẫn (integrity + source). Trọng số `35/25/25/10/5` là khởi tạo, sẽ hiệu chỉnh ở tuần 12–13 theo rubric GVHD.
 
-**Q: Tại sao không dùng Google Scholar?**
-A: Không có API công khai chính thức; SerpAPI tốn tiền + vi phạm TOS. Đề cương đã chốt dùng 4 nguồn trên.
+**Q: Hệ thống có tự phát hiện đạo văn / gian lận không?**
+A: KHÔNG. Decision-support only; giảng viên là người quyết định cuối. Xem `KNOWN_ISSUES_AND_TODO.md` §5.
+
+**Q: Style "MIXED" và "UNKNOWN" có phải lỗi không?**
+A: KHÔNG — đó là cơ chế an toàn khi evidence chưa đủ. MVP chấp nhận cả 2 như output hợp lệ.
 
 **Q: Có nên dùng LLM (GPT-4 / Claude) để parse citation?**
-A: Có thể thử ở giai đoạn sau (tuần 11–12) làm **baseline B5** so với Neuro-Symbolic. Nhưng pipeline chính vẫn là rule-based để có thể giải thích được.
+A: Có thể thử ở giai đoạn sau (tuần 16–17) làm **baseline so sánh**. Nhưng pipeline chính vẫn là rule-based (regex + GROBID) để có thể giải thích được.
 
-**Q: CIS là gì, có phải điểm tiểu luận không?**
-A: KHÔNG. CIS = Citation Integrity Score, chỉ đo phần trích dẫn. Trọng số mặc định trong `configs/config.example.yaml` sẽ tối ưu lại ở tuần 13.
+**Q: Tại sao citation gộp `(Smith, 2020; Doe, 2021)` chỉ được tính 1 link?**
+A: CitationLinker tách thành nhiều quan hệ (multi-occurrence). Mỗi occurrence có `CitationLink` riêng; cùng chia sẻ một reference entry.
+
+**Q: DOI resolve được thì đã đủ xác minh chưa?**
+A: CHƯA — DOI phân giải được là tín hiệu mạnh, nhưng vẫn phải đối chiếu metadata đích. Logic rule R-DOI-TITLE-MISMATCH xử lý trường hợp DOI trỏ sang bài khác.
+
+**Q: URL/DOI lỗi có nghĩa là nguồn không tồn tại không?**
+A: KHÔNG. URL/DOI lỗi là `BROKEN_LINK` — tách riêng khỏi existence verification. Source vẫn có thể tồn tại, có thể chỉ là link tạm thời không truy cập.

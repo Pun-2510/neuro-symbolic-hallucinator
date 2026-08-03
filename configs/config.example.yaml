@@ -1,11 +1,12 @@
 # =====================================================================
 # config.example.yaml — runtime configuration
 # Copy sang `configs/config.yaml` để override defaults.
+# Đồng bộ với đề cương v1.2 (chốt với GVHD ngày 2026-08-03).
 # =====================================================================
 
 app:
   name: "Essay Integrity Checker"
-  version: "0.1.0"
+  version: "0.2.0"   # v1.2 spec (re-scoped từ v1.1)
   env: development
   debug: true
   log_level: INFO
@@ -21,13 +22,64 @@ paths:
   essays_dir: "./data/essays"
   cache_dir: "./data/cache"
   ground_truth: "./data/ground_truth/gold_dataset.json"
+  grobid_output_dir: "./data/cache/grobid"   # MỚI v1.2
 
-# --- PDF parsing ---
+# --- PDF parsing (MỚI v1.2) ---
 extraction:
-  # chọn parser: mupdf | pdfplumber | hybrid (mupdf primary, pdfplumber fallback)
-  parser: hybrid
+  # chọn parser: mupdf | pdfplumber | hybrid | grobid_hybrid
+  # v1.2: GROBID kết hợp PyMuPDF là MUST-HAVE trong MVP
+  #   - GROBID: TEI XML, phân vùng body/bibliography, header metadata
+  #   - PyMuPDF: fallback text layer + bounding box cho highlight
+  parser: grobid_hybrid
   fallback_to_ocr: false
-  min_text_length: 50  # dưới ngưỡng này → PDF scan / encrypted
+  min_text_length: 50   # dưới ngưỡng này → PDF scan / encrypted
+
+  # GROBID service (v1.2 — yêu cầu Docker Compose)
+  grobid:
+    enabled: true
+    url: "http://localhost:8070"   # grobid docker endpoint
+    timeout_seconds: 30
+    cache_by_file_sha256: true
+    consolidate_header: ["abstract", "body", "bibliography", "footnote", "appendix"]
+
+# --- Citation style detection (MỚI v1.2) ---
+# Document-level profile: APA-like / IEEE-like / MIXED / UNKNOWN + confidence
+# MIXED/UNKNOWN là cơ chế an toàn khi evidence chưa đủ — không ép về APA/IEEE
+style_detection:
+  min_occurrences_to_classify: 5   # dưới ngưỡng → UNKNOWN
+  mixed_threshold: 0.3             # tỷ lệ marker thuộc nhóm phụ > ngưỡng → MIXED
+  unknown_threshold: 0.15          # evidence quá thấp → UNKNOWN
+  features:
+    apa_author_year_pattern: "\\([A-Z][^()]{0,80},\\s*(19|20)\\d{2}[a-z]?\\)"
+    ieee_numeric_pattern: "\\[\\d+(?:\\s*[-,]\\s*\\d+)*\\]"
+  output:
+    classes: ["APA-like", "IEEE-like", "MIXED", "UNKNOWN"]
+
+# --- Bidirectional citation linking (MỚI v1.2) ---
+# Tạo quan hệ in-text ↔ reference entry hai chiều + 7 trạng thái
+linking:
+  exclude_sections: ["references", "bibliography", "tài liệu tham khảo", "appendix", "phụ lục"]
+
+  duplicate_detection:
+    # Bước 1: exact DOI/arXiv ID
+    exact_identifier_match: true
+    # Bước 2: fallback — normalized title + author + year với threshold cẩn trọng
+    title_year_author_similarity: 0.92
+
+  statuses:
+    enabled:
+      - MATCHED
+      - MISSING_REFERENCE
+      - UNCITED_REFERENCE
+      - IN_TEXT_MISMATCH
+      - DUPLICATE_REFERENCE
+      - AMBIGUOUS_MAPPING
+      - STYLE_INCONSISTENT
+
+  # Author-year disambiguation: (Nguyen, 2024a) vs (Nguyen, 2024b) cùng tác giả
+  same_author_year_resolution:
+    use_title_metadata: true
+    use_first_author: true
 
 # --- Multi-source retrieval ---
 retrieval:
@@ -40,13 +92,21 @@ retrieval:
   parallel: true
   cache:
     enabled: true
-    ttl_seconds: 86400  # 24h
+    ttl_seconds: 86400   # 24h
+    include_source_in_key: true   # MỚI v1.2 — tránh trộn nhầm giữa các nguồn
+  retry:                 # MỚI v1.2
+    enabled: true
+    max_attempts: 3
+    backoff:
+      initial_seconds: 1.0
+      max_seconds: 10.0
+      multiplier: 2.0
   rate_limits:
     crossref_per_sec: 50
     openalex_per_sec: 10
-    semantic_scholar_per_sec: 1.0  # polite default
+    semantic_scholar_per_sec: 1.0   # polite default
     arxiv_per_sec: 3.0
-  contact_email: "student@tdtu.edu.vn"  # cho Crossref polite pool
+  contact_email: "student@tdtu.edu.vn"   # cho Crossref polite pool
 
 # --- Matching thresholds ---
 # TODO(user): tối ưu trên validation set trong tuần 10–11
@@ -55,41 +115,61 @@ matching:
   title_sim_metadata_error: 0.6
   author_jaccard_verified: 0.5
   year_tolerance: 1
-  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"  # CPU-friendly
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"   # CPU-friendly
   fuzzy:
     token_set_ratio_threshold: 0.85
     partial_ratio_threshold: 0.80
 
 # --- Symbolic rules + abstention ---
-# TODO(user): tinh chỉnh confidence thresholds + abstention band
+# TODO(user): tinh chỉnh confidence thresholds + abstention band ở tuần 12–13
 logic:
   abstention_low: 0.4
   abstention_high: 0.6
-  require_consensus_for_verified: 2  # số nguồn đồng thuận tối thiểu
+  require_consensus_for_verified: 2              # số nguồn đồng thuận tối thiểu
   require_consensus_for_metadata_error: 1
 
-# --- Citation Integrity Score weights ---
+  # Rule IDs mới (v1.2) — bổ sung ở tuần 12–13
+  new_rules:
+    domain_exception_broken_link: true           # URL lỗi nhưng record tồn tại → BROKEN_LINK
+    ambiguous_mapping: true                      # ≥2 candidate hợp lý → ABSTAIN
+    style_inconsistent_override: false           # không tự sửa; hỏi giảng viên
+
+# --- Citation Integrity Score weights (v1.2 §3.9) ---
 # TỔNG các trọng số = 1.0
-# TODO(user): tối ưu trên validation set hoặc theo rubric GVHD
+# Đã cập nhật: 35/25/25/10/5 (v1.1 là 45/25/15/10/5)
+# Hai component in_text_bib_consistency + format_consistency phải TÍNH THẬT,
+# KHÔNG dùng stub như skeleton v1.1.
 cis:
   weights:
-    verified_ratio: 0.45
+    verified_ratio: 0.35
     metadata_accuracy: 0.25
-    in_text_bib_consistency: 0.15
+    in_text_bib_consistency: 0.25
     format_consistency: 0.10
     identifier_validity: 0.05
+  # Component "in_text_bib_consistency" — trọng số phạt theo rubric
+  rubric_penalty:
+    MISSING_REFERENCE: 0.20
+    UNCITED_REFERENCE: 0.10
+    IN_TEXT_MISMATCH: 0.15
+    DUPLICATE_REFERENCE: 0.10
+    AMBIGUOUS_MAPPING: 0.05
+    STYLE_INCONSISTENT: 0.02
 
 # --- Decision-support disclaimer ---
 # BẮT BUỘC hiển thị trên mọi UI + report export
 disclaimer:
   short: "Decision-support only — not a final grade."
   long: >
-    Hệ thống này chỉ hỗ trợ giảng viên rà soát trích dẫn. Kết quả là gợi ý
-    dựa trên bằng chứng từ các cơ sở dữ liệu học thuật công khai (Crossref,
-    OpenAlex, Semantic Scholar, arXiv). Giảng viên là người ra quyết định
-    cuối cùng. Hệ thống KHÔNG tự động kết luận gian lận học thuật.
+    Hệ thống này chỉ hỗ trợ giảng viên rà soát tính toàn vẹn trích dẫn trong tiểu luận.
+    Hai lớp kết quả (đối chiếu in-text ↔ reference entry và độ tin cậy nguồn) đều là
+    gợi ý dựa trên bằng chứng từ các cơ sở dữ liệu học thuật công khai (Crossref, OpenAlex,
+    Semantic Scholar, arXiv) và quy luật Neuro-Symbolic có thể giải thích. Kết luận
+    `SUSPECTED_HALLUCINATION` chỉ là suspect — không đồng nghĩa nguồn bị bịa. Giảng viên
+    là người ra quyết định cuối cùng. Hệ thống KHÔNG tự động kết luận gian lận học thuật,
+    KHÔNG kiểm chứng claim-level, và KHÔNG xem việc trích cùng một nguồn nhiều lần là
+    "dư thừa".
 
-# --- Out-of-scope (ghi rõ để tránh scope creep) ---
+# --- Out-of-scope (v1.2, ghi rõ để tránh scope creep) ---
 out_of_scope:
   - "Chấm điểm content / organization / language / vocabulary / mechanics"
   - "AES rubric (QWK, holistic scoring)"
@@ -97,7 +177,8 @@ out_of_scope:
   - "Phát hiện toàn bộ văn bản do AI tạo"
   - "Tự động kết luận gian lận học thuật"
   - "Claim-level verification toàn diện"
+  - "Phán xét việc trích cùng một nguồn nhiều lần là dư thừa"
   - "OCR scanned PDF (mở rộng)"
   - "Sách / ISBN (mở rộng)"
+  - "Highlight trực tiếp lên PDF (mở rộng)"
   - "Google Scholar / SerpAPI (bị loại)"
-  - "GROBID (mở rộng, đã có adapter slot)"
