@@ -1,13 +1,16 @@
 """IntegrityPipeline — end-to-end PDF → AnalysisReport.
 
-Flow:
-    PDF → BasePDFParser → CitationExtractor + ReferenceListParser
+Flow v1.2 (tuần 8, task #25):
+    PDF → DocumentParser (PyMuPDF + GROBID + SectionSegmenter)
+        → ParsedDocument (body_citations + references + appendix_citations)
         → RetrievalOrchestrator (per citation)
         → NeuroSymbolicChecker
         → CISCalculator
         → AnalysisReport
 
-CLI entry-point: `python -m integrity_checker.pipeline.integrity_pipeline`
+Backward compatible:
+    Nếu DocumentParser disabled, fallback to legacy flow:
+        PDF → BasePDFParser → CitationExtractor + ReferenceListParser
 """
 
 from __future__ import annotations
@@ -23,11 +26,13 @@ from typing import Any
 from integrity_checker.config import get_settings
 from integrity_checker.extraction import (
     CitationExtractor,
+    DocumentParser,
     MuPdfParser,
     PdfPlumberParser,
     ReferenceListParser,
 )
 from integrity_checker.extraction.base import BasePDFParser, Document, chain_parsers
+from integrity_checker.extraction.document_parser import ParsedDocument
 from integrity_checker.logging import configure_logging, get_logger
 from integrity_checker.logic.cis import CISCalculator
 from integrity_checker.logic.explanation import ExplanationGenerator
@@ -101,7 +106,11 @@ class AnalysisReport:
 class IntegrityPipeline:
     """End-to-end pipeline: PDF → AnalysisReport.
 
-    # TODO(user): tuần 7–8 — thêm:
+    v1.2 (tuần 8) — sử dụng DocumentParser làm entry point chính (PyMuPDF +
+    GROBID + SectionSegmenter). Fallback về legacy flow nếu DocumentParser
+    disabled qua config.
+
+    # TODO(user): tuần 9 — thêm:
         - Batch processing nhiều PDF cùng lúc
         - Persistent cache của verdicts (key = SHA256 của citation + PDF content)
     """
@@ -114,10 +123,21 @@ class IntegrityPipeline:
         orchestrator: RetrievalOrchestrator | None = None,
         checker: NeuroSymbolicChecker | None = None,
         cis_calc: CISCalculator | None = None,
+        document_parser: DocumentParser | None = None,
+        use_document_parser: bool | None = None,
     ) -> None:
+        # Legacy components (fallback path)
         self.parser = parser or self._build_default_parser()
         self.extractor = extractor or CitationExtractor()
         self.ref_parser = ref_parser or ReferenceListParser(self.extractor)
+        # Modern path — DocumentParser (PyMuPDF + GROBID + SectionSegmenter)
+        self.document_parser = document_parser or DocumentParser()
+        # Auto-detect: dùng DocumentParser nếu enabled trong config
+        self._use_document_parser: bool = (
+            use_document_parser
+            if use_document_parser is not None
+            else get_settings().extraction.grobid.enabled  # tuần 8 heuristic
+        )
         self.orchestrator = orchestrator or RetrievalOrchestrator()
         self.checker = checker or NeuroSymbolicChecker()
         self.cis_calc = cis_calc or CISCalculator()
@@ -140,19 +160,53 @@ class IntegrityPipeline:
     # -- async entry (FastAPI) --
 
     async def run_async(self, pdf_path: str, essay_id: int = 0) -> AnalysisReport:
-        """Full pipeline async."""
+        """Full pipeline async.
+
+        Flow v1.2:
+            1. DocumentParser.parse(pdf_path) → ParsedDocument
+               (PyMuPDF + GROBID + SectionSegmenter fused)
+            2. body_citations + references + appendix_citations
+            3. _merge_citations(...) — ưu tiên references (có title + DOI)
+            4. Per-citation: RetrievalOrchestrator.retrieve() → SourceResult
+            5. NeuroSymbolicChecker.check() → CitationVerdict
+            6. CISCalculator.compute(verdicts) → CitationIntegrityScore
+            7. AnalysisReport
+        """
         logger.info(f"Pipeline start: {pdf_path}")
+
         # 1. Parse PDF
-        doc = self.parser.parse(pdf_path)
-        logger.info(f"Parsed: {doc.num_pages} pages via {doc.parser_used}")
+        num_pages = 0
+        all_citations: list[Citation] = []
+        parser_warnings: list[str] = []
+        if self._use_document_parser:
+            # Modern path: DocumentParser (PyMuPDF + GROBID + SectionSegmenter)
+            parsed = self.document_parser.parse(pdf_path)
+            num_pages = len(parsed.sections)
+            all_citations = self._merge_citations(
+                parsed.body_citations,
+                parsed.references,
+                parsed.appendix_citations,
+            )
+            parser_warnings = parsed.parser_warnings
+            logger.info(
+                f"DocumentParser: {len(parsed.body_citations)} body + "
+                f"{len(parsed.references)} ref + "
+                f"{len(parsed.appendix_citations)} appendix citations"
+                + (f" (warnings: {parser_warnings})" if parser_warnings else "")
+            )
+        else:
+            # Legacy fallback path
+            doc = self.parser.parse(pdf_path)
+            num_pages = doc.num_pages
+            in_text = self.extractor.extract_from_document(doc)
+            ref_list = self.ref_parser.parse_reference_section(doc)
+            all_citations = self._merge_citations_legacy(in_text, ref_list)
+            logger.info(
+                f"Legacy parse: {doc.num_pages} pages via {doc.parser_used}, "
+                f"{len(in_text)} in-text + {len(ref_list)} ref-list"
+            )
 
-        # 2. Extract citations
-        in_text = self.extractor.extract_from_document(doc)
-        ref_list = self.ref_parser.parse_reference_section(doc)
-        all_citations = self._merge_citations(in_text, ref_list)
-        logger.info(f"Extracted: {len(in_text)} in-text + {len(ref_list)} ref-list = {len(all_citations)}")
-
-        # 3. Retrieve + check từng citation
+        # 2. Retrieve + check từng citation
         verdicts: list[CitationVerdict] = []
         for citation in all_citations:
             source = await self.orchestrator.retrieve(citation)
@@ -163,19 +217,19 @@ class IntegrityPipeline:
                 f"raw={citation.raw_text[:60]}"
             )
 
-        # 4. CIS
+        # 3. CIS
         cis = self.cis_calc.compute(verdicts)
 
-        # 5. Build report
+        # 4. Build report
         report = AnalysisReport(
             essay_id=essay_id,
             filename=Path(pdf_path).name,
-            num_pages=doc.num_pages,
+            num_pages=num_pages,
             num_citations=len(all_citations),
             verdicts=verdicts,
             cis=cis,
             disclaimer=get_settings().disclaimer.long,
-            generated_at=datetime.utcnow().isoformat() + "Z",
+            generated_at=datetime.now().isoformat() + "Z",  # fixed: utcnow deprecated
         )
         logger.info(
             f"Pipeline done: {report.num_citations} citations, CIS={cis.score:.1f}/100"
@@ -184,12 +238,34 @@ class IntegrityPipeline:
 
     @staticmethod
     def _merge_citations(
-        in_text: list[Citation], ref_list: list[Citation]
+        body: list[Citation],
+        references: list[Citation],
+        appendix: list[Citation],
     ) -> list[Citation]:
-        """Gộp + dedupe theo (style, normalized raw). Reference list ưu tiên (có title)."""
+        """Gộp + dedupe theo (style, normalized raw). Reference list ưu tiên (có title).
+
+        Flow v1.2:
+            1. References trước (chứa title + DOI — đầy đủ nhất)
+            2. body_citations (in-text — thiếu title)
+            3. appendix_citations last (out-of-scope nhưng vẫn kiểm tra)
+        """
         seen: set[tuple[str, str]] = set()
         merged: list[Citation] = []
-        # Ưu tiên reference list trước
+        for source_list in (references, body, appendix):
+            for c in source_list:
+                key = (c.style.value, c.raw_text.lower().strip())
+                if key not in seen:
+                    seen.add(key)
+                    merged.append(c)
+        return merged
+
+    @staticmethod
+    def _merge_citations_legacy(
+        in_text: list[Citation], ref_list: list[Citation]
+    ) -> list[Citation]:
+        """Legacy merge (backward compat cho fallback path)."""
+        seen: set[tuple[str, str]] = set()
+        merged: list[Citation] = []
         for c in ref_list:
             key = (c.style.value, c.raw_text.lower().strip())
             if key not in seen:
@@ -242,6 +318,11 @@ def main() -> None:
         help="Ghi report JSON ra file (mặc định: in ra stdout)",
     )
     parser.add_argument("--essay-id", type=int, default=0)
+    parser.add_argument(
+        "--no-document-parser",
+        action="store_true",
+        help="Dùng legacy flow (PyMuPDF + regex) thay vì DocumentParser",
+    )
     args = parser.parse_args()
 
     pdf_path = Path(args.pdf)
@@ -249,7 +330,9 @@ def main() -> None:
         logger.error(f"File không tồn tại: {pdf_path}")
         raise SystemExit(1)
 
-    pipeline = IntegrityPipeline()
+    pipeline = IntegrityPipeline(
+        use_document_parser=not args.no_document_parser
+    )
     report = pipeline.run(str(pdf_path), essay_id=args.essay_id)
 
     # In summary
