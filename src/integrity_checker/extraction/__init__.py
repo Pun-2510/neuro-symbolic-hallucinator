@@ -30,6 +30,11 @@ from integrity_checker.extraction.section_segmenter import (
     SectionSegmenter,
     SectionType,
 )
+from integrity_checker.extraction.style_detector import (
+    StyleDetector,
+    StyleFeatures,
+    StyleProfile,
+)
 from integrity_checker.extraction.text_preprocessor import TextPreprocessor
 
 __all__ = [
@@ -52,4 +57,7 @@ __all__ = [
     "GrobidSection",
     "call_grobid_fulltext",
     "parse_tei",
+    "StyleDetector",
+    "StyleFeatures",
+    "StyleProfile",
 ]
