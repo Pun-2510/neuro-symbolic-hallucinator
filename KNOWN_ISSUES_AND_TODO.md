@@ -7,6 +7,8 @@
 > Mục tiêu cũ — "citation-only, GROBID là mở rộng tương lai" — đã được thay bằng mục tiêu v1.2 — **full-text + style detection + bidirectional linking** (xem `final (1).docx`).
 >
 > 2 test case trong ReferenceListParser vẫn fail (Dutch multi-word single entry + 2-line APA split) — tracked tại task #18 (backlog).
+>
+> **Weekly session recaps:** xem `docs/progress/` (mỗi tuần 1 file `SESSION_SUMMARY_WEEK{N}_{M}.md` + README index).
 
 File này liệt kê:
 
