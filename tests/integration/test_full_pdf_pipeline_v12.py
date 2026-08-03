@@ -67,7 +67,7 @@ def _build_mock_checker():
 
     mock_checker = MagicMock()
 
-    def mock_check(citation, source):
+    def mock_check(citation, source, mapping_status=None, style_profile=None):
         # If source found → VERIFIED, else UNRESOLVED
         any_found = any(c.found for c in source.candidates)
         label = ValidationLabel.VERIFIED if any_found else ValidationLabel.UNRESOLVED

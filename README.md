@@ -235,26 +235,37 @@ Mỗi connector chạy qua interface chung nên có thể tạm ngừng / thay n
 
 ## Trạng thái skeleton
 
-Repo hiện đang ở **v1.2 — Tuần 7 (style detection)** (cập nhật từ v1.1 ngày 2026-08-03, tiến độ tuần 6–7 cập nhật ngày 2026-08-17):
+Repo hiện đang ở **v1.2 — Tuần 11 (matching + logic + calibration)** (cập nhật từ v1.1 ngày 2026-08-03, tiến độ tuần 6–11 cập nhật ngày 2026-08-25):
 
-- ✅ **Có sẵn (từ v1.1)**: 4 lớp nhãn nguồn; multi-source retrieval interface (Crossref/OpenAlex/S2/arXiv — file có, body là stub); matching layer với 7 features; symbolic rules với priority order; FastAPI + React/Vite UI; SQLite/Postgres; 5 sample essays + gold set mồi; 8/8 integration tests + 29/29 unit tests pass.
+- ✅ **Có sẵn (từ v1.1)**: 4 lớp nhãn nguồn; multi-source retrieval interface (Crossref/OpenAlex/S2/arXiv — file có, body là stub); matching layer với 7 features; symbolic rules với priority order; FastAPI + React/Vite UI; SQLite/Postgres; 5 sample essays + gold set mồi.
 - ✅ **Hoàn thành tuần 6 (2026-08-10 đến 2026-08-15)**:
   - `extraction/section_segmenter.py` — phân vùng body / bibliography / appendix / footnote / figure caption (15/15 tests).
   - `matching/author_parser.py` — chuẩn hoá last-name + initials + Dutch + Vietnamese + suffix (27/27 tests).
-  - `extraction/reference_parser.py` (mở rộng) — APA + IEEE + Vancouver parsers, trích title + numeric_index + year_suffix + order_index (15/17 tests — 2 fail tracked #18).
+  - `extraction/reference_parser.py` (mở rộng) — APA + IEEE + Vancouver parsers, trích title + numeric_index + year_suffix + order_index (21/21 tests — backlog #18 closed).
   - `extraction/grobid_parser.py` — TEI XML parser (defusedxml XXE-safe) + HTTP client injectable + SHA256 cache (15/15 tests).
 - ✅ **Hoàn thành tuần 7 (2026-08-17)**:
   - `extraction/style_detector.py` — document-level style profile (APA-like / IEEE-like / MIXED / UNKNOWN) + confidence + features + ratios + explanation (12/12 tests).
+- ✅ **Hoàn thành tuần 8 (2026-08-24)**:
+  - `linking/` package — `statuses.py` + `citation_linker.py` + `duplicate_detector.py` (62 tests pass).
+  - `extraction/document_parser.py` — orchestrator PDF → muPDF + GROBID (10 tests pass).
+  - 4 API client thật — Crossref/OpenAlex/S2/arXiv với Tenacity retry + cache + polite pool (62 tests pass).
+- ✅ **Hoàn thành Sprint 1 — Tuần 9 (2026-08-25)**:
+  - **Output schema tách integrity vs source** (`CitationVerdict.mapping_status` + `CitationMappingStatus` enum) + `AnalysisReport.linking_summary`.
+  - **CIS real components** — `CISCalculator.compute()` nhận `linking_result` + `style_profile`, tính `in_text_bib_consistency` từ `LinkingResult.links` với `MAPPING_PENALTIES`, tính `format_consistency` từ `StyleProfile`.
+  - **Author matching** — `matching/author_matcher.py` với diacritics-fold + particle strip + last-name canonical.
+- ✅ **Hoàn thành Sprint 2 — Tuần 10–11 (2026-08-25)**:
+  - **VenueNormalizer** — `matching/venue_normalizer.py` với ISSN + 24-entry dict + fuzzy fallback.
+  - **Source consensus** — `matching/source_consensus.py` với `analyze_consensus()` trả `independent_source_count`.
+  - **Fuzzy threshold tuning** — `FuzzyTuner.evaluate()` + `find_optimal_abstention_threshold()`.
+  - **Rules extension** — `R-STYLE-INCONSISTENT` + `R-AMBIGUOUS-MAPPING` + `R-DOMAIN-EXCEPTION` trong `logic/rules.py`.
+  - **Calibration metrics** — `logic/calibration.py` full Brier + ECE + coverage-accuracy implementation.
 - 🔄 **Cần bổ sung (v1.2, các tuần tới)**:
-  - `linking/` package — `statuses.py` + `citation_linker.py` + `duplicate_detector.py` (tuần 8 — **chưa bắt đầu**).
-  - `extraction/document_parser.py` — orchestrator PDF → muPDF + GROBID (tuần 8).
-  - 4 API client thật (tuần 8–9).
-  - Split schema output thành integrity vs source (tuần 6/12 — CitationMappingStatus + ValidationLabel tách rời).
-  - CIS weights 35/25/25/10/5 với 2 component "in-text↔bib" + "format" **phải là real, không phải stub** (tuần 12–13).
-  - Gold set 3 mức (style / span-link / source) + annotation guideline v2 (tuần 3–5, sớm hơn tuần 8).
+  - Gold set 3 mức (style / span-link / source) + annotation guideline v2 + IAA measurement (tuần 12).
   - Baselines B0–B5 (tuần 16–17).
+  - `ExplanationGenerator` sinh lý do bằng tiếng Việt có cấu trúc (tuần 12–13).
+  - Web UI enhancements (style profile view + citation graph view, tuần 14–15).
 
-**Test count (2026-08-25):** 244 unit tests + 13 integration tests = **257 tests pass** / 0 deferred. Xem chi tiết trong `KNOWN_ISSUES_AND_TODO.md` §9 và `DEVELOPER_QUICKSTART.md`.
+**Test count (2026-08-25):** 355 unit tests + 13 integration tests = **368 tests pass** / 0 deferred. Xem chi tiết trong `KNOWN_ISSUES_AND_TODO.md` §9 và `DEVELOPER_QUICKSTART.md`.
 
 ---
 

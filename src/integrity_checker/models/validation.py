@@ -64,11 +64,43 @@ class MatchFeatures:
 
 @dataclass
 class CitationVerdict:
-    """Quyết định cuối cùng cho 1 citation — output chính của pipeline."""
+    """Quyết định cuối cùng cho 1 citation — output chính của pipeline.
+
+    v1.2 §3.2.2 — Tách 2 lớp:
+        - ``label`` (ValidationLabel) — nhãn nguồn (REAL / SUSPECTED_HALLUCINATION / ...).
+        - ``mapping_status`` (CitationMappingStatus) — trạng thái in-text ↔ reference
+          mapping (MATCHED / MISSING_REFERENCE / UNCITED_REFERENCE / ...).
+
+    Hai lớp này orthogonal: 1 citation có thể vừa MATCHED (link OK) vừa
+    METADATA_ERROR (sai năm) — đây là 2 chiều phân tích khác nhau.
+
+    Attributes:
+        citation: Citation gốc từ PDF.
+        label: ValidationLabel (source verification — REAL / SUSPECTED_HALLUCINATION /
+            GENERATED / UNCERTAIN / UNRESOLVED).
+        mapping_status: CitationMappingStatus (in-text ↔ reference integrity).
+        mapping_confidence: 0.0–1.0, do CitationLinker đặt.
+        citation_link: CitationLink từ CitationLinker (None nếu chưa link).
+        confidence: 0.0–1.0, do NeuroSymbolicChecker đặt (source layer).
+        matched_source: SourceResult từ retrieval.
+        features: MatchFeatures từ FeatureCalculator.
+        reasoning: giải thích cho giảng viên.
+        triggered_rules: list rule IDs triggered.
+        mismatched_fields: list fields không khớp (nếu METADATA_ERROR).
+        is_overridden: True nếu GVHD override.
+        overridden_label: label mới sau override.
+        overridden_by: user id / lecturer email.
+        override_note: ghi chú override.
+    """
 
     citation: Citation
     label: ValidationLabel
-    confidence: float                  # 0.0–1.0, dùng cho calibration + CIS
+    confidence: float                  # 0.0–1.0, source layer
+
+    # NEW v1.2 §3.2.2 — integrity layer (tách khỏi label)
+    mapping_status: object = None      # CitationMappingStatus — tránh circular import
+    mapping_confidence: float = 0.0    # 0.0–1.0, integrity layer
+    citation_link: object = None       # CitationLink — tránh circular import
 
     # Bằng chứng
     matched_source: Optional[SourceResult] = None

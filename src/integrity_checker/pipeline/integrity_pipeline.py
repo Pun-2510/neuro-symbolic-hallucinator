@@ -33,11 +33,20 @@ from integrity_checker.extraction import (
 )
 from integrity_checker.extraction.base import BasePDFParser, Document, chain_parsers
 from integrity_checker.extraction.document_parser import ParsedDocument
+from integrity_checker.linking.citation_linker import CitationLinker
+from integrity_checker.linking.statuses import (
+    CitationLink,
+    CitationMappingStatus,
+    CitationOccurrence,
+    LinkingResult,
+    ReferenceEntry,
+    StyleProfile,
+)
 from integrity_checker.logging import configure_logging, get_logger
 from integrity_checker.logic.cis import CISCalculator
 from integrity_checker.logic.explanation import ExplanationGenerator
 from integrity_checker.logic.neuro_symbolic_checker import NeuroSymbolicChecker
-from integrity_checker.models.citation import Citation
+from integrity_checker.models.citation import Citation, CitationType
 from integrity_checker.models.validation import (
     CitationIntegrityScore,
     CitationVerdict,
@@ -49,7 +58,14 @@ logger = get_logger(__name__)
 
 @dataclass
 class AnalysisReport:
-    """Đầu ra cuối cùng của pipeline."""
+    """Đầu ra cuối cùng của pipeline.
+
+    v1.2 §3.2.2 — output schema TÁCH 2 lớp:
+        - ``verdicts[].label`` (ValidationLabel) — source verification.
+        - ``verdicts[].mapping_status`` (CitationMappingStatus) — in-text ↔ reference
+          integrity.
+        - ``linking_summary`` — counts per CitationMappingStatus (cho Web UI dashboard).
+    """
 
     essay_id: int = 0
     filename: str = ""
@@ -57,6 +73,8 @@ class AnalysisReport:
     num_citations: int = 0
     verdicts: list[CitationVerdict] = field(default_factory=list)
     cis: CitationIntegrityScore | None = None
+    linking_summary: dict[str, int] = field(default_factory=dict)  # NEW v1.2 — mapping counts
+    style_profile: dict[str, Any] | None = None  # NEW v1.2 — style profile summary
     disclaimer: str = ""
     generated_at: str = ""
 
@@ -69,9 +87,23 @@ class AnalysisReport:
             "num_citations": self.num_citations,
             "verdicts": [
                 {
+                    # Lớp 1: source verification (nhãn 4 chiều)
                     "citation_raw": v.citation.raw_text,
                     "label": v.label.value,
                     "confidence": v.confidence,
+                    # Lớp 2: integrity mapping (7 trạng thái v1.2 §3.2.2)
+                    "mapping_status": (
+                        v.mapping_status.value
+                        if v.mapping_status is not None
+                        else None
+                    ),
+                    "mapping_confidence": v.mapping_confidence,
+                    "citation_link": (
+                        _serialize_citation_link(v.citation_link)
+                        if v.citation_link is not None
+                        else None
+                    ),
+                    # Bằng chứng
                     "reasoning": v.reasoning,
                     "triggered_rules": v.triggered_rules,
                     "mismatched_fields": v.mismatched_fields,
@@ -87,6 +119,8 @@ class AnalysisReport:
                 }
                 for v in self.verdicts
             ],
+            "linking_summary": self.linking_summary,
+            "style_profile": self.style_profile,
             "cis": (
                 {
                     "score": self.cis.score,
@@ -125,6 +159,7 @@ class IntegrityPipeline:
         cis_calc: CISCalculator | None = None,
         document_parser: DocumentParser | None = None,
         use_document_parser: bool | None = None,
+        linker: CitationLinker | None = None,
     ) -> None:
         # Legacy components (fallback path)
         self.parser = parser or self._build_default_parser()
@@ -143,6 +178,8 @@ class IntegrityPipeline:
         self.orchestrator = orchestrator or RetrievalOrchestrator()
         self.checker = checker or NeuroSymbolicChecker()
         self.cis_calc = cis_calc or CISCalculator()
+        # NEW v1.2 §3.2.2 — CitationLinker cho in-text ↔ reference integrity
+        self.linker = linker or CitationLinker()
 
     def _build_default_parser(self) -> BasePDFParser:
         """Theo config: mupdf | pdfplumber | hybrid (mupdf → pdfplumber fallback)."""
@@ -178,17 +215,18 @@ class IntegrityPipeline:
 
         # 1. Parse PDF
         num_pages = 0
-        all_citations: list[Citation] = []
+        in_text_citations: list[Citation] = []
+        ref_citations: list[Citation] = []
+        appendix_citations: list[Citation] = []
         parser_warnings: list[str] = []
+        style_profile_dict: dict[str, Any] | None = None
         if self._use_document_parser:
             # Modern path: DocumentParser (PyMuPDF + GROBID + SectionSegmenter)
             parsed = self.document_parser.parse(pdf_path)
             num_pages = len(parsed.sections)
-            all_citations = self._merge_citations(
-                parsed.body_citations,
-                parsed.references,
-                parsed.appendix_citations,
-            )
+            in_text_citations = parsed.body_citations
+            ref_citations = parsed.references
+            appendix_citations = parsed.appendix_citations
             parser_warnings = parsed.parser_warnings
             logger.info(
                 f"DocumentParser: {len(parsed.body_citations)} body + "
@@ -200,29 +238,77 @@ class IntegrityPipeline:
             # Legacy fallback path
             doc = self.parser.parse(pdf_path)
             num_pages = doc.num_pages
-            in_text = self.extractor.extract_from_document(doc)
-            ref_list = self.ref_parser.parse_reference_section(doc)
-            all_citations = self._merge_citations_legacy(in_text, ref_list)
+            in_text_citations = self.extractor.extract_from_document(doc)
+            ref_citations = self.ref_parser.parse_reference_section(doc)
             logger.info(
                 f"Legacy parse: {doc.num_pages} pages via {doc.parser_used}, "
-                f"{len(in_text)} in-text + {len(ref_list)} ref-list"
+                f"{len(in_text_citations)} in-text + {len(ref_citations)} ref-list"
             )
+
+        # 1b. Style profile detection (v1.2 — dùng cho linker + CIS format_consistency)
+        style_profile = self._detect_style(in_text_citations, ref_citations)
+        style_profile_dict = self._serialize_style_profile(style_profile)
+
+        # 1c. Citation linking (in-text ↔ reference) — v1.2 §3.5
+        linking_result = self._run_linking(in_text_citations, ref_citations, style_profile)
+        link_by_raw_text = self._build_link_lookup(linking_result.links)
+
+        # 1d. Merge citations theo priority (cho retrieval/checker).
+        # Appendix chỉ dùng cho linking thống kê, không retrieval.
+        all_citations = self._merge_citations(
+            in_text_citations, ref_citations, []
+        )
 
         # 2. Retrieve + check từng citation
         verdicts: list[CitationVerdict] = []
         for citation in all_citations:
             source = await self.orchestrator.retrieve(citation)
-            verdict = self.checker.check(citation, source)
+            # NEW v1.2 §3.2.2 (task #33) — compute mapping_status TRƯỚC rules
+            # để SymbolicRules có input cho AMBIGUOUS_MAPPING rule.
+            link = link_by_raw_text.get(citation.raw_text.lower().strip())
+            if link is not None:
+                mapping_status = link.status
+                mapping_confidence = link.confidence
+                citation_link = link
+            else:
+                # Không tìm thấy link — mặc định MISSING_REFERENCE nếu ref_list rỗng,
+                # nếu không thì AMBIGUOUS_MAPPING.
+                if not ref_citations:
+                    mapping_status = CitationMappingStatus.MISSING_REFERENCE
+                    mapping_confidence = 0.0
+                    citation_link = None
+                else:
+                    mapping_status = CitationMappingStatus.AMBIGUOUS_MAPPING
+                    mapping_confidence = 0.0
+                    citation_link = None
+            # Pass mapping_status + style_profile vào checker
+            verdict = self.checker.check(
+                citation,
+                source,
+                mapping_status=mapping_status,
+                style_profile=style_profile,
+            )
+            verdict.mapping_status = mapping_status
+            verdict.mapping_confidence = mapping_confidence
+            verdict.citation_link = citation_link
             verdicts.append(verdict)
             logger.debug(
                 f"  [{verdict.label.value}] conf={verdict.confidence:.2f} "
+                f"mapping={verdict.mapping_status.value if verdict.mapping_status else 'NONE'} "
                 f"raw={citation.raw_text[:60]}"
             )
 
-        # 3. CIS
-        cis = self.cis_calc.compute(verdicts)
+        # 3. Linking summary (counts per CitationMappingStatus) — cho Web UI dashboard
+        linking_summary = self._build_linking_summary(verdicts)
 
-        # 4. Build report
+        # 4. CIS
+        cis = self.cis_calc.compute(
+            verdicts,
+            linking_result=linking_result,
+            style_profile=style_profile,
+        )
+
+        # 5. Build report
         report = AnalysisReport(
             essay_id=essay_id,
             filename=Path(pdf_path).name,
@@ -230,6 +316,8 @@ class IntegrityPipeline:
             num_citations=len(all_citations),
             verdicts=verdicts,
             cis=cis,
+            linking_summary=linking_summary,
+            style_profile=style_profile_dict,
             disclaimer=get_settings().disclaimer.long,
             generated_at=datetime.now().isoformat() + "Z",  # fixed: utcnow deprecated
         )
@@ -280,6 +368,144 @@ class IntegrityPipeline:
                 merged.append(c)
         return merged
 
+    # --- v1.2 §3.5 helpers (linking + style) ---
+
+    def _detect_style(
+        self,
+        in_text: list[Citation],
+        references: list[Citation],
+    ) -> StyleProfile:
+        """Detect document-level style từ in-text + reference citations.
+
+        Convert từ extraction.StyleProfile → linking.StyleProfile.
+        extraction schema: ``label`` ('APA-like' / 'IEEE-like' / 'MIXED' / 'UNKNOWN')
+        + ``ratios`` dict + ``features`` StyleFeatures.
+        linking schema: ``style`` + ``apa_count`` + ``numeric_count`` + ``evidence``.
+
+        Nếu StyleDetector raise → fallback APA-LIKE.
+        """
+        try:
+            from integrity_checker.extraction.style_detector import StyleDetector
+
+            detector = StyleDetector()
+            ext_profile = detector.detect(in_text, references)
+            # Map label (e.g. 'APA-like') → linking style 'APA-LIKE'
+            style_value = (ext_profile.label or "UNKNOWN").upper()
+            ratios = ext_profile.ratios or {}
+            return StyleProfile(
+                style=style_value,
+                confidence=ext_profile.confidence,
+                apa_count=ratios.get("apa_count", 0) + ratios.get("APA_count", 0),
+                numeric_count=ratios.get("ieee_count", 0) + ratios.get("IEEE_count", 0),
+                evidence={"ratios": dict(ratios), "explanation": ext_profile.explanation},
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Style detection failed: {e}; fallback APA-LIKE")
+            return StyleProfile(
+                style="APA-LIKE",
+                confidence=0.0,
+                apa_count=0,
+                numeric_count=0,
+                evidence={"error": str(e)},
+            )
+
+    @staticmethod
+    def _serialize_style_profile(profile: StyleProfile) -> dict[str, Any]:
+        """linking.StyleProfile → JSON-friendly dict."""
+        return {
+            "style": profile.style,
+            "confidence": profile.confidence,
+            "apa_count": profile.apa_count,
+            "numeric_count": profile.numeric_count,
+            "evidence": dict(profile.evidence) if profile.evidence else {},
+        }
+
+    def _run_linking(
+        self,
+        in_text: list[Citation],
+        references: list[Citation],
+        style_profile: StyleProfile,
+    ) -> LinkingResult:
+        """Chạy CitationLinker.link() với CitationOccurrence/ReferenceEntry wrappers.
+
+        Returns:
+            LinkingResult với links, uncited, ambiguous, counts.
+        """
+        # Wrap in-text citations → CitationOccurrence
+        occurrences: list[CitationOccurrence] = []
+        for idx, c in enumerate(in_text):
+            occ = CitationLinker.parse_occurrence(
+                raw_text=c.raw_text,
+                occurrence_id=f"occ-{idx + 1:04d}",
+                page=c.page_num or 0,
+            )
+            if occ is not None:
+                occurrences.append(occ)
+
+        # Wrap references → ReferenceEntry
+        ref_entries: list[ReferenceEntry] = []
+        for idx, c in enumerate(references):
+            # Extract first author last name
+            authors_last_names: list[str] = []
+            for a in c.authors:
+                if hasattr(a, "last_name") and a.last_name:
+                    authors_last_names.append(a.last_name)
+                elif isinstance(a, str) and a:
+                    # Try to extract last token
+                    parts = a.replace(",", " ").split()
+                    if parts:
+                        authors_last_names.append(parts[-1].lower())
+            ref_entry = ReferenceEntry(
+                reference_id=f"ref-{idx + 1:04d}",
+                order_index=idx + 1,
+                authors=authors_last_names,
+                year=c.year or "",
+                title=c.title or "",
+                doi=c.doi,
+                raw_text=c.raw_text,
+            )
+            ref_entries.append(ref_entry)
+
+        return self.linker.link(occurrences, ref_entries, style_profile)
+
+    @staticmethod
+    def _build_link_lookup(
+        links: list[CitationLink],
+    ) -> dict[str, CitationLink]:
+        """Map raw_text → CitationLink cho O(1) lookup từ verdict.
+
+        CitationLinker sets evidence['raw'] (not 'raw_text') to the original
+        raw_text. Match by lowercased + stripped form.
+        """
+        lookup: dict[str, CitationLink] = {}
+        for link in links:
+            evidence = link.evidence or {}
+            raw = evidence.get("raw", "") or evidence.get("raw_text", "")
+            if raw:
+                lookup[raw.lower().strip()] = link
+            else:
+                # Fallback: use occurrence_id as key
+                lookup[link.occurrence_id] = link
+        return lookup
+
+    @staticmethod
+    def _build_linking_summary(verdicts: list[CitationVerdict]) -> dict[str, int]:
+        """Đếm số verdict theo CitationMappingStatus.
+
+        Trả về dict[str, int] cho Web UI dashboard. Bao gồm tất cả 7 status
+        (giá trị 0 nếu không có).
+        """
+        counts: dict[str, int] = {s.value: 0 for s in CitationMappingStatus}
+        for v in verdicts:
+            if v.mapping_status is not None:
+                status_value = (
+                    v.mapping_status.value
+                    if hasattr(v.mapping_status, "value")
+                    else str(v.mapping_status)
+                )
+                counts[status_value] = counts.get(status_value, 0) + 1
+        return counts
+
 
 # ============================================================
 # CLI entry-point
@@ -303,6 +529,27 @@ def _serialize_verdict_for_json(v: CitationVerdict) -> dict[str, Any]:
             "doi_exact_match": v.features.doi_exact_match,
             "source_consensus": v.features.source_consensus,
         },
+    }
+
+
+def _serialize_citation_link(link: Any) -> dict[str, Any]:
+    """CitationLink → JSON-friendly dict.
+
+    Handles enum values, dict evidence, optional fields.
+    """
+    if link is None:
+        return {}
+    status = link.status
+    method = link.method
+    return {
+        "occurrence_id": link.occurrence_id,
+        "reference_id": link.reference_id,
+        "status": status.value if hasattr(status, "value") else str(status),
+        "confidence": link.confidence,
+        "method": method.value if hasattr(method, "value") else str(method),
+        "evidence": dict(link.evidence) if link.evidence else {},
+        "page": link.page,
+        "section": link.section,
     }
 
 

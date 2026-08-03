@@ -84,6 +84,12 @@ pytest tests/integration/test_full_pdf_pipeline_v12.py -v   # 9 tests
 | `document_parser.py` (tuần 8) | `test_document_parser.py` | 10/10 |
 | `retrieval_clients.py` (tuần 8+) | `test_retrieval_clients.py` | 12/12 (4 connectors real HTTP) |
 | `pipeline_document_parser.py` (tuần 8+) | `test_pipeline_document_parser.py` | 7/7 (modern + legacy flow) |
+| `author_matcher.py` (Sprint 1, task #29) | `test_author_matcher.py` | 19/19 |
+| `venue_normalizer.py` (Sprint 2, task #30) | `test_venue_normalizer.py` | 21/21 |
+| `source_consensus.py` (Sprint 2, task #31) | `test_source_consensus.py` | 12/12 |
+| `fuzzy.py` + `FuzzyTuner` (Sprint 2, task #32) | `test_fuzzy_tuning.py` | 18/18 |
+| `rules.py` v1.2 ext (Sprint 2, task #33) | `test_rules_v12.py` | 13/13 |
+| `calibration.py` (Sprint 2, task #34) | `test_calibration.py` | 24/24 |
 | Integration end-to-end (tuần 8+) | `test_full_pdf_pipeline_v12.py` + `test_pipeline_endtoend.py` | 13/13 |
 | Skeleton cũ (v1.1) | nhiều | 63/63 (subset kế thừa, include citation_extractor + author_parser) |
 

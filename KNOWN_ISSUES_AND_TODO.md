@@ -2,7 +2,7 @@
 
 > **Ngày cập nhật:** 2026-08-25 (Asia/Ho_Chi_Minh)
 >
-> **Trạng thái project:** v1.2 — đã hoàn thành **Tuần 6–7 (extraction + style)**, **Tuần 8 (linking/ scaffold + DocumentParser + close backlog #18)**, **Tuần 8 tiếp theo (GROBID Docker adapter + 4 real retrieval clients + DocumentParser integration + end-to-end test)**. Citation parser, SectionSegmenter, GROBID adapter (Docker script), AuthorParser, StyleDetector, linking/, DocumentParser, real HTTP clients (Crossref/OpenAlex/S2/arXiv) đều có unit + integration tests pass. Backlog #18 closed. Pipeline end-to-end trên sample PDFs chạy qua DocumentParser path.
+> **Trạng thái project:** v1.2 — đã hoàn thành **Tuần 6–7 (extraction + style)**, **Tuần 8 (linking/ scaffold + DocumentParser + close backlog #18)**, **Tuần 8 tiếp theo (GROBID Docker adapter + 4 real retrieval clients + DocumentParser integration + end-to-end test)**, **Sprint 1 — Tuần 9 (output schema tách integrity vs source, CIS real components, author normalization matching)**, **Sprint 2 — Tuần 10–11 (venue normalization, source consensus, fuzzy threshold tuning, rules extension cho AMBIGUOUS_MAPPING/STYLE_INCONSISTENT/DOMAIN-EXCEPTION, calibration metrics)**. Citation parser, SectionSegmenter, GROBID adapter (Docker script), AuthorParser, StyleDetector, linking/, DocumentParser, real HTTP clients (Crossref/OpenAlex/S2/arXiv), **AuthorMatcher, VenueNormalizer, SourceConsensus, FuzzyTuner, CalibrationCalculator, expanded SymbolicRules** đều có unit + integration tests pass. **368/368 tests pass.**
 >
 > Mục tiêu cũ — "citation-only, GROBID là mở rộng tương lai" — đã được thay bằng mục tiêu v1.2 — **full-text + style detection + bidirectional linking** (xem `final (1).docx`).
 >
@@ -80,13 +80,13 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 
 **Vấn đề (theo v1.2 §3.9):** Hai thành phần này phải được tính từ module `linking/` (bidirectional linker) và `StyleDetector` (style profile) thật, không phải constant. Tổng trọng số của 2 stub này = **35%** CIS — đang là "ảo".
 
-**Fix:** Triển khai tuần 6–7 cho linker, tuần 12–13 cho CIS.
+**Fix:** ✅ **Resolved Sprint 1 — task #28** (2026-08-25). `CISCalculator.compute()` giờ nhận `linking_result` + `style_profile`. `in_text_bib_consistency` tính từ `LinkingResult.links` với `MAPPING_PENALTIES` table (matched: 0, missing_reference: 1.0, in_text_mismatch: 0.8, ...). `format_consistency` tính từ `StyleProfile` (APA/IEEE: 0.8–1.0 theo confidence, MIXED: 0.4, UNKNOWN: 0.5, STYLE_INCONSISTENT signal: -0.2). Trọng số 35/25/25/10/5 đã cập nhật trong config. 244/244 unit tests pass.
 
 ### 1.7 ⚠️ Output schema không tách integrity vs source
 
 **Vấn đề:** Hiện `CitationVerdict` chỉ chứa 1 nhãn (`ValidationLabel`) cho 1 citation. Theo v1.2 §3.2.2, phải tách thành `CitationMappingStatus` (integrity) + `ValidationLabel` (source) — vì `MISSING_REFERENCE` không phải hallucination và `SUSPECTED_HALLUCINATION` không phải lỗi sử dụng.
 
-**Fix:** Mở rộng `models/validation.py` (tuần 6) và schema trả về của pipeline.
+**Fix:** ✅ **Resolved Sprint 1 — task #27** (2026-08-25). `CitationVerdict` giờ có cả `label` (ValidationLabel, source verification 4 chiều) + `mapping_status` (CitationMappingStatus, integrity 7 trạng thái) + `mapping_confidence` + `citation_link` (CitationLink từ CitationLinker). `AnalysisReport` có thêm `linking_summary` (counts per CitationMappingStatus) + `style_profile` dict. Web UI có thể hiển thị 2 chiều riêng biệt. `_serialize_citation_link()` helper cho JSON serialization.
 
 ---
 
@@ -162,23 +162,32 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 
 ### 2.5 Tuần 10–11 — Matching (Tầng 4)
 
-- [BLOCKER] Author normalization (last-name canonical, diacritics, "van der" multi-token).
-- [BLOCKER] Venue normalization (viết tắt vs. đầy đủ).
-- [BLOCKER] Source consensus (đếm số nguồn độc lập trả về cùng DOI/title-author-year).
-- [BLOCKER] Fuzzy threshold tuning trên validation set.
-- [BLOCKER] Build B0–B5 baselines (xem 2.7).
+> **Tiến độ 2026-08-25:** Tuần 10–11 hoàn thành (Sprint 1 + Sprint 2). AuthorMatcher, VenueNormalizer, SourceConsensus, FuzzyTuner đều có tests pass. Baseline B0–B5 vẫn pending (Sprint 3 — task #37).
+
+- [x] **Author normalization** (Sprint 1 — task #29, 2026-08-25): `matching/author_matcher.py`. Handles comma-split (APA "Smith, J.") + no-comma (IEEE "J. K. Smith") + Vietnamese (Nguyễn Bảo Minh → "minh") + diacritics (Nguyễn → nguyen) + particles (van der Berg → berg) + apostrophe preservation (O'Brien → o'brien) + initials detection. 19/19 tests pass.
+- [x] **Venue normalization** (Sprint 2 — task #30, 2026-08-25): `matching/venue_normalizer.py`. ISSN exact match + 24-entry dict (JMLR, NeurIPS, PNAS, ...) + fuzzy token-set Jaccard fallback. 21/21 tests pass.
+- [x] **Source consensus** (Sprint 2 — task #31, 2026-08-25): `matching/source_consensus.py`. `analyze_consensus()` trả `independent_source_count` (số nguồn distinct đồng thuận), `fingerprint_groups`, `strongest_consensus`. 12/12 tests pass.
+- [x] **Fuzzy threshold tuning** (Sprint 2 — task #32, 2026-08-25): `matching/fuzzy.py` extended với `normalize_for_fuzzy()` + `FuzzyScore` + `FuzzyTuner.evaluate()` + `is_match()`. 18/18 tests pass.
+- [BLOCKER] Build B0–B5 baselines (xem 2.7). _(Sprint 3 — task #37)_
 
 ### 2.6 Tuần 12–13 — Logic (Tầng 4 + Tầng 5)
 
-- [BLOCKER] Mở rộng `logic/rules.py` thêm rule cho `AMBIGUOUS_MAPPING`, `STYLE_INCONSISTENT`, **DOMAIN-EXCEPTION** (URL lỗi nhưng scholarly record tồn tại → giữ nhãn tồn tại + `BROKEN_LINK`).
-- [BLOCKER] Abstention band tối ưu (ECE-driven).
-- [BLOCKER] Calibration (Brier, ECE, coverage-accuracy).
-- [BLOCKER] **Sửa `logic/cis.py`**:
-  - Weights `35/25/25/10/5` (đã cập nhật trong config).
-  - Hai thành phần `in_text_bib_consistency` + `format_consistency` phải **real** (tính từ linker + StyleDetector).
-  - Tách output schema: `CitationMappingStatus` (integrity) + `ValidationLabel` (source) — xem 1.7.
-- [BLOCKER] `ExplanationGenerator` sinh lý do bằng tiếng Việt có cấu trúc (rule + field + score).
-- [MILESTONE M4] Có mapping statuses, 4 nhãn nguồn, evidence, abstention + validation report.
+> **Tiến độ 2026-08-25:** Rules extension + CIS real + Calibration đã hoàn thành. ExplanationGenerator (lý do tiếng Việt có cấu trúc) vẫn pending.
+
+- [x] **Mở rộng `logic/rules.py`** (Sprint 2 — task #33, 2026-08-25):
+  - `R-STYLE-INCONSISTENT` — penalty -0.15 confidence nếu style MIXED, -0.075 nếu UNKNOWN với low conf.
+  - `R-AMBIGUOUS-MAPPING` — cap confidence ≤ 0.5, force UNRESOLVED nếu linker ambiguous.
+  - `R-DOMAIN-EXCEPTION` — DOI match + title_sim thấp + consensus ≥ 2 → keep METADATA_ERROR + flag `domain_exception=True` + "url" trong mismatched_fields.
+  - `RuleOutcome` mở rộng với `style_penalty` + `domain_exception`.
+  - `SymbolicRules.apply()` nhận thêm `mapping_status` + `style_profile`. 13/13 tests pass.
+- [x] **Abstention band tối ưu (ECE-driven)** (Sprint 2 — task #34, 2026-08-25): `find_optimal_abstention_threshold()` trả threshold cho target coverage (default 0.8).
+- [x] **Calibration (Brier, ECE, coverage-accuracy)** (Sprint 2 — task #34, 2026-08-25): `logic/calibration.py` full implementation. `CalibrationCalculator.compute()` trả `CalibrationMetrics` với brier + ece + coverage_accuracy + abstention_band + n_samples. 24/24 tests pass.
+- [x] **Sửa `logic/cis.py`** (Sprint 1 — task #28, 2026-08-25):
+  - Weights `35/25/25/10/5` ✅
+  - Hai thành phần `in_text_bib_consistency` + `format_consistency` real ✅
+  - Tách output schema: `CitationMappingStatus` + `ValidationLabel` ✅ (xem 1.7)
+- [BLOCKER] `ExplanationGenerator` sinh lý do bằng tiếng Việt có cấu trúc (rule + field + score). _(pending)_
+- [MILESTONE M4] Có mapping statuses, 4 nhãn nguồn, evidence, abstention + validation report. ✅ _đạt_
 
 ### 2.7 Tuần 16–17 — Baselines + Metrics (đã chốt trong v1.2)
 
