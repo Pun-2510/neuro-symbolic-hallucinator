@@ -254,7 +254,7 @@ Repo hiện đang ở **v1.2 — Tuần 7 (style detection)** (cập nhật từ
   - Gold set 3 mức (style / span-link / source) + annotation guideline v2 (tuần 3–5, sớm hơn tuần 8).
   - Baselines B0–B5 (tuần 16–17).
 
-**Test count (2026-08-24):** 225 unit tests pass / 0 deferred. Xem chi tiết trong `KNOWN_ISSUES_AND_TODO.md` §9 và `DEVELOPER_QUICKSTART.md`.
+**Test count (2026-08-25):** 244 unit tests + 13 integration tests = **257 tests pass** / 0 deferred. Xem chi tiết trong `KNOWN_ISSUES_AND_TODO.md` §9 và `DEVELOPER_QUICKSTART.md`.
 
 ---
 

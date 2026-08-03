@@ -66,11 +66,12 @@ cd web && npm install && npm run dev
 ## 4. Chạy tests
 
 ```bash
-pytest tests/unit/ -v            # 225 tests (~0.5s, 0 deferred)
-pytest tests/integration/ -v     # 8 tests, cần sample PDFs, ~40s
+pytest tests/unit/ -v                       # 244 tests (~0.5s, 0 deferred)
+pytest tests/integration/ -v                # 13 tests, cần sample PDFs + mock retrieval
+pytest tests/integration/test_full_pdf_pipeline_v12.py -v   # 9 tests
 ```
 
-**Test breakdown (2026-08-24):**
+**Test breakdown (2026-08-25):**
 
 | Module | File test | Pass/Total |
 |---|---|---|
@@ -81,6 +82,9 @@ pytest tests/integration/ -v     # 8 tests, cần sample PDFs, ~40s
 | `style_detector.py` | `test_style_detector.py` | 12/12 |
 | `linking/` (tuần 8) | `test_linking_statuses.py` + `test_citation_linker.py` + `test_duplicate_detector.py` | 62/62 |
 | `document_parser.py` (tuần 8) | `test_document_parser.py` | 10/10 |
+| `retrieval_clients.py` (tuần 8+) | `test_retrieval_clients.py` | 12/12 (4 connectors real HTTP) |
+| `pipeline_document_parser.py` (tuần 8+) | `test_pipeline_document_parser.py` | 7/7 (modern + legacy flow) |
+| Integration end-to-end (tuần 8+) | `test_full_pdf_pipeline_v12.py` + `test_pipeline_endtoend.py` | 13/13 |
 | Skeleton cũ (v1.1) | nhiều | 63/63 (subset kế thừa, include citation_extractor + author_parser) |
 
 ## 5. Lộ trình 18 tuần (v1.2 §5.2)

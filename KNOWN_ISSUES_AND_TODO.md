@@ -1,8 +1,8 @@
 # Known Issues & TODO — Essay Integrity Checker
 
-> **Ngày cập nhật:** 2026-08-24 (Asia/Ho_Chi_Minh)
+> **Ngày cập nhật:** 2026-08-25 (Asia/Ho_Chi_Minh)
 >
-> **Trạng thái project:** v1.2 — đã hoàn thành **Tuần 6–7 (extraction + style)** và **Tuần 8 (linking/ scaffold + DocumentParser + close backlog #18)**. Citation parser, SectionSegmenter, GROBID adapter, AuthorParser, StyleDetector, linking/, DocumentParser đều có unit tests pass. Backlog #18 (ReferenceListParser Dutch + 2-line APA) đã closed. Pipeline end-to-end trên sample PDF vẫn chạy, các module mới đã được export qua `extraction/` + `linking/` packages.
+> **Trạng thái project:** v1.2 — đã hoàn thành **Tuần 6–7 (extraction + style)**, **Tuần 8 (linking/ scaffold + DocumentParser + close backlog #18)**, **Tuần 8 tiếp theo (GROBID Docker adapter + 4 real retrieval clients + DocumentParser integration + end-to-end test)**. Citation parser, SectionSegmenter, GROBID adapter (Docker script), AuthorParser, StyleDetector, linking/, DocumentParser, real HTTP clients (Crossref/OpenAlex/S2/arXiv) đều có unit + integration tests pass. Backlog #18 closed. Pipeline end-to-end trên sample PDFs chạy qua DocumentParser path.
 >
 > Mục tiêu cũ — "citation-only, GROBID là mở rộng tương lai" — đã được thay bằng mục tiêu v1.2 — **full-text + style detection + bidirectional linking** (xem `final (1).docx`).
 >
@@ -141,21 +141,24 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
   - Dutch multi-word: thêm negative lookahead `(?!PARTICLE\b)` vào `BROKEN_LINE_RE` để skip particle starts (van, de, von, der, ...).
   - 2-line APA split: `_APA_ENTRY_RE` thêm `re.MULTILINE`; `_split_entries` dùng `author_start_re` detect START of new author block thay vì END of previous.
   - 4 new edge case tests: van der / de la / von / Dutch + regular mix.
-- [BLOCKER] **GROBID Docker adapter thật** — `grobid_parser.py` chỉ wrap HTTP. Cần viết script `scripts/grobid_docker_setup.sh` (theo v1.2 §5.2).
-- [BLOCKER] **Tích hợp DocumentParser vào `pipeline/integrity_pipeline.py`** — hiện pipeline chưa dùng DocumentParser (vẫn qua regex only).
+- [x] **GROBID Docker adapter thật** (2026-08-25, task #23): `scripts/grobid_docker_setup.sh` — start/stop/restart/status/logs/pull/rm/env. Auto-detect Docker, auto-pull image nếu missing, health check `/api/isalive` với timeout 120s. Configurable qua env: GROBID_IMAGE, GROBID_HOST_PORT, GROBID_MEMORY.
+- [x] **Tích hợp DocumentParser vào `pipeline/integrity_pipeline.py`** (2026-08-25, task #25): constructor accepts `document_parser` + `use_document_parser`. run_async() chọn flow: DocumentParser.parse() → ParsedDocument (modern) hoặc legacy BasePDFParser. `_merge_citations()` priority order = references > body > appendix. Fixed `datetime.utcnow()` deprecation (§1.2).
+- [x] **End-to-end pipeline integration test** (2026-08-25, task #26): `tests/integration/test_full_pdf_pipeline_v12.py` — 9 tests (legacy path, modern path, mixed retrieval, fabricated essay, DOI-only edge, error handling, retrieve-count, JSON serialization).
 - [MILESTONE M3] PDF → style profile → citation graph → candidate top-K chạy end-to-end trên bộ mẫu đầu tiên. (Phụ thuộc integration DocumentParser + retrieval/.)
 
 ### 2.4 Tuần 8–9 — Retrieval (Tầng 3)
 
-- [BLOCKER] **Điền HTTP call thật** cho 4 connector (đã có interface đúng):
-  - `retrieval/crossref_client.py`: `GET /works/{doi}` + `GET /works?query.bibliographic=...`.
-  - `retrieval/openalex_client.py`: `GET /works?search=...&filter=...`.
-  - `retrieval/semantic_scholar_client.py`: `GET /paper/search?query=...&fields=...`.
-  - `retrieval/arxiv_client.py`: `arxiv.Search(query=..., max_results=5)` qua SDK.
-- Hiện tại cả 4 đều stub → pipeline rơi vào nhánh `UNRESOLVED`. Đây là lúc verdict bắt đầu phân hóa thật sự.
-- [BLOCKER] Tenacity retry + exponential backoff với riêng từng nguồn.
-- [BLOCKER] Cache key bao gồm `source_name` để tránh trộn nhầm Crossref vs OpenAlex.
-- [BLOCKER] Health check + `UNRESOLVED` khi `sources_failed` chiếm đa số.
+- [x] **Điền HTTP call thật** cho 4 connector (2026-08-25, task #24):
+  - `retrieval/crossref_client.py`: `GET /works/{doi}` (DOI exact) + `GET /works?query.bibliographic=...` (fallback).
+  - `retrieval/openalex_client.py`: `GET /works/doi:{doi}` + `GET /works?search=...&filter=publication_year:YYYY`.
+  - `retrieval/semantic_scholar_client.py`: `GET /paper/DOI:{doi}` + `GET /paper/ARXIV:{id}` + `GET /paper/search?query=...&year=YYYY-YYYY`.
+  - `retrieval/arxiv_client.py`: `arxiv.Search(id_list=[id])` (exact) + `ti:"{title}" AND au:"{last}"` (search), wrapped trong executor.
+- [x] **Tenacity retry + exponential backoff** cho 4 connectors (3 attempts, 1-10s, retry trên 429 + 5xx).
+- [x] **Polite pool headers** (User-Agent có `mailto:{email}` nếu CONTACT_EMAIL set).
+- [x] **Cache integration với source_name trong key**: `RetrievalOrchestrator._cache_key()` = `{source_name}:{sha256(canonical_fields)[:16]}`. DiskCache HIT path trả `candidate.cached = True`.
+- [x] **Health check + UNRESOLVED sentinel**: nếu tất cả sources fail + `len(failed) >= len(clients) // 2 + 1` → log warning với failed sources.
+
+**v1.2 §2.4 hoàn thành.** Pipeline giờ gọi 4 nguồn thật → verdict phân hóa dựa trên real metadata (không còn UNRESOLVED mặc định).
 
 ### 2.5 Tuần 10–11 — Matching (Tầng 4)
 
@@ -314,18 +317,20 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 | `tests/unit/test_citation_linker.py` | ✅ DONE (2026-08-22) | 14/14 pass — 7-status coverage of CitationLinker |
 | `tests/unit/test_duplicate_detector.py` | ✅ DONE (2026-08-22) | 10/10 pass — DOI exact + arXiv exact + title-author-year fuzzy |
 | `tests/unit/test_document_parser.py` | ✅ DONE (2026-08-23) | 10/10 pass — fallback chain (GROBID OK / fail / disabled / PyMuPDF fail / both fail) |
+| `tests/unit/test_retrieval_clients.py` | ✅ DONE (2026-08-25) | 12/12 pass — Crossref + OpenAlex + S2 + arXiv (DOI exact + fallback + retry + ID extraction) |
+| `tests/unit/test_pipeline_document_parser.py` | ✅ DONE (2026-08-25) | 7/7 pass — modern path + legacy path + auto-detect + merge citations |
 | `tests/unit/test_extraction_preprocessor.py` | ❌ NOT STARTED | |
 | `tests/unit/test_semantic_matcher.py` | ❌ NOT STARTED | Tuần 10–11 |
-| `tests/unit/test_retrieval_orchestrator.py` | ❌ NOT STARTED | Tuần 8–9 |
+| `tests/unit/test_retrieval_orchestrator.py` | ❌ NOT STARTED | Sau task #24 — orchestrate với cache |
 | `tests/unit/test_consensus.py` | ❌ NOT STARTED | Tuần 10–11 |
 | `tests/unit/test_calibration.py` | ❌ NOT STARTED | Tuần 12–13 |
 | `tests/unit/test_explanation.py` | ❌ NOT STARTED | Tuần 12–13 |
 | `tests/unit/test_db_repository.py` | ❌ NOT STARTED | |
-| `tests/integration/test_full_pdf_pipeline_v12.py` | ❌ NOT STARTED | Sau DocumentParser integration + retrieval/ |
+| `tests/integration/test_full_pdf_pipeline_v12.py` | ✅ DONE (2026-08-25) | 9/9 pass — legacy + modern path + mixed + fabricated + DOI-only + error handling + retrieve-count |
 | `tests/integration/test_api_upload.py` | ❌ NOT STARTED | |
 | `tests/integration/test_baselines_b0_b5.py` | ❌ NOT STARTED | Tuần 16–17 |
 
-**Tổng test count (2026-08-24):** 225 unit tests pass / 0 deferred. Xem §9 lịch sử.
+**Tổng test count (2026-08-25):** 244 unit tests pass + 13 integration tests pass = **257 tests pass** / 0 deferred. Xem §9 lịch sử.
 
 ### 6.2 Coverage tụt so với v1.1
 - `pipeline/integrity_pipeline.py`: chỉ test happy path. Cần test:
@@ -421,21 +426,27 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 | 2026-08-23 | **Tuần 8 — `extraction/document_parser.py`** (task #21): orchestrator fuse PyMuPDF + GROBID + SectionSegmenter. `ParsedDocument` unified output với body_citations, references, appendix_citations, sections, parser_warnings. Fallback chain GROBID OK → priority, GROBID fail → regex, both fail → empty. 10/10 unit tests pass. |
 | 2026-08-24 | **Tuần 8 — close backlog #18** (task #22): ReferenceListParser Dutch + 2-line APA split. Root cause #1: `BROKEN_LINE_RE` join `"References\nvan der Berg"` — fix bằng negative lookahead particle list. Root cause #2: `_APA_ENTRY_RE` thiếu `re.MULTILINE` + boundary heuristic đặt sai vị trí — fix bằng MULTILINE flag + `author_start_re`. +4 edge case tests (van der / de la / von / Dutch-mixed). 21/21 reference_parser tests pass. |
 | 2026-08-24 | **Tổng kết tuần 8**: 225 unit tests pass / 0 deferred. backlog #18 closed. 3 commit (linking/, DocumentParser, Dutch fix) + 4 .md docs (SESSION_SUMMARY_WEEK8.md + KNOWN_ISSUES + progress README). |
+| 2026-08-25 | **Tuần 8 tiếp theo — `scripts/grobid_docker_setup.sh`** (task #23): bash script start/stop/restart/status/logs/pull/rm/env cho GROBID Docker container. Auto-detect Docker, auto-pull image nếu missing, health check `/api/isalive` với timeout 120s. Configurable qua env vars. |
+| 2026-08-25 | **Tuần 8 tiếp theo — real HTTP clients** (task #24): Crossref (DOI exact + bibliographic fallback), OpenAlex (DOI + search + year filter), Semantic Scholar (DOI + arXiv ID + search), arXiv (ID exact + title+author search). Tất cả có tenacity retry + exponential backoff. DiskCache integration với source_name trong key. UNRESOLVED sentinel. 12/12 unit tests pass. |
+| 2026-08-25 | **Tuần 8 tiếp theo — DocumentParser integration** (task #25): `IntegrityPipeline` accepts `document_parser` + `use_document_parser`. `_merge_citations()` priority = references > body > appendix. CLI flag `--no-document-parser`. Fixed `datetime.utcnow()` deprecation. 7/7 unit tests pass. |
+| 2026-08-25 | **Tuần 8 tiếp theo — end-to-end pipeline integration test** (task #26): `tests/integration/test_full_pdf_pipeline_v12.py` — 9 tests (legacy + modern + mixed + fabricated + DOI-only + error handling + retrieve-count + JSON serialize). Bug fix `_author_jaccard` nhận list[Author] (ReferenceListParser output). 9/9 pass. |
+| 2026-08-25 | **Tổng kết tuần 8 tiếp theo**: 244 unit tests + 13 integration tests = **257 tests pass** / 0 deferred. 4 commit (#23, #24, #25, #26). §2.4 (Tuần 8–9 Retrieval) hoàn thành. |
 
 ---
 
 ## 10. Action items ngay tuần này
 
-**Sinh viên (thứ tự ưu tiên) — 2026-08-24:**
+**Sinh viên (thứ tự ưu tiên) — 2026-08-25:**
 
 1. Đọc `README.md` (v1.2) + `docs/CHANGES_VS_V1.1.md` + file này + `docs/progress/SESSION_SUMMARY_WEEK8.md`.
 2. `make setup` → `make sample` → `make demo` → `make test` — xác nhận skeleton vẫn chạy.
 3. ✅ Tuần 6 hoàn thành: SectionSegmenter + AuthorParser + ReferenceListParser (mở rộng) + GROBID adapter.
 4. ✅ Tuần 7 hoàn thành: StyleDetector.
 5. ✅ Tuần 8 hoàn thành: `linking/` scaffold + `DocumentParser` + backlog #18 closed.
-6. ⏳ **Tuần 8 tiếp theo — GROBID Docker adapter thật** (`scripts/grobid_docker_setup.sh`) — blocker.
-7. ⏳ **Tuần 8 tiếp theo — Tích hợp DocumentParser vào pipeline** — milestone M3.
-8. ⏳ **Tuần 8–9 — Real HTTP clients cho 4 retrieval connectors** (Crossref, OpenAlex, Semantic Scholar, arXiv) — blocker. Hiện cả 4 đều stub → pipeline rơi vào UNRESOLVED.
+6. ✅ Tuần 8 tiếp theo hoàn thành: GROBID Docker adapter (task #23) + Real HTTP clients (task #24) + DocumentParser integration (task #25) + end-to-end test (task #26).
+7. ⏳ **Tuần 9 — Real run pipeline với GROBID Docker** (`./scripts/grobid_docker_setup.sh start` → set `GROBID_URL` → run `python -m integrity_checker.pipeline.integrity_pipeline FILE`) — verify v1.2 M3.
+8. ⏳ **Tuần 9 onwards — Unit tests cho Orchestrator với cache** (task đề xuất — `test_retrieval_orchestrator.py`).
+9. ⏳ **Tuần 10–11 — Matching**: author normalization, venue normalization, consensus counting, fuzzy threshold tuning.
 
 **GVHD (cần xin ý kiến) — vẫn pending:**
 
