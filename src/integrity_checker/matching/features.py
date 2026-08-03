@@ -38,7 +38,11 @@ class FeatureCalculator:
         semantic_sim = self.semantic.similarity(citation.title or citation.raw_text, best.title or "")
 
         # Author Jaccard trên last-name
-        author_sim = self._author_jaccard(citation.authors, best.authors)
+        # citation.authors có thể là list[Author] (từ ReferenceListParser.parse_authors)
+        # hoặc list[str] (raw text). Normalize về list[str] last_name trước.
+        cited_authors = _authors_to_strings(citation.authors)
+        cand_authors = _authors_to_strings(best.authors)
+        author_sim = self._author_jaccard(cited_authors, cand_authors)
 
         # Year distance
         year_dist = self._year_distance(citation.year, best.year)
@@ -85,3 +89,20 @@ class FeatureCalculator:
 def _normalize_name(name: str) -> str:
     """Lowercase, bỏ dấu, strip whitespace."""
     return re.sub(r"\s+", " ", name.lower().strip())
+
+
+def _authors_to_strings(authors: list) -> list[str]:
+    """Normalize authors field (có thể list[Author] hoặc list[str]) → list[str].
+
+    Trả về list các last_name (hoặc string gốc nếu đã là str)."""
+    result: list[str] = []
+    for a in authors:
+        if hasattr(a, "last_name"):
+            # Author object
+            ln = a.last_name
+            if ln:
+                result.append(ln)
+        elif isinstance(a, str):
+            if a:
+                result.append(a)
+    return result

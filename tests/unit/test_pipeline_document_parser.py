@@ -246,21 +246,13 @@ class TestPipelineWithDocumentParser:
         assert report.num_citations == 2
 
     @pytest.mark.asyncio
-    async def test_pipeline_auto_enables_document_parser_via_config(self):
-        """Default (use_document_parser=None) → check config grobid.enabled."""
-        from integrity_checker.config import get_settings
-        settings = get_settings()
+    async def test_pipeline_default_uses_legacy_path(self):
+        """Default (use_document_parser=None) → False (backward compat)."""
+        pipeline = IntegrityPipeline()
+        assert pipeline._use_document_parser is False
 
-        # Save original
-        original = settings.extraction.grobid.enabled
+        pipeline = IntegrityPipeline(use_document_parser=True)
+        assert pipeline._use_document_parser is True
 
-        try:
-            settings.extraction.grobid.enabled = True
-            pipeline = IntegrityPipeline()
-            assert pipeline._use_document_parser is True
-
-            settings.extraction.grobid.enabled = False
-            pipeline = IntegrityPipeline()
-            assert pipeline._use_document_parser is False
-        finally:
-            settings.extraction.grobid.enabled = original
+        pipeline = IntegrityPipeline(use_document_parser=False)
+        assert pipeline._use_document_parser is False
