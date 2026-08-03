@@ -26,6 +26,7 @@ class CitationStyle(str, Enum):
     MLA = "MLA"
     CHICAGO = "Chicago"
     IEEE = "IEEE"
+    VANCOUVER = "Vancouver"
     UNKNOWN = "unknown"
 
 
@@ -75,6 +76,12 @@ class Citation:
     volume: Optional[str] = None
     issue: Optional[str] = None
     pages: Optional[str] = None
+
+    # NEW v1.2 — cho bidirectional linker + duplicate detector
+    title_normalized: Optional[str] = None
+    year_suffix: Optional[str] = None
+    order_index: int = 0
+    numeric_index: Optional[int] = None
 
     page_num: int = 0
     paragraph_num: int = 0

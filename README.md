@@ -235,12 +235,26 @@ Mỗi connector chạy qua interface chung nên có thể tạm ngừng / thay n
 
 ## Trạng thái skeleton
 
-Repo hiện đang ở **skeleton v1.2** (cập nhật từ v1.1 ngày 2026-08-03):
+Repo hiện đang ở **v1.2 — Tuần 7 (style detection)** (cập nhật từ v1.1 ngày 2026-08-03, tiến độ tuần 6–7 cập nhật ngày 2026-08-17):
 
-- ✅ Có sẵn: 4 lớp nhãn nguồn; multi-source retrieval interface (Crossref/OpenAlex/S2/arXiv — file có, body là stub); matching layer với 7 features; symbolic rules với priority order; FastAPI + React/Vite UI; SQLite/Postgres; 5 sample essays + gold set mồi; 8/8 integration tests + 29/29 unit tests pass.
-- 🔄 Cần bổ sung (v1.2): `StyleDetector` (document-level); `CitationLinker` (bidirectional); `DuplicateDetector`; 4 API client thật; split schema output thành integrity vs source; CIS weights 35/25/25/10/5 với 2 component "in-text↔bib" + "format" **phải là real, không phải stub**; gold set 3 mức (style / span-link / source); baselines B0–B5.
+- ✅ **Có sẵn (từ v1.1)**: 4 lớp nhãn nguồn; multi-source retrieval interface (Crossref/OpenAlex/S2/arXiv — file có, body là stub); matching layer với 7 features; symbolic rules với priority order; FastAPI + React/Vite UI; SQLite/Postgres; 5 sample essays + gold set mồi; 8/8 integration tests + 29/29 unit tests pass.
+- ✅ **Hoàn thành tuần 6 (2026-08-10 đến 2026-08-15)**:
+  - `extraction/section_segmenter.py` — phân vùng body / bibliography / appendix / footnote / figure caption (15/15 tests).
+  - `matching/author_parser.py` — chuẩn hoá last-name + initials + Dutch + Vietnamese + suffix (27/27 tests).
+  - `extraction/reference_parser.py` (mở rộng) — APA + IEEE + Vancouver parsers, trích title + numeric_index + year_suffix + order_index (15/17 tests — 2 fail tracked #18).
+  - `extraction/grobid_parser.py` — TEI XML parser (defusedxml XXE-safe) + HTTP client injectable + SHA256 cache (15/15 tests).
+- ✅ **Hoàn thành tuần 7 (2026-08-17)**:
+  - `extraction/style_detector.py` — document-level style profile (APA-like / IEEE-like / MIXED / UNKNOWN) + confidence + features + ratios + explanation (12/12 tests).
+- 🔄 **Cần bổ sung (v1.2, các tuần tới)**:
+  - `linking/` package — `statuses.py` + `citation_linker.py` + `duplicate_detector.py` (tuần 8 — **chưa bắt đầu**).
+  - `extraction/document_parser.py` — orchestrator PDF → muPDF + GROBID (tuần 8).
+  - 4 API client thật (tuần 8–9).
+  - Split schema output thành integrity vs source (tuần 6/12 — CitationMappingStatus + ValidationLabel tách rời).
+  - CIS weights 35/25/25/10/5 với 2 component "in-text↔bib" + "format" **phải là real, không phải stub** (tuần 12–13).
+  - Gold set 3 mức (style / span-link / source) + annotation guideline v2 (tuần 3–5, sớm hơn tuần 8).
+  - Baselines B0–B5 (tuần 16–17).
 
-Xem chi tiết trong `KNOWN_ISSUES_AND_TODO.md` và `DEVELOPER_QUICKSTART.md`.
+**Test count (2026-08-17):** 84 unit tests pass / 2 deferred. Xem chi tiết trong `KNOWN_ISSUES_AND_TODO.md` §9 và `DEVELOPER_QUICKSTART.md`.
 
 ---
 

@@ -66,15 +66,25 @@ cd web && npm install && npm run dev
 ## 4. Chạy tests
 
 ```bash
-pytest tests/unit/ -v            # 29 tests, ~0.2s
+pytest tests/unit/ -v            # 84 tests (~0.3s, 2 deferred xem KNOWN_ISSUES §6.1)
 pytest tests/integration/ -v     # 8 tests, cần sample PDFs, ~40s
 ```
 
-Sau khi scaffold `linking/` (tuần 6–7), thêm:
+**Test breakdown (2026-08-17):**
+
+| Module | File test | Pass/Total |
+|---|---|---|
+| `section_segmenter.py` | `test_section_segmenter.py` | 15/15 |
+| `author_parser.py` | `test_author_parser.py` | 27/27 |
+| `reference_parser.py` (mở rộng) | `test_reference_parser.py` | 15/17 (2 deferred — #18) |
+| `grobid_parser.py` | `test_grobid_parser.py` | 15/15 |
+| `style_detector.py` | `test_style_detector.py` | 12/12 |
+| Skeleton cũ (v1.1) | nhiều | 29/29 (subset kế thừa) |
+
+Sau khi scaffold `linking/` (tuần 8), thêm:
 ```bash
 pytest tests/unit/test_citation_linker.py -v
 pytest tests/unit/test_duplicate_detector.py -v
-pytest tests/unit/test_style_detector.py -v
 ```
 
 ## 5. Lộ trình 18 tuần (v1.2 §5.2)
