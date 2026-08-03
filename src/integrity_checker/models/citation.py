@@ -90,6 +90,12 @@ class Citation:
     raw_in_text_citation: Optional[str] = None
     confidence: float = 0.0
 
+    # NEW v1.2 — optional reference_id cho bidirectional linker output.
+    # None trước khi chạy CitationLinker; được set thành str ('ref-0007')
+    # sau khi linker match occurrence ↔ reference entry.
+    # Backward compatible: callers cũ không truyền field này vẫn chạy bình thường.
+    reference_id: Optional[str] = None
+
     def to_search_query(self) -> str:
         """Ghép chuỗi truy vấn để gọi API theo title + author + year.
 

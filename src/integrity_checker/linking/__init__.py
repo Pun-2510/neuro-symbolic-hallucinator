@@ -6,6 +6,12 @@ Public API:
     CitationMappingStatus — enum 7 trạng thái (v1.2 §3.2.2).
     CitationLink       — 1 quan hệ in-text ↔ reference.
     LinkingResult      — đầu ra aggregate cho 1 Document.
+    CitationOccurrence — wrapper cho in-text citation.
+    ReferenceEntry     — wrapper cho reference list entry.
+    StyleProfile       — document-level citation style.
+    DuplicateGroup     — 1 nhóm reference entries trùng nhau.
+
+    MappingMethod      — enum cách quyết định mapping (re-export từ models).
 
 Tích hợp với config:
     settings.linking.exclude_sections
@@ -36,13 +42,23 @@ from integrity_checker.linking.duplicate_detector import (
 from integrity_checker.linking.statuses import (
     CitationLink,
     CitationMappingStatus,
+    CitationOccurrence,
+    ReferenceEntry,
+    StyleProfile,
 )
+from integrity_checker.models.validation import CitationLink as CitationLinkModel
+from integrity_checker.models.validation import MappingMethod
 
 __all__ = [
     "CitationLinker",
     "CitationMappingStatus",
     "CitationLink",
+    "CitationLinkModel",
     "LinkingResult",
     "DuplicateDetector",
     "DuplicateGroup",
+    "CitationOccurrence",
+    "ReferenceEntry",
+    "StyleProfile",
+    "MappingMethod",
 ]

@@ -1,4 +1,14 @@
-"""Validation models — output của logic module (Neuro-Symbolic checker)."""
+"""Validation models — output của logic module (Neuro-Symbolic checker).
+
+Bao gồm cả các model cho **bidirectional linking** (v1.2 §3.5):
+    - ``CitationLink`` — quan hệ 1 occurrence ↔ 1 reference entry.
+    - ``MappingMethod`` — cách quyết định mapping (author_year / numeric / DOI / fuzzy).
+
+Reference:
+    v1.2 §3.2.2 (mapping statuses — tách khỏi ValidationLabel)
+    v1.2 §3.5 (bidirectional linking + 7 trạng thái)
+    v1.2 §5.2 (CitationLinker scaffold — tuần 8)
+"""
 
 from __future__ import annotations
 
@@ -108,3 +118,71 @@ class CitationIntegrityScore:
     weights_used: dict[str, float]
     num_citations: int
     num_unresolved: int  # số verdict = UNRESOLVED (để minh bạch)
+
+
+# --- Bidirectional linking models (v1.2 §3.5) ---
+
+
+class MappingMethod(str, Enum):
+    """Cách CitationLinker quyết định ánh xạ occurrence ↔ reference.
+
+    BẮT BUỘC dùng đúng giá trị này (lowercase) — dùng cho evidence, audit log,
+    và chấm điểm confidence (mỗi method có confidence mặc định khác nhau).
+    """
+
+    AUTHOR_YEAR = "author_year"           # APA-like (Smith, 2020)
+    NUMERIC_INDEX = "numeric_index"       # IEEE-like [12]
+    DOI_EXACT = "doi_exact"               # exact DOI match
+    ARXIV_EXACT = "arxiv_exact"           # exact arXiv ID match
+    FUZZY = "fuzzy"                       # normalized title fuzzy fallback
+    NO_KEYS = "no_keys"                   # AMBIGUOUS_MAPPING
+    MANUAL_REVIEW = "manual_review"       # giảng viên override
+
+    @property
+    def default_confidence(self) -> float:
+        """Confidence mặc định cho mỗi method (0.0–1.0)."""
+        return {
+            MappingMethod.DOI_EXACT: 0.95,
+            MappingMethod.ARXIV_EXACT: 0.95,
+            MappingMethod.AUTHOR_YEAR: 0.90,
+            MappingMethod.NUMERIC_INDEX: 0.90,
+            MappingMethod.FUZZY: 0.65,
+            MappingMethod.MANUAL_REVIEW: 1.0,
+            MappingMethod.NO_KEYS: 0.30,
+        }[self]
+
+
+@dataclass
+class CitationLink:
+    """Một quan hệ in-text occurrence ↔ reference entry (v1.2 §3.5).
+
+    Mỗi ``CitationLink`` ứng với 1 mapping quyết định bởi ``CitationLinker``.
+    Một in-text occurrence có thể gộp nhiều citation (e.g. (Smith, 2020; Doe, 2021))
+    được tách thành nhiều CitationLink — mỗi link ứng với 1 reference entry.
+
+    Attributes:
+        occurrence_id: id ổn định cho in-text occurrence (vd: 'occ-0001').
+        reference_id: id ổn định cho reference entry (vd: 'ref-0007').
+            ``None`` nếu MISSING_REFERENCE.
+        status: ``CitationMappingStatus`` (xem ``linking.statuses``).
+        confidence: 0.0–1.0. Dùng cho rule ordering + CIS penalty.
+        method: ``MappingMethod`` mô tả cách quyết định.
+        evidence: dict bằng chứng giải thích (vd: ``{'author': 'Smith',
+            'year': '2020', 'page': 5, 'context': '...'}``).
+        page: trang PDF nơi xuất hiện in-text (1-indexed).
+        section: section name (vd: 'body', 'introduction').
+
+    Backward compatibility:
+        Cùng API với ``linking.statuses.CitationLink`` (re-export). Đặt ở đây
+        để đề cương v1.2 §3.5 (linker/wrapper) và §5.2 (linking package) đều
+        reference đến 1 dataclass duy nhất.
+    """
+
+    occurrence_id: str
+    reference_id: Optional[str]
+    status: object  # CitationMappingStatus — tránh circular import
+    confidence: float
+    method: MappingMethod = MappingMethod.NO_KEYS
+    evidence: dict = field(default_factory=dict)
+    page: int = 0
+    section: str = ""

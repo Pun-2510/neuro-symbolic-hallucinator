@@ -8,10 +8,13 @@ Bao gồm:
 - ReferenceListParser (parse "References" section cuối bài)
 - SectionSegmenter (phân vùng body / bibliography / appendix) — MỚI v1.2
 - GROBID adapter (TEI XML → GrobidOutput) — MỚI v1.2
+- DocumentParser (orchestrator fuse 3 nguồn) — MỚI v1.2 tuần 8
+- StyleDetector (document-level citation style profile) — MỚI v1.2
 """
 
 from integrity_checker.extraction.base import BasePDFParser, Document
 from integrity_checker.extraction.citation_extractor import CitationExtractor
+from integrity_checker.extraction.document_parser import DocumentParser, ParsedDocument
 from integrity_checker.extraction.mupdf_parser import MuPdfParser
 from integrity_checker.extraction.pdfplumber_parser import PdfPlumberParser
 from integrity_checker.extraction.reference_parser import ReferenceListParser
@@ -50,6 +53,8 @@ __all__ = [
     "DocumentSection",
     "SectionSegmenter",
     "SectionType",
+    "DocumentParser",
+    "ParsedDocument",
     "GrobidAuthor",
     "GrobidBibEntry",
     "GrobidCitation",
