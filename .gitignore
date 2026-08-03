@@ -51,6 +51,10 @@ logs/
 reports/
 *.log
 
+# Spec / reference docx — không commit (tham chiếu nội bộ, có ở ../docs)
+/final*.docx
+/*.docx
+
 # OS
 .DS_Store
 Thumbs.db
