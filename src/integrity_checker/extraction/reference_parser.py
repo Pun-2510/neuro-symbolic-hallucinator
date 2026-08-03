@@ -51,7 +51,7 @@ _APA_ENTRY_RE = re.compile(
     (?P<venue>.+?)                   # venue + volume + pages + DOI
     $
     """,
-    re.VERBOSE,
+    re.VERBOSE | re.MULTILINE,
 )
 
 # IEEE entry: [N] authors, "title," venue, ...
@@ -178,29 +178,33 @@ class ReferenceListParser:
             # Chỉ 1 entry
             return [text] if len(text) > 20 else []
 
-        # Tách entry bằng marker ", [A-Z]\.\s*\(YYYY\)" — điểm cuối author block
-        # của entry mới. Entry mới bắt đầu từ VỊ TRÍ TRƯỚC ", [A-Z]\." (tức là
-        # lùi thêm 1 prefix chứa "LastName" + particle).
-        # Quy tắc: trong "Smith, J. (2020)" → initial_end = pos(sau "J. ").
-        # Sau marker thứ 2, tìm ", [A-Z]\." cuối cùng trước marker thứ 2 → đó
-        # là end of entry 1. Entry 2 bắt đầu từ đó.
-        boundary_re = re.compile(r",\s+[A-ZÀ-Ý]\.\s*")
+        # Tách entry bằng boundary phía TRƯỚC author block của entry mới.
+        # Mỗi entry mới bắt đầu bằng LastName, F. (year). Tìm vị trí
+        # LastName (capitalized word) ngay trước marker "(year)" thứ N — đó
+        # là vị trí BẮT ĐẦU author block của entry mới → entry cũ kết thúc
+        # ở đó.
+        #
+        # Pattern author start: optional comma/period + space + LastName word
+        # (uppercase letter, có thể có particle van/de/von/der trước).
+        author_start_re = re.compile(
+            r"(?:^|\n|\.\s+)(?:(?:van|de|von|der|del|la|le)\s+)*"
+            r"[A-ZÀ-Ý][a-zà-ỹ]+(?:[-'][A-ZÀ-Ý][a-zà-ỹ]+)?"
+            r",\s*[A-ZÀ-Ý]\.\s*$",
+            flags=re.MULTILINE,
+        )
         entries: list[str] = []
         prev_start = 0
         for i in range(1, len(markers)):
             m = markers[i]
-            # Tìm last ", [A-Z]\." trước marker — boundary HỢP LỆ có
-            # khả năng là end of entry 1.
-            candidates = list(boundary_re.finditer(text, prev_start, m.start()))
+            # Tìm author start ngay trước marker thứ i
+            candidates = list(author_start_re.finditer(text, prev_start, m.start()))
             if not candidates:
                 continue
-            # Lấy candidate cuối cùng có vị trí cuối (end pos) < m.start()
             last = candidates[-1]
-            # Sanity: candidate phải gần marker (cách marker < 5 chars)
-            if m.start() - last.end() > 5:
-                # Có thể là author block giữa → skip
+            # Sanity: author_start phải gần marker (cách marker < 20 chars)
+            if m.start() - last.end() > 20:
                 continue
-            boundary = last.end()
+            boundary = last.start()
             entries.append(text[prev_start:boundary].strip())
             prev_start = boundary
 

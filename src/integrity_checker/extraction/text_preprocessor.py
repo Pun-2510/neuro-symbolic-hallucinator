@@ -28,7 +28,17 @@ class TextPreprocessor:
     }
 
     # Pattern thấy line-break giữa chữ thường → nối lại
-    BROKEN_LINE_RE = re.compile(r"([a-záàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ])\s*\n\s*([a-záàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ])")
+    # Negative lookahead: KHÔNG nối khi dòng tiếp theo bắt đầu bằng particle
+    # (van, de, von, der, ...) — đó thường là start of new reference entry
+    # với multi-word last name (vd: "References\nvan der Berg").
+    _LOWER_CHARS = r"[a-záàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ]"
+    _PARTICLES = (
+        r"(?:van|de|von|der|del|den|la|le|di|da|du|el|al|"
+        r"dos|das|af|op|te|ten|ter|y|san|santa)"
+    )
+    BROKEN_LINE_RE = re.compile(
+        rf"({_LOWER_CHARS})\s*\n\s*(?!{_PARTICLES}\b)({_LOWER_CHARS})"
+    )
 
     def normalize(self, text: str) -> str:
         """Pipeline normalize đầy đủ."""

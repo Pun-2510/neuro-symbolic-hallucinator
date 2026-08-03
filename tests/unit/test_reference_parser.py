@@ -82,6 +82,48 @@ class TestParseAPALike:
         c = cits[0]
         assert [a.last_name for a in c.authors] == ["van der berg"]
 
+    # -- Edge cases: Dutch / particle multi-word last names --
+
+    def test_apa_dutch_van_der(self):
+        """Van der Berg — most common Dutch compound last name."""
+        doc = _doc_with_section(
+            "van der Berg, J. (2020). A study of X. Journal A, 10, 1-10."
+        )
+        cits = ReferenceListParser().parse_reference_section(doc)
+        assert len(cits) == 1
+        assert cits[0].title == "A study of X"
+
+    def test_apa_dutch_de_la(self):
+        """Spanish/French particle: de la Cruz."""
+        doc = _doc_with_section(
+            "de la Cruz, M. (2019). Latin American poetry. Journal B, 5, 20-30."
+        )
+        cits = ReferenceListParser().parse_reference_section(doc)
+        assert len(cits) == 1
+        # last_name chứa "de la cruz"
+        assert "de la cruz" in cits[0].authors[0].last_name
+
+    def test_apa_german_von(self):
+        """German particle: von Neumann."""
+        doc = _doc_with_section(
+            "von Neumann, J. (1958). The computer and the brain. Yale UP."
+        )
+        cits = ReferenceListParser().parse_reference_section(doc)
+        assert len(cits) == 1
+        assert "von neumann" in cits[0].authors[0].last_name
+
+    def test_apa_2_entries_dutch_mixed(self):
+        """Reference list có entry Dutch + entry thường → tách đúng cả 2."""
+        doc = _doc_with_section(
+            "van der Berg, J. (2020). Dutch study. Journal A, 1, 1-10.\n"
+            "Smith, K. (2021). Regular study. Journal B, 2, 20-30."
+        )
+        cits = ReferenceListParser().parse_reference_section(doc)
+        assert len(cits) == 2
+        assert "van der berg" in cits[0].authors[0].last_name
+        assert cits[0].title == "Dutch study"
+        assert cits[1].title == "Regular study"
+
 
 class TestParseIEEELike:
     def test_basic_ieee(self):
