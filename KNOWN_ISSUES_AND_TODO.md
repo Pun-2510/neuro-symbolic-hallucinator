@@ -2,7 +2,7 @@
 
 > **Ngày cập nhật:** 2026-08-11 (Asia/Ho_Chi_Minh)
 >
-> **Trạng thái project:** v1.2 — đã hoàn thành **Tuần 6–7 (extraction + style)**, **Tuần 8 (linking/ scaffold + DocumentParser + 4 real retrieval clients + end-to-end integration)**, **Sprint 2 — Tuần 8 (close backlog #18, #20, #21, #22, #23)**. Citation parser, SectionSegmenter, GROBID adapter (Docker script), AuthorParser, StyleDetector, **linking/** (CitationMappingStatus × 8, CitationLinker, DuplicateDetector), DocumentParser, real HTTP clients (Crossref/OpenAlex/S2/arXiv) đều có unit + integration tests pass. **330/330 tests pass.** Sprint 2 tiếp theo: AuthorMatcher, VenueNormalizer, SourceConsensus, FuzzyTuner, CalibrationCalculator, rules.py + CIS real components, integration end-to-end (M3), IAA measurement (M4).
+> **Trạng thái project:** v1.2 — **TẤT CẢ TASKS #18–#30 HOÀN THÀNH.** Sprint 2 Tuần 8 (2026-08-11): linking/ (57 tests), AuthorMatcher (94 tests), VenueNormalizer, SourceConsensus, FuzzyTuner, CalibrationCalculator (17 tests), rules + CIS, DocumentParser (10 tests), 4 real API clients (12 tests), integration end-to-end (13 tests), IAA calculator (16 tests). **346/346 tests pass.** [[sprint-2-week8-progress]]
 >
 > Mục tiêu cũ — "citation-only, GROBID là mở rộng tương lai" — đã được thay bằng mục tiêu v1.2 — **full-text + style detection + bidirectional linking** (xem `final (1).docx`).
 >
@@ -168,7 +168,9 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 
 ### 2.6 Tuần 12–13 — Logic (Tầng 4 + Tầng 5)
 
-> **Tiến độ 2026-08-25:** Rules extension + CIS real + Calibration đã hoàn thành. ExplanationGenerator (lý do tiếng Việt có cấu trúc) vẫn pending.
+> **Tiến độ 2026-08-11:** Rules extension + CIS real + Calibration + IAA calculator đã hoàn thành. **ALL v1.2 tasks #18–#30 DONE. 346/346 tests pass.**
+
+- [x] **IAA Calculator** (task #30, 2026-08-11): `metrics/iaa_calculator.py`. Cohen's kappa (overall + per-label binary) + Krippendorff's alpha (Scott's pi formula, nominal). CLI: `python -m integrity_checker.metrics.iaa_calculator csv_a csv_b --output result.json`. 16/16 tests pass. Annotation workflow: 2 SV cùng annotate → fill `iaa_annotator_A/B.csv` → compute → verify κ ≥ 0.7 AND α ≥ 0.7.
 
 - [x] **Mở rộng `logic/rules.py`** (Sprint 2 — task #33, 2026-08-25):
   - `R-STYLE-INCONSISTENT` — penalty -0.15 confidence nếu style MIXED, -0.075 nếu UNKNOWN với low conf.

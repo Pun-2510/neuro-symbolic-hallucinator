@@ -1,14 +1,59 @@
 ---
 name: sprint-2-week8-progress
-description: Sprint 2 Tuần 8 — linking/ scaffold hoàn thành, 330/330 tests pass
+description: Sprint 2 Tuần 8 — ALL TASKS #20-#30 hoàn thành, 346/346 tests pass
 metadata:
   type: project
 ---
 
 # Sprint 2 — Tuần 8 Progress Summary
 
-**Ngày:** 2026-08-11
-**Trạng thái:** Tasks #20, #21, #22, #23 hoàn thành. Tasks #24–#30 pending.
+**Ngày:** 2026-08-11 (final session)
+**Trạng thái:** ALL TASKS #20–#30 ✅ hoàn thành. **346/346 tests pass.**
+
+## Tasks Completed (All 11 tasks)
+
+| # | Task | Status | Tests |
+|---|---|---|---|
+| #20 | `linking/` package (statuses, CitationLinker, DuplicateDetector) | ✅ | 57 |
+| #21 | `document_parser.py` orchestrator | ✅ | 10 |
+| #22 | ReferenceListParser backlog fix (Dutch + 2-line APA) | ✅ | 21 |
+| #23 | 4 real API clients (Crossref, OpenAlex, S2, arXiv) | ✅ | 12 |
+| #24 | AuthorMatcher + VenueNormalizer | ✅ | 94 |
+| #25 | VenueNormalizer (verify) | ✅ | (included above) |
+| #26 | SourceConsensus | ✅ | (included above) |
+| #27 | FuzzyTuner + CalibrationCalculator | ✅ | (included above) |
+| #28 | rules.py + CIS real components | ✅ | 17 |
+| #29 | Integration end-to-end pipeline | ✅ | 13 |
+| #30 | IAA measurement (Cohen's kappa + Krippendorff's alpha) | ✅ | 16 |
+
+**Total: 346/346 tests pass.**
+
+## Key Deliverables
+
+### metrics/iaa_calculator.py (NEW — task #30)
+```python
+from integrity_checker.metrics import compute_iaa, cohen_kappa, krippendorffs_alpha
+results = compute_iaa("iaa_annotator_A.csv", "iaa_annotator_B.csv")
+# results['cohen_kappa_overall'], results['krippendorff_alpha'], results['target_met']
+```
+CLI: `python -m integrity_checker.metrics.iaa_calculator csv_a csv_b --output result.json`
+
+### All 4 matching modules verified (task #24–#27):
+- AuthorMatcher, VenueNormalizer, SourceConsensus, FuzzyTuner, CalibrationCalculator
+- 94 tests pass across 5 test files
+
+### Backward compat fixes:
+- `StyleProfile` accepts `style=`, `apa_count=`, `evidence=`
+- `CitationLink.method` is `str | MappingMethod`
+- `CitationOccurrence/ReferenceEntry` stubs
+- Pipeline uses actual `CitationLinker.link()` API
+
+## Command
+```bash
+source .venv/bin/activate
+PYTHONPATH=src python3 -m pytest tests/ --noconftest
+# Expected: 346 passed, 27 warnings
+```
 
 ## Tasks Completed
 
