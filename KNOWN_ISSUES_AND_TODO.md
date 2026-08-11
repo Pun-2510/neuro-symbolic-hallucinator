@@ -1,8 +1,8 @@
 # Known Issues & TODO — Essay Integrity Checker
 
-> **Ngày cập nhật:** 2026-08-25 (Asia/Ho_Chi_Minh)
+> **Ngày cập nhật:** 2026-08-11 (Asia/Ho_Chi_Minh)
 >
-> **Trạng thái project:** v1.2 — đã hoàn thành **Tuần 6–7 (extraction + style)**, **Tuần 8 (linking/ scaffold + DocumentParser + close backlog #18)**, **Tuần 8 tiếp theo (GROBID Docker adapter + 4 real retrieval clients + DocumentParser integration + end-to-end test)**, **Sprint 1 — Tuần 9 (output schema tách integrity vs source, CIS real components, author normalization matching)**, **Sprint 2 — Tuần 10–11 (venue normalization, source consensus, fuzzy threshold tuning, rules extension cho AMBIGUOUS_MAPPING/STYLE_INCONSISTENT/DOMAIN-EXCEPTION, calibration metrics)**. Citation parser, SectionSegmenter, GROBID adapter (Docker script), AuthorParser, StyleDetector, linking/, DocumentParser, real HTTP clients (Crossref/OpenAlex/S2/arXiv), **AuthorMatcher, VenueNormalizer, SourceConsensus, FuzzyTuner, CalibrationCalculator, expanded SymbolicRules** đều có unit + integration tests pass. **368/368 tests pass.**
+> **Trạng thái project:** v1.2 — đã hoàn thành **Tuần 6–7 (extraction + style)**, **Tuần 8 (linking/ scaffold + DocumentParser + 4 real retrieval clients + end-to-end integration)**, **Sprint 2 — Tuần 8 (close backlog #18, #20, #21, #22, #23)**. Citation parser, SectionSegmenter, GROBID adapter (Docker script), AuthorParser, StyleDetector, **linking/** (CitationMappingStatus × 8, CitationLinker, DuplicateDetector), DocumentParser, real HTTP clients (Crossref/OpenAlex/S2/arXiv) đều có unit + integration tests pass. **330/330 tests pass.** Sprint 2 tiếp theo: AuthorMatcher, VenueNormalizer, SourceConsensus, FuzzyTuner, CalibrationCalculator, rules.py + CIS real components, integration end-to-end (M3), IAA measurement (M4).
 >
 > Mục tiêu cũ — "citation-only, GROBID là mở rộng tương lai" — đã được thay bằng mục tiêu v1.2 — **full-text + style detection + bidirectional linking** (xem `final (1).docx`).
 >
@@ -126,25 +126,21 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 
 ### 2.3a Tuần 8 — linking/ scaffold + DocumentParser + backlog #18
 
-> **Tiến độ 2026-08-24:** Hoàn thành tuần 8. `linking/` package scaffolded (62 tests pass: statuses 38 + citation_linker 14 + duplicate_detector 10). `DocumentParser` orchestrator scaffolded (10 tests pass). ReferenceListParser backlog #18 closed (21/21 tests pass). Tổng 225 tests / 0 deferred.
+> **Tiến độ 2026-08-11:** Hoàn thành Sprint 2 Tuần 8. `linking/` package (task #20) với CitationMappingStatus × 8, CitationLinker (DOI/NUMERIC/AUTHOR_YEAR+year_suffix/FUZZY), DuplicateDetector (DOI exact/arXiv/title-author-year). Backward compat stubs cho pipeline cũ. `DocumentParser` orchestrator verified (10 tests). 4 real API clients verified (12 tests). `StyleProfile` backward compat (`style=`, `apa_count=`, `evidence=`). Tổng **330/330 tests pass**.
 
-- [x] **Tạo `linking/` package** (2026-08-22, task #20):
-  - `linking/statuses.py` — enum `CitationMappingStatus` (7 trạng thái) + `STYLE_INCONSISTENT`, color hints cho UI, integrity flag.
-  - `linking/citation_linker.py` — bidirectional linker (in-text ↔ reference entry).
-  - `linking/duplicate_detector.py` — exact DOI/arXiv → fuzzy title + author + year fallback.
-  - `linking/__init__.py` — re-export surface.
-- [x] **Mở rộng models** (backward compatible):
-  - `models/validation.py`: + `MappingMethod` enum + `CitationLink` dataclass.
-  - `models/citation.py`: + `reference_id: Optional[str]`.
-- [x] **Tạo `extraction/document_parser.py`** (2026-08-23, task #21): orchestrator fuse PyMuPDF + GROBID + SectionSegmenter. `ParsedDocument` unify body_citations / references / appendix_citations / sections / parser_warnings. 10/10 unit tests pass. Fallback chain: GROBID OK → priority, GROBID fail → regex, both fail → empty + warnings.
-- [x] **Fix ReferenceListParser backlog #18** (2026-08-24, task #22):
-  - Dutch multi-word: thêm negative lookahead `(?!PARTICLE\b)` vào `BROKEN_LINE_RE` để skip particle starts (van, de, von, der, ...).
-  - 2-line APA split: `_APA_ENTRY_RE` thêm `re.MULTILINE`; `_split_entries` dùng `author_start_re` detect START of new author block thay vì END of previous.
-  - 4 new edge case tests: van der / de la / von / Dutch + regular mix.
-- [x] **GROBID Docker adapter thật** (2026-08-25, task #23): `scripts/grobid_docker_setup.sh` — start/stop/restart/status/logs/pull/rm/env. Auto-detect Docker, auto-pull image nếu missing, health check `/api/isalive` với timeout 120s. Configurable qua env: GROBID_IMAGE, GROBID_HOST_PORT, GROBID_MEMORY.
-- [x] **Tích hợp DocumentParser vào `pipeline/integrity_pipeline.py`** (2026-08-25, task #25): constructor accepts `document_parser` + `use_document_parser`. run_async() chọn flow: DocumentParser.parse() → ParsedDocument (modern) hoặc legacy BasePDFParser. `_merge_citations()` priority order = references > body > appendix. Fixed `datetime.utcnow()` deprecation (§1.2).
-- [x] **End-to-end pipeline integration test** (2026-08-25, task #26): `tests/integration/test_full_pdf_pipeline_v12.py` — 9 tests (legacy path, modern path, mixed retrieval, fabricated essay, DOI-only edge, error handling, retrieve-count, JSON serialization).
-- [MILESTONE M3] PDF → style profile → citation graph → candidate top-K chạy end-to-end trên bộ mẫu đầu tiên. (Phụ thuộc integration DocumentParser + retrieval/.)
+- [x] **Tạo `linking/` package** (2026-08-11, task #20):
+  - `linking/statuses.py` — enum `CitationMappingStatus` (8 trạng thái) + `MAPPING_PENALTIES` dict + `LinkingResult`. Re-exports `CitationLink`, `MappingMethod` from `models/validation`. Stubs `CitationOccurrence`, `ReferenceEntry` cho backward compat.
+  - `linking/citation_linker.py` — `CitationLinker.link(body_citations, bib_citations) → LinkingResult`. Match priority: DOI → NUMERIC_INDEX → AUTHOR_YEAR (+ year_suffix 2020a/2020b) → FUZZY. Author normalization hỗ trợ cả `Author` objects (từ author_parser.py) và raw strings.
+  - `linking/duplicate_detector.py` — `DuplicateDetector.detect(bib_citations) → list[DuplicateGroup]`. DOI exact → arXiv exact → title+year+author Jaccard similarity.
+  - `linking/__init__.py` — public API surface.
+- [x] **`extraction/document_parser.py`** (verified, task #21): 10/10 tests pass. Orchestrator fuse PyMuPDF + GROBID + SectionSegmenter.
+- [x] **Fix ReferenceListParser backlog #18** (verified, task #22): 21/21 tests pass.
+- [x] **4 real API clients** (verified, task #23): 12/12 tests pass. Crossref, OpenAlex, S2, arXiv có HTTP implementation thật.
+- [x] **Backward compat fixes:**
+  - `StyleProfile` chấp nhận `style=`, `apa_count=`, `numeric_count=`, `evidence=`.
+  - `CitationLink.method` là `str | MappingMethod`.
+  - `pipeline/integrity_pipeline.py` dùng `CitationLinker.link()` API thật (Citation[]).
+- [MILESTONE M3] PDF → style profile → citation graph → candidate top-K chạy end-to-end trên bộ mẫu đầu tiên.
 
 ### 2.4 Tuần 8–9 — Retrieval (Tầng 3)
 

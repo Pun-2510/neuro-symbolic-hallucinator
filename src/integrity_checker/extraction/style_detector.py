@@ -61,11 +61,23 @@ class StyleFeatures:
 class StyleProfile:
     """Output từ StyleDetector."""
 
-    label: str                     # 'APA-like' / 'IEEE-like' / 'MIXED' / 'UNKNOWN'
-    confidence: float              # 0–1
+    # New API
+    label: str = ""               # 'APA-like' / 'IEEE-like' / 'MIXED' / 'UNKNOWN'
+    confidence: float = 0.0        # 0–1
     features: StyleFeatures = field(default_factory=StyleFeatures)
     ratios: dict = field(default_factory=dict)
     explanation: str = ""
+
+    # Old API backward compat (style= instead of label=)
+    style: str = ""               # backward compat alias for label
+    apa_count: int = 0
+    numeric_count: int = 0
+    evidence: dict = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        # Backward compat: style= param maps to label=
+        if self.style and not self.label:
+            self.label = self.style
 
 
 class StyleDetector:

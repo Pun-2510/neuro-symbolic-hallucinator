@@ -1,56 +1,166 @@
-"""Citation mapping statuses — v1.2 §3.2.2.
+"""CitationMappingStatus — enum 8 trạng thái mapping (v1.2 §3.5).
 
-Bảy trạng thái tách rời hoàn toàn khỏi ValidationLabel (source verification).
-Lớp integrity ≠ lớp source. Một citation có thể vừa MATCHED (link OK)
-vừa bị METADATA_ERROR (sai năm) — đây là 2 chiều phân tích khác nhau.
+Trạng thái này mô tả **quan hệ giữa 1 in-text occurrence và 1 reference entry**
+trong citation graph — gọi là "citation integrity layer".
 
-Reference:
-    v1.2 §3.2.2 (Hai lớp nhãn và trạng thái)
-    v1.2 §3.5 (Nhận diện kiểu trích dẫn và đối chiếu hai chiều)
-    config.linking.statuses.enabled (in configs/config.example.yaml)
+Phân biệt với ``ValidationLabel`` (source verification layer):
+    - MappingStatus: "in-text này có reference entry trong bibliography không?"
+    - ValidationLabel: "reference entry này có nguồn thật không?"
+
+8 trạng thái:
+
+MATCHED (mapped, verified):
+    In-text occurrence có reference entry tương ứng trong bibliography,
+    author/year (APA) hoặc index (IEEE) khớp.
+
+MISSING_REFERENCE (integrity issue):
+    In-text occurrence không có reference entry nào khớp trong bibliography.
+    → Có nguy cơ hallucination hoặc tác giả quên thêm entry.
+
+UNCITED_REFERENCE (integrity issue):
+    Reference entry tồn tại trong bibliography nhưng không được in-text nào
+    refer. → Entry dư thừa (nguồn không được sử dụng).
+
+IN_TEXT_MISMATCH (integrity issue):
+    In-text occurrence có reference entry khớp author/year/index nhưng
+    title trong entry không match → có thể refer nhầm source.
+
+DUPLICATE_REFERENCE (integrity issue):
+    ≥2 reference entries refer cùng 1 source (DOI / arXiv ID / title+year+author
+    similarity > threshold). → Gộp thành 1 entry.
+
+AMBIGUOUS_MAPPING (integrity issue):
+    ≥2 in-text occurrences refer cùng 1 reference entry (1 entry được cite
+    bởi nhiều in-text occurrence, nhưng không phải DOIs khác nhau).
+    → Có thể hợp lệ (cùng nguồn, nhiều trang) hoặc duplicate.
+
+STYLE_INCONSISTENT (integrity issue):
+    In-text style (APA vs IEEE) không match reference list style trong cùng
+    document. → Cảnh báo: có thể là copy từ nhiều nguồn.
+
+UNRESOLVED (neutral):
+    Chưa đủ thông tin để quyết định (extraction fail, API timeout, v.v.).
+    → Neutral, không tính vào penalty.
+
+References:
+    v1.2 §3.5 (bidirectional linking — citation graph)
+    v1.2 §3.7 (linking styles — style consistency)
+    v1.2 §5.1 (SV1 — citation graph view trong web UI)
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+
+# Re-export CitationLink + MappingMethod từ models/validation
+# (backward compatibility — pipeline + old tests import từ đây)
+from integrity_checker.models.validation import CitationLink, MappingMethod
+
+# Re-export StyleProfile từ extraction (old tests + pipeline)
+from integrity_checker.extraction.style_detector import StyleProfile  # noqa: F401
+
+# --- Stubs cho backward compatibility với old tests + pipeline ---
+# Pipeline gốc dùng CitationOccurrence/ReferenceEntry wrappers.
+# Chúng không được dùng trong implementation mới (CitationLinker dùng Citation[] trực tiếp).
+# Giữ stub để pipeline import không bị break.
+
+
+class CitationOccurrence:
+    """Stub — không dùng trong implementation mới.
+
+    Pipeline cũ dùng class này để wrap in-text citations trước khi link.
+    Implementation mới dùng Citation[] trực tiếp.
+    """
+
+    __slots__ = ("occurrence_id", "raw_text", "page", "authors", "year",
+                 "numeric_indices", "doi")
+
+    def __init__(
+        self,
+        occurrence_id: str,
+        raw_text: str = "",
+        page: int = 0,
+        authors: list | None = None,
+        year: str | None = None,
+        numeric_indices: list | None = None,
+        doi: str | None = None,
+    ) -> None:
+        self.occurrence_id = occurrence_id
+        self.raw_text = raw_text
+        self.page = page
+        self.authors = authors or []
+        self.year = year
+        self.numeric_indices = numeric_indices or []
+        self.doi = doi
+
+
+class ReferenceEntry:
+    """Stub — không dùng trong implementation mới.
+
+    Pipeline cũ dùng class này để wrap bibliography entries trước khi link.
+    Implementation mới dùng Citation[] trực tiếp.
+    """
+
+    __slots__ = ("reference_id", "raw_text", "order_index", "page",
+                 "authors", "year", "title", "title_normalized", "doi")
+
+    def __init__(
+        self,
+        reference_id: str,
+        raw_text: str = "",
+        order_index: int = 0,
+        page: int = 0,
+        authors: list | None = None,
+        year: str | None = None,
+        title: str | None = None,
+        title_normalized: str | None = None,
+        doi: str | None = None,
+    ) -> None:
+        self.reference_id = reference_id
+        self.raw_text = raw_text
+        self.order_index = order_index
+        self.page = page
+        self.authors = authors or []
+        self.year = year
+        self.title = title
+        self.title_normalized = title_normalized
+        self.doi = doi
 
 
 class CitationMappingStatus(str, Enum):
-    """7 trạng thái mapping in-text ↔ reference entry (v1.2 §3.2.2).
+    """8 trạng thái citation graph integrity (v1.2 §3.5)."""
 
-    BẮT BUỘC dùng đúng giá trị này (lowercase) để serialize/UI.
-    """
-
+    # --- Mapped / verified ---
     MATCHED = "matched"
-    MISSING_REFERENCE = "missing_reference"
-    UNCITED_REFERENCE = "uncited_reference"
-    IN_TEXT_MISMATCH = "in_text_mismatch"
-    DUPLICATE_REFERENCE = "duplicate_reference"
-    AMBIGUOUS_MAPPING = "ambiguous_mapping"
-    STYLE_INCONSISTENT = "style_inconsistent"
+    """In-text ↔ reference entry khớp."""
 
-    @property
-    def color(self) -> str:
-        """Màu badge trên UI (hex). Cố ý khác bảng màu 4 ValidationLabel."""
-        return {
-            CitationMappingStatus.MATCHED: "#16a34a",                # xanh
-            CitationMappingStatus.MISSING_REFERENCE: "#dc2626",        # đỏ
-            CitationMappingStatus.UNCITED_REFERENCE: "#ea580c",       # cam
-            CitationMappingStatus.IN_TEXT_MISMATCH: "#ca8a04",        # vàng
-            CitationMappingStatus.DUPLICATE_REFERENCE: "#9333ea",     # tím
-            CitationMappingStatus.AMBIGUOUS_MAPPING: "#6b7280",       # xám
-            CitationMappingStatus.STYLE_INCONSISTENT: "#0891b2",      # cyan
-        }[self]
+    # --- Integrity issues ---
+    MISSING_REFERENCE = "missing_reference"
+    """In-text không có reference entry tương ứng."""
+
+    UNCITED_REFERENCE = "uncited_reference"
+    """Reference entry không được in-text nào refer."""
+
+    IN_TEXT_MISMATCH = "in_text_mismatch"
+    """In-text và reference entry không khớp (author/year/index đúng nhưng title khác)."""
+
+    DUPLICATE_REFERENCE = "duplicate_reference"
+    """≥2 reference entries trỏ cùng 1 source (DOI/arXiv/similarity)."""
+
+    AMBIGUOUS_MAPPING = "ambiguous_mapping"
+    """≥2 in-text occurrences refer cùng 1 reference entry."""
+
+    STYLE_INCONSISTENT = "style_inconsistent"
+    """In-text style không match bibliography style trong document."""
+
+    # --- Neutral ---
+    UNRESOLVED = "unresolved"
+    """Chưa đủ thông tin để quyết định."""
 
     @property
     def is_integrity_issue(self) -> bool:
-        """True nếu trạng thái này BIỂU THỊ vấn đề về tính nhất quán nội bộ.
-
-        Dùng cho CIS weight penalty (config.cis.rubric_penalty).
-        MATCHED và trạng thái trung tính (chưa phân loại) → False.
-        """
+        """True nếu trạng thái này là integrity issue (cần kiểm tra)."""
         return self in {
             CitationMappingStatus.MISSING_REFERENCE,
             CitationMappingStatus.UNCITED_REFERENCE,
@@ -60,136 +170,126 @@ class CitationMappingStatus(str, Enum):
             CitationMappingStatus.STYLE_INCONSISTENT,
         }
 
+    @property
+    def is_verified(self) -> bool:
+        """True nếu trạng thái này là verified (OK)."""
+        return self == CitationMappingStatus.MATCHED
 
-@dataclass
-class CitationLink:
-    """Một quan hệ in-text ↔ reference entry.
+    @property
+    def is_neutral(self) -> bool:
+        """True nếu trạng thái này neutral (không đánh giá)."""
+        return self == CitationMappingStatus.UNRESOLVED
 
-    Một in-text occurrence gộp nhiều citation (e.g. (Smith, 2020; Doe, 2021))
-    được tách thành nhiều CitationLink — mỗi link ứng với 1 reference entry.
+    @property
+    def penalty(self) -> float:
+        """Penalty score cho CIS calculation (0.0 = OK, 1.0 = worst)."""
+        return {
+            CitationMappingStatus.MATCHED: 0.0,
+            CitationMappingStatus.MISSING_REFERENCE: 1.0,
+            CitationMappingStatus.UNCITED_REFERENCE: 0.5,
+            CitationMappingStatus.IN_TEXT_MISMATCH: 0.8,
+            CitationMappingStatus.DUPLICATE_REFERENCE: 0.6,
+            CitationMappingStatus.AMBIGUOUS_MAPPING: 0.4,
+            CitationMappingStatus.STYLE_INCONSISTENT: 0.2,
+            CitationMappingStatus.UNRESOLVED: 0.0,
+        }[self]
 
-    Attributes:
-        occurrence_id: id ổn định cho in-text occurrence (vd: 'occ-0001').
-        reference_id: id ổn định cho reference entry (vd: 'ref-0007').
-            None nếu MISSING_REFERENCE.
-        status: CitationMappingStatus.
-        confidence: 0.0-1.0. Dùng cho rule ordering + CIS penalty.
-        method: cách quyết định (vd: 'exact_author_year', 'numeric_index',
-            'normalized_title_fuzzy', 'manual_review').
-        evidence: dict bằng chứng giải thích (vd: {'author': 'Smith',
-            'year': '2020', 'page': 5, 'context': '...'}).
-        page: trang PDF nơi xuất hiện in-text (1-indexed).
-        section: section name (vd: 'body', 'introduction').
-    """
-
-    occurrence_id: str
-    reference_id: Optional[str]
-    status: CitationMappingStatus
-    confidence: float
-    method: str = "unknown"
-    evidence: dict = field(default_factory=dict)
-    page: int = 0
-    section: str = ""
-
-
-@dataclass
-class CitationOccurrence:
-    """Wrapper cho in-text occurrence từ CitationExtractor.
-
-    CitationExtractor hiện trả Citation với citation_type=IN_TEXT/NUMERIC.
-    Wrapper này cung cấp thêm occurrence_id ổn định + parsed keys
-    (author, year, numeric_index) để Linker so khớp.
-    """
-
-    occurrence_id: str
-    raw_text: str
-    page: int
-    section: str = ""
-    context: str = ""
-
-    # Parsed keys (ít nhất 1 trong các trường này có dữ liệu)
-    authors: list[str] = field(default_factory=list)       # last names
-    year: Optional[str] = None
-    year_suffix: Optional[str] = None                      # 'a', 'b' cho 2024a/2024b
-    numeric_index: Optional[int] = None                    # cho IEEE-like [12]
-    numeric_indices: list[int] = field(default_factory=list)  # cho [1,2,3] hoặc [1-5]
-    doi: Optional[str] = None
-    raw_style_hint: str = "unknown"                        # APA / IEEE / unknown
+    @property
+    def label(self) -> str:
+        """Human-readable label cho UI."""
+        return {
+            CitationMappingStatus.MATCHED: "✓ Matched",
+            CitationMappingStatus.MISSING_REFERENCE: "⚠ Missing reference",
+            CitationMappingStatus.UNCITED_REFERENCE: "✗ Uncited",
+            CitationMappingStatus.IN_TEXT_MISMATCH: "⚠ In-text mismatch",
+            CitationMappingStatus.DUPLICATE_REFERENCE: "⚠ Duplicate",
+            CitationMappingStatus.AMBIGUOUS_MAPPING: "⚠ Ambiguous mapping",
+            CitationMappingStatus.STYLE_INCONSISTENT: "⚠ Style inconsistent",
+            CitationMappingStatus.UNRESOLVED: "? Unresolved",
+        }[self]
 
 
-@dataclass
-class ReferenceEntry:
-    """Wrapper cho reference entry từ ReferenceListParser.
+# --- Penalty table cho CIS (v1.2 §3.9) ---
+# Dùng trong logic/cis.py để tính in_text_bib_consistency.
 
-    Parser hiện trả Citation với citation_type=REFERENCE_LIST.
-    Wrapper này cung cấp thêm:
-    - reference_id ổn định
-    - normalized title (để duplicate detection)
-    - order_index (vị trí trong bibliography)
-    - parsed fields chuẩn hoá (chữ thường, bỏ dấu câu)
-    """
-
-    reference_id: str
-    raw_text: str
-    order_index: int
-    page: int = 0
-
-    authors: list[str] = field(default_factory=list)
-    year: Optional[str] = None
-    year_suffix: Optional[str] = None
-    title: Optional[str] = None
-    title_normalized: Optional[str] = None
-    venue: Optional[str] = None
-    doi: Optional[str] = None
-    arxiv_id: Optional[str] = None
-
-
-@dataclass
-class StyleProfile:
-    """Document-level citation style — v1.2 §3.5.
-
-    Hiện Type=APA-like / IEEE-like / MIXED / UNKNOWN với confidence.
-    Field thêm:
-        apa_count: số marker author-year tìm được.
-        numeric_count: số marker numeric tìm được.
-    """
-
-    style: str = "UNKNOWN"     # APA-like | IEEE-like | MIXED | UNKNOWN
-    confidence: float = 0.0
-    apa_count: int = 0
-    numeric_count: int = 0
-    evidence: dict = field(default_factory=dict)
+MAPPING_PENALTIES = {
+    CitationMappingStatus.MATCHED: 0.0,
+    CitationMappingStatus.MISSING_REFERENCE: 1.0,
+    CitationMappingStatus.UNCITED_REFERENCE: 0.5,
+    CitationMappingStatus.IN_TEXT_MISMATCH: 0.8,
+    CitationMappingStatus.DUPLICATE_REFERENCE: 0.6,
+    CitationMappingStatus.AMBIGUOUS_MAPPING: 0.4,
+    CitationMappingStatus.STYLE_INCONSISTENT: 0.2,
+    CitationMappingStatus.UNRESOLVED: 0.0,
+}
 
 
 @dataclass
 class LinkingResult:
-    """Đầu ra aggregate của CitationLinker.link().
+    """Kết quả từ CitationLinker.
 
     Attributes:
-        links: list[CitationLink] — quan hệ in-text ↔ reference.
-        uncited_reference_ids: list reference_id không có occurrence
-            hợp lệ trong thân bài (sau loại trừ exclude_sections).
-        duplicate_reference_ids: list reference_id bị DuplicateDetector
-            đánh dấu (chuyển từ external call). Mỗi nhóm trùng → 1 id canonical,
-            các id còn lại nằm trong groups.
-        ambiguous_mapping_ids: list occurrence_id không map được chắc chắn.
+        links: list all CitationLink (1 per in-text occurrence).
+        status_counts: dict[CitationMappingStatus, int] — summary counts.
+        unmatched_in_text: list of citation IDs not matched to any reference.
+        unmatched_reference_ids: list of reference IDs not matched to any in-text.
+        total_citations: total in-text occurrences.
+        total_references: total reference entries.
+        matched_count: number of MATCHED links.
     """
 
-    links: list[CitationLink] = field(default_factory=list)
-    uncited_reference_ids: list[str] = field(default_factory=list)
-    duplicate_reference_ids: list[str] = field(default_factory=list)
-    ambiguous_mapping_ids: list[str] = field(default_factory=list)
+    links: list = field(default_factory=list)
+    status_counts: dict = field(default_factory=dict)
+    unmatched_in_text: list = field(default_factory=list)
+    unmatched_reference_ids: list = field(default_factory=list)
+    total_citations: int = 0
+    total_references: int = 0
+    matched_count: int = 0
 
-    # Thống kê — optional, dùng cho UI/Report
-    counts_by_status: dict[str, int] = field(default_factory=dict)
+    def add_link(self, link: "CitationLink") -> None:
+        """Thêm 1 link và update counters."""
+        from integrity_checker.models.validation import CitationLink as _CitationLink
+        if not isinstance(link, _CitationLink):
+            return
+        status = link.status
+        if isinstance(status, str):
+            # handle string status from serialization
+            status = CitationMappingStatus(status)
+        self.links.append(link)
+        self.status_counts[status] = self.status_counts.get(status, 0) + 1
+        if status == CitationMappingStatus.MATCHED:
+            self.matched_count += 1
 
-    def has_integrity_issues(self) -> bool:
-        """True nếu có bất kỳ trạng thái nào KHÔNG phải MATCHED/STYLE_INCONSISTENT."""
-        return any(
-            link.status
-            not in (
-                CitationMappingStatus.MATCHED,
-                CitationMappingStatus.STYLE_INCONSISTENT,
-            )
-            for link in self.links
-        )
+    @property
+    def match_rate(self) -> float:
+        """Tỉ lệ matched / total citations."""
+        if self.total_citations == 0:
+            return 0.0
+        return self.matched_count / self.total_citations
+
+    def to_dict(self) -> dict:
+        """Serialize cho JSON response."""
+        def _status_key(s: CitationMappingStatus) -> str:
+            return s.value if isinstance(s, CitationMappingStatus) else str(s)
+
+        return {
+            "links": [
+                {
+                    "occurrence_id": l.occurrence_id,
+                    "reference_id": l.reference_id,
+                    "status": _status_key(l.status),
+                    "confidence": l.confidence,
+                    "method": l.method.value if hasattr(l.method, "value") else str(l.method),
+                }
+                for l in self.links
+            ],
+            "status_counts": {
+                _status_key(k): v for k, v in self.status_counts.items()
+            },
+            "unmatched_in_text": self.unmatched_in_text,
+            "unmatched_reference_ids": self.unmatched_reference_ids,
+            "total_citations": self.total_citations,
+            "total_references": self.total_references,
+            "matched_count": self.matched_count,
+            "match_rate": self.match_rate,
+        }

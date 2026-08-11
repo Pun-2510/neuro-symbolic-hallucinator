@@ -1,249 +1,269 @@
-"""DuplicateDetector — phát hiện reference entries trùng nhau (v1.2 §3.5).
+"""DuplicateDetector — phát hiện duplicate reference entries (v1.2 §3.5).
 
-Thuật toán 2 bước:
+Mục tiêu:
+    Trong danh sách bibliography entries, phát hiện các cặp entries trỏ cùng 1
+    source (DOI / arXiv ID / title+year+author similarity > threshold).
 
-    1. Exact match: nếu ≥1 reference có DOI/arXiv ID:
-        - Group theo DOI (lowercase, normalized).
-        - Group theo arXiv ID (lowercase).
-    2. Fuzzy fallback: nếu thiếu identifier, dùng normalized title
-        + first author last name + year. Threshold cẩn trọng
-        (config.linking.duplicate_detection.title_year_author_similarity,
-        default 0.92).
+Priority:
+    1. Exact DOI match → chắc chắn là duplicate.
+    2. Exact arXiv ID match → chắc chắn là duplicate.
+    3. Normalized title + year + first author similarity > threshold → potential duplicate.
 
-Trả DuplicateGroup: mỗi group có 1 canonical_id + list duplicate_ids.
-ReferenceEntry KHÔNG thuộc group nào → unique.
+Output:
+    list[DuplicateGroup] — mỗi nhóm là ≥ 2 entries trùng lặp.
 
-Reference:
-    v1.2 §3.5 (đối chiếu hai chiều, duplicate detection)
-    v1.2 §3.6 (khử trùng lặp giữa các nguồn retrieval — cùng pattern, khác layer)
-    config.linking.duplicate_detection.*
+References:
+    v1.2 §3.5 (bidirectional linking — duplicate detection)
+    config.linking.duplicate_detection.{exact_identifier_match, title_year_author_similarity}
 """
 
 from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
-from rapidfuzz import fuzz  # type: ignore[import-untyped]
-
-from integrity_checker.config import get_settings
-from integrity_checker.linking.statuses import ReferenceEntry
+from integrity_checker.models.citation import Citation
 
 logger = logging.getLogger(__name__)
 
-
-# --- Normalization helpers (v1.2 §3.4) ---
-
-def _normalize_title(title: str) -> str:
-    """Chuẩn hoá title để so khớp: lowercase, bỏ punctuation, gộp spaces."""
-    if not title:
-        return ""
-    t = title.lower()
-    t = re.sub(r"[^\w\s]", " ", t)
-    t = re.sub(r"\s+", " ", t)
-    return t.strip()
-
-
-def _normalize_author_last_name(authors: list[str]) -> str:
-    """Lấy last name của first author để so khớp."""
-    if not authors:
-        return ""
-    first = authors[0].strip()
-    if not first:
-        return ""
-    if "," in first:
-        return first.split(",")[0].strip().lower()
-    return first.split()[-1].strip().lower() if first.split() else ""
+# arXiv ID pattern
+_ARXIV_RE = re.compile(r"arXiv:?((\d{4}\.\d{4,5}|[a-z-]+/\d{7}))", re.IGNORECASE)
 
 
 @dataclass
 class DuplicateGroup:
-    """Một nhóm reference entries trùng nhau.
+    """Nhóm các entries là duplicate của nhau.
 
     Attributes:
-        canonical_id: reference_id được chọn làm canonical (mặc định: id đầu tiên).
-        duplicate_ids: các reference_id còn lại trong nhóm.
-        match_method: 'doi_exact' | 'arxiv_exact' | 'title_author_year_fuzzy'.
-        similarity: 1.0 cho exact, 0.0–1.0 cho fuzzy.
+        citations: list[Citation] trong nhóm (≥ 2).
+        reason: str — giải thích tại sao chúng là duplicate.
+        score: float — confidence score (0.0–1.0).
+        representative: Citation — entry được chọn làm "canonical" (đầu tiên).
     """
 
-    canonical_id: str
-    duplicate_ids: list[str] = field(default_factory=list)
-    match_method: str = "unknown"
-    similarity: float = 1.0
+    citations: list[Citation]
+    reason: str
+    score: float
+    representative: Citation
+
+    @property
+    def duplicate_count(self) -> int:
+        """Số lượng entries trùng lặp (tổng - 1)."""
+        return max(0, len(self.citations) - 1)
 
 
 class DuplicateDetector:
-    """Phát hiện reference entries mô tả cùng một công trình."""
+    """Phát hiện duplicate reference entries trong bibliography."""
 
-    def __init__(self) -> None:
-        s = get_settings()
-        self.use_exact_identifier = s.linking.duplicate_detection.exact_identifier_match
-        self.threshold = s.linking.duplicate_detection.title_year_author_similarity
+    def __init__(
+        self,
+        exact_identifier_match: bool = True,
+        title_year_author_similarity: float = 0.92,
+    ) -> None:
+        """
+        Args:
+            exact_identifier_match: nếu True, entries có cùng DOI/arXiv ID → duplicate.
+            title_year_author_similarity: ngưỡng similarity cho title+year+author fallback.
+        """
+        self.exact_identifier_match = exact_identifier_match
+        self.threshold = title_year_author_similarity
 
-    def find_duplicates(
-        self, references: list[ReferenceEntry]
+    def detect(
+        self, bib_citations: list[Citation]
     ) -> list[DuplicateGroup]:
-        """Tìm các nhóm duplicate trong danh sách reference entries.
+        """Phát hiện duplicate entries trong bib_citations.
+
+        Args:
+            bib_citations: Citation[] từ bibliography.
 
         Returns:
-            list[DuplicateGroup] — mỗi nhóm có ≥2 reference_id.
-            Reference unique không xuất hiện.
+            list[DuplicateGroup] — mỗi nhóm là ≥ 2 entries trùng lặp.
         """
-        groups: list[DuplicateGroup] = []
-        assigned: set[str] = set()
-
-        # --- Bước 1: exact DOI ---
-        if self.use_exact_identifier:
-            doi_groups = self._group_by_exact_identifier(
-                references, key_attr="doi", method="doi_exact"
-            )
-            for g in doi_groups:
-                groups.append(g)
-                assigned.add(g.canonical_id)
-                assigned.update(g.duplicate_ids)
-
-        # --- Bước 1b: exact arXiv ID (cho entries chưa có DOI) ---
-        if self.use_exact_identifier:
-            remaining = [r for r in references if r.reference_id not in assigned]
-            arxiv_groups = self._group_by_exact_identifier(
-                remaining, key_attr="arxiv_id", method="arxiv_exact"
-            )
-            for g in arxiv_groups:
-                groups.append(g)
-                assigned.add(g.canonical_id)
-                assigned.update(g.duplicate_ids)
-
-        # --- Bước 2: fuzzy fallback cho entries còn lại ---
-        remaining = [r for r in references if r.reference_id not in assigned]
-        fuzzy_groups = self._group_by_title_author_year(remaining)
-        groups.extend(fuzzy_groups)
-
-        if groups:
-            logger.info(
-                "DuplicateDetector: %d duplicate groups out of %d references",
-                len(groups),
-                len(references),
-            )
-        return groups
-
-    # -- internals --
-
-    @staticmethod
-    def _group_by_exact_identifier(
-        references: list[ReferenceEntry],
-        key_attr: str,
-        method: str,
-    ) -> list[DuplicateGroup]:
-        """Group theo DOI hoặc arXiv ID exact (lowercase)."""
-        buckets: dict[str, list[ReferenceEntry]] = {}
-        for ref in references:
-            key = getattr(ref, key_attr, None)
-            if not key:
-                continue
-            key_norm = key.lower().strip()
-            buckets.setdefault(key_norm, []).append(ref)
+        if len(bib_citations) < 2:
+            return []
 
         groups: list[DuplicateGroup] = []
-        for key, members in buckets.items():
-            if len(members) < 2:
+        assigned: set[int] = set()  # indices đã được assign vào nhóm nào đó
+
+        # 1. DOI exact groups
+        doi_groups: dict[str, list[tuple[int, Citation]]] = {}
+        for i, cit in enumerate(bib_citations):
+            doi = (cit.doi or "").strip().lower()
+            if doi:
+                doi_groups.setdefault(doi, []).append((i, cit))
+
+        for doi, entries in doi_groups.items():
+            if len(entries) < 2:
                 continue
-            canonical = members[0]
-            duplicates = [m.reference_id for m in members[1:]]
+            ids = [idx for idx, _ in entries]
+            if any(idx in assigned for idx in ids):
+                continue
+            for idx in ids:
+                assigned.add(idx)
+            reason = f"Exact DOI match: {doi}"
+            score = 1.0
             groups.append(
                 DuplicateGroup(
-                    canonical_id=canonical.reference_id,
-                    duplicate_ids=duplicates,
-                    match_method=method,
-                    similarity=1.0,
+                    citations=[c for _, c in entries],
+                    reason=reason,
+                    score=score,
+                    representative=entries[0][1],
                 )
             )
-            logger.debug(
-                "Duplicate group %s: canonical=%s duplicates=%s",
-                method,
-                canonical.reference_id,
-                duplicates,
+
+        # 2. arXiv exact groups
+        arxiv_groups: dict[str, list[tuple[int, Citation]]] = {}
+        for i, cit in enumerate(bib_citations):
+            if i in assigned:
+                continue
+            arxiv_id = self._extract_arxiv_id(cit.raw_text) or self._extract_arxiv_id(
+                cit.doi or ""
             )
-        return groups
+            if arxiv_id:
+                arxiv_groups.setdefault(arxiv_id, []).append((i, cit))
 
-    def _group_by_title_author_year(
-        self, references: list[ReferenceEntry]
-    ) -> list[DuplicateGroup]:
-        """Group bằng normalized title + first author + year + threshold fuzzy."""
-        # Index theo (last_name, year) trước để giảm cặp so sánh
-        buckets: dict[tuple[str, str], list[ReferenceEntry]] = {}
-        for ref in references:
-            last = _normalize_author_last_name(ref.authors)
-            year = (ref.year or "").strip()
-            if not last or not year:
+        for arxiv_id, entries in arxiv_groups.items():
+            if len(entries) < 2:
                 continue
-            buckets.setdefault((last, year), []).append(ref)
-
-        groups: list[DuplicateGroup] = []
-        for (last, year), members in buckets.items():
-            if len(members) < 2:
+            ids = [idx for idx, _ in entries]
+            if any(idx in assigned for idx in ids):
                 continue
-            # O(n²) trong cùng bucket — bucket thường nhỏ (1–5 entries)
-            n = len(members)
-            parent = list(range(n))
+            for idx in ids:
+                assigned.add(idx)
+            groups.append(
+                DuplicateGroup(
+                    citations=[c for _, c in entries],
+                    reason=f"Exact arXiv ID match: {arxiv_id}",
+                    score=1.0,
+                    representative=entries[0][1],
+                )
+            )
 
-            def find(x: int) -> int:
-                while parent[x] != x:
-                    parent[x] = parent[parent[x]]
-                    x = parent[x]
-                return x
-
-            def union(a: int, b: int) -> None:
-                ra, rb = find(a), find(b)
-                if ra != rb:
-                    parent[ra] = rb
-
-            for i in range(n):
-                for j in range(i + 1, n):
-                    sim = self._title_similarity(members[i], members[j])
-                    if sim >= self.threshold:
-                        union(i, j)
-
-            # Gom cluster
-            clusters: dict[int, list[int]] = {}
-            for i in range(n):
-                clusters.setdefault(find(i), []).append(i)
-
-            for cluster_indices in clusters.values():
-                if len(cluster_indices) < 2:
+        # 3. Title + year + author similarity fallback
+        if self.threshold < 1.0:
+            remaining = [
+                (i, cit) for i, cit in enumerate(bib_citations) if i not in assigned
+            ]
+            for idx_a, cit_a in remaining:
+                if idx_a in assigned:
                     continue
-                canonical = members[cluster_indices[0]]
-                duplicates = [members[k].reference_id for k in cluster_indices[1:]]
-                # Similarity = max pairwise trong cluster
-                max_sim = 0.0
-                for i_idx in cluster_indices:
-                    for j_idx in cluster_indices:
-                        if i_idx < j_idx:
-                            max_sim = max(
-                                max_sim,
-                                self._title_similarity(members[i_idx], members[j_idx]),
-                            )
-                groups.append(
-                    DuplicateGroup(
-                        canonical_id=canonical.reference_id,
-                        duplicate_ids=duplicates,
-                        match_method="title_author_year_fuzzy",
-                        similarity=round(max_sim, 4),
+                group_members = [(idx_a, cit_a)]
+
+                for idx_b, cit_b in remaining:
+                    if idx_b <= idx_a or idx_b in assigned:
+                        continue
+                    sim = self._similarity(cit_a, cit_b)
+                    if sim >= self.threshold:
+                        group_members.append((idx_b, cit_b))
+
+                if len(group_members) >= 2:
+                    for idx, _ in group_members:
+                        assigned.add(idx)
+                    avg_score = sum(
+                        self._similarity(
+                            group_members[0][1], c
+                        )
+                        for _, c in group_members[1:]
+                    ) / (len(group_members) - 1)
+                    groups.append(
+                        DuplicateGroup(
+                            citations=[c for _, c in group_members],
+                            reason=f"Title+year+author similarity ≥ {self.threshold:.0%}",
+                            score=avg_score,
+                            representative=group_members[0][1],
+                        )
                     )
-                )
+
         return groups
 
-    @staticmethod
-    def _title_similarity(a: ReferenceEntry, b: ReferenceEntry) -> float:
-        """So khớp 2 title bằng token_set_ratio (RapidFuzz).
+    def _similarity(self, a: Citation, b: Citation) -> float:
+        """Tính similarity giữa 2 citations (0.0–1.0)."""
+        score = 0.0
+        total = 0
 
-        Schema v1.2 §3.7: title lexical features = Levenshtein, token set/sort
-        ratio, character n-gram. Ở đây dùng token_set_ratio làm đại diện.
+        # Year match (weight: 0.2)
+        if a.year and b.year and a.year == b.year:
+            score += 0.2
+        total += 0.2
+
+        # First author match (weight: 0.4)
+        author_a = self._first_author_last_name(a)
+        author_b = self._first_author_last_name(b)
+        if author_a and author_b:
+            if author_a.lower() == author_b.lower():
+                score += 0.4
+            elif self._levenshtein_normalized(author_a, author_b) > 0.8:
+                score += 0.3
+        total += 0.4
+
+        # Title similarity (weight: 0.4)
+        title_a = a.title_normalized or ""
+        title_b = b.title_normalized or ""
+        if title_a and title_b:
+            title_sim = self._jaccard_words(title_a, title_b)
+            score += 0.4 * title_sim
+        total += 0.4
+
+        return score / total if total > 0 else 0.0
+
+    def _first_author_last_name(self, cit: Citation) -> Optional[str]:
+        """Trả first author last name.
+
+        Citation.authors là list[str] (raw strings như "Smith, J." hoặc "Smith J.").
         """
-        ta = _normalize_title(a.title or "")
-        tb = _normalize_title(b.title or "")
-        if not ta or not tb:
+        if cit.authors and len(cit.authors) > 0:
+            raw = cit.authors[0]
+            if isinstance(raw, str):
+                # "Smith, J." → "Smith"
+                # "Smith J." → "Smith"
+                if "," in raw:
+                    return raw.split(",")[0].strip()
+                tokens = raw.split()
+                return tokens[0].strip() if tokens else None
+            # Fallback: object format (shouldn't happen)
+            return getattr(raw, "last_name", None) or ""
+        # Fallback: extract from raw_text
+        m = re.match(r"^([A-Z][a-zÀ-ÿ'-]+)", (cit.raw_text or "").split(",")[0])
+        if m:
+            return m.group(1).strip()
+        return None
+
+    def _jaccard_words(self, a: str, b: str) -> float:
+        """Jaccard similarity trên word tokens."""
+        words_a = set(a.split())
+        words_b = set(b.split())
+        if not words_a or not words_b:
             return 0.0
-        return fuzz.token_set_ratio(ta, tb) / 100.0
+        return len(words_a & words_b) / len(words_a | words_b)
+
+    def _levenshtein_normalized(self, a: str, b: str) -> float:
+        """Normalized Levenshtein similarity (0.0–1.0)."""
+        if not a or not b:
+            return 0.0
+        m, n = len(a), len(b)
+        if m == 0 and n == 0:
+            return 1.0
+        if m == 0 or n == 0:
+            return 0.0
+        # Simple DP edit distance
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(m + 1):
+            dp[i][0] = i
+        for j in range(n + 1):
+            dp[0][j] = j
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                cost = 0 if a[i - 1] == b[j - 1] else 1
+                dp[i][j] = min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
+        edit_dist = dp[m][n]
+        max_len = max(m, n)
+        return 1.0 - (edit_dist / max_len)
+
+    def _extract_arxiv_id(self, text: str) -> Optional[str]:
+        """Trích arXiv ID từ text."""
+        m = _ARXIV_RE.search(text)
+        if m:
+            return m.group(1).strip().lower()
+        return None

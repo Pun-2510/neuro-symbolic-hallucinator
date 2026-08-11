@@ -214,7 +214,7 @@ class CitationLink:
     reference_id: Optional[str]
     status: object  # CitationMappingStatus — tránh circular import
     confidence: float
-    method: MappingMethod = MappingMethod.NO_KEYS
+    method: str | MappingMethod = MappingMethod.NO_KEYS  # str for backward compat
     evidence: dict = field(default_factory=dict)
     page: int = 0
     section: str = ""

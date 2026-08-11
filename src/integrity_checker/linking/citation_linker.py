@@ -1,467 +1,394 @@
-"""CitationLinker — bidirectional in-text ↔ reference entry (v1.2 §3.5).
+"""CitationLinker — bidirectional linker in-text ↔ reference entry (v1.2 §3.5).
 
-Thuật toán tổng quan (sẽ chi tiết hoá ở tuần 6–7):
+Mục tiêu:
+    Với danh sách body citations (in-text occurrences) và bibliography entries,
+    tạo citation graph bằng cách match mỗi in-text occurrence với ≥0 reference
+    entry, và mỗi reference entry với ≥0 in-text occurrence.
 
-    1. Occurrence parsing: chuyển Citation (IN_TEXT) → CitationOccurrence.
-    2. Reference entry parsing: chuyển Citation (REFERENCE_LIST) → ReferenceEntry.
-    3. Chiều in-text → reference (forward):
-        a. APA-like: (Author, Year) → match author + year + optional suffix.
-        b. IEEE-like: [N] / [N-M] → match numeric_index.
-        c. Có DOI → exact match.
-        d. Fallback: normalized title + author + year fuzzy.
-    4. Chiều reference → in-text (backward): tập reference_id đã match
-        → UNCITED_REFERENCE = tập reference_entries - matched.
-    5. Phát hiện IN_TEXT_MISMATCH: tìm candidate link, nhưng author/year
-        hoặc số thứ tự KHÁC nhau.
-    6. Phát hiện AMBIGUOUS_MAPPING: ≥2 candidate hợp lý ngang nhau.
-    7. Phát hiện STYLE_INCONSISTENT: marker ở occurrence lệch khỏi style chủ đạo.
+Match logic (theo priority):
+    1. **DOI exact** — cả 2 đều có DOI trích dẫn trong raw_text → chắc chắn nhất.
+    2. **NUMERIC_INDEX** (IEEE) — in-text `[N]` ↔ bib `numeric_index == N`.
+    3. **AUTHOR_YEAR** (APA) — `(Author, Year)` ↔ bib `author.last_name` + `year`.
+    4. **FUZZY** — normalized title similarity fallback.
 
-Skip occurrences nằm trong exclude_sections (config.linking.exclude_sections).
+Outputs:
+    - list[CitationLink] (1 per in-text occurrence)
+    - list of unmatched in-text (→ MISSING_REFERENCE)
+    - list of unmatched reference entries (→ UNCITED_REFERENCE)
+    - duplicate groups (→ DUPLICATE_REFERENCE)
 
-Reference:
-    v1.2 §3.5 (Nhận diện kiểu trích dẫn và đối chiếu hai chiều)
-    v1.2 §3.2.2 (mapping statuses)
-    v1.2 Bảng 15 (trạng thái mapping + định nghĩa thao tác)
+References:
+    v1.2 §3.5 (bidirectional linking)
+    v1.2 §3.7 (linking styles — style consistency)
 """
 
 from __future__ import annotations
 
 import logging
 import re
-from collections import defaultdict
-from typing import Iterable, Optional
+from typing import Optional
 
-from integrity_checker.config import get_settings
 from integrity_checker.linking.statuses import (
-    CitationLink,
     CitationMappingStatus,
-    CitationOccurrence,
     LinkingResult,
-    ReferenceEntry,
-    StyleProfile,
 )
+from integrity_checker.models.citation import Citation, CitationStyle, CitationType
+from integrity_checker.models.validation import CitationLink, MappingMethod
 
 logger = logging.getLogger(__name__)
 
-
-# --- Regex patterns (v1.2 Bảng 16) ---
-# Lấy từ config.linking.* patterns. Mặc định cho APA-like author-year + IEEE-like numeric.
-
-_APA_AUTHOR_YEAR_RE = re.compile(
-    r"\(\s*"
-    r"(?P<author>[A-ZÀ-Ỹ][\wÀ-Ỹ\.\-]+(?:\s+(?:et\s+al\.|and\s+[A-ZÀ-Ỹ][\wÀ-Ỹ\.\-]+))?)"
-    r",\s*"
-    r"(?P<year>(?:19|20)\d{2})(?P<suffix>[a-z])?"
-    r"\)"
-)
-_APA_NARRATIVE_RE = re.compile(
-    r"(?P<author>[A-ZÀ-Ỹ][\wÀ-Ỹ\.\-]+(?:\s+(?:et\s+al\.|and\s+[A-ZÀ-Ỹ][\wÀ-Ỹ\.\-]+))?)"
-    r"\s*\(\s*(?P<year>(?:19|20)\d{2})(?P<suffix>[a-z])?\s*\)"
-)
-_IEEE_NUMERIC_RE = re.compile(r"\[(\d+(?:\s*[-,]\s*\d+)*)\]")
-_DOI_RE = re.compile(r"10\.\d{4,9}/[^\s\]\)\,;]+")
+# Regex cho in-text APA pattern: (Author, Year)
+_APA_YEAR_RE = re.compile(r"\(([A-Za-zÀ-ÿ'.\s-]+),\s*((?:19|20)\d{2}[a-z]?)\)")
+# Regex cho in-text IEEE numeric: [N] or [N, M] or [N-M]
+_IEEE_NUM_RE = re.compile(r"\[(\d+(?:\s*[-–,]\s*\d+)*)\]")
+# Regex cho year extraction từ bib entry
+_BIB_YEAR_RE = re.compile(r"\((?:19|20)\d{2}[a-z]?\)|(?:19|20)\d{2}[a-z]?")
 
 
 class CitationLinker:
-    """Bidirectional linker — APA-like + IEEE-like + ambiguous."""
+    """Bidirectional linker in-text ↔ reference entry."""
 
-    def __init__(self) -> None:
-        s = get_settings()
-        self.exclude_sections = set(s.linking.exclude_sections)
-        self._duplicate_threshold = s.linking.duplicate_detection.title_year_author_similarity
-
-    # -- public entry --
+    def __init__(
+        self,
+        fuzzy_threshold: float = 0.80,
+        author_year_confidence: float = 0.90,
+        numeric_confidence: float = 0.90,
+        doi_confidence: float = 0.95,
+        fuzzy_confidence: float = 0.65,
+    ) -> None:
+        """
+        Args:
+            fuzzy_threshold: ngưỡng similarity cho fuzzy match.
+            author_year_confidence: confidence khi match by author+year.
+            numeric_confidence: confidence khi match by numeric index.
+            doi_confidence: confidence khi match by DOI.
+            fuzzy_confidence: confidence khi fuzzy fallback.
+        """
+        self.fuzzy_threshold = fuzzy_threshold
+        self.author_year_confidence = author_year_confidence
+        self.numeric_confidence = numeric_confidence
+        self.doi_confidence = doi_confidence
+        self.fuzzy_confidence = fuzzy_confidence
 
     def link(
         self,
-        occurrences: list[CitationOccurrence],
-        references: list[ReferenceEntry],
-        style_profile: StyleProfile,
+        body_citations: list[Citation],
+        bib_citations: list[Citation],
     ) -> LinkingResult:
-        """Link occurrences ↔ references, trả LinkingResult.
+        """Link in-text occurrences ↔ reference entries.
 
         Args:
-            occurrences: in-text citations đã parse (đã loại trừ references section).
-            references: reference entries đã parse.
-            style_profile: document-level style, dùng để chọn strategy
-                + phát hiện STYLE_INCONSISTENT.
+            body_citations: Citation[] từ body (IN_TEXT / NUMERIC type).
+            bib_citations: Citation[] từ bibliography (REFERENCE_LIST type).
 
         Returns:
-            LinkingResult với links, uncited, ambiguous, counts.
+            LinkingResult với:
+            - links: list[CitationLink] (1 per body_citations)
+            - unmatched_in_text: IDs của in-text không match bib nào
+            - unmatched_reference_ids: IDs của bib không match in-text nào
+            - status_counts: summary
         """
-        # 1. Index references cho lookup nhanh
-        ref_by_author_year: dict[tuple[str, str], ReferenceEntry] = {}
-        ref_by_year_suffix: dict[tuple[str, Optional[str]], list[ReferenceEntry]] = defaultdict(list)
-        ref_by_numeric: dict[int, ReferenceEntry] = {}
-        ref_by_doi: dict[str, ReferenceEntry] = {}
-        refs_by_id: dict[str, ReferenceEntry] = {}
-
-        for ref in references:
-            refs_by_id[ref.reference_id] = ref
-            if ref.doi:
-                ref_by_doi[ref.doi.lower()] = ref
-            if ref.year:
-                key = (ref.year, ref.year_suffix)
-                ref_by_year_suffix[key].append(ref)
-            if ref.authors:
-                last_name = self._canonical_author(ref.authors[0])
-                if last_name:
-                    ref_by_author_year[(last_name, ref.year or "")] = ref
-            if 1 <= ref.order_index <= 9999:
-                ref_by_numeric[ref.order_index] = ref
-
-        # 2. Forward pass: in-text → reference
-        links: list[CitationLink] = []
-        matched_ref_ids: set[str] = set()
-        ambiguous_occurrence_ids: list[str] = []
-
-        for occ in occurrences:
-            link = self._link_one(occ, refs_by_id, ref_by_author_year,
-                                  ref_by_year_suffix, ref_by_numeric, ref_by_doi, style_profile)
-            links.append(link)
-            if link.status == CitationMappingStatus.AMBIGUOUS_MAPPING:
-                ambiguous_occurrence_ids.append(occ.occurrence_id)
-            elif link.reference_id is not None and link.status in (
-                CitationMappingStatus.MATCHED,
-                CitationMappingStatus.IN_TEXT_MISMATCH,
-            ):
-                matched_ref_ids.add(link.reference_id)
-
-        # 3. Backward pass: reference → in-text
-        uncited: list[str] = []
-        for ref in references:
-            if ref.reference_id not in matched_ref_ids:
-                uncited.append(ref.reference_id)
-
-        # 4. Counts by status
-        counts: dict[str, int] = defaultdict(int)
-        for link in links:
-            counts[link.status.value] += 1
-        # Uncited count = len(uncited), theo định nghĩa không phải link
-        if uncited:
-            counts[CitationMappingStatus.UNCITED_REFERENCE.value] = len(uncited)
-
-        return LinkingResult(
-            links=links,
-            uncited_reference_ids=uncited,
-            ambiguous_mapping_ids=ambiguous_occurrence_ids,
-            counts_by_status=dict(counts),
+        result = LinkingResult(
+            total_citations=len(body_citations),
+            total_references=len(bib_citations),
         )
 
-    # -- internals --
+        # Index bib citations by different keys
+        bib_by_doi = self._index_by_doi(bib_citations)
+        bib_by_index = self._index_by_numeric(bib_citations)
+        bib_by_author_year = self._index_by_author_year(bib_citations)
+        bib_by_author_year_suffix = self._index_by_author_year_suffix(bib_citations)
 
-    def _link_one(
-        self,
-        occ: CitationOccurrence,
-        refs_by_id: dict[str, ReferenceEntry],
-        ref_by_author_year: dict[tuple[str, str], ReferenceEntry],
-        ref_by_year_suffix: dict[tuple[str, Optional[str]], list[ReferenceEntry]],
-        ref_by_numeric: dict[int, ReferenceEntry],
-        ref_by_doi: dict[str, ReferenceEntry],
-        style: StyleProfile,
-    ) -> CitationLink:
-        """Link 1 occurrence. Trả CitationLink với status phù hợp.
+        # Track which bib entries are matched (by index)
+        # NOTE: same bib can be matched by multiple in-text occurrences
+        bib_matched: set[int] = set()
 
-        Quyết định theo thứ tự ưu tiên:
-        1. DOI exact → MATCHED (nếu tìm thấy) hoặc MISSING_REFERENCE.
-        2. APA-like (nếu style chủ đạo cho phép hoặc không ambiguous).
-        3. IEEE-like.
-        4. AMBIGUOUS_MAPPING nếu ≥2 candidate ngang nhau.
-        """
-        # --- 1. DOI exact (ưu tiên cao nhất) ---
-        if occ.doi:
-            ref = ref_by_doi.get(occ.doi.lower())
-            if ref:
-                return CitationLink(
-                    occurrence_id=occ.occurrence_id,
-                    reference_id=ref.reference_id,
-                    status=CitationMappingStatus.MATCHED,
-                    confidence=0.95,
-                    method="doi_exact",
-                    evidence={"doi": occ.doi, "raw": occ.raw_text},
-                    page=occ.page,
-                    section=occ.section,
-                )
-            # DOI nằm trong occurrence nhưng không có ref khớp
-            return CitationLink(
-                occurrence_id=occ.occurrence_id,
-                reference_id=None,
-                status=CitationMappingStatus.MISSING_REFERENCE,
-                confidence=0.85,
-                method="doi_not_found",
-                evidence={"doi": occ.doi, "raw": occ.raw_text},
-                page=occ.page,
-                section=occ.section,
+        for i, cit in enumerate(body_citations):
+            occ_id = cit.reference_id or f"occ-{i:04d}"
+
+            # Try match methods in priority order
+            link = self._try_match(
+                cit, occ_id, bib_by_doi, bib_by_index,
+                bib_by_author_year, bib_by_author_year_suffix,
+                bib_citations
             )
 
-        # --- 2. APA-like author-year ---
-        # Nếu style là IEEE-like thuần, có thể bỏ qua; nhưng để an toàn vẫn thử
-        # trước (fallback). Logic STYLE_INCONSISTENT đánh dấu ở dưới.
-        if occ.authors and occ.year:
-            last_name = self._canonical_author(occ.authors[0])
-            key = (last_name, occ.year)
-            ref = ref_by_author_year.get(key)
-            if ref:
-                # Có thể có nhiều ref cùng (last_name, year) — kiểm tra suffix
-                if occ.year_suffix and ref.year_suffix != occ.year_suffix:
-                    # Suffix mismatch — có thể là 2024a vs 2024b
-                    candidates = ref_by_year_suffix.get((occ.year, occ.year_suffix), [])
-                    if candidates:
-                        return CitationLink(
-                            occurrence_id=occ.occurrence_id,
-                            reference_id=candidates[0].reference_id,
-                            status=CitationMappingStatus.MATCHED,
-                            confidence=0.85,
-                            method="author_year_suffix",
-                            evidence={"author": occ.authors[0], "year": occ.year,
-                                      "suffix": occ.year_suffix, "raw": occ.raw_text},
-                            page=occ.page,
-                            section=occ.section,
-                        )
-                    # Không tìm ref với suffix phù hợp → IN_TEXT_MISMATCH
-                    return CitationLink(
-                        occurrence_id=occ.occurrence_id,
-                        reference_id=ref.reference_id,
-                        status=CitationMappingStatus.IN_TEXT_MISMATCH,
-                        confidence=0.7,
-                        method="author_year_suffix_mismatch",
-                        evidence={"author": occ.authors[0], "year": occ.year,
-                                  "suffix": occ.year_suffix, "expected_suffix": ref.year_suffix},
-                        page=occ.page,
-                        section=occ.section,
-                    )
-                return CitationLink(
-                    occurrence_id=occ.occurrence_id,
-                    reference_id=ref.reference_id,
-                    status=CitationMappingStatus.MATCHED,
-                    confidence=0.9,
-                    method="author_year",
-                    evidence={"author": occ.authors[0], "year": occ.year, "raw": occ.raw_text},
-                    page=occ.page,
-                    section=occ.section,
-                )
-            # Không tìm ref cùng (author, year) → MISSING_REFERENCE
-            return CitationLink(
-                occurrence_id=occ.occurrence_id,
-                reference_id=None,
-                status=CitationMappingStatus.MISSING_REFERENCE,
-                confidence=0.75,
-                method="author_year_not_found",
-                evidence={"author": occ.authors[0], "year": occ.year, "raw": occ.raw_text},
-                page=occ.page,
-                section=occ.section,
-            )
-
-        # --- 3. IEEE-like numeric ---
-        if occ.numeric_indices:
-            # Range [1-5] đã được expand thành [1,2,3,4,5] ở parse_occurrence
-            if len(occ.numeric_indices) == 1:
-                idx = occ.numeric_indices[0]
-                ref = ref_by_numeric.get(idx)
-                if ref:
-                    return CitationLink(
-                        occurrence_id=occ.occurrence_id,
-                        reference_id=ref.reference_id,
-                        status=CitationMappingStatus.MATCHED,
-                        confidence=0.9,
-                        method="numeric_index",
-                        evidence={"index": idx, "raw": occ.raw_text},
-                        page=occ.page,
-                        section=occ.section,
-                    )
-                return CitationLink(
-                    occurrence_id=occ.occurrence_id,
-                    reference_id=None,
-                    status=CitationMappingStatus.MISSING_REFERENCE,
-                    confidence=0.8,
-                    method="numeric_index_not_found",
-                    evidence={"index": idx, "raw": occ.raw_text},
-                    page=occ.page,
-                    section=occ.section,
-                )
-            # Multi-index [1,3,5] hoặc [1-5] — tách thành nhiều link
-            # TODO: CitationLinker hiện 1 occurrence → 1 link
-            # → multi-index cần Link OCCURRENCE_COLLECTION; sẽ làm ở tuần 6–7
-            found = [ref_by_numeric.get(i) for i in occ.numeric_indices]
-            if all(found):
-                # Tất cả matched → dùng candidate đầu làm canonical, evidence có list
-                primary = next(r for r in found if r is not None)
-                return CitationLink(
-                    occurrence_id=occ.occurrence_id,
-                    reference_id=primary.reference_id,
-                    status=CitationMappingStatus.MATCHED,
-                    confidence=0.85,
-                    method="numeric_index_multi",
-                    evidence={"indices": occ.numeric_indices, "raw": occ.raw_text},
-                    page=occ.page,
-                    section=occ.section,
-                )
-            missing = [i for i, r in zip(occ.numeric_indices, found) if r is None]
-            return CitationLink(
-                occurrence_id=occ.occurrence_id,
-                reference_id=None,
-                status=CitationMappingStatus.MISSING_REFERENCE,
-                confidence=0.7,
-                method="numeric_index_multi_partial",
-                evidence={"missing_indices": missing, "raw": occ.raw_text},
-                page=occ.page,
-                section=occ.section,
-            )
-
-        # --- 4. Không parse được keys → AMBIGUOUS_MAPPING ---
-        return CitationLink(
-            occurrence_id=occ.occurrence_id,
-            reference_id=None,
-            status=CitationMappingStatus.AMBIGUOUS_MAPPING,
-            confidence=0.3,
-            method="no_keys",
-            evidence={"raw": occ.raw_text},
-            page=occ.page,
-            section=occ.section,
-        )
-
-    # -- helpers --
-
-    @staticmethod
-    def _canonical_author(raw: str) -> str:
-        """Chuẩn hoá last name để so khớp.
-
-        "Smith, J." → "Smith"
-        "Smith J." → "Smith"
-        "van der Berg, J." → "van der Berg" (chỉ lấy phần trước dấu phẩy; sẽ
-            cải thiện ở tuần 4–5 khi author parser có NER đầy đủ)
-        """
-        if not raw:
-            return ""
-        if "," in raw:
-            return raw.split(",")[0].strip().lower()
-        # Không có dấu phẩy → token cuối
-        parts = raw.split()
-        return parts[-1].strip().lower() if parts else ""
-
-    # -- parsing helpers (entry points cho tuần 6–7) --
-
-    @staticmethod
-    def parse_occurrence(
-        raw_text: str,
-        page: int = 0,
-        section: str = "",
-        occurrence_id: str = "",
-        context: str = "",
-    ) -> CitationOccurrence:
-        """Parse 1 in-text citation thành CitationOccurrence.
-
-        Đây là scaffold — sẽ thay thế bằng CitationExtractor integration
-        ở tuần 6–7. Hiện tại nhận diện 3 dạng:
-        - APA-like parenthetical: (Smith, 2020) / (Smith et al., 2020a)
-        - APA-like narrative: Smith (2020) / Smith et al. (2020)
-        - IEEE-like numeric: [12] / [1,2,3] / [1-5]
-        """
-        occ = CitationOccurrence(
-            occurrence_id=occurrence_id or f"occ-{hash(raw_text) & 0xFFFF:04x}",
-            raw_text=raw_text,
-            page=page,
-            section=section,
-            context=context,
-        )
-
-        # DOI (ưu tiên parse đầu vì dễ nhất)
-        doi_m = _DOI_RE.search(raw_text)
-        if doi_m:
-            occ.doi = doi_m.group(0).rstrip(".")
-
-        # Numeric IEEE
-        num_m = _IEEE_NUMERIC_RE.search(raw_text)
-        if num_m:
-            indices = CitationLinker._expand_numeric(num_m.group(1))
-            occ.numeric_indices = indices
-            if len(indices) == 1:
-                occ.numeric_index = indices[0]
-            occ.raw_style_hint = "IEEE"
-            return occ
-
-        # APA parenthetical
-        apa_p = _APA_AUTHOR_YEAR_RE.search(raw_text)
-        if apa_p:
-            occ.authors = [apa_p.group("author").strip()]
-            occ.year = apa_p.group("year")
-            occ.year_suffix = apa_p.group("suffix") or None
-            occ.raw_style_hint = "APA"
-            return occ
-
-        # APA narrative
-        apa_n = _APA_NARRATIVE_RE.search(raw_text)
-        if apa_n:
-            occ.authors = [apa_n.group("author").strip()]
-            occ.year = apa_n.group("year")
-            occ.year_suffix = apa_n.group("suffix") or None
-            occ.raw_style_hint = "APA"
-            return occ
-
-        # Không parse được
-        logger.debug("Could not parse occurrence: %s", raw_text)
-        return occ
-
-    @staticmethod
-    def _expand_numeric(spec: str) -> list[int]:
-        """Mở rộng '1,2,3' hoặc '1-5' thành [1,2,3,4,5]."""
-        indices: list[int] = []
-        for part in spec.split(","):
-            part = part.strip()
-            if "-" in part:
-                try:
-                    start_s, end_s = part.split("-", 1)
-                    start, end = int(start_s.strip()), int(end_s.strip())
-                    if start <= end:
-                        indices.extend(range(start, end + 1))
-                    else:
-                        indices.extend(range(end, start + 1))
-                except ValueError:
-                    continue
+            if link is not None:
+                result.add_link(link)
+                # Track matched bibs (without blocking reuse)
+                if link.reference_id:
+                    for idx, bib in enumerate(bib_citations):
+                        if (bib.reference_id or f"ref-{idx:04d}") == link.reference_id:
+                            bib_matched.add(idx)
+                            break
             else:
-                try:
-                    indices.append(int(part))
-                except ValueError:
-                    continue
-        return sorted(set(indices))
+                # No match → MISSING_REFERENCE
+                result.add_link(
+                    CitationLink(
+                        occurrence_id=occ_id,
+                        reference_id=None,
+                        status=CitationMappingStatus.MISSING_REFERENCE,
+                        confidence=0.0,
+                        method=MappingMethod.NO_KEYS,
+                    )
+                )
 
-    @staticmethod
-    def parse_reference(
-        raw_text: str,
-        order_index: int,
-        page: int = 0,
-        reference_id: str = "",
-    ) -> ReferenceEntry:
-        """Scaffold parser — sẽ thay bằng ReferenceListParser integration ở tuần 6.
+        # Find unmatched bib entries → UNCITED_REFERENCE
+        for i, bib in enumerate(bib_citations):
+            if i not in bib_matched:
+                result.unmatched_reference_ids.append(bib.reference_id or f"ref-{i:04d}")
 
-        Hiện tại chỉ trích DOI + year + author heuristic (split dấu phẩy).
-        Stub này đủ để test link logic.
+        return result
+
+    # -- internal helpers --
+
+    def _try_match(
+        self,
+        cit: Citation,
+        occ_id: str,
+        bib_by_doi: dict[str, Citation],
+        bib_by_index: dict[int, Citation],
+        bib_by_author_year: dict[tuple[str, str], list[Citation]],
+        bib_by_author_year_suffix: dict[tuple[str, str, str], list[Citation]],
+        bib_citations: list[Citation],
+    ) -> Optional[CitationLink]:
+        """Try matching in priority: DOI → NUMERIC → AUTHOR_YEAR → FUZZY.
+
+        NOTE: No blocking — same reference entry can match multiple in-text
+        occurrences. This is valid: the same source may be cited multiple times.
+        Unmatched references (uncited entries) are detected after all linking.
         """
-        ref = ReferenceEntry(
-            reference_id=reference_id or f"ref-{order_index:04d}",
-            raw_text=raw_text,
-            order_index=order_index,
-            page=page,
-        )
 
-        doi_m = _DOI_RE.search(raw_text)
-        if doi_m:
-            ref.doi = doi_m.group(0).rstrip(".")
+        # 1. DOI exact
+        doi = self._extract_doi(cit.raw_text)
+        if doi and doi in bib_by_doi:
+            bib_match = bib_by_doi[doi]
+            bib_idx = self._find_bib_index(bib_match, bib_citations)
+            return CitationLink(
+                occurrence_id=occ_id,
+                reference_id=bib_match.reference_id or f"ref-{bib_idx:04d}",
+                status=CitationMappingStatus.MATCHED,
+                confidence=self.doi_confidence,
+                method=MappingMethod.DOI_EXACT,
+            )
 
-        # Year + suffix (4 chu số + optional a/b)
-        year_m = re.search(r"\b((?:19|20)\d{2})([a-z])\b", raw_text)
-        if year_m:
-            ref.year = year_m.group(1)
-            ref.year_suffix = year_m.group(2)
+        # 2. NUMERIC_INDEX (IEEE)
+        if cit.citation_type == CitationType.NUMERIC:
+            indices = self._extract_numeric_indices(cit.raw_text)
+            for idx in indices:
+                if idx in bib_by_index:
+                    bib_ref = bib_by_index[idx]
+                    bib_idx = self._find_bib_index(bib_ref, bib_citations)
+                    return CitationLink(
+                        occurrence_id=occ_id,
+                        reference_id=bib_ref.reference_id or f"ref-{bib_idx:04d}",
+                        status=CitationMappingStatus.MATCHED,
+                        confidence=self.numeric_confidence,
+                        method=MappingMethod.NUMERIC_INDEX,
+                    )
+
+        # 3. AUTHOR_YEAR (APA-like)
+        author, year, year_suffix = self._extract_author_year(cit.raw_text)
+        if author and year:
+            # Try exact match first (author + year + suffix)
+            if year_suffix:
+                key_suffix = (author.lower().strip(), year, year_suffix)
+                candidates_suffix = bib_by_author_year_suffix.get(key_suffix, [])
+                if candidates_suffix:
+                    candidate = candidates_suffix[0]
+                    bib_idx = self._find_bib_index(candidate, bib_citations)
+                    return CitationLink(
+                        occurrence_id=occ_id,
+                        reference_id=candidate.reference_id or f"ref-{bib_idx:04d}",
+                        status=CitationMappingStatus.MATCHED,
+                        confidence=self.author_year_confidence,
+                        method=MappingMethod.AUTHOR_YEAR,
+                    )
+            # Fallback: author + year only
+            key = (author.lower().strip(), year)
+            candidates = bib_by_author_year.get(key, [])
+            if candidates:
+                candidate = candidates[0]
+                bib_idx = self._find_bib_index(candidate, bib_citations)
+                return CitationLink(
+                    occurrence_id=occ_id,
+                    reference_id=candidate.reference_id or f"ref-{bib_idx:04d}",
+                    status=CitationMappingStatus.MATCHED,
+                    confidence=self.author_year_confidence,
+                    method=MappingMethod.AUTHOR_YEAR,
+                )
+
+        # 4. FUZZY — title similarity (if bib entries have title_normalized)
+        best = self._try_fuzzy(cit, occ_id, bib_by_doi, bib_citations)
+        if best is not None:
+            return best
+
+        # No match
+        return None
+
+    def _try_fuzzy(
+        self,
+        cit: Citation,
+        occ_id: str,
+        bib_by_doi: dict[str, Citation],
+        bib_citations: list[Citation],
+    ) -> Optional[CitationLink]:
+        """Fuzzy match: normalized title similarity."""
+        if not cit.title_normalized:
+            return None
+
+        best_bib_idx = None
+        best_score = 0.0
+
+        for doi, bib in bib_by_doi.items():
+            bib_idx = self._find_bib_index(bib, bib_citations)
+            if bib_idx in bib_used:
+                continue
+            if bib.title_normalized:
+                score = self._title_similarity(cit.title_normalized, bib.title_normalized)
+                if score > best_score:
+                    best_score = score
+                    best_bib_idx = bib_idx
+
+        if best_bib_idx is not None and best_score >= self.fuzzy_threshold:
+            bib = bib_citations[best_bib_idx]
+            return CitationLink(
+                occurrence_id=occ_id,
+                reference_id=bib.reference_id or f"ref-{best_bib_idx:04d}",
+                status=CitationMappingStatus.MATCHED,
+                confidence=best_score * self.fuzzy_confidence,
+                method=MappingMethod.FUZZY,
+            )
+        return None
+
+    def _find_bib_index(self, bib: Citation, bib_citations: list[Citation]) -> int:
+        """Tìm index của bib trong bib_citations."""
+        for i, b in enumerate(bib_citations):
+            if b is bib:
+                return i
+        return 0
+
+    # -- index builders --
+
+    def _index_by_doi(self, bibs: list[Citation]) -> dict[str, Citation]:
+        out: dict[str, Citation] = {}
+        for bib in bibs:
+            doi = (bib.doi or "").strip()
+            if doi:
+                out[doi.lower()] = bib
+        return out
+
+    def _index_by_numeric(self, bibs: list[Citation]) -> dict[int, Citation]:
+        out: dict[int, Citation] = {}
+        for bib in bibs:
+            if bib.numeric_index is not None:
+                out[bib.numeric_index] = bib
+        return out
+
+    def _index_by_author_year(
+        self, bibs: list[Citation]
+    ) -> dict[tuple[str, str], list[Citation]]:
+        out: dict[tuple[str, str], list[Citation]] = {}
+        for bib in bibs:
+            if bib.authors and bib.year:
+                last_name = self._normalize_last_name(bib.authors[0])
+                if last_name:
+                    key = (last_name.lower(), bib.year)
+                    out.setdefault(key, []).append(bib)
+        return out
+
+    def _index_by_author_year_suffix(
+        self, bibs: list[Citation]
+    ) -> dict[tuple[str, str, str], list[Citation]]:
+        """Index bibs by (last_name, year, year_suffix) for 2020a/2020b matching."""
+        out: dict[tuple[str, str, str], list[Citation]] = {}
+        for bib in bibs:
+            if bib.authors and bib.year:
+                last_name = self._normalize_last_name(bib.authors[0])
+                year_suffix = bib.year_suffix or ""
+                if last_name:
+                    key = (last_name.lower(), bib.year, year_suffix)
+                    out.setdefault(key, []).append(bib)
+        return out
+
+    def _normalize_last_name(self, raw: str | object) -> str:
+        """Extract last name from author data.
+
+        Handles:
+            - str "Smith, J." → "Smith"
+            - str "Smith J." → "Smith"
+            - Author object → .last_name attribute
+        """
+        # Handle Author object from author_parser.py
+        if not isinstance(raw, str):
+            return getattr(raw, "last_name", "") or ""
+
+        # String: "Smith, J." → "Smith"
+        if "," in raw:
+            last = raw.split(",")[0].strip()
         else:
-            year_m = re.search(r"\b((?:19|20)\d{2})\b", raw_text)
-            if year_m:
-                ref.year = year_m.group(1)
+            tokens = raw.split()
+            last = tokens[0] if tokens else ""
+        return last.strip()
 
-        # Author block: lấy phần trước năm đầu tiên (APA pattern)
-        if ref.year:
-            m = re.match(r"^(?P<auth>.+?)\s*\(\s*" + re.escape(ref.year), raw_text)
-            if m:
-                ref.authors = [m.group("auth").strip()]
+    # -- extractors --
 
-        return ref
+    def _extract_doi(self, text: str) -> Optional[str]:
+        """Trích DOI từ raw text."""
+        doi_match = re.search(
+            r"10\.\d{4,}/[^\s\])\"'>]+", text, re.IGNORECASE
+        )
+        if doi_match:
+            return doi_match.group(0).rstrip(".,;:").lower()
+        return None
+
+    def _extract_numeric_indices(self, text: str) -> list[int]:
+        """Trích numeric indices từ IEEE-style [N] hoặc [N, M] hoặc [N-M]."""
+        m = _IEEE_NUM_RE.search(text)
+        if not m:
+            return []
+        parts = re.split(r"[\s,\-–]+", m.group(1))
+        indices = []
+        for p in parts:
+            try:
+                indices.append(int(p.strip()))
+            except ValueError:
+                pass
+        return indices
+
+    def _extract_author_year(self, text: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
+        """Trích (author, year, year_suffix) từ APA-style (Author, Year).
+
+        Handles: (Smith, 2020) → ("smith", "2020", None)
+                 (Smith, 2020a) → ("smith", "2020", "a")
+                 (Smith, 2020b) → ("smith", "2020", "b")
+
+        Returns:
+            (normalized_last_name, year, year_suffix) — author đã được normalize
+            để khớp với _index_by_author_year.
+        """
+        m = _APA_YEAR_RE.search(text)
+        if m:
+            raw_author = m.group(1).strip()
+            year = m.group(2).strip()
+            # Check for suffix letter after year: 2020a, 2020b
+            year_suffix = None
+            if len(year) == 5 and year[4] in "abcdfgh":
+                year_suffix = year[4]
+                year = year[:4]
+            normalized = self._normalize_last_name(raw_author)
+            return normalized, year, year_suffix
+        return None, None, None
+
+    def _title_similarity(self, a: str, b: str) -> float:
+        """Normalized title similarity (0.0–1.0) dùng character overlap."""
+        if not a or not b:
+            return 0.0
+        a_words = set(a.split())
+        b_words = set(b.split())
+        if not a_words or not b_words:
+            return 0.0
+        # Jaccard similarity
+        intersection = len(a_words & b_words)
+        union = len(a_words | b_words)
+        return intersection / union if union > 0 else 0.0

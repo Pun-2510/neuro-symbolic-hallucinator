@@ -426,47 +426,26 @@ class IntegrityPipeline:
         references: list[Citation],
         style_profile: StyleProfile,
     ) -> LinkingResult:
-        """Chạy CitationLinker.link() với CitationOccurrence/ReferenceEntry wrappers.
+        """Chạy CitationLinker.link() với Citation[].
+
+        Wraps in-text citations và references để populate occurrence_id/reference_id,
+        sau đó gọi CitationLinker.link(body_citations, bib_citations).
 
         Returns:
-            LinkingResult với links, uncited, ambiguous, counts.
+            LinkingResult với links, unmatched_reference_ids, status_counts.
         """
-        # Wrap in-text citations → CitationOccurrence
-        occurrences: list[CitationOccurrence] = []
+        # Populate occurrence_id/reference_id trên citations
+        body_with_ids: list[Citation] = []
         for idx, c in enumerate(in_text):
-            occ = CitationLinker.parse_occurrence(
-                raw_text=c.raw_text,
-                occurrence_id=f"occ-{idx + 1:04d}",
-                page=c.page_num or 0,
-            )
-            if occ is not None:
-                occurrences.append(occ)
+            c.reference_id = f"occ-{idx + 1:04d}"
+            body_with_ids.append(c)
 
-        # Wrap references → ReferenceEntry
-        ref_entries: list[ReferenceEntry] = []
+        bib_with_ids: list[Citation] = []
         for idx, c in enumerate(references):
-            # Extract first author last name
-            authors_last_names: list[str] = []
-            for a in c.authors:
-                if hasattr(a, "last_name") and a.last_name:
-                    authors_last_names.append(a.last_name)
-                elif isinstance(a, str) and a:
-                    # Try to extract last token
-                    parts = a.replace(",", " ").split()
-                    if parts:
-                        authors_last_names.append(parts[-1].lower())
-            ref_entry = ReferenceEntry(
-                reference_id=f"ref-{idx + 1:04d}",
-                order_index=idx + 1,
-                authors=authors_last_names,
-                year=c.year or "",
-                title=c.title or "",
-                doi=c.doi,
-                raw_text=c.raw_text,
-            )
-            ref_entries.append(ref_entry)
+            c.reference_id = f"ref-{idx + 1:04d}"
+            bib_with_ids.append(c)
 
-        return self.linker.link(occurrences, ref_entries, style_profile)
+        return self.linker.link(body_with_ids, bib_with_ids)
 
     @staticmethod
     def _build_link_lookup(

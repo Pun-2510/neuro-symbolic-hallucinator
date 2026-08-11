@@ -1,244 +1,132 @@
-"""Unit tests cho ``linking/statuses.py`` — CitationMappingStatus enum + CitationLink.
-
-Mapping chuẩn (v1.2 §3.2.2): 7 trạng thái tách khỏi ValidationLabel.
-
-Reference:
-    v1.2 §3.2.2 (Hai lớp nhãn — Integrity vs Source)
-    v1.2 §3.5 (Bidirectional linking — 7 trạng thái)
-    task #20 tuần 8 (scaffold linking/ package)
-"""
+"""Unit tests cho linking/statuses.py — CitationMappingStatus enum (v1.2 §3.5)."""
 
 from __future__ import annotations
 
 import pytest
 
 from integrity_checker.linking.statuses import (
-    CitationLink,
     CitationMappingStatus,
-    CitationOccurrence,
     LinkingResult,
-    ReferenceEntry,
-    StyleProfile,
+    MAPPING_PENALTIES,
 )
 
 
-# ---------- Test CitationMappingStatus enum ----------
+class TestCitationMappingStatus:
+    """Test enum có đúng 8 trạng thái."""
 
+    def test_all_8_statuses_present(self):
+        assert len(CitationMappingStatus) == 8
 
-class TestEnumStructure:
-    """Test enum có đúng 7 trạng thái + enum identity."""
+    def test_status_values(self):
+        values = [s.value for s in CitationMappingStatus]
+        assert "matched" in values
+        assert "missing_reference" in values
+        assert "uncited_reference" in values
+        assert "in_text_mismatch" in values
+        assert "duplicate_reference" in values
+        assert "ambiguous_mapping" in values
+        assert "style_inconsistent" in values
+        assert "unresolved" in values
 
-    def test_seven_distinct_statuses(self):
-        """BẮT BUỘC đúng 7 status theo v1.2 §3.2.2."""
-        assert len(CitationMappingStatus) == 7
-
-    def test_required_statuses_present(self):
-        required = {
-            "matched",
-            "missing_reference",
-            "uncited_reference",
-            "in_text_mismatch",
-            "duplicate_reference",
-            "ambiguous_mapping",
-            "style_inconsistent",
-        }
-        actual = {s.value for s in CitationMappingStatus}
-        assert required == actual
-
-    def test_status_string_values_lowercase(self):
-        """Bắt buộc lowercase để serialize/UI (xem docstring enum)."""
-        for status in CitationMappingStatus:
-            assert status.value == status.value.lower()
-
-
-# ---------- Test mapping chuẩn (color + is_integrity_issue) ----------
-
-
-class TestColorMapping:
-    """Mỗi status phải có màu badge (hex 7-char) theo bảng màu riêng."""
-
-    def test_matched_green(self):
-        assert CitationMappingStatus.MATCHED.color == "#16a34a"
-
-    def test_missing_reference_red(self):
-        assert CitationMappingStatus.MISSING_REFERENCE.color == "#dc2626"
-
-    def test_uncited_reference_orange(self):
-        assert CitationMappingStatus.UNCITED_REFERENCE.color == "#ea580c"
-
-    def test_in_text_mismatch_yellow(self):
-        assert CitationMappingStatus.IN_TEXT_MISMATCH.color == "#ca8a04"
-
-    def test_duplicate_reference_purple(self):
-        assert CitationMappingStatus.DUPLICATE_REFERENCE.color == "#9333ea"
-
-    def test_ambiguous_mapping_grey(self):
-        assert CitationMappingStatus.AMBIGUOUS_MAPPING.color == "#6b7280"
-
-    def test_style_inconsistent_cyan(self):
-        assert CitationMappingStatus.STYLE_INCONSISTENT.color == "#0891b2"
-
-    @pytest.mark.parametrize("status", list(CitationMappingStatus))
-    def test_color_format_valid_hex(self, status):
-        """Mọi status color phải là hex 7-char bắt đầu #."""
-        assert status.color.startswith("#")
-        assert len(status.color) == 7
-
-
-class TestIntegrityIssueFlag:
-    """is_integrity_issue: True nếu status BIỂU THỊ vấn đề integrity."""
-
-    def test_matched_is_not_issue(self):
+    def test_is_integrity_issue(self):
+        issues = [
+            CitationMappingStatus.MISSING_REFERENCE,
+            CitationMappingStatus.UNCITED_REFERENCE,
+            CitationMappingStatus.IN_TEXT_MISMATCH,
+            CitationMappingStatus.DUPLICATE_REFERENCE,
+            CitationMappingStatus.AMBIGUOUS_MAPPING,
+            CitationMappingStatus.STYLE_INCONSISTENT,
+        ]
+        for s in issues:
+            assert s.is_integrity_issue is True, f"{s} should be issue"
         assert CitationMappingStatus.MATCHED.is_integrity_issue is False
+        assert CitationMappingStatus.UNRESOLVED.is_integrity_issue is False
 
-    @pytest.mark.parametrize("status", [
-        CitationMappingStatus.MISSING_REFERENCE,
-        CitationMappingStatus.UNCITED_REFERENCE,
-        CitationMappingStatus.IN_TEXT_MISMATCH,
-        CitationMappingStatus.DUPLICATE_REFERENCE,
-        CitationMappingStatus.AMBIGUOUS_MAPPING,
-        CitationMappingStatus.STYLE_INCONSISTENT,
-    ])
-    def test_other_statuses_are_issues(self, status):
-        assert status.is_integrity_issue is True
+    def test_is_verified(self):
+        assert CitationMappingStatus.MATCHED.is_verified is True
+        for s in CitationMappingStatus:
+            if s != CitationMappingStatus.MATCHED:
+                assert s.is_verified is False
 
+    def test_is_neutral(self):
+        assert CitationMappingStatus.UNRESOLVED.is_neutral is True
+        for s in CitationMappingStatus:
+            if s != CitationMappingStatus.UNRESOLVED:
+                assert s.is_neutral is False
 
-# ---------- Test CitationLink dataclass ----------
+    def test_penalty_values(self):
+        assert CitationMappingStatus.MATCHED.penalty == 0.0
+        assert CitationMappingStatus.MISSING_REFERENCE.penalty == 1.0
+        assert CitationMappingStatus.IN_TEXT_MISMATCH.penalty == 0.8
+        assert CitationMappingStatus.DUPLICATE_REFERENCE.penalty == 0.6
+        assert CitationMappingStatus.UNCITED_REFERENCE.penalty == 0.5
+        assert CitationMappingStatus.AMBIGUOUS_MAPPING.penalty == 0.4
+        assert CitationMappingStatus.STYLE_INCONSISTENT.penalty == 0.2
+        assert CitationMappingStatus.UNRESOLVED.penalty == 0.0
 
+    def test_labels(self):
+        assert "Matched" in CitationMappingStatus.MATCHED.label
+        assert "Missing" in CitationMappingStatus.MISSING_REFERENCE.label
+        assert "Uncited" in CitationMappingStatus.UNCITED_REFERENCE.label
 
-class TestCitationLinkDataclass:
-    """CitationLink: 1 quan hệ occurrence ↔ reference."""
+    def test_mapping_penalties_dict(self):
+        """MAPPING_PENALTIES dict match enum penalties."""
+        for s in CitationMappingStatus:
+            assert MAPPING_PENALTIES[s] == s.penalty
 
-    def test_default_construction(self):
-        link = CitationLink(
-            occurrence_id="occ-0001",
-            reference_id="ref-0007",
-            status=CitationMappingStatus.MATCHED,
-            confidence=0.95,
-        )
-        assert link.occurrence_id == "occ-0001"
-        assert link.reference_id == "ref-0007"
-        assert link.status == CitationMappingStatus.MATCHED
-        assert link.confidence == 0.95
-        assert link.method == "unknown"
-        assert link.evidence == {}
-        assert link.page == 0
-        assert link.section == ""
-
-    def test_missing_reference_has_none_reference_id(self):
-        """MISSING_REFERENCE phải có reference_id = None."""
-        link = CitationLink(
-            occurrence_id="occ-x",
-            reference_id=None,
-            status=CitationMappingStatus.MISSING_REFERENCE,
-            confidence=0.7,
-        )
-        assert link.reference_id is None
-        assert link.status.is_integrity_issue is True
-
-    def test_evidence_dict_mutable(self):
-        """Evidence dict phải mutable để gắn bằng chứng."""
-        link = CitationLink(
-            occurrence_id="occ-1",
-            reference_id="ref-1",
-            status=CitationMappingStatus.MATCHED,
-            confidence=0.9,
-        )
-        link.evidence["author"] = "Smith"
-        link.evidence["year"] = "2020"
-        assert link.evidence["author"] == "Smith"
-        assert link.evidence["year"] == "2020"
-
-    def test_method_field_stored(self):
-        """method là free-form str để dùng cho evidence/audit."""
-        link = CitationLink(
-            occurrence_id="occ-1",
-            reference_id="ref-1",
-            status=CitationMappingStatus.MATCHED,
-            confidence=0.95,
-            method="doi_exact",
-        )
-        assert link.method == "doi_exact"
-
-    def test_section_and_page_defaults(self):
-        link = CitationLink(
-            occurrence_id="occ-1",
-            reference_id="ref-1",
-            status=CitationMappingStatus.MATCHED,
-            confidence=0.9,
-            page=5,
-            section="introduction",
-        )
-        assert link.page == 5
-        assert link.section == "introduction"
-
-
-# ---------- Test CitationOccurrence & ReferenceEntry wrappers ----------
-
-
-class TestWrappers:
-    """CitationOccurrence & ReferenceEntry wrappers cho extractor output."""
-
-    def test_occurrence_defaults(self):
-        occ = CitationOccurrence(
-            occurrence_id="occ-1",
-            raw_text="(Smith, 2020)",
-            page=1,
-        )
-        assert occ.authors == []
-        assert occ.year is None
-        assert occ.numeric_indices == []
-        assert occ.doi is None
-
-    def test_reference_entry_defaults(self):
-        ref = ReferenceEntry(
-            reference_id="ref-1",
-            raw_text="...",
-            order_index=1,
-        )
-        assert ref.year is None
-        assert ref.title is None
-        assert ref.doi is None
-
-
-# ---------- Test LinkingResult aggregate ----------
+    def test_string_creation(self):
+        """Enum có thể tạo từ string."""
+        assert CitationMappingStatus("matched") == CitationMappingStatus.MATCHED
+        assert CitationMappingStatus("missing_reference") == CitationMappingStatus.MISSING_REFERENCE
+        assert CitationMappingStatus("unresolved") == CitationMappingStatus.UNRESOLVED
 
 
 class TestLinkingResult:
-    """LinkingResult aggregate output của CitationLinker.link()."""
+    def test_empty_result(self):
+        result = LinkingResult(total_citations=5, total_references=3)
+        assert result.total_citations == 5
+        assert result.total_references == 3
+        assert result.match_rate == 0.0
+        assert result.matched_count == 0
 
-    def test_empty_construction(self):
-        result = LinkingResult()
-        assert result.links == []
-        assert result.uncited_reference_ids == []
-        assert result.duplicate_reference_ids == []
-        assert result.ambiguous_mapping_ids == []
-        assert result.counts_by_status == {}
+    def test_match_rate(self):
+        result = LinkingResult(total_citations=4, total_references=3)
+        assert result.match_rate == 0.0
+        result.matched_count = 2
+        assert result.match_rate == 0.5
 
-    def test_has_integrity_issues_true(self):
-        """Có link non-MATCHED non-STYLE_INCONSISTENT → True."""
-        result = LinkingResult(
-            links=[
-                CitationLink(
-                    occurrence_id="occ-1",
-                    reference_id=None,
-                    status=CitationMappingStatus.MISSING_REFERENCE,
-                    confidence=0.7,
-                )
-            ]
+    def test_add_link_matched(self):
+        from integrity_checker.models.validation import CitationLink, MappingMethod
+        result = LinkingResult(total_citations=2, total_references=2)
+        link = CitationLink(
+            occurrence_id="occ-0", reference_id="ref-0",
+            status=CitationMappingStatus.MATCHED, confidence=0.9,
+            method=MappingMethod.AUTHOR_YEAR
         )
-        assert result.has_integrity_issues() is True
+        result.add_link(link)
+        assert result.matched_count == 1
+        assert result.match_rate == 0.5
+        assert result.status_counts[CitationMappingStatus.MATCHED] == 1
 
-    def test_has_integrity_issues_false_for_matched_only(self):
-        """Có link MATCHED only → False."""
-        result = LinkingResult(
-            links=[
-                CitationLink(
-                    occurrence_id="occ-1",
-                    reference_id="ref-1",
-                    status=CitationMappingStatus.MATCHED,
-                    confidence=0.9,
-                )
-            ]
+    def test_add_link_missing(self):
+        from integrity_checker.models.validation import CitationLink, MappingMethod
+        result = LinkingResult(total_citations=1, total_references=1)
+        link = CitationLink(
+            occurrence_id="occ-0", reference_id=None,
+            status=CitationMappingStatus.MISSING_REFERENCE, confidence=0.0,
+            method=MappingMethod.NO_KEYS
         )
-        assert result.has_integrity_issues() is False
+        result.add_link(link)
+        assert result.matched_count == 0
+        assert result.status_counts[CitationMappingStatus.MISSING_REFERENCE] == 1
+
+    def test_to_dict(self):
+        result = LinkingResult(total_citations=1, total_references=1)
+        result.unmatched_reference_ids = ["ref-0"]
+        d = result.to_dict()
+        assert d["total_citations"] == 1
+        assert d["total_references"] == 1
+        assert d["unmatched_reference_ids"] == ["ref-0"]
+        assert d["match_rate"] == 0.0
+        assert "links" in d
+        assert "status_counts" in d
