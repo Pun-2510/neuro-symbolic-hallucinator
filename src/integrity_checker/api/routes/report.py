@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -83,7 +83,7 @@ def _json_response(filename: str, essay, verdicts: list) -> StreamingResponse:
             for v in verdicts
         ],
         "disclaimer": settings.disclaimer.long,
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     body = json.dumps(payload, ensure_ascii=False, indent=2)
     return StreamingResponse(

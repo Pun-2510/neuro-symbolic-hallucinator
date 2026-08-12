@@ -406,8 +406,14 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
         title = "".join(title_el.itertext()).strip() if title_el is not None else None
 
         # Year
-        year_el = bibl.find(f".//{_TEI}date[@type='published']") or bibl.find(f".//{_TEI}date")
-        year = year_el.get("when", "")[:4] if year_el is not None and year_el.get("when") else None
+        year_el = bibl.find(f".//{_TEI}date[@type='published']")
+        if year_el is None:
+            year_el = bibl.find(f".//{_TEI}date")
+        year: str | None = None
+        if year_el is not None:
+            when = year_el.get("when")
+            if when:
+                year = when[:4]
 
         # Venue (journal-level title) — dùng .// để tìm trong <monogr>
         venue_el = bibl.find(f".//{_TEI}title[@level='j']")

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -18,7 +18,7 @@ class EssayRecord(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     filename: Mapped[str] = mapped_column(String, nullable=False)
     num_pages: Mapped[int] = mapped_column(Integer, default=0)
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     citations: Mapped[list["CitationRecord"]] = relationship(
         back_populates="essay", cascade="all, delete-orphan"
@@ -60,7 +60,7 @@ class VerdictRecord(Base):
     triggered_rules: Mapped[str] = mapped_column(Text, default="[]")  # JSON array
     mismatched_fields: Mapped[str] = mapped_column(Text, default="[]")
     features: Mapped[str] = mapped_column(Text, default="{}")  # JSON object
-    validated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    validated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     essay: Mapped[EssayRecord] = relationship(back_populates="verdicts")
 
@@ -76,4 +76,4 @@ class AuditLog(Base):
     new_label: Mapped[str] = mapped_column(String, nullable=False)
     user: Mapped[str] = mapped_column(String, nullable=False)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    logged_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    logged_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
