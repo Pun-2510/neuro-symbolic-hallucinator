@@ -4,12 +4,66 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Index, JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
     pass
+
+
+class User(Base):
+    """User model for authentication."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), default="user")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    sessions: Mapped[list["Session"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    essays: Mapped[list["EssayRecord"]] = relationship(back_populates="user")
+
+
+class Session(Base):
+    """Session model for JWT token storage."""
+
+    __tablename__ = "sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user: Mapped["User"] = relationship(back_populates="sessions")
+
+
+class CitationCache(Base):
+    """Citation cache model for API response caching."""
+
+    __tablename__ = "citation_cache"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    cache_key: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    raw_response: Mapped[str] = mapped_column(Text, nullable=False)
+    matched_fields: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_hit_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    hit_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+# Indexes for CitationCache
+Index("idx_cache_key", CitationCache.cache_key)
+Index("idx_source", CitationCache.source)
 
 
 class EssayRecord(Base):
@@ -19,6 +73,8 @@ class EssayRecord(Base):
     filename: Mapped[str] = mapped_column(String, nullable=False)
     num_pages: Mapped[int] = mapped_column(Integer, default=0)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    user: Mapped["User | None"] = relationship(back_populates="essays")
 
     citations: Mapped[list["CitationRecord"]] = relationship(
         back_populates="essay", cascade="all, delete-orphan"
