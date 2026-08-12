@@ -170,7 +170,7 @@ export function CitationGraphView({
                 >
                   {f.label}
                   {count > 0 && (
-                    <span className="ml-0.5 text-muted-foreground">({count})</span>
+                    <span className="ml-0.5 text-muted-foreground"> ({count})</span>
                   )}
                 </button>
               );
@@ -197,7 +197,7 @@ export function CitationGraphView({
                 >
                   {f.label}
                   {count > 0 && (
-                    <span className="ml-0.5 text-muted-foreground">({count})</span>
+                    <span className="ml-0.5 text-muted-foreground"> ({count})</span>
                   )}
                 </button>
               );

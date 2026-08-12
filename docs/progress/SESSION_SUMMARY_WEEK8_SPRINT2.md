@@ -1,13 +1,14 @@
 ---
 name: sprint-2-week8-progress
-description: Sprint 2 Tuần 8 — ALL TASKS #20-#30 hoàn thành, 346/346 tests pass
+description: Sprint 2 Tuần 8 — ALL TASKS #20-#30 + Web UI v1.2 hoàn thành
 metadata:
   type: project
 ---
 
 # Sprint 2 — Tuần 8 Progress Summary
 
-**Ngày:** 2026-08-11 (final session)
+**Ngày:** 2026-08-11–12 (final session)
+**Trạng thái:** ALL TASKS #20–#30 + **#31 (Web UI v1.2)** ✅ hoàn thành.
 **Trạng thái:** ALL TASKS #20–#30 ✅ hoàn thành. **346/346 tests pass.**
 
 ## Tasks Completed (All 11 tasks)
