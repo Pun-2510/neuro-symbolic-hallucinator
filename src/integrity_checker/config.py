@@ -33,6 +33,13 @@ class DatabaseConfig(BaseModel):
     echo: bool = False
 
 
+class AuthConfig(BaseModel):
+    """Authentication config for JWT tokens."""
+
+    jwt_secret: str = "change-me-in-production-use-env-var"
+    token_expire_hours: int = 24
+
+
 class PathsConfig(BaseModel):
     data_dir: Path = Path("./data")
     essays_dir: Path = Path("./data/essays")
@@ -313,6 +320,7 @@ class Settings(BaseSettings):
 
     app: AppConfig = Field(default_factory=AppConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    auth: AuthConfig = Field(default_factory=AuthConfig)
     paths: PathsConfig = Field(default_factory=PathsConfig)
     extraction: ExtractionConfig = Field(default_factory=ExtractionConfig)
     style_detection: StyleDetectionConfig = Field(default_factory=StyleDetectionConfig)
