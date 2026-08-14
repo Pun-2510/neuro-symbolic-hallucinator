@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from integrity_checker.api.routes import auth, essays, health, report, users, verdicts
+from integrity_checker.api.routes import auth, cache, essays, export, health, report, users, verdicts
 from integrity_checker.config import get_settings
 from integrity_checker.db.session import init_db
 from integrity_checker.logging import configure_logging, get_logger
@@ -47,6 +47,8 @@ def create_app() -> FastAPI:
     app.include_router(essays.router, prefix="/api/essays", tags=["essays"])
     app.include_router(verdicts.router, prefix="/api/essays", tags=["verdicts"])
     app.include_router(report.router, prefix="/api/essays", tags=["report"])
+    app.include_router(cache.router, prefix="/api/cache", tags=["cache"])
+    app.include_router(export.router, prefix="/api/export", tags=["export"])
 
     return app
 
