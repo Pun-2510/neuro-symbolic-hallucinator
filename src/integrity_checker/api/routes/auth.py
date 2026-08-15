@@ -52,7 +52,7 @@ def _create_token(user: User) -> tuple[str, datetime]:
     settings = get_settings()
     expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.auth.token_expire_hours)
     payload = {
-        "sub": user.id,
+        "sub": str(user.id),  # JWT requires sub to be a string
         "username": user.username,
         "role": user.role,
         "exp": expires_at,
