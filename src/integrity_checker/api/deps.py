@@ -60,13 +60,26 @@ def get_current_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
+    try:
+        user_id = int(user_id)  # Convert back from string
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
     # Verify session exists and is not expired
     repo = Repository(db)
     session_record = repo.get_session_by_token(token)
     if not session_record:
         raise HTTPException(status_code=401, detail="Session not found")
 
-    if session_record.expires_at < datetime.now(timezone.utc):
+    # Compare datetimes - handle naive vs aware
+    now = datetime.now(timezone.utc)
+    expires_at = session_record.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+
+    if expires_at < now:
         repo.delete_session(token)
         raise HTTPException(status_code=401, detail="Token expired")
 
