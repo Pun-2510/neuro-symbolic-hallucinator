@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import os
 import pytest
 from fastapi.testclient import TestClient
 from integrity_checker.db.models import User, Session as SessionModel
 from integrity_checker.db.session import get_session
+
+
+# Test credentials - intentionally simple for testing per plan spec
+# Override with environment variables in CI/CD if needed
+TEST_ADMIN_USER = os.environ.get("TEST_ADMIN_USER", "admin")
+TEST_ADMIN_PASS = os.environ.get("TEST_ADMIN_PASS", "admin123")
 
 
 @pytest.fixture(autouse=True)
@@ -45,7 +52,7 @@ def test_get_essay_404() -> None:
 
     client = TestClient(app)
     # Login first
-    login_resp = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    login_resp = client.post("/api/auth/login", json={"username": TEST_ADMIN_USER, "password": TEST_ADMIN_PASS})
     token = login_resp.json()["token"]
 
     # Now try to get non-existent essay
@@ -60,7 +67,7 @@ def test_upload_rejects_non_pdf() -> None:
 
     client = TestClient(app)
     # Login first
-    login_resp = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    login_resp = client.post("/api/auth/login", json={"username": TEST_ADMIN_USER, "password": TEST_ADMIN_PASS})
     token = login_resp.json()["token"]
 
     resp = client.post(
