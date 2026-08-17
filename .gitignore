@@ -59,3 +59,4 @@ reports/
 .DS_Store
 Thumbs.db
 data/raw/pdf/
+test-results/
