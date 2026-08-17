@@ -1,84 +1,145 @@
 import type { CitationMappingStatus } from '@/api/client';
 import { cn } from '@/lib/utils';
+import { CheckCircle2, XCircle, AlertTriangle, ArrowLeftRight, Copy, HelpCircle, Minus, FileWarning } from 'lucide-react';
 
-const STATUS_MAP: Record<
+const STATUS_CONFIG: Record<
   CitationMappingStatus,
-  { text: string; bg: string; textColor: string; icon: string }
+  {
+    text: string;
+    bgClass: string;
+    textClass: string;
+    borderClass: string;
+    icon: React.ReactNode;
+    shortText: string;
+  }
 > = {
   matched: {
     text: 'Matched',
-    bg: 'bg-green-100',
-    textColor: 'text-green-800',
-    icon: '✓',
+    shortText: 'Match',
+    bgClass: 'bg-emerald-50',
+    textClass: 'text-emerald-700',
+    borderClass: 'border-emerald-200',
+    icon: <CheckCircle2 className="h-3 w-3" />,
   },
   missing_reference: {
-    text: 'Missing Ref',
-    bg: 'bg-red-100',
-    textColor: 'text-red-800',
-    icon: '✗',
+    text: 'Missing Reference',
+    shortText: 'Missing',
+    bgClass: 'bg-red-50',
+    textClass: 'text-red-700',
+    borderClass: 'border-red-200',
+    icon: <XCircle className="h-3 w-3" />,
   },
   uncited_reference: {
-    text: 'Uncited Ref',
-    bg: 'bg-amber-100',
-    textColor: 'text-amber-800',
-    icon: '△',
+    text: 'Uncited Reference',
+    shortText: 'Uncited',
+    bgClass: 'bg-amber-50',
+    textClass: 'text-amber-700',
+    borderClass: 'border-amber-200',
+    icon: <FileWarning className="h-3 w-3" />,
   },
   in_text_mismatch: {
-    text: 'Mismatch',
-    bg: 'bg-orange-100',
-    textColor: 'text-orange-800',
-    icon: '↔',
+    text: 'In-Text Mismatch',
+    shortText: 'Mismatch',
+    bgClass: 'bg-orange-50',
+    textClass: 'text-orange-700',
+    borderClass: 'border-orange-200',
+    icon: <ArrowLeftRight className="h-3 w-3" />,
   },
   duplicate_reference: {
-    text: 'Duplicate',
-    bg: 'bg-purple-100',
-    textColor: 'text-purple-800',
-    icon: '≡',
+    text: 'Duplicate Reference',
+    shortText: 'Duplicate',
+    bgClass: 'bg-purple-50',
+    textClass: 'text-purple-700',
+    borderClass: 'border-purple-200',
+    icon: <Copy className="h-3 w-3" />,
   },
   ambiguous_mapping: {
-    text: 'Ambiguous',
-    bg: 'bg-violet-100',
-    textColor: 'text-violet-800',
-    icon: '?',
+    text: 'Ambiguous Mapping',
+    shortText: 'Ambiguous',
+    bgClass: 'bg-violet-50',
+    textClass: 'text-violet-700',
+    borderClass: 'border-violet-200',
+    icon: <HelpCircle className="h-3 w-3" />,
   },
   style_inconsistent: {
-    text: 'Style Issue',
-    bg: 'bg-sky-100',
-    textColor: 'text-sky-800',
-    icon: '⋕',
+    text: 'Style Inconsistent',
+    shortText: 'Style',
+    bgClass: 'bg-sky-50',
+    textClass: 'text-sky-700',
+    borderClass: 'border-sky-200',
+    icon: <AlertTriangle className="h-3 w-3" />,
   },
   unresolved: {
     text: 'Unresolved',
-    bg: 'bg-gray-100',
-    textColor: 'text-gray-600',
-    icon: '—',
+    shortText: 'Unresolved',
+    bgClass: 'bg-gray-50',
+    textClass: 'text-gray-600',
+    borderClass: 'border-gray-200',
+    icon: <Minus className="h-3 w-3" />,
   },
 };
 
 export function MappingStatusBadge({
   status,
   className,
+  compact = false,
+}: {
+  status: CitationMappingStatus;
+  className?: string;
+  compact?: boolean;
+}) {
+  const config = STATUS_CONFIG[status];
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-md text-xs font-medium border transition-all duration-200',
+        config.bgClass,
+        config.textClass,
+        config.borderClass,
+        className
+      )}
+      title={config.text}
+      role="status"
+      aria-label={config.text}
+    >
+      <span className="flex-shrink-0">{config.icon}</span>
+      {!compact && <span>{config.text}</span>}
+    </span>
+  );
+}
+
+export function MappingStatusBadgePill({
+  status,
+  className,
 }: {
   status: CitationMappingStatus;
   className?: string;
 }) {
-  const info = STATUS_MAP[status];
+  const config = STATUS_CONFIG[status];
+
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium',
-        info.bg,
-        info.textColor,
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-all duration-200',
+        config.bgClass,
+        config.textClass,
         className
       )}
-      title={info.text}
+      title={config.text}
+      role="status"
+      aria-label={config.text}
     >
-      <span>{info.icon}</span>
-      {info.text}
+      <span className="flex-shrink-0">{config.icon}</span>
+      <span>{config.shortText}</span>
     </span>
   );
 }
 
 export function getMappingStatusColor(status: CitationMappingStatus): string {
-  return STATUS_MAP[status].textColor.replace('text-', '');
+  return STATUS_CONFIG[status].textClass;
+}
+
+export function getMappingStatusBg(status: CitationMappingStatus): string {
+  return STATUS_CONFIG[status].bgClass;
 }

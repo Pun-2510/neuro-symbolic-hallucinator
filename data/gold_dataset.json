@@ -1,6 +1,6 @@
 {
-  "dataset_id": "arxiv_nlp_v1",
-  "description": "arXiv NLP papers (cs.CL), 5 papers, Crossref-enriched",
+  "dataset_id": "arxiv_nlp_full",
+  "description": "arXiv NLP papers, all 5 papers, Crossref-enriched, full dataset",
   "num_papers": 5,
   "num_citations": 174,
   "stats": {
