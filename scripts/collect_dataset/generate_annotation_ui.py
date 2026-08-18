@@ -245,8 +245,18 @@ function renderList(){
 function card(c){
   const l=c.ground_truth_label||'',n=c.notes||'';
   const cls=l==='verified'?'verified':l==='suspected_hallucination'?'suspected':l==='metadata_error'||l==='unresolved'?'meta-err':'';
-  // Google Search with full citation text in quotes — exact match
-  const gUrl = `https://www.google.com/search?q=${encodeURIComponent('"' + (c.citation_raw || '').replace(/"/g,'').trim() + '"')}`;
+  // Google Search: extract title + first author (skip [N] number prefix)
+  // "[1] Jimmy Lei Ba, ... Layer normalization. arXiv:1607.06450" → "Layer normalization Jimmy Lei Ba"
+  const raw = (c.citation_raw || '').replace(/^\[[\d]+\]\s*/, ''); // remove [1], [2] prefix
+  // Get title part: before the year/arXiv/journal marker
+  const titleMatch = raw.match(/^[^.]+\.\s+(.+?)(?:\s+arXiv|\s+\d{4}|,\s*\d)/);
+  const title = titleMatch ? titleMatch[1].trim().slice(0, 80) : raw.slice(0, 80);
+  // Get first author: text before first period
+  const authorMatch = raw.match(/^([^,]+(?:,\s*[^,]+){0,2}?)(?:\s+and\s+)/);
+  const author = authorMatch ? authorMatch[1].trim().split(',')[0] : raw.split(',')[0];
+  // Build search query: "title" + "author"
+  const query = `"${title}" "${author}"`.replace(/"/g, '').replace(/\s+/g, ' ').trim();
+  const gUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
   return`<div class="card ${cls}" id="card-${c._i}">
     <div class="card-top">
       <div class="c-num ${l?'done':''}">${c._i+1}</div>
