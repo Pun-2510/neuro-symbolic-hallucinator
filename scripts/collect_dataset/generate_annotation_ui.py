@@ -245,24 +245,15 @@ function renderList(){
 function card(c){
   const l=c.ground_truth_label||'',n=c.notes||'';
   const cls=l==='verified'?'verified':l==='suspected_hallucination'?'suspected':l==='metadata_error'||l==='unresolved'?'meta-err':'';
-  const gsUrl=c.doi?`https://scholar.google.com/scholar?q=doi:${encodeURIComponent(c.doi)}`
-    :c.crossref_title?`https://scholar.google.com/scholar?q=${encodeURIComponent(c.crossref_title)}`
-    :`https://scholar.google.com/scholar?q=${encodeURIComponent(c.citation_raw.slice(0,80))}`;
+  // Google Search with full citation text in quotes — exact match
+  const gUrl = `https://www.google.com/search?q=${encodeURIComponent('"' + (c.citation_raw || '').replace(/"/g,'').trim() + '"')}`;
   return`<div class="card ${cls}" id="card-${c._i}">
     <div class="card-top">
       <div class="c-num ${l?'done':''}">${c._i+1}</div>
       <div>
         <div class="c-paper">📄 ${esc(c.source_paper)}</div>
         <div class="c-raw">${esc(c.citation_raw)}</div>
-      </div>
-    </div>
-    <div class="cf">
-      <div class="cf-row"><span class="cf-label">DOI</span><span class="cf-val">${c.doi?`<a href="https://doi.org/${esc(c.doi)}" target="_blank">${esc(c.doi)}</a>`:'<span class="miss">—</span>'}</span></div>
-      <div class="cf-row"><span class="cf-label">Title</span><span class="cf-val ${!c.crossref_title?'miss':''}">${c.crossref_title?esc(c.crossref_title):'Không tìm thấy trên Crossref'}</span></div>
-      <div class="cf-row"><span class="cf-label">Authors</span><span class="cf-val ${!c.crossref_authors?'miss':''}">${esc(c.crossref_authors)||'—'}</span></div>
-      <div class="cf-row">
-        <span class="cf-label">Year</span><span class="cf-val">${esc(c.crossref_year)||'—'}</span>
-        <a class="gs-link" href="${gsUrl}" target="_blank">🔍 Tra Google Scholar →</a>
+        <a class="gs-link" href="${gUrl}" target="_blank" style="color:var(--primary);font-size:12px;margin-top:4px;display:inline-block">🔍 Tra Google với full citation →</a>
       </div>
     </div>
     <div class="ann">
