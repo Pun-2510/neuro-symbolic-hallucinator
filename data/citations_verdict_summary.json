@@ -1,0 +1,315 @@
+{
+  "1706.03762_001": {
+    "verdict": "suspected_hallucination",
+    "score": 0.0,
+    "matched_fields": [],
+    "reason": "",
+    "best_result": {
+      "title": "",
+      "authors": [],
+      "year": "",
+      "doi": "",
+      "source": ""
+    }
+  },
+  "1706.03762_002": {
+    "verdict": "verified",
+    "score": 0.925,
+    "matched_fields": [
+      "title",
+      "authors",
+      "year"
+    ],
+    "reason": "title_ss",
+    "best_result": {
+      "title": "Neural Machine Translation by Jointly Learning to Align and Translate",
+      "authors": [
+        "Dzmitry Bahdanau",
+        "Kyunghyun Cho",
+        "Yoshua Bengio"
+      ],
+      "year": "2014",
+      "doi": "",
+      "source": "semantic_scholar"
+    }
+  },
+  "1706.03762_003": {
+    "verdict": "suspected_hallucination",
+    "score": 0.0,
+    "matched_fields": [],
+    "reason": "",
+    "best_result": {
+      "title": "",
+      "authors": [],
+      "year": "",
+      "doi": "",
+      "source": ""
+    }
+  },
+  "1706.03762_004": {
+    "verdict": "suspected_hallucination",
+    "score": 0.0,
+    "matched_fields": [],
+    "reason": "",
+    "best_result": {
+      "title": "",
+      "authors": [],
+      "year": "",
+      "doi": "",
+      "source": ""
+    }
+  },
+  "1706.03762_005": {
+    "verdict": "suspected_hallucination",
+    "score": 0.0,
+    "matched_fields": [],
+    "reason": "",
+    "best_result": {
+      "title": "",
+      "authors": [],
+      "year": "",
+      "doi": "",
+      "source": ""
+    }
+  },
+  "1706.03762_006": {
+    "verdict": "verified",
+    "score": 1.0,
+    "matched_fields": [
+      "title",
+      "authors",
+      "year"
+    ],
+    "reason": "doi_ss",
+    "best_result": {
+      "title": "Xception: Deep Learning with Depthwise Separable Convolutions",
+      "authors": [
+        "François Chollet"
+      ],
+      "year": "2016",
+      "doi": "10.1109/cvpr.2017.195",
+      "source": "semantic_scholar"
+    }
+  },
+  "1706.03762_007": {
+    "verdict": "suspected_hallucination",
+    "score": 0.0,
+    "matched_fields": [],
+    "reason": "",
+    "best_result": {
+      "title": "",
+      "authors": [],
+      "year": "",
+      "doi": "",
+      "source": ""
+    }
+  },
+  "1706.03762_008": {
+    "verdict": "suspected_hallucination",
+    "score": 0.083,
+    "matched_fields": [],
+    "reason": "doi_ss",
+    "best_result": {
+      "title": "Chris Naylor-Ballesteros, Cosa c’è nella tua valigia? , Milano, Terre di Mezzo, 2019.",
+      "authors": [
+        "Silvia Demartini"
+      ],
+      "year": "2021",
+      "doi": "10.33683/didit.21.01.15",
+      "source": "semantic_scholar"
+    }
+  },
+  "1706.03762_009": {
+    "verdict": "suspected_hallucination",
+    "score": 0.0,
+    "matched_fields": [],
+    "reason": "",
+    "best_result": {
+      "title": "",
+      "authors": [],
+      "year": "",
+      "doi": "",
+      "source": ""
+    }
+  },
+  "1706.03762_010": {
+    "verdict": "suspected_hallucination",
+    "score": 0.284,
+    "matched_fields": [],
+    "reason": "doi_ss",
+    "best_result": {
+      "title": "From Sequences to Profiles: Generating Universal Behavioral Profiles exploiting Recurrent Neural Networks",
+      "authors": [
+        "S. Colecchia",
+        "Mauro Orazio Drago",
+        "Jihad Founoun",
+        "P. Gennaro",
+        "Ernesto Natuzzi",
+        "L. Pagano",
+        "Sajjad Shaffaf",
+        "Giuseppe Vitello",
+        "Andrea Pisani",
+        "Maurizio Ferrari Dacrema"
+      ],
+      "year": "2025",
+      "doi": "10.1145/3758126.3758133",
+      "source": "semantic_scholar"
+    }
+  },
+  "1706.03762_011": {
+    "verdict": "suspected_hallucination",
+    "score": 0.041,
+    "matched_fields": [],
+    "reason": "doi_ss",
+    "best_result": {
+      "title": "Jian He.",
+      "authors": [],
+      "year": "2023",
+      "doi": "10.1002/anie.202304348",
+      "source": "semantic_scholar"
+    }
+  },
+  "1706.03762_012": {
+    "verdict": "suspected_hallucination",
+    "score": 0.0,
+    "matched_fields": [],
+    "reason": "",
+    "best_result": {
+      "title": "",
+      "authors": [],
+      "year": "",
+      "doi": "",
+      "source": ""
+    }
+  },
+  "1706.03762_013": {
+    "verdict": "suspected_hallucination",
+    "score": 0.0,
+    "matched_fields": [],
+    "reason": "",
+    "best_result": {
+      "title": "",
+      "authors": [],
+      "year": "",
+      "doi": "",
+      "source": ""
+    }
+  },
+  "1706.03762_014": {
+    "verdict": "suspected_hallucination",
+    "score": 0.358,
+    "matched_fields": [
+      "year"
+    ],
+    "reason": "doi_ss",
+    "best_result": {
+      "title": "Self-Training PCFG Grammars with Latent Annotations Across Languages",
+      "authors": [
+        "Zhongqiang Huang",
+        "M. Harper"
+      ],
+      "year": "2009",
+      "doi": "10.3115/1699571.1699621",
+      "source": "semantic_scholar"
+    }
+  },
+  "1706.03762_015": {
+    "verdict": "suspected_hallucination",
+    "score": 0.06,
+    "matched_fields": [],
+    "reason": "doi_ss",
+    "best_result": {
+      "title": "Rafal Los",
+      "authors": [],
+      "year": "2020",
+      "doi": "10.1002/9781119643784.c32",
+      "source": "semantic_scholar"
+    }
+  },
+  "1706.03762_016": {
+    "verdict": "suspected_hallucination",
+    "score": 0.0,
+    "matched_fields": [],
+    "reason": "",
+    "best_result": {
+      "title": "",
+      "authors": [],
+      "year": "",
+      "doi": "",
+      "source": ""
+    }
+  },
+  "1706.03762_017": {
+    "verdict": "needs_review",
+    "score": 0.565,
+    "matched_fields": [
+      "title",
+      "year"
+    ],
+    "reason": "title_ss",
+    "best_result": {
+      "title": "Neural GPUs Learn Algorithms",
+      "authors": [
+        "Lukasz Kaiser",
+        "I. Sutskever"
+      ],
+      "year": "2015",
+      "doi": "",
+      "source": "semantic_scholar"
+    }
+  },
+  "1706.03762_018": {
+    "verdict": "suspected_hallucination",
+    "score": 0.0,
+    "matched_fields": [],
+    "reason": "",
+    "best_result": {
+      "title": "",
+      "authors": [],
+      "year": "",
+      "doi": "",
+      "source": ""
+    }
+  },
+  "1706.03762_019": {
+    "verdict": "needs_review",
+    "score": 0.805,
+    "matched_fields": [
+      "title",
+      "authors",
+      "year"
+    ],
+    "reason": "title_ss",
+    "best_result": {
+      "title": "Structured Attention Networks",
+      "authors": [
+        "Yoon Kim",
+        "Carl Denton",
+        "Luong Hoang",
+        "Alexander M. Rush"
+      ],
+      "year": "2017",
+      "doi": "",
+      "source": "semantic_scholar"
+    }
+  },
+  "1706.03762_020": {
+    "verdict": "needs_review",
+    "score": 0.565,
+    "matched_fields": [
+      "title",
+      "year"
+    ],
+    "reason": "title_ss",
+    "best_result": {
+      "title": "Adam: A Method for Stochastic Optimization",
+      "authors": [
+        "Diederik P. Kingma",
+        "Jimmy Ba"
+      ],
+      "year": "2014",
+      "doi": "",
+      "source": "semantic_scholar"
+    }
+  }
+}
