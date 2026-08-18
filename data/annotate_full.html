@@ -215,9 +215,14 @@ function renderList(){
 function card(c){
   const l=c.ground_truth_label||'',n=c.notes||'';
   const cls=l==='verified'?'verified':l==='suspected_hallucination'?'suspected':l==='metadata_error'||l==='unresolved'?'meta-err':'';
-  const gsUrl=c.doi?`https://scholar.google.com/scholar?q=doi:${encodeURIComponent(c.doi)}`
-    :c.crossref_title?`https://scholar.google.com/scholar?q=${encodeURIComponent(c.crossref_title)}`
-    :`https://scholar.google.com/scholar?q=${encodeURIComponent(c.citation_raw.slice(0,80))}`;
+  // Semantic Scholar — no CAPTCHA, faster
+  const ssUrl=c.doi?`https://www.semanticscholar.org/dataset/doi:${encodeURIComponent(c.doi)}`
+    :c.crossref_title?`https://www.semanticscholar.org/search?q=${encodeURIComponent(c.crossref_title)}&sort=relevance`
+    :`https://www.semanticscholar.org/search?q=${encodeURIComponent(c.citation_raw.slice(0,80))}&sort=relevance`;
+  // OpenAlex — also no CAPTCHA
+  const oaUrl=c.doi?`https://openalex.org/works?filter=doi:${encodeURIComponent(c.doi)}`
+    :c.crossref_title?`https://openalex.org/search?filter=default_tab:true&q=${encodeURIComponent(c.crossref_title)}`
+    :`https://openalex.org/search?q=${encodeURIComponent(c.citation_raw.slice(0,80))}`;
   return`<div class="card ${cls}" id="card-${c._i}">
     <div class="card-top">
       <div class="c-num ${l?'done':''}">${c._i+1}</div>
@@ -232,7 +237,10 @@ function card(c){
       <div class="cf-row"><span class="cf-label">Authors</span><span class="cf-val ${!c.crossref_authors?'miss':''}">${esc(c.crossref_authors)||'—'}</span></div>
       <div class="cf-row">
         <span class="cf-label">Year</span><span class="cf-val">${esc(c.crossref_year)||'—'}</span>
-        <a class="gs-link" href="${gsUrl}" target="_blank">🔍 Tra Google Scholar →</a>
+        <span style="margin-left:auto;display:flex;gap:8px">
+          <a class="gs-link" href="${ssUrl}" target="_blank" style="color:var(--primary);font-size:11px">🔍 Semantic Scholar</a>
+          <a class="gs-link" href="${oaUrl}" target="_blank" style="color:var(--green);font-size:11px">🔎 OpenAlex</a>
+        </span>
       </div>
     </div>
     <div class="ann">
