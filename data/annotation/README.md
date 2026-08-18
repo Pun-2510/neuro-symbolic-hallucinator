@@ -59,13 +59,13 @@ Mỗi trang hiển thị **25 citations**. Mỗi citation card gồm:
 **Bước 3b.** Click nút **"🔍 Tra Google với full citation"**
    → Trình duyệt mở Google Search với citation được đặt trong quotes
 
-**Bước 3c.** Trên Google Search, kiểm tra:
+**Bước 3c.** Kiểm tra trên **bất kỳ nguồn nào** (Google, Google Scholar, Semantic Scholar, arXiv, OpenAlex, v.v.):
 
-| Kết quả Google | Hành động |
-|----------------|-----------|
-| **Google Scholar hiển thị đúng paper** (đúng tên, tác giả, năm) | → Chọn **"✓ Verified"** |
-| **Google Scholar hiển thị paper cùng chủ đề nhưng thông tin (tên/năm/tác giả) không khớp** | → Chọn **"⚡ Metadata Error"** |
-| **Không tìm thấy paper nào** (0 kết quả hoặc toàn kết quả khác) | → Chọn **"⚠️ Suspected Hallucination"** |
+| Kết quả tra cứu | Hành động |
+|-----------------|-----------|
+| **Tìm thấy paper với thông tin chính xác** (đúng tên, tác giả, năm) | → Chọn **"✓ Verified"** |
+| **Tìm thấy paper cùng chủ đề nhưng thông tin (tên/năm/tác giả) không khớp** | → Chọn **"⚡ Metadata Error"** |
+| **Không tìm thấy paper nào** trên bất kỳ nguồn nào | → Chọn **"⚠️ Suspected Hallucination"** |
 | **Có tìm thấy nhưng không chắc chắn** | → Chọn **"○ Unresolved"** + ghi chú lý do |
 
 **Bước 3d.** *(Tùy chọn)* Điền ghi chú nếu cần giải thích thêm
@@ -131,7 +131,7 @@ Khi gán nhãn xong (hoặc xong một phần), click:
 Citation: [1] Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton.
           Layer normalization. arXiv preprint arXiv:1607.06450, 2016.
 
-Tra Google → Tìm thấy paper "Layer Normalization" trên arXiv, đúng
+Tra cứu → Tìm thấy paper "Layer Normalization" trên arXiv, đúng
 tên tác giả, đúng năm 2016.
 → Chọn: ✓ Verified
 ```
@@ -141,7 +141,7 @@ tên tác giả, đúng năm 2016.
 Citation: [5] Smith, J. (2024). A Revolutionary New Method for AI.
           Journal of Artificial Intelligence, 12(3), 45-67.
 
-Tra Google → Không tìm thấy paper nào tên "A Revolutionary New Method
+Tra cứu → Không tìm thấy paper nào tên "A Revolutionary New Method
 for AI" của Smith trên Journal of AI 2024.
 → Chọn: ⚠️ Suspected Hallucination
 → Ghi chú: "Paper không tồn tại, DOI không hợp lệ"
@@ -151,7 +151,7 @@ for AI" của Smith trên Journal of AI 2024.
 ```
 Citation: [3] LeCun, Y. (2015). Deep Learning. Nature, 521, 436-444.
 
-Tra Google → Tìm thấy paper "Deep Learning" nhưng năm đúng là 2015
+Tra cứu → Tìm thấy paper "Deep Learning" nhưng năm đúng là 2015
 NHƯNG tác giả đúng phải là "Yoshua Bengio, Ian Goodfellow, Aaron
 Courville" — không phải LeCun.
 → Chọn: ⚡ Metadata Error
