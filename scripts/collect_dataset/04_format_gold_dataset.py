@@ -80,7 +80,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output", "-o", required=True, help="Output gold_dataset.json")
     p.add_argument("--csv", help="Output CSV for annotation (optional)")
     p.add_argument("--dataset-id", default="arxiv_v1", help="Dataset identifier")
-    p.add_argument("--description", default="arXiv papers, Crossref-enriched, human-annotated", help="Dataset description")
+    p.add_argument("--description", default="arXiv papers, extracted-metadata enrichment, human-annotated", help="Dataset description")
     return p.parse_args()
 
 
@@ -96,37 +96,34 @@ def _norm(text: str | None) -> str:
 
 
 def _pick_authors(citation: dict) -> list[str]:
-    """Pick best authors from available sources."""
-    if citation.get("authors"):
-        return citation["authors"]
-    crossref = citation.get("crossref") or {}
-    if crossref.get("authors"):
-        return crossref["authors"]
-    return []
+    """
+    Pick authors from GROBID-extracted citation data.
+    Crossref API is disabled (too noisy for arXiv preprints), so crossref
+    enrichment is now just a mirror of extracted fields — no additional source.
+    """
+    return citation.get("authors", [])
 
 
 def _pick_year(citation: dict) -> str | None:
-    """Pick best year."""
-    if citation.get("year"):
-        return citation["year"]
-    cr = citation.get("crossref") or {}
-    if cr.get("year"):
-        return cr["year"]
-    return None
+    """Pick year from GROBID-extracted citation data."""
+    return citation.get("year") or None
 
 
 def _pick_title(citation: dict) -> str | None:
-    if citation.get("title"):
-        return citation["title"]
-    cr = citation.get("crossref") or {}
-    if cr.get("title"):
-        return cr["title"]
-    return None
+    """
+    Pick title: GROBID-extracted first, crossref enrichment as fallback.
+    Note: after disabling Crossref API, crossref["title"] is identical to
+    citation["title"] — kept for schema compatibility only.
+    """
+    crossref = citation.get("crossref") or {}
+    return citation.get("title") or crossref.get("title")
 
 
 def _pick_doi(citation: dict) -> str | None:
-    if citation.get("doi"):
-        doi = citation["doi"].strip()
+    """Pick DOI: extracted from citation text (doi: / doi.org/ prefix)."""
+    doi = citation.get("doi")
+    if doi:
+        doi = doi.strip()
         if doi.startswith("http"):
             doi = urlparse(doi).path.strip("/")
         return doi
@@ -137,12 +134,8 @@ def _pick_doi(citation: dict) -> str | None:
 
 
 def _pick_venue(citation: dict) -> str | None:
-    if citation.get("venue"):
-        return citation["venue"]
-    cr = citation.get("crossref") or {}
-    if cr.get("venue"):
-        return cr["venue"]
-    return None
+    """Pick venue from GROBID-extracted citation data."""
+    return citation.get("venue") or None
 
 
 def main() -> None:
@@ -198,8 +191,8 @@ def main() -> None:
         "num_papers": len(papers),
         "num_citations": total,
         "stats": {
-            "crossref_matched": matched,
-            "crossref_unmatched": unmatched,
+            "metadata_enriched": matched,
+            "metadata_missing": unmatched,
         },
         "citation_level_schema": {
             "label": LABEL_OPTIONS,
