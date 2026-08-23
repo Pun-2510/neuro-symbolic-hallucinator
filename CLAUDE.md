@@ -60,15 +60,17 @@ PDF → Tầng 1: PDF Parsing → Tầng 2: Style Detection + Bidirectional Link
 - Fuzzy threshold tuning, Calibration (Brier, ECE)
 - StyleDetector, CitationLinker, DuplicateDetector
 - **ExplanationGenerator** — Vietnamese explanations + structured output (Task 1.1)
-- **43 unit tests cho ExplanationGenerator**
+- **43 unit tests cho ExplanationGenerator** (Task 1.2)
+- **Web UI v1.2** — StyleProfileCard, MappingStatusBadge, CitationGraphView, CitationDetailDrawer, OverrideControls, VerdictTable (Tasks 2.1-2.4)
+- **Export JSON/CSV v1.2** — linking_summary + verdicts (Task 2.5 partial)
 - **426 tests pass**
 
-### 🔄 Cần làm (Task 2 - Web UI):
-1. **Task 2.1:** Style Profile View — badge + confidence + features
-2. **Task 2.2:** Citation Graph View (2 chiều) — bảng in-text ↔ reference
-3. **Task 2.3:** Override Mapping/Labels UI — giảng viên sửa + log
-4. **Task 2.4:** Evidence Drawer mở rộng — tabs + source info + cache badge
-5. **Task 2.5:** Export PDF/CSV/JSON
+### 🔄 Cần làm:
+1. **Task 2.5:** Export PDF — react-pdf hoặc html2canvas + jsPDF
+2. **Task 3.x:** Integration testing với GROBID Docker
+3. **Task 4.x:** Documentation (CHANGES_VS_V1.1, API docs, User Manual)
+4. **Task 5.x:** Thesis writing (Chapters 1-6)
+5. **Task 6.x:** Presentation & Demo
 
 ---
 
