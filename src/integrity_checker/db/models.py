@@ -118,6 +118,17 @@ class VerdictRecord(Base):
     features: Mapped[str] = mapped_column(Text, default="{}")  # JSON object
     validated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    # v1.2 — Citation Integrity (linking layer)
+    mapping_status: Mapped[str | None] = mapped_column(String, nullable=True, default="matched")
+    mapping_confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    style_penalty: Mapped[float | None] = mapped_column(Float, nullable=True)
+    domain_exception: Mapped[bool] = mapped_column(Integer, default=0)  # SQLite bool
+
+    # v1.2 — Override
+    is_overridden: Mapped[bool] = mapped_column(Integer, default=0)
+    override_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    overridden_by: Mapped[str | None] = mapped_column(String, nullable=True)
+
     essay: Mapped[EssayRecord] = relationship(back_populates="verdicts")
 
 

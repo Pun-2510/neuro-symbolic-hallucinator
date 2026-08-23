@@ -50,7 +50,7 @@ PDF → Tầng 1: PDF Parsing → Tầng 2: Style Detection + Bidirectional Link
 
 ---
 
-## Trạng thái hiện tại (2026-08-25)
+## Trạng thái hiện tại (2026-08-23)
 
 ### ✅ Đã hoàn thành:
 - 4 API clients thật (CrossRef, OpenAlex, S2, arXiv)
@@ -59,12 +59,16 @@ PDF → Tầng 1: PDF Parsing → Tầng 2: Style Detection + Bidirectional Link
 - AuthorMatcher, VenueNormalizer, SourceConsensus
 - Fuzzy threshold tuning, Calibration (Brier, ECE)
 - StyleDetector, CitationLinker, DuplicateDetector
-- 368 tests pass
+- **ExplanationGenerator** — Vietnamese explanations + structured output (Task 1.1)
+- **43 unit tests cho ExplanationGenerator**
+- **426 tests pass**
 
-### 🔄 Cần làm (priority order):
-1. **ExplanationGenerator** — sinh lý do bằng tiếng Việt
-2. **Web UI enhancements** — style profile view + citation graph
-3. **Integration testing** thực tế với GROBID
+### 🔄 Cần làm (Task 2 - Web UI):
+1. **Task 2.1:** Style Profile View — badge + confidence + features
+2. **Task 2.2:** Citation Graph View (2 chiều) — bảng in-text ↔ reference
+3. **Task 2.3:** Override Mapping/Labels UI — giảng viên sửa + log
+4. **Task 2.4:** Evidence Drawer mở rộng — tabs + source info + cache badge
+5. **Task 2.5:** Export PDF/CSV/JSON
 
 ---
 
@@ -131,10 +135,11 @@ essay-integrity-checker/
 
 ## Nguyên tắc làm việc
 
-1. **Mỗi tuần:** Update `tests/progress/SESSION_SUMMARY_WEEK{N}.md`
-2. **Mỗi feature:** Viết tests TRƯỚC, rồi mới code
-3. **Commit message:** Mô tả ngắn gọn đã làm gì
-4. **Trước khi hỏi GVHD:** Kiểm tra lại KNOWN_ISSUES_AND_TODO.md xem đã có trong đó chưa
+1. **COMMIT SAU MỖI TASK** — Tuyệt đối commit sau mỗi task nhỏ hoặc công việc hoàn thành. Không gộp nhiều task vào 1 commit.
+2. **Mỗi tuần:** Update `tests/progress/SESSION_SUMMARY_WEEK{N}.md`
+3. **Mỗi feature:** Viết tests TRƯỚC, rồi mới code
+4. **Commit message format:** `feat: [Mô tả ngắn gọn]` hoặc `fix: [Bug fix]`
+5. **Trước khi hỏi GVHD:** Kiểm tra lại KNOWN_ISSUES_AND_TODO.md xem đã có trong đó chưa
 
 ---
 
