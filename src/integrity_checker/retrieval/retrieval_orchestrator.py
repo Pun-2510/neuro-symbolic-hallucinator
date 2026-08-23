@@ -162,12 +162,21 @@ class RetrievalOrchestrator:
         Hash dùng citation fields thay vì raw_text để cache reuse khi citation
         chỉ khác whitespace.
         """
-        # Canonical fields
+        # Canonical fields - handle both list[str] and list[Author] formats
+        author_parts = []
+        if citation.authors:
+            for a in citation.authors:
+                if hasattr(a, "last_name"):
+                    # Author object from AuthorParser
+                    author_parts.append(a.last_name)
+                else:
+                    # Plain string - use as-is
+                    author_parts.append(str(a))
         parts = [
             citation.doi or "",
             citation.title or "",
             citation.year or "",
-            ",".join(a.last_name for a in citation.authors) if citation.authors else "",
+            ",".join(author_parts),
         ]
         canonical = "|".join(parts).encode("utf-8")
         h = hashlib.sha256(canonical).hexdigest()[:16]
