@@ -20,9 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Cache layer: install deps trước
+# Cache layer: install deps trước (với retry cho network timeout)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt || \
+    pip install --no-cache-dir --timeout=300 -r requirements.txt || \
+    pip install --no-cache-dir --timeout=600 -r requirements.txt
 
 # Copy source
 COPY pyproject.toml ./
