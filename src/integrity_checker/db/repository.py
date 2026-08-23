@@ -85,6 +85,12 @@ class Repository:
                     },
                     ensure_ascii=False,
                 ),
+                # v1.2 fields
+                mapping_status=v.mapping_status.value if v.mapping_status else "matched",
+                mapping_confidence=v.mapping_confidence,
+                style_penalty=getattr(v, "style_penalty", None),
+                domain_exception=getattr(v, "domain_exception", False),
+                is_overridden=v.is_overridden,
             )
             for v in verdicts
         ]
