@@ -104,18 +104,19 @@
 
 ### Task 2.5: Web UI - Export PDF/CSV/JSON
 **Priority:** MEDIUM
-**Status:** CSV + JSON DONE, PDF PENDING
+**Status:** HOAN THANH (2026-08-23)
 **Files:** `src/integrity_checker/api/routes/report.py`
 
 **Da implement:**
 - [x] Export JSON: v1.2 schema with linking_summary + verdicts
 - [x] Export CSV: all v1.2 fields included
-- [ ] Export PDF: formatted report with summary stats
+- [x] Export PDF: formatted report with summary stats
 
-**Notes:**
-- Report endpoint returns full v1.2 JSON with disclaimer
-- CSV includes mapping_status, confidence, style_penalty, domain_exception
-- PDF export requires react-pdf or html2canvas integration
+**PDF includes:**
+- Report title and essay metadata
+- Summary statistics for both layers (source + integrity)
+- Citation details table (up to 50 per page)
+- Disclaimer
 
 ---
 
