@@ -152,43 +152,47 @@
 ---
 
 ### Task 3.3: Unit Tests - Retrieval Orchestrator
-**Priority:** MEDIUM  
-**Status:** Chua bat dau  
+**Priority:** MEDIUM
+**Status:** HOAN THANH (2026-08-23)
 **File:** `tests/unit/test_retrieval_orchestrator.py`
 
-**Test cases:**
-- [ ] Happy path: 4 sources tra ve results
-- [ ] Partial failure: 2 sources fail -> still proceed
-- [ ] All fail: return empty + UNRESOLVED sentinel
-- [ ] Cache hit: verify not calling APIs
-- [ ] Cache miss: verify calling APIs
-- [ ] Rate limiting: verify backoff works
+**Test coverage:** 14 tests
+- Happy path: 4 sources succeed
+- Partial failure: 2+ sources fail
+- Cache hit/miss behavior
+- Rate limiting
+- Serialization/deserialization
+- Deduplication by DOI
+- Sequential mode
 
 ---
 
 ### Task 3.4: Unit Tests - Semantic Matcher
-**Priority:** MEDIUM  
-**Status:** Chua bat dau  
+**Priority:** MEDIUM
+**Status:** HOAN THANH (2026-08-23)
 **File:** `tests/unit/test_semantic_matcher.py`
 
-**Test cases:**
-- [ ] Exact match -> high score
-- [ ] Partial match -> medium score
-- [ ] No match -> low score
-- [ ] Multi-language title
+**Test coverage:** 11 tests
+- Exact match -> high score
+- Partial match -> medium score
+- No match -> low score
+- Multi-language title
+- Empty/None text edge cases
+- Model loading and exception handling
+- Similarity clamping to 0.0-1.0
 
 ---
 
 ### Task 3.5: Unit Tests - Calibration
-**Priority:** MEDIUM  
-**Status:** Chua bat dau  
+**Priority:** MEDIUM
+**Status:** HOAN THANH (truoc)
 **File:** `tests/unit/test_calibration.py`
 
-**Test cases:**
-- [ ] Perfect calibration -> ECE gan 0
-- [ ] Miscalibration -> ECE > 0
-- [ ] Coverage-accuracy trade-off
-- [ ] Abstention band calculation
+**Test coverage:** 21 tests
+- Perfect calibration -> ECE gan 0
+- Miscalibration -> ECE > 0
+- Coverage-accuracy trade-off
+- Abstention band calculation
 
 ---
 
