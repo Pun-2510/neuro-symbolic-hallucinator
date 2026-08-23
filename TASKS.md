@@ -46,83 +46,76 @@
 ## PHASE 2: WEB UI (Tuan 13-14)
 
 ### Task 2.1: Web UI - Style Profile View
-**Priority:** MEDIUM  
-**Status:** Chua bat dau  
-**Files:** `web/src/components/`, `web/src/pages/`
+**Priority:** MEDIUM
+**Status:** HOAN THANH (2026-08-23)
+**Files:** `web/src/components/StyleProfileCard.tsx`
 
-**Mo ta:** Hien thi badge style + confidence + features ho tro trong UI.
-
-**Requirements:**
-- [ ] Them badge hien thi "APA-like" / "IEEE-like" / "MIXED" / "UNKNOWN"
-- [ ] Hien thi confidence score dang progress bar
-- [ ] Collapsible section cho features (apa_count, numeric_count, ratios)
-- [ ] Mau sac theo style:
-  - APA-like: Blue
-  - IEEE-like: Green
-  - MIXED: Yellow
-  - UNKNOWN: Gray
+**Da implement:**
+- Badge "APA-Like" / "IEEE-Like" / "Mixed" / "Unknown" with icons
+- Confidence score bar (percentage + visual bar)
+- Features display (apa_count, ieee_count, mixed_count)
+- Color scheme: Blue/Green/Amber/Gray
 
 ---
 
 ### Task 2.2: Web UI - Citation Graph View (2 chieu)
-**Priority:** MEDIUM  
-**Status:** Chua bat dau  
-**Files:** `web/src/components/CitationGraph.tsx` (moi)
+**Priority:** MEDIUM
+**Status:** HOAN THANH (2026-08-23)
+**Files:** `web/src/components/CitationGraphView.tsx`
 
-**Mo ta:** Hien thi bidirectional linking giua in-text citations va reference entries.
-
-**Requirements:**
-- [ ] Dang bang 2 cot: In-text | Reference Entry
-- [ ] Highlight mau theo `CitationMappingStatus`
-- [ ] Filter dropdown cho cac trang thai: ALL / MATCHED / MISSING / UNCITED / MISMATCH / DUPLICATE
-- [ ] Click vao row -> hien thi chi tiet + evidence
+**Da implement:**
+- 3 view modes: Integrity / Source / Combined
+- Filter chips for all 8 mapping statuses + 4 labels
+- Click row -> open detail drawer
+- Stats bar showing counts
+- Override controls per row
 
 ---
 
 ### Task 2.3: Web UI - Override Mapping/Labels
-**Priority:** MEDIUM  
-**Status:** Chua bat dau  
-**Files:** `web/src/components/`, `api/routes/`
+**Priority:** MEDIUM
+**Status:** HOAN THANH (2026-08-23)
+**Files:** `web/src/components/OverrideControls.tsx`, `src/integrity_checker/api/routes/verdicts.py`
 
-**Mo ta:** Cho phep giang vien sua mapping status / validation label va log lai.
-
-**Requirements:**
-- [ ] Click icon edit tren moi citation
-- [ ] Dropdown de chon label moi
-- [ ] Text area de nhap ly do override
-- [ ] POST len API: `/api/verdicts/{id}/override`
-- [ ] Backend luu vao `audit_logs` table
+**Da implement:**
+- Edit icon button on each citation row
+- Dropdown to select new label/status
+- Reason text area for override note
+- API endpoint: POST `/api/essays/{id}/verdicts/{id}/override`
+- Visual indicator for overridden rows (amber border)
 
 ---
 
 ### Task 2.4: Web UI - Evidence Drawer mo rong
-**Priority:** MEDIUM  
-**Status:** Chua bat dau  
-**Files:** `web/src/components/EvidenceDrawer.tsx`
+**Priority:** MEDIUM
+**Status:** HOAN THANH (2026-08-23)
+**Files:** `web/src/components/CitationDetailDrawer.tsx`
 
-**Mo ta:** Hien thi opening record tu CrossRef/OpenAlex/S2/arXiv + source provenance + thoi diem kiem tra.
-
-**Requirements:**
-- [ ] Tabs cho tung nguon: CrossRef | OpenAlex | Semantic Scholar | arXiv
-- [ ] Hien thi metadata da tim duoc (title, authors, year, venue)
-- [ ] Badge "Cached" neu tu cache
-- [ ] Timestamp khi kiem tra
-- [ ] Link "Open in [Source]" den trang goc
+**Da implement:**
+- Two-layer badges (Source + Integrity)
+- Evidence section with per-source cards
+- Open links to CrossRef/OpenAlex/S2/arXiv
+- Matched fields badges
+- Checked timestamp
+- Triggered rules display
+- Override history section
 
 ---
 
 ### Task 2.5: Web UI - Export PDF/CSV/JSON
-**Priority:** MEDIUM  
-**Status:** Chua bat dau  
-**Files:** `api/routes/export.py`, `web/src/pages/ExportPage.tsx`
+**Priority:** MEDIUM
+**Status:** CSV + JSON DONE, PDF PENDING
+**Files:** `src/integrity_checker/api/routes/report.py`
 
-**Mo ta:** Export bao cao voi 2 lop output tach riet.
+**Da implement:**
+- [x] Export JSON: v1.2 schema with linking_summary + verdicts
+- [x] Export CSV: all v1.2 fields included
+- [ ] Export PDF: formatted report with summary stats
 
-**Requirements:**
-- [ ] Export JSON: chua day du 2 lop (integrity + source)
-- [ ] Export CSV: flatten thanh bang, cot rieng cho moi truong
-- [ ] Export PDF: formatted report voi summary stats
-- [ ] Include disclaimer header trong moi export
+**Notes:**
+- Report endpoint returns full v1.2 JSON with disclaimer
+- CSV includes mapping_status, confidence, style_penalty, domain_exception
+- PDF export requires react-pdf or html2canvas integration
 
 ---
 
