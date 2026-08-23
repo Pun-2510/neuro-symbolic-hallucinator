@@ -5,3 +5,8 @@
 
 ## Key Decisions
 - [[sprint-2-week8-progress]] — API decisions, backward compat fixes
+- [[2026-08-23-scope-change]] — Chuyển sang Engineering Contribution (không train/gold dataset)
+
+## Project Memory
+- [[CLAUDE]] — Định hướng Engineering, không ML research
+- [[TASKS]] — Danh sách task chi tiết cần làm
