@@ -138,13 +138,23 @@ cmd_start() {
         log_info "Tạo container '$GROBID_CONTAINER_NAME' (port $GROBID_HOST_PORT)..."
         # Run with: -d (detached), --rm (auto-remove on stop), -p, --name,
         # -e JVM heap, -e NewRatio for better concurrency with CRF.
+        #
+        # NOTE: lfoppiano/grobid images use tini which requires PR_SET_CHILD_SUBREAPER
+        # (Linux kernel >= 3.4). On macOS/Darwin, this causes "tini: PR_SET_CHARD_SUBREAPER
+        # is unavailable". Fix: override entrypoint to run grobid-service.jar directly.
+        # NOTE: lfoppiano/grobid images use tini which requires PR_SET_CHILD_SUBREAPER
+        # (Linux kernel >= 3.4). On macOS/Darwin, this causes fatal error.
+        # Fix: run grobid-service directly via classpath (not jar entrypoint).
         docker_cmd run -d \
             --rm \
             --name "$GROBID_CONTAINER_NAME" \
             -p "${GROBID_HOST_PORT}:8070" \
             -p 8071:8071 \
             -e JAVA_OPTS="-Xmx${GROBID_MEMORY} -XX:+UseG1GC" \
-            "$GROBID_IMAGE"
+            --entrypoint "" \
+            --platform linux/amd64 \
+            "$GROBID_IMAGE" \
+            /bin/sh -c "CLASSPATH=/opt/grobid/grobid-service/lib/* && java -Xmx${GROBID_MEMORY} -XX:+UseG1GC -classpath \"\$CLASSPATH\" org.grobid.service.main.GrobidServiceApplication --server.port=8070"
     fi
 
     wait_for_healthy || exit 1
