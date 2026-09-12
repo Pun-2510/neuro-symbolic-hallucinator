@@ -1,8 +1,8 @@
 # Known Issues & TODO — Essay Integrity Checker
 
-> **Ngày cập nhật:** 2026-08-11 (Asia/Ho_Chi_Minh)
+> **Ngày cập nhật:** 2026-09-12 (Asia/Ho_Chi_Minh)
 >
-> **Trạng thái project:** v1.2 — **TẤT CẢ TASKS #18–#30 HOÀN THÀNH.** Sprint 2 Tuần 8 (2026-08-11): linking/ (57 tests), AuthorMatcher (94 tests), VenueNormalizer, SourceConsensus, FuzzyTuner, CalibrationCalculator (17 tests), rules + CIS, DocumentParser (10 tests), 4 real API clients (12 tests), integration end-to-end (13 tests), IAA calculator (16 tests). **346/346 tests pass.** [[sprint-2-week8-progress]]
+> **Trạng thái project:** v1.2 — MVP kỹ thuật đã hoàn thành phần lõi. Suite hiện tại **467 passed, 4 skipped**; frontend production build pass. Các phần còn lại chính: real GROBID Docker run, dataset/annotation thật, baselines B0–B5, error analysis/usability và hardening production.
 >
 > Mục tiêu cũ — "citation-only, GROBID là mở rộng tương lai" — đã được thay bằng mục tiêu v1.2 — **full-text + style detection + bidirectional linking** (xem `final (1).docx`).
 >
@@ -68,7 +68,7 @@ StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprec
 
 **Fix:** Chuyển sang `httpx2` khi stable. Hiện tại bỏ qua.
 
-### 1.6 ❌ `CISComponents.in_text_bib_consistency` và `format_consistency` đang là STUB
+### 1.6 ✅ `CISComponents.in_text_bib_consistency` và `format_consistency` đã được triển khai
 
 **Vị trí:** `src/integrity_checker/logic/cis.py:78, 81`.
 
@@ -82,7 +82,7 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 
 **Fix:** ✅ **Resolved Sprint 1 — task #28** (2026-08-25). `CISCalculator.compute()` giờ nhận `linking_result` + `style_profile`. `in_text_bib_consistency` tính từ `LinkingResult.links` với `MAPPING_PENALTIES` table (matched: 0, missing_reference: 1.0, in_text_mismatch: 0.8, ...). `format_consistency` tính từ `StyleProfile` (APA/IEEE: 0.8–1.0 theo confidence, MIXED: 0.4, UNKNOWN: 0.5, STYLE_INCONSISTENT signal: -0.2). Trọng số 35/25/25/10/5 đã cập nhật trong config. 244/244 unit tests pass.
 
-### 1.7 ⚠️ Output schema không tách integrity vs source
+### 1.7 ✅ Output schema đã tách integrity vs source
 
 **Vấn đề:** Hiện `CitationVerdict` chỉ chứa 1 nhãn (`ValidationLabel`) cho 1 citation. Theo v1.2 §3.2.2, phải tách thành `CitationMappingStatus` (integrity) + `ValidationLabel` (source) — vì `MISSING_REFERENCE` không phải hallucination và `SUSPECTED_HALLUCINATION` không phải lỗi sử dụng.
 
@@ -96,8 +96,8 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 
 ### 2.1 Tuần 1–2 — Khảo sát (đã chốt scope, đang thực hiện)
 
-- [BLOCKER] **[NOW]** Cập nhật 4 file: `README.md`, `KNOWN_ISSUES_AND_TODO.md`, `DEVELOPER_QUICKSTART.md`, `configs/config.example.yaml` cho khớp v1.2. _(đang làm)_
-- [BLOCKER] **[NOW]** Viết `docs/CHANGES_VS_V1.1.md` để GVHD thấy rõ đã đối chiếu những gì.
+- [x] Cập nhật tài liệu lõi cho khớp v1.2 (README, quickstart, config, known issues).
+- [x] Viết `docs/CHANGES_VS_V1.1.md`.
 - [BLOCKER] **[NOW]** Literature matrix v1.2 (style families, taxonomy, định nghĩa "dư thừa", kiến trúc 5 tầng).
 - [MILESTONE M1] GVHD chốt phạm vi, 2 lớp taxonomy, dữ liệu và tiêu chí nghiệm thu.
 
@@ -184,7 +184,7 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
   - Weights `35/25/25/10/5` ✅
   - Hai thành phần `in_text_bib_consistency` + `format_consistency` real ✅
   - Tách output schema: `CitationMappingStatus` + `ValidationLabel` ✅ (xem 1.7)
-- [BLOCKER] `ExplanationGenerator` sinh lý do bằng tiếng Việt có cấu trúc (rule + field + score). _(pending)_
+- [x] `ExplanationGenerator` sinh lý do bằng tiếng Việt có cấu trúc (rule + field + score).
 - [MILESTONE M4] Có mapping statuses, 4 nhãn nguồn, evidence, abstention + validation report. ✅ _đạt_
 
 ### 2.7 Tuần 16–17 — Baselines + Metrics (đã chốt trong v1.2)
@@ -222,11 +222,11 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 
 ### 2.9 Tuần 14–15 — Web UI
 
-- [BLOCKER] Style profile view (badge + conf + features hỗ trợ).
-- [BLOCKER] Citation graph view (2 chiều) + filter theo `MISSING/UNCITED/MISMATCH/DUPLICATE/AMBIGUOUS`.
-- [BLOCKER] Override mapping/labels UI (giảng viên sửa → log vào `audit_logs`).
-- [BLOCKER] Evidence drawer mở rộng: opening record từ Crossref/OpenAlex/S2/arXiv + source provenance + thời điểm kiểm tra.
-- [BLOCKER] Export PDF/CSV/JSON — JSON phải chứa 2 lớp output tách rời (integrity vs source).
+- [x] Style profile view (badge + confidence + features).
+- [x] Citation graph view (2 chiều) + filter theo mapping/source status.
+- [~] Override mapping/labels UI đã có; backend persistence/audit log vẫn cần hoàn thiện.
+- [x] Evidence drawer mở rộng với source links, provenance và timestamp.
+- [x] Export PDF/CSV/JSON với 2 lớp output tách rời.
 - [NICE] `npx shadcn@latest add button card table dialog` để sinh components (placeholder hiện tại).
 - [NICE] `react-dropzone` đang thiếu trong `package.json` — cần `npm install` trước khi dev.
 - [MILESTONE M5] Web MVP chạy bằng Docker; demo không phụ thuộc thao tác thủ công ẩn.
@@ -266,27 +266,27 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 - ⚠️ Khi có GROBID (tuần 6–7), cần cache kết quả GROBID theo `sha256(file)` để tránh gọi lại.
 
 ### 4.2 Retrieval
-- ⚠️ Retry logic chưa có — khi API timeout/5xx sẽ fail. Cần `tenacity` retry exponential backoff.
-- ⚠️ Cache key hiện chỉ dùng SHA256 của raw text. Chưa truyền `source_name` → Crossref và OpenAlex cùng return có thể đụng key.
+- ✅ 4 connector đã có retry bằng `tenacity`, exponential backoff và xử lý 429/5xx.
+- ✅ Cache key đã bao gồm `source_name` và canonical citation fields.
 - ⚠️ Rate limiter dùng spacing cố định, chưa sliding-window → sẽ vỡ rate limit nếu gọi đột biến.
 
 ### 4.3 Logic
 - ⚠️ **`NeuroSymbolicChecker` thiếu classifier ML** (đã đánh dấu TODO tuần 12–13).
 - ⚠️ Story abstraction `best_candidate()` chỉ dùng `max(confidence)` — không tính consensus. Cần thêm `consensus_count()` vào ranking.
-- ⚠️ Calibration (`calibration.py`) hiện stub — cần Brier + ECE thật.
+- ✅ Calibration (`calibration.py`) đã có Brier, ECE, coverage-accuracy và abstention threshold.
 
 ### 4.4 Pipeline
 - ⚠️ `asyncio.run` trong sync wrapper — nếu gọi `pipeline.run()` từ trong FastAPI endpoint (đã có event loop), sẽ raise. Cần detect + dùng `loop.run_until_complete` hoặc `loop.run_in_executor`.
-- ⚠️ Cần thêm module `linking/` orchestrator (chưa có) để pipeline gọi sau `extraction/` trước `retrieval/`.
+- ✅ `linking/` package và `DocumentParser` đã được tích hợp vào pipeline.
 
 ### 4.5 DB
 - ⚠️ Không có Alembic migrations — dùng `Base.metadata.create_all()` lúc startup. OK cho MVP, schema đổi sẽ khó migrate.
 - ⚠️ SQLite only — production cần PostgreSQL. Settings đã có `database.url` configurable.
-- ⚠️ `audit_logs` table có nhưng chưa có API để log override mapping/labels.
+- ⚠️ UI override đã có; endpoint override hiện cần hoàn thiện việc cập nhật verdict thật và ghi `audit_logs`.
 
 ### 4.6 Web
-- ⚠️ shadcn components chưa được generate thật (`src/components/ui/placeholder.ts`).
-- ⚠️ `useEssayAnalysis` hook không có polling — chỉ fetch 1 lần.
+- ⚠️ Một số shadcn components vẫn là placeholder; UI hiện dùng các component React/Tailwind hiện có.
+- ⚠️ `useEssayAnalysis` hook chưa có polling; backend hiện xử lý upload đồng bộ qua executor.
 - ⚠️ `VITE_API_BASE_URL` mặc định = `/api` (qua Vite proxy) — OK cho dev, cần override cho prod.
 - ⚠️ CSS colors hiện đang hardcode theo 4 nhãn `ValidationLabel` — cần thêm bảng màu cho 7 trạng thái `CitationMappingStatus`.
 
@@ -326,18 +326,18 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 | `tests/unit/test_document_parser.py` | ✅ DONE (2026-08-23) | 10/10 pass — fallback chain (GROBID OK / fail / disabled / PyMuPDF fail / both fail) |
 | `tests/unit/test_retrieval_clients.py` | ✅ DONE (2026-08-25) | 12/12 pass — Crossref + OpenAlex + S2 + arXiv (DOI exact + fallback + retry + ID extraction) |
 | `tests/unit/test_pipeline_document_parser.py` | ✅ DONE (2026-08-25) | 7/7 pass — modern path + legacy path + auto-detect + merge citations |
-| `tests/unit/test_extraction_preprocessor.py` | ❌ NOT STARTED | |
-| `tests/unit/test_semantic_matcher.py` | ❌ NOT STARTED | Tuần 10–11 |
-| `tests/unit/test_retrieval_orchestrator.py` | ❌ NOT STARTED | Sau task #24 — orchestrate với cache |
-| `tests/unit/test_consensus.py` | ❌ NOT STARTED | Tuần 10–11 |
-| `tests/unit/test_calibration.py` | ❌ NOT STARTED | Tuần 12–13 |
-| `tests/unit/test_explanation.py` | ❌ NOT STARTED | Tuần 12–13 |
-| `tests/unit/test_db_repository.py` | ❌ NOT STARTED | |
+| `tests/unit/test_extraction_preprocessor.py` | ⏳ Chưa có file riêng | Có coverage gián tiếp |
+| `tests/unit/test_semantic_matcher.py` | ✅ DONE | 11 tests pass |
+| `tests/unit/test_retrieval_orchestrator.py` | ✅ DONE | 14 tests pass |
+| `tests/unit/test_consensus.py` | ✅ DONE qua `test_source_consensus.py` | 12 tests pass |
+| `tests/unit/test_calibration.py` | ✅ DONE | 24 tests pass |
+| `tests/unit/test_explanation.py` | ✅ DONE | 43 tests pass |
+| `tests/unit/test_db_repository.py` | ⏳ Chưa có file riêng | Nên bổ sung trước production |
 | `tests/integration/test_full_pdf_pipeline_v12.py` | ✅ DONE (2026-08-25) | 9/9 pass — legacy + modern path + mixed + fabricated + DOI-only + error handling + retrieve-count |
-| `tests/integration/test_api_upload.py` | ❌ NOT STARTED | |
-| `tests/integration/test_baselines_b0_b5.py` | ❌ NOT STARTED | Tuần 16–17 |
+| `tests/integration/test_api_upload.py` | ⏳ Chưa có file riêng | Nên bổ sung cho API regression |
+| `tests/integration/test_baselines_b0_b5.py` | ⏳ Chờ implement baseline | Tuần 16–17 |
 
-**Tổng test count (2026-08-25):** 244 unit tests pass + 13 integration tests pass = **257 tests pass** / 0 deferred. Xem §9 lịch sử.
+**Tổng test count xác nhận 2026-09-12:** **467 passed, 4 skipped**; 4 skipped là real GROBID Docker mode.
 
 ### 6.2 Coverage tụt so với v1.1
 - `pipeline/integrity_pipeline.py`: chỉ test happy path. Cần test:
@@ -420,7 +420,7 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 
 | Ngày | Thay đổi |
 |---|---|
-| 2026-07-26 | Skeleton v1.1 — tạo 115 files. 29/29 unit tests pass, 8/8 integration tests pass. CLI demo chạy end-to-end. CIS = 45.5/100 (vì API stub → toàn UNRESOLVED). |
+| 2026-07-26 | **Lịch sử — skeleton v1.1:** tạo 115 files. 29/29 unit tests pass, 8/8 integration tests pass. CLI demo chạy end-to-end. Khi đó API còn là stub nên toàn bộ verdict là `UNRESOLVED`. |
 | 2026-07-26 | Fix bug `to_search_query()` cho APA format. Fix `out_of_scope` config shape (YAML list). |
 | 2026-08-03 | **Re-scope sang v1.2** (sau khi chốt với GVHD). README / KNOWN_ISSUES / Quickstart / config được đồng bộ sang v1.2: full-text + GROBID, style detection, bidirectional linking, 7 trạng thái mapping, 4 nhãn nguồn, CIS weights 35/25/25/10/5, 18-tuần roadmap. Chưa có code thay đổi ở phase này. |
 | 2026-08-10 | **Tuần 6 — `extraction/section_segmenter.py`**: phân vùng body/bibliography/appendix/footnote, multi-style header EN+VI+ZH. 15/15 unit tests pass. |
@@ -441,19 +441,16 @@ format_consistency = 0.85 if n > 0 else 0.0       # placeholder
 
 ---
 
-## 10. Action items ngay tuần này
+## 10. Action items hiện tại
 
-**Sinh viên (thứ tự ưu tiên) — 2026-08-25:**
+**Ưu tiên thực hiện sau ngày 2026-09-12:**
 
-1. Đọc `README.md` (v1.2) + `docs/CHANGES_VS_V1.1.md` + file này + `docs/progress/SESSION_SUMMARY_WEEK8.md`.
-2. `make setup` → `make sample` → `make demo` → `make test` — xác nhận skeleton vẫn chạy.
-3. ✅ Tuần 6 hoàn thành: SectionSegmenter + AuthorParser + ReferenceListParser (mở rộng) + GROBID adapter.
-4. ✅ Tuần 7 hoàn thành: StyleDetector.
-5. ✅ Tuần 8 hoàn thành: `linking/` scaffold + `DocumentParser` + backlog #18 closed.
-6. ✅ Tuần 8 tiếp theo hoàn thành: GROBID Docker adapter (task #23) + Real HTTP clients (task #24) + DocumentParser integration (task #25) + end-to-end test (task #26).
-7. ⏳ **Tuần 9 — Real run pipeline với GROBID Docker** (`./scripts/grobid_docker_setup.sh start` → set `GROBID_URL` → run `python -m integrity_checker.pipeline.integrity_pipeline FILE`) — verify v1.2 M3.
-8. ⏳ **Tuần 9 onwards — Unit tests cho Orchestrator với cache** (task đề xuất — `test_retrieval_orchestrator.py`).
-9. ⏳ **Tuần 10–11 — Matching**: author normalization, venue normalization, consensus counting, fuzzy threshold tuning.
+1. Chạy real GROBID Docker trên máy đủ RAM và bỏ 4 test skip.
+2. Hoàn thiện dataset/annotation thật, chạy IAA và khóa train/validation/test split.
+3. Implement và đánh giá baselines B0–B5.
+4. Persist override thật vào DB, ghi `audit_logs`, bổ sung API upload/repository tests.
+5. Thực hiện error analysis, usability study và cập nhật kết quả vào luận văn.
+6. Hoàn thiện `docs/USER_MANUAL.md`, API docs, slides và demo script.
 
 **GVHD (cần xin ý kiến) — vẫn pending:**
 

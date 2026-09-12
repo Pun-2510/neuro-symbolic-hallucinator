@@ -7,12 +7,17 @@ interface CISScoreCardProps {
 }
 
 export function CISScoreCard({ cis }: CISScoreCardProps) {
-  const score = cis.score;
+  // Defensive: handle missing or undefined fields
+  const components = cis.components ?? {};
+  const weightsUsed = cis.weights_used ?? {};
+
+  const score = cis.score ?? 0;
   const scoreColor = score >= 80 ? 'text-emerald-600' : score >= 60 ? 'text-amber-600' : 'text-red-600';
   const scoreBg = score >= 80 ? 'bg-emerald-50' : score >= 60 ? 'bg-amber-50' : 'bg-red-50';
 
-  const componentEntries = Object.entries(cis.components);
-  const maxValue = Math.max(...Object.values(cis.components), 0.01);
+  const componentEntries = Object.entries(components);
+  const componentValues = Object.values(components);
+  const maxValue = componentValues.length > 0 ? Math.max(...componentValues, 0.01) : 0.01;
 
   return (
     <div className="card-elevated p-6">
@@ -47,7 +52,7 @@ export function CISScoreCard({ cis }: CISScoreCardProps) {
           <span className="text-xs text-muted-foreground">Trọng số</span>
         </div>
         {componentEntries.map(([key, value]) => {
-          const weight = cis.weights_used[key] ?? 0;
+          const weight = weightsUsed[key] ?? 0;
           const barWidth = (value / maxValue) * 100;
           const barColor = value >= 0.8 ? 'bg-emerald-500' : value >= 0.6 ? 'bg-amber-500' : 'bg-red-500';
 

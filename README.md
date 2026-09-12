@@ -233,11 +233,11 @@ Mỗi connector chạy qua interface chung nên có thể tạm ngừng / thay n
 
 ---
 
-## Trạng thái skeleton
+## Trạng thái hiện tại
 
-Repo hiện đang ở **v1.2 — Tuần 11 (matching + logic + calibration)** (cập nhật từ v1.1 ngày 2026-08-03, tiến độ tuần 6–11 cập nhật ngày 2026-08-25):
+Repo hiện đang ở **v1.2 — MVP kỹ thuật** (cập nhật trạng thái ngày 2026-09-12). Pipeline lõi đã chạy end-to-end với mock/injectable integrations; phần còn thiếu chủ yếu là real GROBID Docker verification, dataset/annotation thật, baseline và đánh giá đồ án.
 
-- ✅ **Có sẵn (từ v1.1)**: 4 lớp nhãn nguồn; multi-source retrieval interface (Crossref/OpenAlex/S2/arXiv — file có, body là stub); matching layer với 7 features; symbolic rules với priority order; FastAPI + React/Vite UI; SQLite/Postgres; 5 sample essays + gold set mồi.
+- ✅ **Có sẵn**: 4 lớp nhãn nguồn; multi-source retrieval thật (Crossref/OpenAlex/S2/arXiv); matching layer với 7 feature groups; symbolic rules + calibration; FastAPI + React/Vite UI; SQLite/Postgres-compatible configuration; sample essays + gold set mồi.
 - ✅ **Hoàn thành tuần 6 (2026-08-10 đến 2026-08-15)**:
   - `extraction/section_segmenter.py` — phân vùng body / bibliography / appendix / footnote / figure caption (15/15 tests).
   - `matching/author_parser.py` — chuẩn hoá last-name + initials + Dutch + Vietnamese + suffix (27/27 tests).
@@ -248,7 +248,7 @@ Repo hiện đang ở **v1.2 — Tuần 11 (matching + logic + calibration)** (c
 - ✅ **Hoàn thành tuần 8 (2026-08-24)**:
   - `linking/` package — `statuses.py` + `citation_linker.py` + `duplicate_detector.py` (62 tests pass).
   - `extraction/document_parser.py` — orchestrator PDF → muPDF + GROBID (10 tests pass).
-  - 4 API client thật — Crossref/OpenAlex/S2/arXiv với Tenacity retry + cache + polite pool (62 tests pass).
+  - 4 API client thật — Crossref/OpenAlex/S2/arXiv với Tenacity retry + cache + polite pool.
 - ✅ **Hoàn thành Sprint 1 — Tuần 9 (2026-08-25)**:
   - **Output schema tách integrity vs source** (`CitationVerdict.mapping_status` + `CitationMappingStatus` enum) + `AnalysisReport.linking_summary`.
   - **CIS real components** — `CISCalculator.compute()` nhận `linking_result` + `style_profile`, tính `in_text_bib_consistency` từ `LinkingResult.links` với `MAPPING_PENALTIES`, tính `format_consistency` từ `StyleProfile`.
@@ -259,13 +259,17 @@ Repo hiện đang ở **v1.2 — Tuần 11 (matching + logic + calibration)** (c
   - **Fuzzy threshold tuning** — `FuzzyTuner.evaluate()` + `find_optimal_abstention_threshold()`.
   - **Rules extension** — `R-STYLE-INCONSISTENT` + `R-AMBIGUOUS-MAPPING` + `R-DOMAIN-EXCEPTION` trong `logic/rules.py`.
   - **Calibration metrics** — `logic/calibration.py` full Brier + ECE + coverage-accuracy implementation.
-- 🔄 **Cần bổ sung (v1.2, các tuần tới)**:
-  - Gold set 3 mức (style / span-link / source) + annotation guideline v2 + IAA measurement (tuần 12).
-  - Baselines B0–B5 (tuần 16–17).
-  - `ExplanationGenerator` sinh lý do bằng tiếng Việt có cấu trúc (tuần 12–13).
-  - Web UI enhancements (style profile view + citation graph view, tuần 14–15).
+- ✅ **Đã hoàn thành sau đó**:
+  - `ExplanationGenerator` tiếng Việt có cấu trúc + 43 unit tests.
+  - Web UI style profile, citation graph, evidence drawer, override controls và export PDF/CSV/JSON.
+  - GROBID mock integration: 16 pass, 4 real-Docker tests được skip khi Docker/OOM chưa sẵn sàng.
+- 🔄 **Còn lại để hoàn thiện đồ án**:
+  - Dataset thật 3 mức + annotation guideline v2 + IAA thực tế.
+  - Baselines B0–B5 và bộ test/đánh giá tương ứng.
+  - Real GROBID Docker run trên máy đủ RAM.
+  - Error analysis, usability study, API hardening và tài liệu/luận văn.
 
-**Test count (2026-08-25):** 355 unit tests + 13 integration tests = **368 tests pass** / 0 deferred. Xem chi tiết trong `KNOWN_ISSUES_AND_TODO.md` §9 và `DEVELOPER_QUICKSTART.md`.
+**Test count xác nhận ngày 2026-09-12:** **467 passed, 4 skipped** bằng `.venv/bin/python -m pytest -q`. Frontend `npm run build` cũng pass.
 
 ---
 

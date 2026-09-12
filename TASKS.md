@@ -1,5 +1,5 @@
 # TASK LIST - Essay Integrity Checker
-## Ngay: 2026-08-23 | Dinh huong: Engineering Contribution
+## Cập nhật: 2026-09-12 | Định hướng: Engineering Contribution
 
 ---
 
@@ -124,31 +124,34 @@
 
 ### Task 3.1: Integration Test - GROBID Docker
 **Priority:** HIGH  
-**Status:** Chua bat dau  
+**Status:** MOCK HOÀN THÀNH; REAL DOCKER ĐANG CHỜ MÁY ĐỦ RAM
 **Files:** `scripts/grobid_docker_setup.sh`, `tests/integration/`
 
-**Mo ta:** End-to-end test voi GROBID Docker container that.
+**Mô tả:** End-to-end test với GROBID Docker container thật và mock mode.
 
 **Requirements:**
-- [ ] `./scripts/grobid_docker_setup.sh start` -> verify health
-- [ ] Run pipeline tren sample PDFs
-- [ ] Verify output structure day du
-- [ ] Teardown: `./scripts/grobid_docker_setup.sh stop`
+- [x] Mock HTTP integration: 16 tests pass.
+- [x] Script start/stop/status/logs và health check.
+- [ ] `./scripts/grobid_docker_setup.sh start` trên Docker host đủ RAM.
+- [ ] Chạy real mode trên sample PDFs và verify output.
+- [x] Teardown command đã có: `./scripts/grobid_docker_setup.sh stop`.
+
+**Ghi chú:** 4 real-mode tests hiện được skip; checkpoint 2026-09-05 ghi nhận GROBID image bị OOM trên máy macOS hiện tại.
 
 ---
 
 ### Task 3.2: Integration Test - Full PDF Pipeline v1.2
 **Priority:** HIGH  
-**Status:** Chua bat dau  
+**Status:** HOÀN THÀNH (2026-08-25, 9 tests pass)
 **File:** `tests/integration/test_full_pdf_pipeline_v12.py`
 
 **Test cases can cover:**
-- [ ] PDF voi mixed citations (that + ao)
-- [ ] PDF chi co DOI references
-- [ ] PDF khong co references
-- [ ] PDF voi fabrication markers
-- [ ] API fail fallback -> UNRESOLVED
-- [ ] Cache hit -> verify cached=True
+- [x] PDF với mixed citations (thật + ảo)
+- [x] PDF chỉ có DOI references
+- [x] PDF không có references / empty report
+- [x] PDF với fabrication markers
+- [x] API fail fallback → UNRESOLVED
+- [x] Cache hit → verify `cached=True`
 
 ---
 
@@ -201,7 +204,7 @@
 
 ### Task 4.1: Update CHANGES_VS_V1.1.md
 **Priority:** MEDIUM  
-**Status:** Chua bat dau  
+**Status:** HOÀN THÀNH (2026-09-12)
 **File:** `docs/CHANGES_VS_V1.1.md`
 
 **Mo ta:** Tai lieu hoa tat ca thay doi tu v1.1 sang v1.2.
@@ -210,14 +213,14 @@
 
 ### Task 4.2: Update API Documentation
 **Priority:** MEDIUM  
-**Status:** Chua bat dau  
+**Status:** ĐANG CẬP NHẬT
 **Files:** `src/integrity_checker/api/routes/`, FastAPI auto-generated docs
 
 ---
 
 ### Task 4.3: Update User Manual
 **Priority:** MEDIUM  
-**Status:** Chua bat dau  
+**Status:** HOÀN THÀNH (2026-09-12)
 **Files:** `docs/USER_MANUAL.md` (moi)
 
 ---
@@ -309,5 +312,5 @@
 
 ---
 
-**Last updated:** 2026-08-23
+**Last updated:** 2026-09-12
 **Maintained by:** Nguyen Bao Minh (523H0054) & Tran Gia Thanh (523H0096)

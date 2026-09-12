@@ -41,13 +41,33 @@ class Repository:
     # -- Citations --
 
     def add_citations(self, essay_id: int, citations: list[Citation]) -> list[CitationRecord]:
+        def _serialize_authors(authors):
+            """Convert Author objects (or other non-JSON types) to plain strings."""
+            if not authors:
+                return "[]"
+            out = []
+            for a in authors:
+                if isinstance(a, str):
+                    out.append(a)
+                elif hasattr(a, "last_name"):
+                    # Author object - extract name parts
+                    parts = [a.last_name]
+                    if getattr(a, "first_name", None):
+                        parts.append(a.first_name)
+                    if getattr(a, "middle_name", None):
+                        parts.append(a.middle_name)
+                    out.append(" ".join(p for p in parts if p))
+                else:
+                    out.append(str(a))
+            return json.dumps(out, ensure_ascii=False)
+
         records = [
             CitationRecord(
                 essay_id=essay_id,
                 raw_text=c.raw_text,
-                citation_type=c.citation_type.value,
-                style=c.style.value,
-                authors=json.dumps(c.authors, ensure_ascii=False),
+                citation_type=c.citation_type.value if hasattr(c.citation_type, "value") else str(c.citation_type),
+                style=c.style.value if hasattr(c.style, "value") else str(c.style),
+                authors=_serialize_authors(c.authors),
                 year=c.year,
                 title=c.title,
                 venue=c.venue,
@@ -170,6 +190,19 @@ class Repository:
         self.session.add(essay)
         self.session.flush()
         return essay
+
+    def update_essay_pipeline_output(
+        self, essay_id: int, style_profile: dict | None = None, cis: dict | None = None
+    ) -> None:
+        """Persist full pipeline output (style_profile + cis) into essay row."""
+        essay = self.session.get(EssayRecord, essay_id)
+        if not essay:
+            return
+        if style_profile is not None:
+            essay.style_profile_json = json.dumps(style_profile, ensure_ascii=False, default=str)
+        if cis is not None:
+            essay.cis_json = json.dumps(cis, ensure_ascii=False, default=str)
+        self.session.flush()
 
     def get_user_essays(self, user_id: int) -> list[EssayRecord]:
         return list(

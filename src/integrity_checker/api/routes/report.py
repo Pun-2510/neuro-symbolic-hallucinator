@@ -125,10 +125,40 @@ def _json_response(filename: str, essay, verdicts: list) -> StreamingResponse:
             "override_note": v.override_note,
         })
 
-    # Simple CIS estimation from verdicts
+    # Ưu tiên dùng CIS đầy đủ từ pipeline (lưu DB) — fallback về simple estimation
     total = len(verdicts)
     verified = sum(1 for v in verdicts if v.label == "verified")
-    cis_score = round((verified / total * 100) if total > 0 else 0, 1)
+
+    style_profile_dict = None
+    cis_dict = None
+    if essay.style_profile_json:
+        try:
+            style_profile_dict = json.loads(essay.style_profile_json)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    if essay.cis_json:
+        try:
+            cis_dict = json.loads(essay.cis_json)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    if cis_dict is None:
+        # Fallback: simple estimation
+        cis_score = round((verified / total * 100) if total > 0 else 0, 1)
+        cis_dict = {
+            "score": cis_score,
+            "components": {
+                "verified_ratio": verified / total if total > 0 else 0,
+                "metadata_accuracy": 0,
+                "in_text_bib_consistency": linking_summary["matched"] / total if total > 0 else 0,
+                "format_consistency": 0,
+                "identifier_validity": 0,
+            },
+            "weights_used": {},
+            "num_citations": total,
+            "num_unresolved": sum(1 for v in verdicts if v.label == "unresolved"),
+            "disclaimer": "",
+        }
 
     payload = {
         "essay": {
@@ -138,21 +168,10 @@ def _json_response(filename: str, essay, verdicts: list) -> StreamingResponse:
             "uploaded_at": essay.uploaded_at.isoformat() if essay.uploaded_at else None,
         },
         "num_citations": total,
-        "style_profile": None,  # Not stored in DB, needs pipeline output
+        "style_profile": style_profile_dict,
         "linking_summary": linking_summary,
         "verdicts": verdict_list,
-        "cis": {
-            "score": cis_score,
-            "components": {
-                "verified_ratio": verified / total if total > 0 else 0,
-                "metadata_accuracy": 0,
-                "in_text_bib_consistency": linking_summary["matched"] / total if total > 0 else 0,
-                "format_consistency": 0,
-                "identifier_validity": 0,
-            },
-            "num_citations": total,
-            "num_unresolved": sum(1 for v in verdicts if v.label == "unresolved"),
-        },
+        "cis": cis_dict,
         "disclaimer": settings.disclaimer.long,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }

@@ -41,7 +41,7 @@ export function StyleProfileCard({
 }: {
   profile: StyleProfile;
 }) {
-  const cfg = STYLE_CONFIG[profile.style];
+  const cfg = STYLE_CONFIG[profile.style as keyof typeof STYLE_CONFIG] ?? STYLE_CONFIG.UNKNOWN;
   const confPct = (profile.confidence * 100).toFixed(0);
 
   return (
@@ -83,17 +83,36 @@ export function StyleProfileCard({
         />
       </div>
 
-      {/* Style counts */}
-      <div className="flex gap-4 text-xs mb-2">
-        <span className="text-blue-700">
-          <strong>{profile.apa_count}</strong> APA
-        </span>
-        <span className="text-green-700">
-          <strong>{profile.ieee_count}</strong> IEEE
-        </span>
-        <span className="text-amber-700">
-          <strong>{profile.mixed_count}</strong> mixed
-        </span>
+      {/* Style ratios from evidence */}
+      <div className="flex gap-4 text-xs mb-2 flex-wrap">
+        {profile.ratios && Object.keys(profile.ratios).length > 0 ? (
+          <>
+            <span className="text-blue-700">
+              <strong>{((profile.ratios.apa_combined ?? 0) * 100).toFixed(0)}%</strong> APA
+            </span>
+            <span className="text-green-700">
+              <strong>{((profile.ratios.ieee_combined ?? 0) * 100).toFixed(0)}%</strong> IEEE
+            </span>
+            <span className="text-gray-600">
+              <strong>{((profile.ratios.body_apa ?? 0) * 100).toFixed(0)}%</strong> body APA
+            </span>
+            <span className="text-gray-600">
+              <strong>{((profile.ratios.bib_apa ?? 0) * 100).toFixed(0)}%</strong> bib APA
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="text-blue-700">
+              <strong>{profile.apa_count}</strong> APA
+            </span>
+            <span className="text-green-700">
+              <strong>{profile.ieee_count}</strong> IEEE
+            </span>
+            <span className="text-amber-700">
+              <strong>{profile.mixed_count}</strong> mixed
+            </span>
+          </>
+        )}
       </div>
 
       {/* Explanation */}

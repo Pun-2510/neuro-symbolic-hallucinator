@@ -35,17 +35,17 @@ python -m integrity_checker.pipeline.integrity_pipeline \
     data/essays/essay_02_mixed.pdf --output report.json
 ```
 
-Output mẫu:
+Output mẫu (tùy trạng thái API/cache):
 ```
  ESSAY: essay_02_mixed.pdf
  Pages: 2  |  Citations: 14
- CIS (Citation Integrity Score): 45.5/100  (unresolved: 14)
+ CIS (Citation Integrity Score): <pipeline result>/100
 
  Verdicts:
-  ? [unresolved] conf=30% raw=...   ← vì API stub, tất cả unresolved
+  ? [unresolved] conf=30% raw=...   ← có thể xảy ra khi nguồn/API không đủ evidence
 ```
 
-> Hiện tại verdict toàn `unresolved` vì **4 API client là stub** (chưa implement). Đây là expected. Sau v1.2 tuần 6–7, output schema sẽ tách thêm **mapping statuses** (MATCHED/MISSING/UNCITED/...) — phần này sẽ xuất hiện trong JSON ngay cả khi chưa có retrieval thật.
+> 4 API client đã có HTTP implementation thật, retry và cache. `UNRESOLVED` chỉ được dùng khi không đủ evidence hoặc các nguồn gặp lỗi. Output schema tách riêng **mapping statuses** (MATCHED/MISSING/UNCITED/...) và **source labels** (VERIFIED/METADATA_ERROR/SUSPECTED_HALLUCINATION/UNRESOLVED).
 
 ## 3. Chạy web (1 phút)
 
@@ -71,7 +71,7 @@ pytest tests/integration/ -v                # 13 tests, cần sample PDFs + mock
 pytest tests/integration/test_full_pdf_pipeline_v12.py -v   # 9 tests
 ```
 
-**Test breakdown (2026-08-25):**
+**Test breakdown (xác nhận 2026-09-12):**
 
 | Module | File test | Pass/Total |
 |---|---|---|
@@ -92,6 +92,8 @@ pytest tests/integration/test_full_pdf_pipeline_v12.py -v   # 9 tests
 | `calibration.py` (Sprint 2, task #34) | `test_calibration.py` | 24/24 |
 | Integration end-to-end (tuần 8+) | `test_full_pdf_pipeline_v12.py` + `test_pipeline_endtoend.py` | 13/13 |
 | Skeleton cũ (v1.1) | nhiều | 63/63 (subset kế thừa, include citation_extractor + author_parser) |
+
+Tổng toàn bộ suite hiện tại: **467 passed, 4 skipped**.
 
 ## 5. Lộ trình 18 tuần (v1.2 §5.2)
 
@@ -125,7 +127,7 @@ pytest tests/integration/test_full_pdf_pipeline_v12.py -v   # 9 tests
 
 ## 7. Mở rộng v1.1 → v1.2 (cần biết)
 
-Đọc `docs/CHANGES_VS_V1.1.md` (sẽ viết trong tuần 1–2) hoặc xem §3 trong `KNOWN_ISSUES_AND_TODO.md`. Tóm tắt:
+Đọc `docs/CHANGES_VS_V1.1.md` hoặc xem §3 trong `KNOWN_ISSUES_AND_TODO.md`. Tóm tắt:
 
 | Thứ cũ (v1.1) | Nay (v1.2) | Action |
 |---|---|---|
@@ -143,7 +145,7 @@ pytest tests/integration/test_full_pdf_pipeline_v12.py -v   # 9 tests
 - **Đề cương v1.2** (canonical): `../final (1).docx`.
 - **Lit review**: `../docs/NGHIEN_CUU_LITERATURE_REVIEW.md`.
 - **Roadmap tổng**: `../docs/ROADMAP_ZERO_TO_HERO.md` (lập theo v1.1, đã bị thay thế một phần).
-- **Annotation guideline v2**: `data/ground_truth/annotation_guideline.md` (sẽ viết lại ở tuần 3–5).
+- **Annotation guideline**: `data/ground_truth/annotation_guideline.md` (cần mở rộng thành guideline v2 cho dataset thật).
 - **Sample essays**: `data/essays/README.md`.
 - **API docs**:
   - Crossref: https://api.crossref.org
@@ -154,8 +156,8 @@ pytest tests/integration/test_full_pdf_pipeline_v12.py -v   # 9 tests
 
 ## 9. Câu hỏi thường gặp
 
-**Q: Tại sao tất cả citation đều `unresolved` khi chạy demo?**
-A: Vì 4 API client là stub (xem `KNOWN_ISSUES_AND_TODO.md` §2.4). Implement thật ở tuần 8–9 sẽ tự động sinh verdict phân hóa.
+**Q: Tại sao citation có thể là `unresolved` khi chạy demo?**
+A: `UNRESOLVED` là nhãn an toàn khi chưa đủ evidence, API lỗi, candidate cạnh tranh hoặc confidence nằm trong vùng abstention. Các connector Crossref/OpenAlex/S2/arXiv đã có implementation thật.
 
 **Q: CIS có phải điểm tiểu luận không?**
 A: KHÔNG. CIS = Citation Integrity Score, chỉ đo phần trích dẫn (integrity + source). Trọng số `35/25/25/10/5` là khởi tạo, sẽ hiệu chỉnh ở tuần 12–13 theo rubric GVHD.
