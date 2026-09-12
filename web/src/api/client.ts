@@ -183,11 +183,16 @@ export interface OverrideRequest {
 // --- Helpers ---
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = localStorage.getItem('token');
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   const resp = await fetch(`${BASE_URL}${path}`, {
     ...init,
-    headers: {
-      ...init?.headers,
-    },
+    headers,
   });
   if (!resp.ok) {
     const text = await resp.text();
