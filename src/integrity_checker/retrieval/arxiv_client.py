@@ -59,26 +59,71 @@ class ArxivClient(BaseScholarClient):
         return await self._lookup_by_search(citation)
 
     async def _lookup_by_id(self, arxiv_id: str) -> SourceCandidate | None:
-        """Lookup bằng arXiv ID exact qua arxiv.Search với id_list."""
+        """Lookup bằng arXiv ID exact qua export.arxiv.org API directly.
+
+        Note: arxiv Python SDK is unreliable (HTTP 429 rate limits).
+        Using direct HTTP via urllib for stability.
+        """
+        import urllib.request
+        import urllib.error
+
+        url = f"http://export.arxiv.org/api/query?id_list={arxiv_id}"
         try:
-            import arxiv  # type: ignore
-        except ImportError:
-            logger.error("arxiv SDK chưa cài đặt")
-            return None
-
-        async def _do() -> list[dict]:
             loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(
-                None, self._do_id_search_sync, arxiv, arxiv_id
-            )
-
-        results = await self._with_retry(_do)
-        if not results:
+            # Run sync urllib in executor
+            data = await loop.run_in_executor(None, self._fetch_arxiv_sync, url)
+            if not data:
+                return None
+            cand = self._parse_arxiv_xml(data, arxiv_id)
+            return cand
+        except Exception as e:
+            logger.warning(f"arXiv lookup failed for {arxiv_id}: {type(e).__name__}: {e}")
             return None
-        cand = self._result_to_candidate(results[0])
-        cand.found = True
-        cand.confidence = 1.0  # ID exact
-        return cand
+
+    @staticmethod
+    def _fetch_arxiv_sync(url: str) -> str:
+        """Sync fetch via urllib (no retry - single attempt)."""
+        import urllib.request
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return resp.read().decode("utf-8")
+
+    def _parse_arxiv_xml(self, xml: str, arxiv_id: str) -> SourceCandidate | None:
+        """Parse arXiv API XML → SourceCandidate."""
+        import re
+        # Simple regex-based XML parsing (faster than full XML parser)
+        title_match = re.search(r"<title>([^<]+)</title>", xml)
+        if not title_match:
+            return None
+        # Skip the feed title (it's "ArXiv Query: ...")
+        # Real entry title comes after <entry>
+        entries = re.findall(r"<entry>(.*?)</entry>", xml, re.DOTALL)
+        if not entries:
+            return None
+        entry = entries[0]
+        title_m = re.search(r"<title>([^<]+)</title>", entry)
+        if not title_m:
+            return None
+        title = title_m.group(1).strip()
+        published_m = re.search(r"<published>(\d{4})", entry)
+        year = published_m.group(1) if published_m else None
+        doi_m = re.search(r"<arxiv:doi[^>]*>([^<]+)</arxiv:doi>", entry)
+        doi = doi_m.group(1) if doi_m else None
+        url_m = re.search(r"<id>([^<]+)</id>", entry)
+        url = url_m.group(1) if url_m else f"https://arxiv.org/abs/{arxiv_id}"
+        # Extract authors from <author><name>...</name></author>
+        authors = re.findall(r"<author>\s*<name>([^<]+)</name>", entry)
+        from integrity_checker.models.source import SourceCandidate
+        return SourceCandidate(
+            source_name="arxiv",
+            found=True,
+            title=title,
+            authors=authors,
+            year=year,
+            doi=doi,
+            url=url,
+            confidence=1.0,
+        )
 
     async def _lookup_by_search(self, citation: Citation) -> SourceCandidate:
         """Search bằng title + author first qua ti:/au:."""
@@ -131,21 +176,19 @@ class ArxivClient(BaseScholarClient):
 
     async def _with_retry(self, coro_factory) -> list[dict]:
         """Wrap sync SDK call với tenacity retry."""
-        retry = AsyncRetrying(
-            stop=stop_after_attempt(self.max_retries),
-            wait=wait_exponential(multiplier=1, min=1, max=10),
-            retry=retry_if_exception_type(Exception),  # arxiv SDK raises broadly
-            reraise=False,
-        )
         try:
-            async for attempt in retry:
-                with attempt:
-                    return await coro_factory()
-            return []
-        except RetryError as e:
-            logger.error(f"arXiv retry exhausted: {e}")
-            return []
+            return await coro_factory()
         except Exception as e:
+            # Retry once on HTTP errors (rate limit)
+            if "HTTPError" in type(e).__name__ or "rate" in str(e).lower():
+                logger.warning(f"arXiv rate-limited, retrying in 2s...")
+                import asyncio as _aio
+                await _aio.sleep(2.0)
+                try:
+                    return await coro_factory()
+                except Exception as e2:
+                    logger.error(f"arXiv retry failed: {type(e2).__name__}: {e2}")
+                    return []
             logger.error(f"arXiv error: {type(e).__name__}: {e}")
             return []
 
@@ -208,7 +251,7 @@ class ArxivClient(BaseScholarClient):
 
     @staticmethod
     def _extract_arxiv_id(citation: Citation) -> str | None:
-        """Extract arXiv ID từ URL hoặc raw_text."""
+        """Extract arXiv ID từ URL, raw_text, hoặc DOI."""
         # 1. URL field — format: https://arxiv.org/abs/2106.12345
         if citation.url and "arxiv.org" in citation.url:
             for marker in ("/abs/", "/pdf/"):
@@ -224,4 +267,11 @@ class ArxivClient(BaseScholarClient):
             m = ArxivClient.ARXIV_ID_RE.search(citation.raw_text)
             if m:
                 return m.group(1)
+
+        # 3. DOI field — arXiv DOIs are 10.48550/arXiv.YYMM.NNNNN
+        if citation.doi and "arxiv" in citation.doi.lower():
+            m = ArxivClient.ARXIV_ID_RE.search(citation.doi)
+            if m:
+                return m.group(1)
+
         return None
