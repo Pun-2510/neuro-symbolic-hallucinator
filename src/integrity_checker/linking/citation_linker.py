@@ -371,8 +371,13 @@ class CitationLinker:
         Returns:
             (normalized_last_name, year, year_suffix) — author đã được normalize
             để khớp với _index_by_author_year.
+
+        Bug fix: Normalize newlines in text to handle cases like "(Vaswani et al.,
+        2017)" where the raw text has a line break.
         """
-        m = _APA_YEAR_RE.search(text)
+        # Normalize newlines to spaces to handle line breaks in extracted text
+        text_normalized = text.replace("\n", " ").replace("\r", " ")
+        m = _APA_YEAR_RE.search(text_normalized)
         if m:
             raw_author = m.group(1).strip()
             year = m.group(2).strip()

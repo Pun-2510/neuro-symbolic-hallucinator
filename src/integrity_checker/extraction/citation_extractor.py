@@ -17,6 +17,61 @@ _REFERENCE_HEADERS = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+# Essay title / header keywords — these indicate non-citation text
+_ESSAY_TITLE_INDICATORS = re.compile(
+    r"(?:this\s+essay|comprehensive\s+survey|comprehensive\s+review|"
+    r"introduction\s+to\s+|abstract\s+|survey\s*$|:?\s*survey\s+of\s+|"
+    r"a\s+(?:brief\s+)?(?:survey|review|introduction)|"
+    r"^\s*(?:deep\s+learning|natural\s+language\s+processing))",
+    re.IGNORECASE,
+)
+
+# Long text without punctuation at start — likely a title or heading, not a citation
+_LONG_TEXT_START_RE = re.compile(r"^[A-Za-z]{50,}?\s")
+
+# IEEE reference list marker pattern: [N] followed by space + author name
+# This helps identify standalone [N] as reference markers, not in-text citations
+_IEEE_REF_MARKER_RE = re.compile(r"^\s*\[\d+\]\s+[A-Z]")
+
+
+def _is_reference_list_marker(text: str, match_start: int) -> bool:
+    """Check if the [N] match is a reference list marker (not an in-text citation).
+
+    Reference list entries look like: "[4] Xiao, Y., ..." or "    [4] Xiao, Y., ..."
+    In-text citations look like: "According to [4], ..."
+
+    Returns True if this appears to be a reference list marker.
+    """
+    # If [N] is at the start of text (position 0), likely ref marker
+    if match_start == 0:
+        return True
+
+    # Check the full prefix - if it's all whitespace (including newlines), it's a ref marker
+    # This handles cases like "    [4]" (indented) or "\n[4]"
+    prefix = text[:match_start]
+    if prefix.isspace() or re.search(r"\n\s*$", prefix):
+        return True
+
+    return False
+
+
+def _is_essay_title(text: str) -> bool:
+    """Check if text appears to be an essay title, not a citation entry.
+
+    Returns True if the text is likely an essay title/header.
+    """
+    text_stripped = text.strip()
+
+    # Very long text (>200 chars) starting without punctuation — likely title
+    if len(text_stripped) > 200 and _LONG_TEXT_START_RE.match(text_stripped):
+        return True
+
+    # Contains essay/survey/review indicators
+    if _ESSAY_TITLE_INDICATORS.search(text_stripped):
+        return True
+
+    return False
+
 
 class CitationExtractor:
     """Trích xuất citation từ Document đã parse.
@@ -38,8 +93,9 @@ class CitationExtractor:
         """Trích xuất tất cả citation từ Document. Dedup theo (raw_text, page)."""
         citations: list[Citation] = []
         for page in doc.pages:
-            text = self.preprocessor.normalize(page.text)
-            page_citations = self._extract_from_text(text, page.page_num)
+            raw_text = page.text  # Keep raw text for whitespace detection
+            normalized = self.preprocessor.normalize(raw_text)
+            page_citations = self._extract_from_text(raw_text, normalized, page.page_num)
             citations.extend(page_citations)
 
         citations = self._dedupe(citations)
@@ -59,19 +115,41 @@ class CitationExtractor:
 
     # -- internals --
 
-    def _extract_from_text(self, text: str, page_num: int) -> list[Citation]:
+    def _extract_from_text(self, raw_text: str, normalized_text: str, page_num: int) -> list[Citation]:
+        """Extract citations from text.
+
+        Args:
+            raw_text: Raw text for whitespace/position detection
+            normalized_text: Preprocessed text for regex matching
+            page_num: Page number
+        """
         results: list[Citation] = []
         for pattern_def, compiled in self._compiled:
-            for m in compiled.finditer(text):
+            # Find positions in raw text first (preserves whitespace/newlines)
+            for m in compiled.finditer(raw_text):
+                raw = m.group(0).strip()
+                raw_start = m.start()
+
+                # Bug fix 1: Filter out IEEE [N] reference list markers
+                # "[4] Xiao, Y., ..." at start of line is a reference list entry, not in-text citation
+                if pattern_def.type == CitationType.NUMERIC:
+                    if _is_reference_list_marker(raw_text, raw_start):
+                        continue
+
+                # Bug fix 2: Filter out essay titles being extracted as citations
+                # Titles like "Deep Learning for Natural Language Processing: A Comprehensive Survey..."
+                if _is_essay_title(raw):
+                    continue
+
                 citation = Citation(
-                    raw_text=m.group(0).strip(),
+                    raw_text=raw,
                     citation_type=pattern_def.type,
                     style=pattern_def.style,
                     page_num=page_num,
                     matched_pattern=pattern_def.name,
                 )
                 # Parse các field con
-                self._populate_fields(citation, m.group(0))
+                self._populate_fields(citation, raw)
                 results.append(citation)
         return results
 
