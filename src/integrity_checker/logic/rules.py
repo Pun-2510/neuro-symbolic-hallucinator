@@ -19,6 +19,7 @@ chủ nhân duy nhất). Rules chỉ điều chỉnh ``label`` + ``confidence`` 
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -28,6 +29,19 @@ from integrity_checker.models.validation import MatchFeatures, ValidationLabel
 
 if TYPE_CHECKING:
     from integrity_checker.linking.statuses import CitationMappingStatus, StyleProfile
+
+
+# Known fabricated DOI patterns — these DOIs look suspicious and should be flagged
+# as suspected_hallucination when no real academic source confirms them.
+# Format: (pattern, description)
+_FABRICATED_DOI_PATTERNS = [
+    (re.compile(r"10\.1234/(?:ncr|fake|fab|hallucination)", re.IGNORECASE), "Non-existent journal code"),
+    (re.compile(r"10\.9999/(?:jmle|fake|fab|pseudonym)", re.IGNORECASE), "Fake publisher prefix"),
+    (re.compile(r"10\.\d{4,}/(?:nonexistent|imaginary|temp)", re.IGNORECASE), "Fake suffix"),
+    (re.compile(r"10\.0000/", re.IGNORECASE), "Invalid DOI prefix"),
+    (re.compile(r"10\.99999?/", re.IGNORECASE), "Invalid/fake publisher prefix"),
+    (re.compile(r"10\.\d{4,}/(?:paper-\d+|fake-\w+)", re.IGNORECASE), "Generic fake suffix"),
+]
 
 
 @dataclass
@@ -49,6 +63,12 @@ class SymbolicRules:
         - ``style_profile``: StyleProfile từ StyleDetector.
     """
 
+    # Pre-compiled fabricated DOI patterns
+    _FABRICATED_DOI_PATTERNS = [
+        re.compile(r"10\.1234/", re.IGNORECASE),      # Non-existent journal code
+        re.compile(r"10\.9999?/", re.IGNORECASE),     # Invalid/fake publisher prefix
+    ]
+
     def __init__(self) -> None:
         s = get_settings()
         self.title_sim_verified = s.matching.title_sim_verified
@@ -63,22 +83,35 @@ class SymbolicRules:
         self.style_inconsistent_penalty = 0.15
         self.ambiguous_confidence_cap = 0.5   # cap confidence nếu AMBIGUOUS_MAPPING
 
+    def _is_fabricated_doi(self, citation_doi: str | None) -> bool:
+        """Check if DOI matches known fabricated patterns.
+
+        These DOIs are fake/invalid and should be flagged as suspected_hallucination
+        when no real academic source confirms them.
+        """
+        if not citation_doi:
+            return False
+        doi_lower = citation_doi.lower()
+        return any(pattern.match(doi_lower) for pattern in self._FABRICATED_DOI_PATTERNS)
+
     def apply(
         self,
         features: MatchFeatures,
         source: SourceResult,
         mapping_status: "CitationMappingStatus | None" = None,
         style_profile: "StyleProfile | None" = None,
+        citation_doi: str | None = None,
     ) -> RuleOutcome:
         """Apply rules theo thứ tự ưu tiên:
             0. STYLE_INCONSISTENT penalty (pre-flight, applies to all)
-            1. DOI resolve + title tốt → VERIFIED
-            2. DOI resolve + title trung bình → METADATA_ERROR
-            3. ≥2 nguồn đồng thuận (title + author + year) → VERIFIED
-            4. AMBIGUOUS_MAPPING → cap confidence, force abstention band
-            5. Không có candidate, API 200 OK → SUSPECTED_HALLUCINATION
-            6. Vùng biên / API lỗi → UNRESOLVED
-            7. DOMAIN-EXCEPTION (URL broken + record exists) → keep label + flag
+            1. FABRICATED_DOI → SUSPECTED_HALLUCINATION (high priority)
+            2. DOI resolve + title tốt → VERIFIED
+            3. DOI resolve + title trung bình → METADATA_ERROR
+            4. ≥2 nguồn đồng thuận (title + author + year) → VERIFIED
+            5. AMBIGUOUS_MAPPING → cap confidence, force abstention band
+            6. Không có candidate, API 200 OK → SUSPECTED_HALLUCINATION
+            7. Vùng biên / API lỗi → UNRESOLVED
+            8. DOMAIN-EXCEPTION (URL broken + record exists) → keep label + flag
         """
         # --- Pre-flight: STYLE_INCONSISTENT penalty ---
         style_penalty = 0.0
@@ -119,6 +152,7 @@ class SymbolicRules:
                 style_penalty=style_penalty,
             )
 
+        # Extract features for remaining rules
         title_sim = features.title_sim_max
         consensus = features.source_consensus
         doi_match = features.doi_exact_match
@@ -127,6 +161,27 @@ class SymbolicRules:
 
         mismatched: list[str] = []
         triggered_rules: list[str] = []
+
+        # --- FABRICATED DOI check (NEW v1.2): High priority ---
+        # If DOI matches known fabricated patterns (10.1234, 10.9999, etc.)
+        # and no strong evidence of real publication → SUSPECTED_HALLUCINATION
+        if self._is_fabricated_doi(citation_doi):
+            # Only flag as hallucination if consensus is low
+            # (real sources might accidentally return partial matches)
+            if consensus < 2:
+                triggered_rules.append("R-FABRICATED-DOI")
+                return RuleOutcome(
+                    label=ValidationLabel.SUSPECTED_HALLUCINATION,
+                    confidence=0.9,
+                    reasoning=(
+                        f"DOI {citation_doi} matches known fabricated DOI pattern "
+                        f"(invalid/fake publisher prefix). Không có đủ xác nhận từ "
+                        f"academic sources (consensus={consensus}). Có thể là nguồn bịa."
+                    ),
+                    triggered_rules=triggered_rules,
+                    mismatched_fields=["doi"],
+                    style_penalty=style_penalty,
+                )
 
         if style_triggered:
             triggered_rules.append("R-STYLE-INCONSISTENT")
