@@ -271,27 +271,33 @@ class IntegrityPipeline:
         for citation, source in zip(all_citations, sources):
             # NEW v1.2 §3.2.2 (task #33) — compute mapping_status TRƯỚC rules
             # để SymbolicRules có input cho AMBIGUOUS_MAPPING rule.
-            # Use normalized identifier to match DOI/URL variants to same link
-            normalized_key = IntegrityPipeline._normalize_identifier(citation.raw_text)
-            link = link_by_raw_text.get(normalized_key)
-            if link is None:
-                # Fallback: try raw lowercased (for non-DOI citations)
-                link = link_by_raw_text.get(citation.raw_text.lower().strip())
-            if link is not None:
-                mapping_status = link.status
-                mapping_confidence = link.confidence
-                citation_link = link
+            # Reference list entries are the reference entries themselves — they're "matched" by definition
+            if citation.citation_type.value == "reference_list":
+                mapping_status = CitationMappingStatus.MATCHED
+                mapping_confidence = 0.95
+                citation_link = None
             else:
-                # Không tìm thấy link — mặc định MISSING_REFERENCE nếu ref_list rỗng,
-                # nếu không thì AMBIGUOUS_MAPPING.
-                if not ref_citations:
-                    mapping_status = CitationMappingStatus.MISSING_REFERENCE
-                    mapping_confidence = 0.0
-                    citation_link = None
+                # Use normalized identifier to match DOI/URL variants to same link
+                normalized_key = IntegrityPipeline._normalize_identifier(citation.raw_text)
+                link = link_by_raw_text.get(normalized_key)
+                if link is None:
+                    # Fallback: try raw lowercased (for non-DOI citations)
+                    link = link_by_raw_text.get(citation.raw_text.lower().strip())
+                if link is not None:
+                    mapping_status = link.status
+                    mapping_confidence = link.confidence
+                    citation_link = link
                 else:
-                    mapping_status = CitationMappingStatus.AMBIGUOUS_MAPPING
-                    mapping_confidence = 0.0
-                    citation_link = None
+                    # Không tìm thấy link — mặc định MISSING_REFERENCE nếu ref_list rỗng,
+                    # nếu không thì AMBIGUOUS_MAPPING.
+                    if not ref_citations:
+                        mapping_status = CitationMappingStatus.MISSING_REFERENCE
+                        mapping_confidence = 0.0
+                        citation_link = None
+                    else:
+                        mapping_status = CitationMappingStatus.AMBIGUOUS_MAPPING
+                        mapping_confidence = 0.0
+                        citation_link = None
             # Pass mapping_status + style_profile vào checker
             verdict = self.checker.check(
                 citation,

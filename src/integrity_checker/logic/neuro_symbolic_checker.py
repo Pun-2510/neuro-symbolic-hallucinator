@@ -50,6 +50,7 @@ class NeuroSymbolicChecker:
             source,
             mapping_status=mapping_status,
             style_profile=style_profile,
+            citation_doi=citation.doi,
         )
         return CitationVerdict(
             citation=citation,
