@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -34,6 +35,7 @@ from integrity_checker.extraction import (
 from integrity_checker.extraction.base import BasePDFParser, Document, chain_parsers
 from integrity_checker.extraction.document_parser import ParsedDocument
 from integrity_checker.linking.citation_linker import CitationLinker
+from integrity_checker.linking.duplicate_detector import DuplicateDetector
 from integrity_checker.linking.statuses import (
     CitationLink,
     CitationMappingStatus,
@@ -259,13 +261,22 @@ class IntegrityPipeline:
             in_text_citations, ref_citations, []
         )
 
-        # 2. Retrieve + check từng citation
+        # 2. Retrieve + check từng citation (PARALLEL cho tốc độ)
+        sources = await asyncio.gather(
+            *(self.orchestrator.retrieve(c) for c in all_citations),
+            return_exceptions=False,
+        )
+
         verdicts: list[CitationVerdict] = []
-        for citation in all_citations:
-            source = await self.orchestrator.retrieve(citation)
+        for citation, source in zip(all_citations, sources):
             # NEW v1.2 §3.2.2 (task #33) — compute mapping_status TRƯỚC rules
             # để SymbolicRules có input cho AMBIGUOUS_MAPPING rule.
-            link = link_by_raw_text.get(citation.raw_text.lower().strip())
+            # Use normalized identifier to match DOI/URL variants to same link
+            normalized_key = IntegrityPipeline._normalize_identifier(citation.raw_text)
+            link = link_by_raw_text.get(normalized_key)
+            if link is None:
+                # Fallback: try raw lowercased (for non-DOI citations)
+                link = link_by_raw_text.get(citation.raw_text.lower().strip())
             if link is not None:
                 mapping_status = link.status
                 mapping_confidence = link.confidence
@@ -296,9 +307,7 @@ class IntegrityPipeline:
                 f"  [{verdict.label.value}] conf={verdict.confidence:.2f} "
                 f"mapping={verdict.mapping_status.value if verdict.mapping_status else 'NONE'} "
                 f"raw={citation.raw_text[:60]}"
-            )
-
-        # 3. Linking summary (counts per CitationMappingStatus) — cho Web UI dashboard
+            )        # 3. Linking summary (counts per CitationMappingStatus) — cho Web UI dashboard
         linking_summary = self._build_linking_summary(verdicts)
 
         # 4. CIS
@@ -327,23 +336,56 @@ class IntegrityPipeline:
         return report
 
     @staticmethod
+    def _normalize_identifier(raw_text: str) -> str:
+        """Normalize citation raw_text để so sánh dedup: bỏ doi.org prefix, lowercase.
+
+        "https://doi.org/10.48550/arXiv.1706.03762" → "doi:10.48550/arXiv.1706.03762"
+        "10.48550/arXiv.1706.03762" → "doi:10.48550/arXiv.1706.03762"
+        "10.18653/v1/N19-1423" → "doi:10.18653/v1/N19-1423"
+        "https://doi.org/10.18653/v1/N19-1423" → "doi:10.18653/v1/N19-1423"
+        """
+        text = raw_text.strip()
+        # Bỏ trailing punctuation
+        text = text.rstrip(".,;:")
+        # Bỏ https://doi.org/ prefix
+        doi_prefixes = [
+            "https://doi.org/",
+            "http://doi.org/",
+            "https://doi.org",
+            "http://doi.org",
+            "doi.org/",
+            "doi.org",
+        ]
+        for prefix in doi_prefixes:
+            if text.lower().startswith(prefix.lower()):
+                text = text[len(prefix):]
+                break
+        # Chuẩn hóa: lowercase + strip
+        return text.strip().lower()
+
+    @staticmethod
     def _merge_citations(
         body: list[Citation],
         references: list[Citation],
         appendix: list[Citation],
     ) -> list[Citation]:
-        """Gộp + dedupe theo (style, normalized raw). Reference list ưu tiên (có title).
+        """Gộp + dedupe theo (style, normalized identifier). Reference list ưu tiên (có title).
 
         Flow v1.2:
             1. References trước (chứa title + DOI — đầy đủ nhất)
             2. body_citations (in-text — thiếu title)
             3. appendix_citations last (out-of-scope nhưng vẫn kiểm tra)
+
+        Deduplication: normalize DOI/URL để "10.48550/arXiv.1706.03762" và
+        "https://doi.org/10.48550/arXiv.1706.03762" được nhận diện là cùng 1 ref.
         """
         seen: set[tuple[str, str]] = set()
         merged: list[Citation] = []
         for source_list in (references, body, appendix):
             for c in source_list:
-                key = (c.style.value, c.raw_text.lower().strip())
+                # Dùng normalized identifier thay vì raw_text để dedupe
+                normalized = IntegrityPipeline._normalize_identifier(c.raw_text)
+                key = (c.style.value, normalized)
                 if key not in seen:
                     seen.add(key)
                     merged.append(c)
@@ -353,16 +395,18 @@ class IntegrityPipeline:
     def _merge_citations_legacy(
         in_text: list[Citation], ref_list: list[Citation]
     ) -> list[Citation]:
-        """Legacy merge (backward compat cho fallback path)."""
+        """Legacy merge (backward compat cho fallback path) with DOI/URL normalization."""
         seen: set[tuple[str, str]] = set()
         merged: list[Citation] = []
         for c in ref_list:
-            key = (c.style.value, c.raw_text.lower().strip())
+            normalized = IntegrityPipeline._normalize_identifier(c.raw_text)
+            key = (c.style.value, normalized)
             if key not in seen:
                 seen.add(key)
                 merged.append(c)
         for c in in_text:
-            key = (c.style.value, c.raw_text.lower().strip())
+            normalized = IntegrityPipeline._normalize_identifier(c.raw_text)
+            key = (c.style.value, normalized)
             if key not in seen:
                 seen.add(key)
                 merged.append(c)
@@ -451,19 +495,23 @@ class IntegrityPipeline:
     def _build_link_lookup(
         links: list[CitationLink],
     ) -> dict[str, CitationLink]:
-        """Map raw_text → CitationLink cho O(1) lookup từ verdict.
+        """Map normalized identifier → CitationLink cho O(1) lookup từ verdict.
 
-        CitationLinker sets evidence['raw'] (not 'raw_text') to the original
-        raw_text. Match by lowercased + stripped form.
+        Uses _normalize_identifier on evidence['raw'] to ensure DOI vs DOI-URL
+        forms map to the same key. Also index by occurrence_id for in-text citations.
         """
         lookup: dict[str, CitationLink] = {}
         for link in links:
             evidence = link.evidence or {}
             raw = evidence.get("raw", "") or evidence.get("raw_text", "")
             if raw:
+                # Normalize: both DOI and URL form map to same key
+                normalized = IntegrityPipeline._normalize_identifier(raw)
+                lookup[normalized] = link
+                # Also index by raw as fallback (for non-DOI citations)
                 lookup[raw.lower().strip()] = link
-            else:
-                # Fallback: use occurrence_id as key
+            # Index by occurrence_id as fallback
+            if link.occurrence_id:
                 lookup[link.occurrence_id] = link
         return lookup
 

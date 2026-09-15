@@ -114,6 +114,10 @@ class CitationLinker:
             )
 
             if link is not None:
+                # Populate evidence['raw'] so downstream lookups can find this link
+                # by the in-text citation's raw_text (the pipeline indexes links
+                # by lowercased raw_text).
+                link.evidence["raw"] = cit.raw_text
                 result.add_link(link)
                 # Track matched bibs (without blocking reuse)
                 if link.reference_id:
@@ -122,7 +126,7 @@ class CitationLinker:
                             bib_matched.add(idx)
                             break
             else:
-                # No match → MISSING_REFERENCE
+                # No match → MISSING_REFERENCE. Also set raw so lookups succeed.
                 result.add_link(
                     CitationLink(
                         occurrence_id=occ_id,
@@ -130,6 +134,7 @@ class CitationLinker:
                         status=CitationMappingStatus.MISSING_REFERENCE,
                         confidence=0.0,
                         method=MappingMethod.NO_KEYS,
+                        evidence={"raw": cit.raw_text},
                     )
                 )
 
@@ -242,8 +247,6 @@ class CitationLinker:
 
         for doi, bib in bib_by_doi.items():
             bib_idx = self._find_bib_index(bib, bib_citations)
-            if bib_idx in bib_used:
-                continue
             if bib.title_normalized:
                 score = self._title_similarity(cit.title_normalized, bib.title_normalized)
                 if score > best_score:
@@ -362,6 +365,8 @@ class CitationLinker:
         Handles: (Smith, 2020) → ("smith", "2020", None)
                  (Smith, 2020a) → ("smith", "2020", "a")
                  (Smith, 2020b) → ("smith", "2020", "b")
+                 (Smith et al., 2020) → ("smith", "2020", None) — strips "et al."
+                 (Smith and Jones, 2020) → ("smith", "2020", None) — strips "and ..."
 
         Returns:
             (normalized_last_name, year, year_suffix) — author đã được normalize
@@ -371,12 +376,23 @@ class CitationLinker:
         if m:
             raw_author = m.group(1).strip()
             year = m.group(2).strip()
+            # Strip common suffixes: "et al.", "et al", "and others", "and ..."
+            author_stripped = re.sub(
+                r"\s+et\s+al\.?\s*$", "", raw_author, flags=re.IGNORECASE
+            )
+            author_stripped = re.sub(
+                r"\s+and\s+(others?|others?)\s*$", "", author_stripped, flags=re.IGNORECASE
+            )
+            author_stripped = re.sub(
+                r",?\s+et\s+al\.?\s*$", "", author_stripped, flags=re.IGNORECASE
+            )
+            author_stripped = author_stripped.strip().rstrip(",").strip()
             # Check for suffix letter after year: 2020a, 2020b
             year_suffix = None
             if len(year) == 5 and year[4] in "abcdfgh":
                 year_suffix = year[4]
                 year = year[:4]
-            normalized = self._normalize_last_name(raw_author)
+            normalized = self._normalize_last_name(author_stripped)
             return normalized, year, year_suffix
         return None, None, None
 
