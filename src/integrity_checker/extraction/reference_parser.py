@@ -268,41 +268,48 @@ class ReferenceListParser:
         return self._split_by_year_fallback(merged_text)
 
     def _split_by_year_fallback(self, text: str) -> list[str]:
-        """Fallback: split by year marker boundaries.
+        """Fallback: split reference list by newline boundaries.
 
         This method is called when DOI/URL-based splitting fails.
-        Splits on blank lines or at year boundaries where entries start.
+        Each reference entry is on its own line (or separated by blank lines).
         Returns list of entries.
         """
-        # First try: split by blank lines (paragraph-style entries)
+        # Split by blank lines first (paragraph-style)
         parts = re.split(r"\n\s*\n", text)
         if len(parts) >= 2:
-            return [p.strip() for p in parts if len(p.strip()) > 20]
+            result = [p.strip() for p in parts if len(p.strip()) > 20]
+            if len(result) >= 2:
+                return result
 
-        # Second: split by year boundary where a new entry starts
-        # A new entry starts after a period + newline + uppercase
-        # Pattern: after entry ends (year + . or newline), next entry starts
+        # Split by newlines - each line is likely an entry
+        lines = text.split("\n")
         entries: list[str] = []
-        # Find all year positions and split AFTER the closing paren + period
-        year_pattern = re.compile(r"\(\s*((?:19|20)\d{2})[a-z]?\s*\)\.\s*")
-        matches = list(year_pattern.finditer(text))
+        current = ""
 
-        if len(matches) >= 1:
-            start = 0
-            for m in matches:
-                # Entry ends at end of "(YYYY)."
-                entry_end = m.end()
-                chunk = text[start:entry_end].strip()
-                if len(chunk) > 20:
-                    entries.append(chunk)
-                start = entry_end
-            # Add last entry
-            if start < len(text):
-                chunk = text[start:].strip()
-                if len(chunk) > 20:
-                    entries.append(chunk)
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                # Blank line - end current entry if any
+                if current:
+                    entries.append(current.strip())
+                    current = ""
+            elif re.match(r"^[A-Z][a-zÀ-ž]", stripped):
+                # Line starts with uppercase - new entry
+                if current:
+                    entries.append(current.strip())
+                current = stripped
+            else:
+                # Continuation line (wrapped text) - append to current
+                current = (current + " " + stripped).strip()
 
-        return entries if len(entries) >= 2 else []
+        # Don't forget the last entry
+        if current.strip():
+            entries.append(current.strip())
+
+        # Filter out very short entries (likely not citations)
+        result = [e for e in entries if len(e) > 20]
+
+        return result if len(result) >= 2 else []
 
     def _parse_entry(
         self, entry: str, order_index: int, page_num: int
