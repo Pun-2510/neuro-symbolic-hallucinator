@@ -66,8 +66,11 @@ class ArxivClient(BaseScholarClient):
         """
         import urllib.request
         import urllib.error
+        import urllib.parse
 
-        url = f"http://export.arxiv.org/api/query?id_list={arxiv_id}"
+        # URL-encode arxiv_id to prevent injection
+        encoded_id = urllib.parse.quote(arxiv_id, safe="")
+        url = f"https://export.arxiv.org/api/query?id_list={encoded_id}"
         try:
             loop = asyncio.get_event_loop()
             # Run sync urllib in executor
