@@ -39,6 +39,11 @@ logger = logging.getLogger(__name__)
 
 # Regex cho in-text APA pattern: (Author, Year)
 _APA_YEAR_RE = re.compile(r"\(([A-Za-zÀ-ÿ'.\s-]+),\s*((?:19|20)\d{2}[a-z]?)\)")
+# Regex cho Author et al. (Year) format (no parens around author)
+_APA_ETAL_YEAR_RE = re.compile(
+    r"([A-Za-zÀ-ÿ'.\s-]+?)\s+et\s+al\.?\s*\(\s*((?:19|20)\d{2}[a-z]?)\s*\)",
+    re.IGNORECASE,
+)
 # Regex cho in-text IEEE numeric: [N] or [N, M] or [N-M]
 _IEEE_NUM_RE = re.compile(r"\[(\d+(?:\s*[-–,]\s*\d+)*)\]")
 # Regex cho year extraction từ bib entry
@@ -374,9 +379,13 @@ class CitationLinker:
 
         Bug fix: Normalize newlines in text to handle cases like "(Vaswani et al.,
         2017)" where the raw text has a line break.
+
+        Also handles: "Author et al. (Year)" format (no parens around author).
         """
         # Normalize newlines to spaces to handle line breaks in extracted text
         text_normalized = text.replace("\n", " ").replace("\r", " ")
+
+        # Try standard APA format: (Author, Year) or (Author et al., Year)
         m = _APA_YEAR_RE.search(text_normalized)
         if m:
             raw_author = m.group(1).strip()
@@ -399,6 +408,20 @@ class CitationLinker:
                 year = year[:4]
             normalized = self._normalize_last_name(author_stripped)
             return normalized, year, year_suffix
+
+        # Try "Author et al. (Year)" format (no parens around author)
+        m2 = _APA_ETAL_YEAR_RE.search(text_normalized)
+        if m2:
+            raw_author = m2.group(1).strip()
+            year = m2.group(2).strip()
+            # Check for suffix letter after year: 2020a, 2020b
+            year_suffix = None
+            if len(year) == 5 and year[4] in "abcdfgh":
+                year_suffix = year[4]
+                year = year[:4]
+            normalized = self._normalize_last_name(raw_author)
+            return normalized, year, year_suffix
+
         return None, None, None
 
     def _title_similarity(self, a: str, b: str) -> float:

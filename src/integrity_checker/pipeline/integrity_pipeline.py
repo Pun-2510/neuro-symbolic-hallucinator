@@ -57,6 +57,13 @@ from integrity_checker.retrieval import RetrievalOrchestrator
 
 logger = get_logger(__name__)
 
+# Regex for normalizing "et al." citation formats for link lookup
+# Matches: "(Vaswani et al., 2017)", "(Vaswani et al. (2017))", "Vaswani et al. (2017)"
+_ET_AL_NORM_RE = re.compile(
+    r"\(?([A-Za-zÀ-ÿ'.\s-]+?)(?:\s+et\s+al\.?)?[,\s]+\(?\s*((?:19|20)\d{2})",
+    re.IGNORECASE,
+)
+
 
 @dataclass
 class AnalysisReport:
@@ -277,12 +284,40 @@ class IntegrityPipeline:
                 mapping_confidence = 0.95
                 citation_link = None
             else:
-                # Use normalized identifier to match DOI/URL variants to same link
-                normalized_key = IntegrityPipeline._normalize_identifier(citation.raw_text)
+                # Normalize the raw_text to handle newlines/whitespace variations
+                normalized_text = citation.raw_text.replace("\n", " ").replace("  ", " ")
+                # Try lookup with normalized text
+                normalized_key = IntegrityPipeline._normalize_identifier(normalized_text)
                 link = link_by_raw_text.get(normalized_key)
                 if link is None:
-                    # Fallback: try raw lowercased (for non-DOI citations)
-                    link = link_by_raw_text.get(citation.raw_text.lower().strip())
+                    link = link_by_raw_text.get(normalized_text.lower().strip())
+                # Special case: author-year style without parens vs with parens
+                # e.g., "Vaswani et al. (2017)" vs "(Vaswani et al., 2017)"
+                if link is None and "et al." in normalized_text:
+                    # Try adding parens if missing
+                    if not normalized_text.strip().startswith("("):
+                        with_parens = f"({normalized_text.strip().rstrip('.')})"
+                        link = link_by_raw_text.get(with_parens.lower())
+                        if link is None:
+                            link = link_by_raw_text.get(
+                                IntegrityPipeline._normalize_identifier(with_parens)
+                            )
+                # Final fallback: try extracting (author, year) from any APA-like format
+                if link is None:
+                    # Normalize both sides: extract first author name and year
+                    # Patterns: "(Vaswani et al., 2017)", "(Vaswani et al. (2017))", "Vaswani et al. (2017)"
+                    def normalize_et_al(text):
+                        # Extract first author and year
+                        m = _ET_AL_NORM_RE.search(text)
+                        if m:
+                            first = m.group(1).strip().split()[0].lower()
+                            year = m.group(2)
+                            return f"({first} et al., {year})"
+                        return None
+
+                    norm = normalize_et_al(normalized_text)
+                    if norm:
+                        link = link_by_raw_text.get(norm)
                 if link is not None:
                     mapping_status = link.status
                     mapping_confidence = link.confidence
@@ -511,11 +546,13 @@ class IntegrityPipeline:
             evidence = link.evidence or {}
             raw = evidence.get("raw", "") or evidence.get("raw_text", "")
             if raw:
+                # Normalize newlines and extra spaces first (for consistent matching)
+                raw_normalized = raw.replace("\n", " ").replace("  ", " ").strip()
                 # Normalize: both DOI and URL form map to same key
-                normalized = IntegrityPipeline._normalize_identifier(raw)
+                normalized = IntegrityPipeline._normalize_identifier(raw_normalized)
                 lookup[normalized] = link
                 # Also index by raw as fallback (for non-DOI citations)
-                lookup[raw.lower().strip()] = link
+                lookup[raw_normalized.lower()] = link
             # Index by occurrence_id as fallback
             if link.occurrence_id:
                 lookup[link.occurrence_id] = link
