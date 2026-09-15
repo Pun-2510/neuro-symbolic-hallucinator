@@ -261,6 +261,51 @@ class SymbolicRules:
                 style_penalty=style_penalty,
             )
 
+        # --- Rule 3b (NEW v1.2): Well-linked citation with good title similarity ---
+        # When citation is properly matched via author_year method AND title is confirmed,
+        # be lenient on author_jaccard (which may be 0 for "et al." citations).
+        # This handles cases like "(Vaswani et al., 2017)" → "Attention Is All You Need"
+        # Use title_sim >= 0.7 (above abstention band, confirms the citation)
+        mapping_is_matched = (
+            mapping_status is not None
+            and hasattr(mapping_status, "value")
+            and mapping_status.value == "matched"
+        )
+        if mapping_is_matched and title_sim >= 0.7:
+            triggered_rules.append("R-WELL-LINKED")
+            return RuleOutcome(
+                label=ValidationLabel.VERIFIED,
+                confidence=max(0.0, 0.85 - style_penalty),
+                reasoning=(
+                    f"Citation được link chính xác (author-year match) và title "
+                    f"similarity cao ({title_sim:.2f}). Author mismatch "
+                    f"(author_jaccard={author_sim:.2f}) là do 'et al.' citation "
+                    f"không liệt kê đủ tác giả. Xác minh thành công."
+                ),
+                triggered_rules=triggered_rules,
+                mismatched_fields=[],
+                style_penalty=style_penalty,
+            )
+
+        # --- Rule 3c (NEW v1.2): Well-linked with moderate title similarity ---
+        # When citation is properly matched AND title is moderate (0.5-0.7),
+        # flag as metadata_error with higher confidence than R-WEAK-EVIDENCE
+        if mapping_is_matched and 0.5 <= title_sim < 0.7:
+            triggered_rules.append("R-WELL-LINKED-MODERATE")
+            return RuleOutcome(
+                label=ValidationLabel.VERIFIED,
+                confidence=max(0.0, 0.75 - style_penalty),
+                reasoning=(
+                    f"Citation được link chính xác (author-year match) và title "
+                    f"similarity trung bình ({title_sim:.2f}). Author mismatch "
+                    f"(author_jaccard={author_sim:.2f}) là do 'et al.' citation. "
+                    f"Có thể xác minh với lưu ý về metadata."
+                ),
+                triggered_rules=triggered_rules,
+                mismatched_fields=["author"],
+                style_penalty=style_penalty,
+            )
+
         # --- Rule 4 (NEW v1.2 #33): AMBIGUOUS_MAPPING → cap confidence ---
         # Nếu linker không quyết định được → force abstention band
         if mapping_status is not None and hasattr(mapping_status, "value"):
