@@ -267,6 +267,43 @@ class ReferenceListParser:
         # Step 3: Fallback - split on year markers
         return self._split_by_year_fallback(merged_text)
 
+    def _split_by_year_fallback(self, text: str) -> list[str]:
+        """Fallback: split by year marker boundaries.
+
+        This method is called when DOI/URL-based splitting fails.
+        Splits on blank lines or at year boundaries where entries start.
+        Returns list of entries.
+        """
+        # First try: split by blank lines (paragraph-style entries)
+        parts = re.split(r"\n\s*\n", text)
+        if len(parts) >= 2:
+            return [p.strip() for p in parts if len(p.strip()) > 20]
+
+        # Second: split by year boundary where a new entry starts
+        # A new entry starts after a period + newline + uppercase
+        # Pattern: after entry ends (year + . or newline), next entry starts
+        entries: list[str] = []
+        # Find all year positions and split AFTER the closing paren + period
+        year_pattern = re.compile(r"\(\s*((?:19|20)\d{2})[a-z]?\s*\)\.\s*")
+        matches = list(year_pattern.finditer(text))
+
+        if len(matches) >= 1:
+            start = 0
+            for m in matches:
+                # Entry ends at end of "(YYYY)."
+                entry_end = m.end()
+                chunk = text[start:entry_end].strip()
+                if len(chunk) > 20:
+                    entries.append(chunk)
+                start = entry_end
+            # Add last entry
+            if start < len(text):
+                chunk = text[start:].strip()
+                if len(chunk) > 20:
+                    entries.append(chunk)
+
+        return entries if len(entries) >= 2 else []
+
     def _parse_entry(
         self, entry: str, order_index: int, page_num: int
     ) -> Citation | None:
