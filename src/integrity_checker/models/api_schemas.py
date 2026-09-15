@@ -27,7 +27,7 @@ class CitationSchema(BaseModel):
 class VerdictSchema(BaseModel):
     """Verdict cho 1 citation — đầu ra chính của API."""
 
-    citation_id: Optional[int] = None
+    citation_id: Optional[str] = None
     citation_raw: str
     label: str                                  # ValidationLabel value
     confidence: float
@@ -35,6 +35,10 @@ class VerdictSchema(BaseModel):
     triggered_rules: list[str] = Field(default_factory=list)
     mismatched_fields: list[str] = Field(default_factory=list)
     matched_sources: list[dict] = Field(default_factory=list)
+    mapping_status: str = "matched"
+    mapping_confidence: float = 0.0
+    style_penalty: Optional[float] = None
+    domain_exception: bool = False
     is_overridden: bool = False
 
 

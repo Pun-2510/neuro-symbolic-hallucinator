@@ -26,6 +26,8 @@ function SourceBadge({ src }: { src: MatchedSource }) {
     arxiv: 'bg-orange-100 text-orange-800',
   };
 
+  const matchedFields = src.matched_fields ?? [];
+
   return (
     <div className="border rounded p-3 bg-card">
       <div className="flex items-center justify-between mb-2">
@@ -54,9 +56,9 @@ function SourceBadge({ src }: { src: MatchedSource }) {
       </div>
 
       {/* Matched fields */}
-      {src.matched_fields.length > 0 && (
+      {matchedFields.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {src.matched_fields.map((field) => (
+          {matchedFields.map((field) => (
             <span
               key={field}
               className="px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded text-xs font-mono"
@@ -79,6 +81,11 @@ export function CitationDetailDrawer({
   onClose: () => void;
   onOverride?: (req: OverrideRequest) => Promise<void>;
 }) {
+  // Defensive: ensure arrays are always defined
+  const triggeredRules = verdict.triggered_rules ?? [];
+  const mismatchedFields = verdict.mismatched_fields ?? [];
+  const matchedSources = verdict.matched_sources ?? [];
+
   return (
     <div
       className="fixed inset-0 bg-black/40 flex items-end md:items-center justify-center z-50"
@@ -156,11 +163,11 @@ export function CitationDetailDrawer({
           )}
 
           {/* Triggered rules */}
-          {verdict.triggered_rules.length > 0 && (
+          {triggeredRules.length > 0 && (
             <div>
               <div className="font-semibold mb-1.5">Rules triggered</div>
               <div className="flex flex-wrap gap-1.5">
-                {verdict.triggered_rules.map((r) => (
+                {triggeredRules.map((r) => (
                   <span
                     key={r}
                     className="px-2 py-1 bg-muted rounded text-xs font-mono text-indigo-700"
@@ -173,11 +180,11 @@ export function CitationDetailDrawer({
           )}
 
           {/* Mismatched fields */}
-          {verdict.mismatched_fields.length > 0 && (
+          {mismatchedFields.length > 0 && (
             <div>
               <div className="font-semibold mb-1.5">Mismatched fields</div>
               <div className="flex flex-wrap gap-1.5">
-                {verdict.mismatched_fields.map((f) => (
+                {mismatchedFields.map((f) => (
                   <span
                     key={f}
                     className="px-2 py-1 bg-yellow-50 text-yellow-800 border border-yellow-200 rounded text-xs font-mono"
@@ -190,14 +197,14 @@ export function CitationDetailDrawer({
           )}
 
           {/* Evidence sources */}
-          {verdict.matched_sources.length > 0 && (
+          {matchedSources.length > 0 && (
             <div>
               <div className="font-semibold mb-2">
-                Evidence ({verdict.matched_sources.length} source
-                {verdict.matched_sources.length > 1 ? 's' : ''})
+                Evidence ({matchedSources.length} source
+                {matchedSources.length > 1 ? 's' : ''})
               </div>
               <div className="space-y-2">
-                {verdict.matched_sources.map((src, i) => (
+                {matchedSources.map((src, i) => (
                   <SourceBadge key={i} src={src} />
                 ))}
               </div>

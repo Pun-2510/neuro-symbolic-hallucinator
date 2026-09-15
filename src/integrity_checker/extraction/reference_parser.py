@@ -131,17 +131,14 @@ class ReferenceListParser:
     def _split_entries(self, text: str) -> list[str]:
         """Tách các entry riêng.
 
-        Heuristic:
-            1. Bỏ prefix "References" / "Tài liệu tham khảo" / "Bibliography" ở
-               đầu text.
-            2. Nếu có dòng bắt đầu bằng `[N]` → đó là IEEE entry boundaries.
-            3. APA/Vancouver: tách bằng cách tìm marker "(YYYY[a-z]?)" — mỗi
-               marker mở đầu entry mới. Author block của entry mới bắt đầu
-               ngay sau `. ` kết thúc entry trước (tìm `. ` gần nhất phía
-               TRƯỚC marker).
-            4. Trường hợp đặc biệt: chỉ 1 entry trong toàn text → trả nguyên.
+        Strategy (fallback nhiều tầng):
+            1. Bỏ prefix "References" / "Tài liệu tham khảo" / "Bibliography".
+            2. Nếu có dòng bắt đầu bằng `[N]` → IEEE entries.
+            3. Merge wrapped lines, rồi tách bằng year-marker boundary.
+            4. Fallback: tách bằng blank line.
+            5. Nếu vẫn chỉ 1 entry → trả nguyên text.
         """
-        # 1. Strip header prefix ở đầu text
+        # 1. Strip header prefix
         header_strip_re = re.compile(
             r"^\s*(?:references?|bibliography|tài\s+liệu\s+tham\s+khảo"
             r"|danh\s+mục\s+tài\s+liệu|works?\s+cited)\s*[:.]?\s*",
@@ -152,7 +149,7 @@ class ReferenceListParser:
         if not text:
             return []
 
-        # 2. IEEE: dòng [N] phân cách entries
+        # 2. IEEE entries
         if re.search(r"^\s*\[\d+\]", text, flags=re.MULTILINE):
             entries: list[str] = []
             for line in text.splitlines():
@@ -161,60 +158,87 @@ class ReferenceListParser:
                     continue
                 if re.match(r"^\[\d+\]", line):
                     if entries and entries[-1]:
-                        # (handled below — entries là list từng dòng IEEE)
                         pass
                     entries.append(line)
                 else:
                     if entries:
                         entries[-1] = entries[-1] + " " + line
-            return [e for e in entries if len(e) > 20]
+            result = [e for e in entries if len(e) > 20]
+            if len(result) >= 2:
+                return result
 
-        # 3. APA/Vancouver: dùng year marker
-        # Tìm tất cả positions của "(YYYY[a-z]?)"
-        year_re = re.compile(r"\(\s*(?:19|20)\d{2}[a-z]?\s*\)")
-        markers = list(year_re.finditer(text))
+        # 3. Merge wrapped lines + year-marker boundary split
+        entries = self._split_by_year_boundary(text)
+        if len(entries) >= 2:
+            return entries
 
-        if len(markers) <= 1:
-            # Chỉ 1 entry
-            return [text] if len(text) > 20 else []
+        # 4. Fallback: blank-line split
+        merged = text.replace("\r\n", "\n").replace("\r", "\n")
+        parts = re.split(r"\n\s*\n", merged)
+        result = [p.strip() for p in parts if len(p.strip()) > 20]
+        if len(result) >= 2:
+            return result
 
-        # Tách entry bằng boundary phía TRƯỚC author block của entry mới.
-        # Mỗi entry mới bắt đầu bằng LastName, F. (year). Tìm vị trí
-        # LastName (capitalized word) ngay trước marker "(year)" thứ N — đó
-        # là vị trí BẮT ĐẦU author block của entry mới → entry cũ kết thúc
-        # ở đó.
-        #
-        # Pattern author start: optional comma/period + space + LastName word
-        # (uppercase letter, có thể có particle van/de/von/der trước).
-        author_start_re = re.compile(
-            r"(?:^|\n|\.\s+)(?:(?:van|de|von|der|del|la|le)\s+)*"
-            r"[A-ZÀ-Ý][a-zà-ỹ]+(?:[-'][A-ZÀ-Ý][a-zà-ỹ]+)?"
-            r",\s*[A-ZÀ-Ý]\.\s*$",
-            flags=re.MULTILINE,
-        )
-        entries: list[str] = []
-        prev_start = 0
-        for i in range(1, len(markers)):
-            m = markers[i]
-            # Tìm author start ngay trước marker thứ i
-            candidates = list(author_start_re.finditer(text, prev_start, m.start()))
-            if not candidates:
-                continue
-            last = candidates[-1]
-            # Sanity: author_start phải gần marker (cách marker < 20 chars)
-            if m.start() - last.end() > 20:
-                continue
-            boundary = last.start()
-            entries.append(text[prev_start:boundary].strip())
-            prev_start = boundary
+        # 5. Chỉ 1 entry
+        return [text] if len(text) > 20 else []
 
-        entries.append(text[prev_start:].strip())
-        return [e for e in entries if len(e) > 20]
+    def _split_by_year_boundary(self, text: str) -> list[str]:
+        """Tach entries bang DOI URL boundaries.
+
+        Algorithm:
+            1. Merge wrapped author lines (lowercase continuation).
+            2. Tim DOI URL boundaries, split tai do.
+            3. Trim trailing DOI URLs, replace newlines with spaces.
+            4. Neu 2+ entries -> tra ve. Fallback -> year markers.
+        """
+        # Step 1: Merge wrapped author lines
+        merged_lines: list[str] = []
+        current = ""
+        for line in text.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                if current:
+                    merged_lines.append(current)
+                    current = ""
+            elif re.match(r"^[a-zà-ỳ]", stripped):
+                current = (current + " " + stripped).strip()
+            else:
+                if current:
+                    merged_lines.append(current)
+                current = stripped
+        if current:
+            merged_lines.append(current)
+        merged_text = "\n".join(merged_lines)
+
+        # Step 2: Tim DOI URL boundaries
+        doi_url_re = re.compile(r"(doi\.org/10\.[^\s\n]+)(\n)?", flags=re.IGNORECASE)
+        matches = list(doi_url_re.finditer(merged_text))
+        if len(matches) >= 1:
+            entries: list[str] = []
+            start = 0
+            for m in matches:
+                end = m.end()
+                chunk = merged_text[start:end].strip()
+                if len(chunk) > 20:
+                    entries.append(chunk)
+                start = end
+            # Last chunk (after last DOI URL)
+            last_chunk = merged_text[start:].strip()
+            if len(last_chunk) > 20:
+                entries.append(last_chunk)
+
+            if len(entries) >= 2:
+                return entries
+
+        # Step 3: Fallback - split on year markers
+        return self._split_by_year_fallback(merged_text)
 
     def _parse_entry(
         self, entry: str, order_index: int, page_num: int
     ) -> Citation | None:
         """Parse 1 entry. Thử lần lượt APA, IEEE, Vancouver."""
+        # Normalize: replace newlines with spaces (wrapped lines)
+        entry = entry.replace("\n", " ").replace("  ", " ")
         # IEEE first (vì có marker [N] đặc trưng)
         if re.match(r"^\s*\[\d+\]", entry):
             return self._parse_ieee_entry(entry, order_index, page_num)

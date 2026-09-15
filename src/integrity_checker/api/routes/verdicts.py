@@ -36,14 +36,19 @@ async def get_verdicts(
     records = repo.get_verdicts(essay_id)
     return [
         VerdictSchema(
+            citation_id=str(r.id),
             citation_raw=r.citation_raw,
             label=r.label,
             confidence=r.confidence,
             reasoning=r.reasoning,
             triggered_rules=json.loads(r.triggered_rules or "[]"),
             mismatched_fields=json.loads(r.mismatched_fields or "[]"),
-            matched_sources=json.loads(r.features or "{}"),
-            is_overridden=False,
+            matched_sources=[],
+            mapping_status=r.mapping_status or "matched",
+            mapping_confidence=r.mapping_confidence or 0.0,
+            style_penalty=r.style_penalty,
+            domain_exception=bool(r.domain_exception),
+            is_overridden=bool(r.is_overridden),
         )
         for r in records
     ]
@@ -75,6 +80,7 @@ async def override_verdict(
 
     # Return updated verdict (simplified — real impl updates DB)
     return VerdictSchema(
+        citation_id=verdict_id,
         citation_raw=f"Citation {verdict_id}",
         label=body.new_label,
         confidence=0.5,
@@ -82,5 +88,7 @@ async def override_verdict(
         triggered_rules=[],
         mismatched_fields=[],
         matched_sources=[],
+        mapping_status=body.new_mapping_status or "matched",
+        mapping_confidence=0.0,
         is_overridden=True,
     )
