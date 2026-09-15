@@ -348,8 +348,21 @@ class DocumentParser:
                 year_suffix = year[4:]
                 year = year[:4]
 
+            # Build human-readable raw_text from structured fields (not raw XML!)
+            raw_parts = []
+            if authors_raw:
+                raw_parts.append(", ".join(authors_raw))
+            raw_parts.append(f"({year or 'n.d.'})" if year else "")
+            if bib.title:
+                raw_parts.append(bib.title)
+            if bib.venue:
+                raw_parts.append(bib.venue)
+            if bib.doi:
+                raw_parts.append(f"DOI: {bib.doi}")
+            raw_text = " ".join(raw_parts) or f"{bib.title or ''} ({year or 'n.d.'})"
+
             c = Citation(
-                raw_text=bib.raw_xml or f"{bib.title or ''} ({year or 'n.d.'})",
+                raw_text=raw_text,
                 citation_type=CitationType.REFERENCE_LIST,
                 # GROBID mặc định trả APA-like format
                 style=CitationStyle.APA if not authors_raw else CitationStyle.APA,

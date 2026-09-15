@@ -82,6 +82,36 @@ _DOI_RE = re.compile(r"10\.\d{4,9}/[^\s\]\)\,;]+")
 _URL_RE = re.compile(r"https?://[^\s\]\)\,;]+")
 _YEAR_RE = re.compile(r"\b((?:19|20)\d{2})([a-z]?)\b")
 
+# Essay title indicators — entries matching these should be filtered out
+_ESSAY_TITLE_RE = re.compile(
+    r"(?:this\s+essay|comprehensive\s+survey|comprehensive\s+review|"
+    r"introduction\s+to\s+|abstract\s+|survey\s*$|:?\s*survey\s+of\s+|"
+    r"a\s+(?:brief\s+)?(?:survey|review|introduction)|"
+    r"^\s*(?:deep\s+learning|natural\s+language\s+processing))",
+    re.IGNORECASE,
+)
+
+# Long text without year — likely not a citation entry
+_LONG_TEXT_NO_YEAR_RE = re.compile(r"^[A-Za-z]{50,}")
+
+
+def _is_essay_title_entry(entry: str) -> bool:
+    """Check if a reference entry is actually an essay title or header, not a citation.
+
+    Returns True if the entry should be filtered out.
+    """
+    text_stripped = entry.strip()
+
+    # Very long text without year — likely a title or header
+    if len(text_stripped) > 200 and _LONG_TEXT_NO_YEAR_RE.match(text_stripped):
+        return True
+
+    # Contains essay/survey/review indicators
+    if _ESSAY_TITLE_RE.search(text_stripped):
+        return True
+
+    return False
+
 
 def _normalize_title(title: str) -> str:
     """Chuẩn hoá title: lowercase, bỏ punctuation, gộp spaces."""
@@ -123,6 +153,10 @@ class ReferenceListParser:
         entries = self._split_entries(section_text)
         citations: list[Citation] = []
         for idx, entry in enumerate(entries, start=1):
+            # Bug fix: Filter out essay title/header entries (not actual citations)
+            if _is_essay_title_entry(entry):
+                logger.debug(f"Skipping essay title entry: {entry[:50]}...")
+                continue
             citation = self._parse_entry(entry, order_index=idx, page_num=start)
             if citation:
                 citations.append(citation)
