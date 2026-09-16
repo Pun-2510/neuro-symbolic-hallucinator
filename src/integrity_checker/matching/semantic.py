@@ -13,6 +13,10 @@ logger = get_logger(__name__)
 class SemanticMatcher:
     """Cosine similarity giữa 2 đoạn text dùng sentence-transformers.
 
+    Uses singleton pattern (2026-09-15) — model instance is cached globally
+    so it only loads once per process, avoiding ~5s reload overhead on each
+    SemanticMatcher() instantiation.
+
     # TODO(user): tuần 10 — benchmark các model sau:
         - all-MiniLM-L6-v2 (default, CPU-friendly, ~80MB)
         - mxbai-embed-large-v1 (tốt hơn nhưng nặng hơn)
@@ -21,11 +25,37 @@ class SemanticMatcher:
 
     _instance_lock = threading.Lock()
     _model_cache: dict[str, "object"] = {}
+    _singleton: "SemanticMatcher | None" = None
 
     def __init__(self, model_name: str | None = None) -> None:
         settings = get_settings().matching
         self.model_name = model_name or settings.embedding_model
         self._model = None  # lazy load
+
+    @classmethod
+    def get_instance(cls, model_name: str | None = None) -> "SemanticMatcher":
+        """Get singleton instance — model loads only once per process.
+
+        Args:
+            model_name: Override default model. If singleton already exists
+                       with different model, returns existing singleton (first
+                       model wins to avoid redundant loads).
+
+        Returns:
+            Shared SemanticMatcher instance with cached model.
+        """
+        if cls._singleton is None:
+            with cls._instance_lock:
+                if cls._singleton is None:
+                    cls._singleton = cls(model_name)
+                    logger.info(f"SemanticMatcher singleton created with model: {cls._singleton.model_name}")
+        return cls._singleton
+
+    @classmethod
+    def reset_instance(cls) -> None:
+        """Reset singleton — for testing only."""
+        with cls._instance_lock:
+            cls._singleton = None
 
     def _get_model(self):
         if self._model is None:

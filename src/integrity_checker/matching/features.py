@@ -18,11 +18,14 @@ class FeatureCalculator:
     v1.2 task #29: Author matching dùng ``author_matcher`` (diacritics-fold +
     particle strip + last-name canonical). Trước đó dùng naive lowercase
     (sẽ fail cho "Nguyễn" vs "Nguyen" / "van der Berg" / "Smith J. K.").
+
+    2026-09-15: SemanticMatcher uses singleton pattern to avoid reloading
+    the ML model on each instantiation (~5s speedup per pipeline run).
     """
 
     def __init__(self, fuzzy: FuzzyMatcher | None = None, semantic: SemanticMatcher | None = None) -> None:
         self.fuzzy = fuzzy or FuzzyMatcher()
-        self.semantic = semantic or SemanticMatcher()
+        self.semantic = semantic or SemanticMatcher.get_instance()
 
     def compute(self, citation: Citation, source: SourceResult) -> MatchFeatures:
         """Tính features dựa trên candidate tốt nhất (highest confidence)."""
