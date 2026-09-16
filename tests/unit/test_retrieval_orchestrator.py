@@ -607,3 +607,180 @@ class TestRetrievalOrchestratorSequential:
         # All sources should still be queried
         assert len(result.sources_queried) == 4
         assert len(result.sources_succeeded) == 4
+
+
+# ---------- Test: arXiv DOI Routing ----------
+
+class TestArxivDoiRouting:
+    """Test that arXiv DOIs are routed to correct sources (skip Crossref/OpenAlex)."""
+
+    @pytest.fixture
+    def arxiv_doi_citation(self):
+        """Citation with arXiv DOI."""
+        return Citation(
+            raw_text="Vaswani, A. et al. (2017). Attention Is All You Need. arXiv:1706.03762.",
+            title="Attention Is All You Need",
+            year="2017",
+            doi="10.48550/arXiv.1706.03762",
+            authors=[],
+        )
+
+    @pytest.fixture
+    def regular_doi_citation(self):
+        """Citation with regular DOI."""
+        return Citation(
+            raw_text="Smith, J. (2020). Regular Paper. DOI: 10.1109/CVPR.2020.00123.",
+            title="Regular Paper",
+            year="2020",
+            doi="10.1109/CVPR.2020.00123",
+            authors=[],
+        )
+
+    def test_is_arxiv_doi_true(self):
+        """DOI containing 'arxiv' should be detected as arXiv DOI."""
+        assert RetrievalOrchestrator.is_arxiv_doi("10.48550/arXiv.1706.03762") is True
+        assert RetrievalOrchestrator.is_arxiv_doi("10.48550/ARXIV.1706.03762") is True  # case-insensitive
+
+    def test_is_arxiv_doi_false(self):
+        """Regular DOIs should not be detected as arXiv DOI."""
+        assert RetrievalOrchestrator.is_arxiv_doi("10.1109/CVPR.2020.00123") is False
+        assert RetrievalOrchestrator.is_arxiv_doi("10.1007/978-3-642-15582-6") is False
+        assert RetrievalOrchestrator.is_arxiv_doi(None) is False
+        assert RetrievalOrchestrator.is_arxiv_doi("") is False
+
+    @pytest.mark.asyncio
+    async def test_arxiv_doi_skips_crossref_openalex(
+        self,
+        arxiv_doi_citation,
+        mock_cache,
+    ):
+        """arXiv DOI citation should only query S2 and arXiv, not Crossref/OpenAlex."""
+        # Create mock clients
+        mock_crossref = AsyncMock()
+        mock_crossref.name = "crossref"
+        mock_crossref.lookup.return_value = SourceCandidate(
+            source_name="crossref", found=False, error="Should not be called"
+        )
+
+        mock_openalex = AsyncMock()
+        mock_openalex.name = "openalex"
+        mock_openalex.lookup.return_value = SourceCandidate(
+            source_name="openalex", found=False, error="Should not be called"
+        )
+
+        mock_s2 = AsyncMock()
+        mock_s2.name = "semantic_scholar"
+        mock_s2.lookup.return_value = SourceCandidate(
+            source_name="semantic_scholar", found=True, doi="10.48550/arXiv.1706.03762", confidence=0.95
+        )
+
+        mock_arxiv = AsyncMock()
+        mock_arxiv.name = "arxiv"
+        mock_arxiv.lookup.return_value = SourceCandidate(
+            source_name="arxiv", found=True, title="Attention Is All You Need", confidence=0.90
+        )
+
+        orchestrator = RetrievalOrchestrator(
+            crossref=mock_crossref,
+            openalex=mock_openalex,
+            semantic_scholar=mock_s2,
+            arxiv=mock_arxiv,
+            parallel=True,
+            cache=mock_cache,
+        )
+
+        result = await orchestrator.retrieve(arxiv_doi_citation)
+
+        # Only S2 and arXiv should be queried
+        assert set(result.sources_queried) == {"semantic_scholar", "arxiv"}
+        assert "crossref" not in result.sources_queried
+        assert "openalex" not in result.sources_queried
+
+        # Verify crossref/openalex were NOT called
+        mock_crossref.lookup.assert_not_called()
+        mock_openalex.lookup.assert_not_called()
+
+        # Verify S2 and arXiv were called
+        mock_s2.lookup.assert_called_once()
+        mock_arxiv.lookup.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_regular_doi_queries_all_sources(
+        self,
+        regular_doi_citation,
+        mock_cache,
+    ):
+        """Regular DOI should query all 4 sources."""
+        mock_crossref = AsyncMock()
+        mock_crossref.name = "crossref"
+        mock_crossref.lookup.return_value = SourceCandidate(
+            source_name="crossref", found=True, doi="10.1109/CVPR.2020.00123", confidence=0.95
+        )
+
+        mock_openalex = AsyncMock()
+        mock_openalex.name = "openalex"
+        mock_openalex.lookup.return_value = SourceCandidate(
+            source_name="openalex", found=True, confidence=0.85
+        )
+
+        mock_s2 = AsyncMock()
+        mock_s2.name = "semantic_scholar"
+        mock_s2.lookup.return_value = SourceCandidate(
+            source_name="semantic_scholar", found=True, confidence=0.80
+        )
+
+        mock_arxiv = AsyncMock()
+        mock_arxiv.name = "arxiv"
+        mock_arxiv.lookup.return_value = SourceCandidate(
+            source_name="arxiv", found=False, error="Not arXiv"
+        )
+
+        orchestrator = RetrievalOrchestrator(
+            crossref=mock_crossref,
+            openalex=mock_openalex,
+            semantic_scholar=mock_s2,
+            arxiv=mock_arxiv,
+            parallel=True,
+            cache=mock_cache,
+        )
+
+        result = await orchestrator.retrieve(regular_doi_citation)
+
+        # All 4 sources should be queried
+        assert len(result.sources_queried) == 4
+        assert set(result.sources_queried) == {"crossref", "openalex", "semantic_scholar", "arxiv"}
+
+    @pytest.mark.asyncio
+    async def test_arxiv_doi_health_check_with_2_sources(
+        self,
+        arxiv_doi_citation,
+        mock_cache,
+    ):
+        """arXiv DOI with 2 failing sources should trigger UNRESOLVED."""
+        mock_s2 = AsyncMock()
+        mock_s2.name = "semantic_scholar"
+        mock_s2.lookup.return_value = SourceCandidate(
+            source_name="semantic_scholar", found=False, error="Connection failed"
+        )
+
+        mock_arxiv = AsyncMock()
+        mock_arxiv.name = "arxiv"
+        mock_arxiv.lookup.return_value = SourceCandidate(
+            source_name="arxiv", found=False, error="Connection failed"
+        )
+
+        orchestrator = RetrievalOrchestrator(
+            crossref=AsyncMock(),
+            openalex=AsyncMock(),
+            semantic_scholar=mock_s2,
+            arxiv=mock_arxiv,
+            parallel=True,
+            cache=mock_cache,
+        )
+
+        result = await orchestrator.retrieve(arxiv_doi_citation)
+
+        # Both sources failed
+        assert len(result.sources_succeeded) == 0
+        # Health check should trigger for arXiv DOIs with 2 failing sources
+        assert len(result.sources_failed) == 2

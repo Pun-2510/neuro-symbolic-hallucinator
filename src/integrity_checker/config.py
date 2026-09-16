@@ -185,8 +185,16 @@ class CacheConfig(BaseModel):
 
 
 class RetryBackoffConfig(BaseModel):
-    initial_seconds: float = 1.0
-    max_seconds: float = 10.0
+    """Exponential backoff config for retry logic.
+
+    Defaults tuned for rate-limit recovery:
+    - initial_seconds: Start at 5s (more aggressive than old 1s)
+    - max_seconds: Cap at 60s (old: 10s) for sustained rate limits
+    - multiplier: 2x per attempt
+    """
+
+    initial_seconds: float = 5.0
+    max_seconds: float = 60.0
     multiplier: float = 2.0
 
 

@@ -76,9 +76,38 @@ class RetrievalOrchestrator:
     def clients(self) -> list[BaseScholarClient]:
         return [self.crossref, self.openalex, self.semantic_scholar, self.arxiv]
 
+    @staticmethod
+    def is_arxiv_doi(doi: str | None) -> bool:
+        """Check if DOI is an arXiv DOI (10.48550/arXiv.XXXXX).
+
+        arXiv DOIs follow the pattern: 10.48550/arXiv.XXXXXXXX
+        Crossref and OpenAlex don't index these DOIs, so we skip them
+        to avoid wasted API calls.
+        """
+        if not doi:
+            return False
+        return "arxiv" in doi.lower()
+
     async def retrieve(self, citation: Citation) -> SourceResult:
-        """Truy hồi tất cả nguồn cho 1 citation."""
-        clients = self.clients()
+        """Truy hồi tất cả nguồn cho 1 citation.
+
+        arXiv DOIs (10.48550/arXiv.XXX) chỉ được truy vấn bằng:
+        - Semantic Scholar (resolves arXiv DOIs)
+        - arXiv API
+
+        Crossref và OpenAlex trả về 404 cho arXiv DOIs → bỏ qua để tiết kiệm API calls.
+        """
+        # Filter clients based on DOI type to avoid wasted 404 calls
+        all_clients = self.clients()
+        if self.is_arxiv_doi(citation.doi):
+            # arXiv DOIs only work with S2 and arXiv API
+            clients = [self.semantic_scholar, self.arxiv]
+            logger.debug(
+                f"arXiv DOI detected, skipping Crossref/OpenAlex: {citation.doi}"
+            )
+        else:
+            clients = all_clients
+
         if self.parallel:
             candidates = await asyncio.gather(
                 *[self._lookup_with_cache_and_ratelimit(c, citation) for c in clients],
@@ -109,8 +138,10 @@ class RetrievalOrchestrator:
 
         # Health check: nếu tất cả sources fail (không có candidate found nào)
         # → UNRESOLVED sentinel
+        # Note: arXiv DOIs chỉ query 2 sources (S2 + arXiv), nên threshold thấp hơn
         any_found = any(c.found for c in deduped)
-        if not any_found and len(failed) >= len(clients) // 2 + 1:
+        min_failures_for_unresolved = 2 if len(clients) <= 2 else len(clients) // 2 + 1
+        if not any_found and len(failed) >= min_failures_for_unresolved:
             # Đa số sources failed → trả UNRESOLVED
             logger.warning(
                 f"UNRESOLVED: citation='{citation.raw_text[:50]}', "
