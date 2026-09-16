@@ -23,17 +23,27 @@ class NeuroSymbolicChecker:
     v1.2 §3.2.2 (task #33): check() giờ nhận thêm ``mapping_status`` +
     ``style_profile`` để SymbolicRules có đủ input cho rules mở rộng.
 
+    2026-09-15: Uses SemanticMatcher singleton for ~5s performance improvement
+    by avoiding model reload on each instantiation.
+
     # TODO(user): tuần 12–13 — bổ sung:
         - Thêm classifier ML (LogisticRegression / XGBoost) như baseline B4
         - Calibration layer (Platt scaling) cho confidence
     """
+
+    _feature_calculator: FeatureCalculator | None = None
 
     def __init__(
         self,
         feature_calculator: FeatureCalculator | None = None,
         rules: SymbolicRules | None = None,
     ) -> None:
-        self.feature_calculator = feature_calculator or FeatureCalculator()
+        # Reuse shared FeatureCalculator instance to benefit from SemanticMatcher singleton
+        if feature_calculator is not None:
+            self.feature_calculator = feature_calculator
+        elif NeuroSymbolicChecker._feature_calculator is None:
+            NeuroSymbolicChecker._feature_calculator = FeatureCalculator()
+        self.feature_calculator = NeuroSymbolicChecker._feature_calculator
         self.rules = rules or SymbolicRules()
 
     def check(
@@ -51,6 +61,7 @@ class NeuroSymbolicChecker:
             mapping_status=mapping_status,
             style_profile=style_profile,
             citation_doi=citation.doi,
+            citation_url=citation.url,
         )
         return CitationVerdict(
             citation=citation,
