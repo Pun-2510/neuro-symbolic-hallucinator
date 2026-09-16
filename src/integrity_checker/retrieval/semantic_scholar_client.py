@@ -18,6 +18,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from integrity_checker.config import get_settings
 from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate
@@ -47,11 +48,13 @@ class SemanticScholarClient(BaseScholarClient):
         self,
         api_key: str | None = None,
         timeout: float = 10.0,
-        max_retries: int = 3,
+        max_retries: int | None = None,
     ) -> None:
         super().__init__(timeout=timeout)
         self.api_key = api_key or os.getenv("S2_API_KEY", "")
-        self.max_retries = max_retries
+        settings = get_settings()
+        self.max_retries = max_retries or settings.retrieval.retry.max_attempts
+        self._backoff = settings.retrieval.retry.backoff
         self._headers = {"x-api-key": self.api_key} if self.api_key else {}
 
     async def lookup(self, citation: Citation) -> SourceCandidate:
@@ -129,11 +132,18 @@ class SemanticScholarClient(BaseScholarClient):
     async def _fetch_json_with_retry(
         self, path: str, params: dict[str, Any] | None = None
     ) -> dict | None:
-        """GET với tenacity retry + exponential backoff."""
+        """GET với tenacity retry + exponential backoff.
+
+        Backoff config từ settings: initial=5s, max=60s, multiplier=2.0
+        """
         url = f"{self.BASE_URL}{path}"
         retry = AsyncRetrying(
             stop=stop_after_attempt(self.max_retries),
-            wait=wait_exponential(multiplier=1, min=1, max=10),
+            wait=wait_exponential(
+                multiplier=self._backoff.multiplier,
+                min=self._backoff.initial_seconds,
+                max=self._backoff.max_seconds,
+            ),
             retry=retry_if_exception_type(
                 (httpx.HTTPError, httpx.TimeoutException)
             ),

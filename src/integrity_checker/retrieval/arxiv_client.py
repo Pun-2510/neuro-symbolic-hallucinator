@@ -19,6 +19,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from integrity_checker.config import get_settings
 from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate
@@ -84,12 +85,70 @@ class ArxivClient(BaseScholarClient):
             return None
 
     @staticmethod
-    def _fetch_arxiv_sync(url: str) -> str:
-        """Sync fetch via urllib (no retry - single attempt)."""
+    def _fetch_arxiv_sync(url: str, max_retries: int = 3) -> str:
+        """Sync fetch via urllib with exponential backoff retry.
+
+        Args:
+            url: The arXiv API URL to fetch.
+            max_retries: Maximum number of retry attempts (default 3).
+
+        Returns:
+            Raw XML response string.
+
+        Raises:
+            urllib.error.HTTPError: If all retries exhausted.
+        """
+        import time
+        import urllib.error
         import urllib.request
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return resp.read().decode("utf-8")
+
+        last_error: Exception | None = None
+        for attempt in range(max_retries):
+            try:
+                req = urllib.request.Request(
+                    url,
+                    headers={"User-Agent": "EssayIntegrityChecker/1.0 (mailto:student@tdtu.edu.vn)"}
+                )
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    return resp.read().decode("utf-8")
+            except urllib.error.HTTPError as e:
+                last_error = e
+                if e.code == 429 and attempt < max_retries - 1:
+                    # Rate limited — exponential backoff: 2, 4, 8 seconds
+                    wait_time = 2 ** (attempt + 1)
+                    logger.warning(
+                        f"arXiv rate-limited (429), retrying in {wait_time}s "
+                        f"(attempt {attempt + 2}/{max_retries})"
+                    )
+                    time.sleep(wait_time)
+                elif e.code == 404:
+                    # Not found — don't retry
+                    raise
+                elif attempt < max_retries - 1:
+                    # Other HTTP errors — retry with backoff
+                    wait_time = 2 ** (attempt + 1)
+                    logger.warning(
+                        f"arXiv HTTP {e.code}, retrying in {wait_time}s "
+                        f"(attempt {attempt + 2}/{max_retries})"
+                    )
+                    time.sleep(wait_time)
+                else:
+                    raise
+            except urllib.error.URLError as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** (attempt + 1)
+                    logger.warning(
+                        f"arXiv network error: {e.reason}, retrying in {wait_time}s"
+                    )
+                    time.sleep(wait_time)
+                else:
+                    raise
+
+        # Should not reach here, but raise last error if we do
+        if last_error:
+            raise last_error
+        raise urllib.error.URLError("arXiv fetch failed after retries")
 
     def _parse_arxiv_xml(self, xml: str, arxiv_id: str) -> SourceCandidate | None:
         """Parse arXiv API XML → SourceCandidate."""
@@ -178,22 +237,43 @@ class ArxivClient(BaseScholarClient):
         return cand
 
     async def _with_retry(self, coro_factory) -> list[dict]:
-        """Wrap sync SDK call với tenacity retry."""
-        try:
-            return await coro_factory()
-        except Exception as e:
-            # Retry once on HTTP errors (rate limit)
-            if "HTTPError" in type(e).__name__ or "rate" in str(e).lower():
-                logger.warning(f"arXiv rate-limited, retrying in 2s...")
-                import asyncio as _aio
-                await _aio.sleep(2.0)
+        """Wrap sync SDK call với tenacity retry + exponential backoff.
+
+        Backoff config: initial=5s, max=60s, multiplier=2.0 (từ settings)
+        """
+        from tenacity import AsyncRetrying, RetryError, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+        settings = get_settings()
+        backoff = settings.retrieval.retry.backoff
+        max_attempts = settings.retrieval.retry.max_attempts
+
+        retry = AsyncRetrying(
+            stop=stop_after_attempt(max_attempts),
+            wait=wait_exponential(
+                multiplier=backoff.multiplier,
+                min=backoff.initial_seconds,
+                max=backoff.max_seconds,
+            ),
+            retry=retry_if_exception_type((Exception,)),
+            reraise=False,
+        )
+
+        last_error: Exception | None = None
+        async for attempt in retry:
+            with attempt:
                 try:
                     return await coro_factory()
-                except Exception as e2:
-                    logger.error(f"arXiv retry failed: {type(e2).__name__}: {e2}")
+                except Exception as e:
+                    last_error = e
+                    # Only retry on HTTP errors (rate limit)
+                    if "HTTPError" in type(e).__name__ or "rate" in str(e).lower():
+                        logger.warning(f"arXiv rate-limited: {type(e).__name__}: {e}")
+                        raise  # Let tenacity handle the backoff
+                    logger.error(f"arXiv error: {type(e).__name__}: {e}")
                     return []
-            logger.error(f"arXiv error: {type(e).__name__}: {e}")
-            return []
+
+        logger.error(f"arXiv retry exhausted, last error: {last_error}")
+        return []
 
     @staticmethod
     def _do_id_search_sync(arxiv_mod: Any, arxiv_id: str) -> list[dict]:

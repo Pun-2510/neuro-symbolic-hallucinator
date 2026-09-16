@@ -18,6 +18,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from integrity_checker.config import get_settings
 from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate
@@ -43,11 +44,13 @@ class OpenAlexClient(BaseScholarClient):
         self,
         contact_email: str | None = None,
         timeout: float = 10.0,
-        max_retries: int = 3,
+        max_retries: int | None = None,
     ) -> None:
         super().__init__(timeout=timeout)
-        self.contact_email = contact_email or os.getenv("CONTACT_EMAIL", "")
-        self.max_retries = max_retries
+        settings = get_settings()
+        self.contact_email = contact_email or os.getenv("CONTACT_EMAIL", "") or settings.retrieval.contact_email
+        self.max_retries = max_retries or settings.retrieval.retry.max_attempts
+        self._backoff = settings.retrieval.retry.backoff
         self._headers = {
             "User-Agent": (
                 f"EssayIntegrityChecker/0.1 (mailto:{self.contact_email})"
@@ -133,11 +136,18 @@ class OpenAlexClient(BaseScholarClient):
     async def _fetch_json_with_retry(
         self, path: str, params: dict[str, Any] | None = None
     ) -> dict | None:
-        """GET với tenacity retry + exponential backoff."""
+        """GET với tenacity retry + exponential backoff.
+
+        Backoff config: initial=5s, max=60s, multiplier=2.0 (từ settings)
+        """
         url = f"{self.BASE_URL}{path}"
         retry = AsyncRetrying(
             stop=stop_after_attempt(self.max_retries),
-            wait=wait_exponential(multiplier=1, min=1, max=10),
+            wait=wait_exponential(
+                multiplier=self._backoff.multiplier,
+                min=self._backoff.initial_seconds,
+                max=self._backoff.max_seconds,
+            ),
             retry=retry_if_exception_type(
                 (httpx.HTTPError, httpx.TimeoutException)
             ),
