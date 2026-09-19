@@ -1,7 +1,36 @@
 # Thay đổi từ v1.1 sang v1.2
 
-**Cập nhật:** 2026-09-12  
+**Cập nhật:** 2026-09-19
 **Dự án:** Essay Integrity Checker
+
+## 8. Cập nhật 2026-09-19 - Bug Fixes Sprint
+
+### Critical Bug Fixes
+
+| Bug | Mô tả | Files |
+|-----|--------|-------|
+| Bug 1 | num_pages incorrect (3 → 91) | `integrity_pipeline.py` |
+| Bug 3 | Network resilience (retry, timeout) | `config.yaml`, `config.py`, `*_client.py` |
+| Bug 5 | Known papers false positives | `retrieval_orchestrator.py`, `neuro_symbolic_checker.py` |
+| Bug 6 | CIS penalties alignment | `cis.py` |
+| Bug 7 | Reference parsing (numeric_index) | `reference_parser.py`, `citation_extractor.py` |
+
+### Test Improvements
+
+- **467 → 576 tests passed** (+109 tests)
+- New `test_bug_fixes.py` với 19 test cases
+
+### Metrics Improvement (thesis.pdf)
+
+| Metric | Before | After |
+|--------|--------|-------|
+| CIS Score | 51 | **74.02** |
+| Matched | 33 | **52** |
+| Missing Reference | 29 | **5** |
+| Verified | 23 | **28** |
+| in_text_bib_consistency | 0% | **96.6%** |
+
+---
 
 ## 1. Thay đổi phạm vi
 
@@ -64,9 +93,9 @@ Web UI v1.2 hiện có:
 
 ## 6. Kiểm thử
 
-Tính đến 2026-09-12:
+Tính đến 2026-09-19:
 
-- Backend test suite: **467 passed, 4 skipped**.
+- Backend test suite: **576 passed, 4 skipped** (+109 từ 467).
 - 4 test skipped là real GROBID Docker mode; mock GROBID integration đã pass.
 - Frontend `npm run build`: pass.
 

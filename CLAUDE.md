@@ -1,160 +1,110 @@
 # CLAUDE.md — Essay Integrity Checker
 
-> **Ngày cập nhật:** 2026-08-23
-> **Định hướng:** Engineering Contribution (đã chốt với GVHD)
+## Mục đích
 
----
+Đây là hướng dẫn cho Claude Code (AI assistant) khi làm việc trong repository này.
 
-## Đề tài
+## Dự án
 
-- **Tên:** Hệ thống Neuro-Symbolic hỗ trợ đánh giá tính toàn vẹn trích dẫn và phát hiện tài liệu tham khảo ảo giác trong tiểu luận sinh viên
-- **SV:** Nguyễn Bảo Minh (523H0054) & Trần Gia Thành (523H0096)
-- **GVHD:** ThS. Võ Thị Kim Anh
-- **Đề cương:** v1.2 đã chốt với GVHD
+**Essay Integrity Checker** - Hệ thống kiểm tra tính toàn vẹn trích dẫn trong tiểu luận học thuật.
 
----
+- **Version:** v1.2
+- **Updated:** 2026-09-19
+- **Tests:** 576 passed, 4 skipped
 
-## Định hướng: ENGINEERING CONTRIBUTION
-
-**KHÔNG phải ML Research. KHÔNG cần train model. KHÔNG cần gold dataset.**
-
-### Focus hiện tại:
-1. **API Integration** — gọi CrossRef, OpenAlex, Semantic Scholar, arXiv
-2. **Cache Strategy** — tối ưu để "đã học thì nhớ", giảm API calls
-3. **System Robustness** — retry, backoff, error handling, rate limiting
-4. **Architecture** — clean code, maintainable, extensible
-
-### KHÔNG cần làm:
-- ❌ Gold dataset / ground truth / annotation
-- ❌ Train model / fine-tune
-- ❌ Precision / Recall / F1 metrics (formal evaluation)
-- ❌ Baseline comparison B0-B5
-
----
-
-## Kiến trúc 5 tầng (v1.2)
-
-```
-PDF → Tầng 1: PDF Parsing → Tầng 2: Style Detection + Bidirectional Linking 
-     → Tầng 3: Multi-source API Retrieval → Tầng 4: Matching + Rules 
-     → Tầng 5: Báo cáo (Integrity + Source tách rời)
-```
-
-### Hai lớp kết quả:
-
-**Lớp 1 — Citation Integrity (`CitationMappingStatus`):**
-- `MATCHED`, `MISSING_REFERENCE`, `UNCITED_REFERENCE`, `IN_TEXT_MISMATCH`, `DUPLICATE_REFERENCE`, `AMBIGUOUS_MAPPING`, `STYLE_INCONSISTENT`
-
-**Lớp 2 — Source Verification (`ValidationLabel`):**
-- `VERIFIED`, `METADATA_ERROR`, `SUSPECTED_HALLUCINATION`, `UNRESOLVED`
-
----
-
-## Trạng thái hiện tại (2026-08-23)
-
-### ✅ Đã hoàn thành:
-- 4 API clients thật (CrossRef, OpenAlex, S2, arXiv)
-- Tenacity retry + exponential backoff
-- Cache với disk persistence + source_name trong key
-- AuthorMatcher, VenueNormalizer, SourceConsensus
-- Fuzzy threshold tuning, Calibration (Brier, ECE)
-- StyleDetector, CitationLinker, DuplicateDetector
-- **ExplanationGenerator** — Vietnamese explanations + structured output (Task 1.1)
-- **43 unit tests cho ExplanationGenerator** (Task 1.2)
-- **Web UI v1.2** — StyleProfileCard, MappingStatusBadge, CitationGraphView, CitationDetailDrawer, OverrideControls, VerdictTable (Tasks 2.1-2.4)
-- **Export JSON/CSV v1.2** — linking_summary + verdicts (Task 2.5 partial)
-- **426 tests pass**
-
-### 🔄 Cần làm:
-1. **Task 2.5:** Export PDF — react-pdf hoặc html2canvas + jsPDF
-2. **Task 3.x:** Integration testing với GROBID Docker
-3. **Task 4.x:** Documentation (CHANGES_VS_V1.1, API docs, User Manual)
-4. **Task 5.x:** Thesis writing (Chapters 1-6)
-5. **Task 6.x:** Presentation & Demo
-
----
-
-## Quick Commands
-
-```bash
-# Setup
-make setup
-make sample
-
-# Chạy demo
-python -m integrity_checker.pipeline.integrity_pipeline data/essays/essay_02_mixed.pdf --output report.json
-
-# Chạy tests
-make test
-
-# API server
-uvicorn integrity_checker.api.main:app --reload
-
-# Web frontend
-cd web && npm install && npm run dev
-```
-
----
-
-## Cấu trúc chính
+## Cấu trúc quan trọng
 
 ```
 essay-integrity-checker/
 ├── src/integrity_checker/
-│   ├── extraction/      # PDF → text, sections, citations
-│   ├── linking/         # Bidirectional citation-reference linking
-│   ├── retrieval/       # API clients (CrossRef, OpenAlex, S2, arXiv)
-│   ├── matching/        # Author, venue, fuzzy matching
-│   ├── logic/           # Rules engine, CIS, calibration
-│   ├── pipeline/        # End-to-end orchestrator
-│   └── api/             # FastAPI backend
-├── web/                 # React + Vite + Tailwind
-├── data/                # essays/, ground_truth/, cache/
-├── scripts/             # Utilities
-└── tests/               # Unit + integration
+│   ├── api/              # FastAPI routes
+│   ├── extraction/       # PDF parsing (PyMuPDF + GROBID)
+│   ├── linking/          # Citation-Reference linking
+│   ├── logic/            # Neuro-symbolic rules, CIS
+│   ├── matching/         # Author/Title/Venue matching
+│   ├── models/           # Pydantic models
+│   ├── pipeline/         # Main pipeline
+│   └── retrieval/         # Multi-source retrieval
+├── tests/
+│   └── unit/            # Unit tests
+├── web/                  # React frontend
+└── configs/             # Configuration
 ```
 
----
+## Bug Fixes gần đây (2026-09-19)
 
-## Scope chính thức (v1.2)
+1. **Bug 1:** `num_pages` = `document.num_pages` (was `len(sections)`)
+2. **Bug 3:** Retry config (3→5), backoff (10→120s), timeout (10→30s)
+3. **Bug 5:** Known papers whitelist (Vaswani, Devlin, Sennrich, etc.)
+4. **Bug 6:** CIS `MAPPING_PENALTIES` aligned with rubric
+5. **Bug 7:** Reference `numeric_index` extraction + page number fix
 
-### ✅ Trong scope:
-- PDF upload + full-text extraction (PyMuPDF + GROBID)
-- Citation extraction + bidirectional linking
-- Multi-source API verification
-- Citation Integrity Score (CIS) — 5 components, weights 35/25/25/10/5
-- Web UI với evidence drawer + override capability
+## Test Commands
 
-### ❌ Ngoài scope:
-- OCR scanned PDF
-- Sách / ISBN verification
-- Claim-level verification (ngữ nghĩa)
-- Auto-grade toàn bài tiểu luận
-- Tự động kết luận gian lận
-- Google Scholar / SerpAPI
+```bash
+# Run all tests
+source .venv/bin/activate && python -m pytest tests/ -v
 
----
+# Run bug fix tests only
+python -m pytest tests/unit/test_bug_fixes.py -v
 
-## Nguyên tắc làm việc
+# Run with coverage
+python -m pytest tests/ --cov=src/integrity_checker --cov-report=html
+```
 
-1. **COMMIT SAU MỖI TASK** — Tuyệt đối commit sau mỗi task nhỏ hoặc công việc hoàn thành. Không gộp nhiều task vào 1 commit.
-2. **Mỗi tuần:** Update `tests/progress/SESSION_SUMMARY_WEEK{N}.md`
-3. **Mỗi feature:** Viết tests TRƯỚC, rồi mới code
-4. **Commit message format:** `feat: [Mô tả ngắn gọn]` hoặc `fix: [Bug fix]`
-5. **Trước khi hỏi GVHD:** Kiểm tra lại KNOWN_ISSUES_AND_TODO.md xem đã có trong đó chưa
+## Pipeline Commands
 
----
+```bash
+# Run pipeline on PDF
+source .venv/bin/activate
+python -m integrity_checker.pipeline.integrity_pipeline thesis.pdf --output report.json
 
-## Files quan trọng
+# Start backend
+uvicorn integrity_checker.api.main:app --reload --port 8000
 
-| File | Mục đích |
-|------|----------|
-| `README.md` | Tổng quan project, quick start |
-| `KNOWN_ISSUES_AND_TODO.md` | Bugs, TODOs, out-of-scope |
-| `DEVELOPER_QUICKSTART.md` | Setup guide chi tiết |
-| `tests/progress/SESSION_SUMMARY_*.md` | Progress theo tuần |
+# Start frontend
+cd web && npm run dev
+```
 
----
+## Key Files
 
-**Maintained by:** Nguyễn Bảo Minh (523H0054) & Trần Gia Thành (523H0096)
-**Last updated:** 2026-08-23
+| File | Description |
+|------|-------------|
+| `src/.../pipeline/integrity_pipeline.py` | Main pipeline orchestration |
+| `src/.../extraction/document_parser.py` | PDF parsing + reference extraction |
+| `src/.../linking/citation_linker.py` | Bidirectional citation-reference linking |
+| `src/.../logic/neuro_symbolic_checker.py` | Verification logic |
+| `src/.../logic/cis.py` | Citation Integrity Score calculation |
+| `tests/unit/test_bug_fixes.py` | Bug fix tests (19 tests) |
+
+## Known Issues
+
+1. **GROBID Docker** - 4 tests skipped (memory constraint)
+2. **Missing Reference** - 5 cases còn lại (3 known papers + 2 suspected)
+3. **Unresolved** - 26 IEEE numeric citations
+
+## Important Notes
+
+1. **Disclaimer bắt buộc** - Mọi output phải có disclaimer
+2. **Không tự kết luận gian lận** - System là decision-support
+3. **SECURITY** - Không commit API keys, credentials
+
+## Conventions
+
+- Vietnamese comments for user-facing code
+- English comments for internal logic
+- PEP 8 style guide
+- Type hints everywhere
+
+## Git Workflow
+
+```bash
+# Tạo branch cho feature
+git checkout -b fix/bug-description
+
+# Commit với message rõ ràng
+git commit -m "fix: description (YYYY-MM-DD)"
+
+# Push
+git push origin fix/bug-description
+```
