@@ -194,7 +194,7 @@ class RetryBackoffConfig(BaseModel):
     """
 
     initial_seconds: float = 5.0
-    max_seconds: float = 60.0
+    max_seconds: float = 120.0  # FIX: Increased from 60 to 120 for sustained rate limits
     multiplier: float = 2.0
 
 
@@ -202,8 +202,8 @@ class RetryConfig(BaseModel):
     """Tenacity retry + exponential backoff — MỚI v1.2."""
 
     enabled: bool = True
-    max_attempts: int = 3
-    backoff: RetryBackoffConfig = Field(default_factory=RetryBackoffConfig)
+    max_attempts: int = 5  # FIX: Increased from 3 to 5 for better resilience
+    backoff: RetryBackoffConfig = Field(default_factory=RetryBackoffConfig)  # FIX: Was missing, now explicit
 
 
 class RetrievalConfig(BaseModel):

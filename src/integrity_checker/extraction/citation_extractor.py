@@ -107,9 +107,10 @@ class CitationExtractor:
         """Trả về (start_page, end_page) của reference section. None nếu không thấy."""
         for i, page in enumerate(doc.pages):
             if _REFERENCE_HEADERS.search(page.text):
-                start = i + 1  # 1-indexed
-                # Thường reference list kéo dài 1–5 trang
-                end = min(i + 5, doc.num_pages)
+                start = page.page_num  # FIX: Use actual page_num instead of index
+                # FIX: Calculate end based on actual max page in document
+                max_page = max(p.page_num for p in doc.pages) if doc.pages else doc.num_pages
+                end = min(start + 5, max_page)
                 return (start, end)
         return None
 

@@ -33,8 +33,14 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
             <thead className="bg-muted">
               <tr>
                 <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Citation</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Integrity</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Source</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap" title="In-text → Reference link status">
+                  Link Status
+                  <span className="ml-1 text-xs text-muted-foreground font-normal">(↔ Ref)</span>
+                </th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap" title="Source verification result">
+                  Source Verify
+                  <span className="ml-1 text-xs text-muted-foreground font-normal">(✓ Source)</span>
+                </th>
                 <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Confidence</th>
                 <th className="px-4 py-3 text-left font-medium hidden md:table-cell">Reasoning</th>
                 <th className="px-4 py-3 text-center font-medium">Override</th>

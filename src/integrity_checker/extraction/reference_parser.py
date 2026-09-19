@@ -317,16 +317,48 @@ class ReferenceListParser:
         """Parse 1 entry. Thử lần lượt APA, IEEE, Vancouver."""
         # Normalize: replace newlines with spaces (wrapped lines)
         entry = entry.replace("\n", " ").replace("  ", " ")
+
+        # FIX: Extract numeric_index first if entry starts with [N] prefix
+        numeric_index = None
+        idx_match = re.match(r"^\[\s*(\d+)\s*\]", entry)
+        if idx_match:
+            numeric_index = int(idx_match.group(1))
+
         # IEEE first (vì có marker [N] đặc trưng)
         if re.match(r"^\s*\[\d+\]", entry):
-            return self._parse_ieee_entry(entry, order_index, page_num)
+            citation = self._parse_ieee_entry(entry, order_index, page_num)
+            if citation and numeric_index and citation.numeric_index is None:
+                citation.numeric_index = numeric_index
+            if citation:
+                return citation
 
         citation = self._parse_apa_entry(entry, order_index, page_num)
         if citation:
+            if numeric_index and citation.numeric_index is None:
+                citation.numeric_index = numeric_index
             return citation
 
         # Vancouver last — heuristic loose
-        return self._parse_vancouver_entry(entry, order_index, page_num)
+        citation = self._parse_vancouver_entry(entry, order_index, page_num)
+        if citation:
+            if numeric_index and citation.numeric_index is None:
+                citation.numeric_index = numeric_index
+            return citation
+
+        # FIX: Fallback - create citation with numeric_index if available
+        if numeric_index is not None:
+            citation = Citation(
+                raw_text=entry.strip(),
+                citation_type=CitationType.REFERENCE_LIST,
+                style=CitationStyle.APA,  # Default to APA
+                page_num=page_num,
+                matched_pattern="fallback_reference_entry",
+                order_index=order_index,
+                numeric_index=numeric_index,
+            )
+            return citation
+
+        return None
 
     # -- per-style parsers --
 
@@ -336,6 +368,13 @@ class ReferenceListParser:
         m = _APA_ENTRY_RE.search(entry)
         if not m:
             return None
+
+        # FIX: Extract numeric_index if entry starts with [N] prefix (APA with numbering)
+        numeric_index = None
+        idx_match = re.match(r"^\[\s*(\d+)\s*\]", entry)
+        if idx_match:
+            numeric_index = int(idx_match.group(1))
+
         citation = Citation(
             raw_text=entry.strip(),
             citation_type=CitationType.REFERENCE_LIST,
@@ -343,6 +382,7 @@ class ReferenceListParser:
             page_num=page_num,
             matched_pattern="apa_reference_entry",
             order_index=order_index,
+            numeric_index=numeric_index,  # FIX: Set numeric_index for APA entries with [N]
         )
         citation.year = m.group("year")
         suffix = m.group("suffix")
@@ -428,6 +468,13 @@ class ReferenceListParser:
         m = _VANCOUVER_ENTRY_RE.search(entry)
         if not m:
             return None
+
+        # FIX: Extract numeric_index if entry starts with [N] prefix
+        numeric_index = None
+        idx_match = re.match(r"^\[\s*(\d+)\s*\]", entry)
+        if idx_match:
+            numeric_index = int(idx_match.group(1))
+
         citation = Citation(
             raw_text=entry.strip(),
             citation_type=CitationType.REFERENCE_LIST,
@@ -435,6 +482,7 @@ class ReferenceListParser:
             page_num=page_num,
             matched_pattern="vancouver_reference_entry",
             order_index=order_index,
+            numeric_index=numeric_index,  # FIX: Set numeric_index for Vancouver entries with [N]
         )
         citation.year = m.group("year")
         title = m.group("title").strip()
