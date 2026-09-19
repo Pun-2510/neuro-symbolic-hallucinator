@@ -11,6 +11,7 @@ const STATUS_CONFIG: Record<
     borderClass: string;
     icon: React.ReactNode;
     shortText: string;
+    tooltip: string;  // NEW: explanation tooltip
   }
 > = {
   matched: {
@@ -20,6 +21,7 @@ const STATUS_CONFIG: Record<
     textClass: 'text-emerald-700',
     borderClass: 'border-emerald-200',
     icon: <CheckCircle2 className="h-3 w-3" />,
+    tooltip: 'In-text citation đã link đến reference entry ✓',
   },
   missing_reference: {
     text: 'Missing Reference',
@@ -28,6 +30,7 @@ const STATUS_CONFIG: Record<
     textClass: 'text-red-700',
     borderClass: 'border-red-200',
     icon: <XCircle className="h-3 w-3" />,
+    tooltip: 'In-text citation không tìm thấy reference entry tương ứng ⚠',
   },
   uncited_reference: {
     text: 'Uncited Reference',
@@ -36,6 +39,7 @@ const STATUS_CONFIG: Record<
     textClass: 'text-amber-700',
     borderClass: 'border-amber-200',
     icon: <FileWarning className="h-3 w-3" />,
+    tooltip: 'Reference entry không có in-text citation nào trỏ đến',
   },
   in_text_mismatch: {
     text: 'In-Text Mismatch',
@@ -44,6 +48,7 @@ const STATUS_CONFIG: Record<
     textClass: 'text-orange-700',
     borderClass: 'border-orange-200',
     icon: <ArrowLeftRight className="h-3 w-3" />,
+    tooltip: 'Citation đã link nhưng thông tin không khớp (tên/tác giả/năm)',
   },
   duplicate_reference: {
     text: 'Duplicate Reference',
@@ -52,6 +57,7 @@ const STATUS_CONFIG: Record<
     textClass: 'text-purple-700',
     borderClass: 'border-purple-200',
     icon: <Copy className="h-3 w-3" />,
+    tooltip: 'Có 2 reference entries giống nhau',
   },
   ambiguous_mapping: {
     text: 'Ambiguous Mapping',
@@ -60,6 +66,7 @@ const STATUS_CONFIG: Record<
     textClass: 'text-violet-700',
     borderClass: 'border-violet-200',
     icon: <HelpCircle className="h-3 w-3" />,
+    tooltip: 'Nhiều reference candidates phù hợp, không chắc chắn',
   },
   style_inconsistent: {
     text: 'Style Inconsistent',
@@ -68,6 +75,7 @@ const STATUS_CONFIG: Record<
     textClass: 'text-sky-700',
     borderClass: 'border-sky-200',
     icon: <AlertTriangle className="h-3 w-3" />,
+    tooltip: 'Citation style không nhất quán (APA vs IEEE)',
   },
   unresolved: {
     text: 'Unresolved',
@@ -76,6 +84,7 @@ const STATUS_CONFIG: Record<
     textClass: 'text-gray-600',
     borderClass: 'border-gray-200',
     icon: <Minus className="h-3 w-3" />,
+    tooltip: 'Chưa xác định được trạng thái link',
   },
 };
 
@@ -99,7 +108,7 @@ export function MappingStatusBadge({
         config.borderClass,
         className
       )}
-      title={config.text}
+      title={config.tooltip}
       role="status"
       aria-label={config.text}
     >
@@ -126,7 +135,7 @@ export function MappingStatusBadgePill({
         config.textClass,
         className
       )}
-      title={config.text}
+      title={config.tooltip}
       role="status"
       aria-label={config.text}
     >

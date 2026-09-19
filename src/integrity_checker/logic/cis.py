@@ -16,10 +16,13 @@ v1.2 §3.2.2 — Tách output 2 lớp:
       (tính từ CitationLinker.link()).
 
 v1.2 §3.7 — format_consistency tính từ StyleDetector (không phải constant).
+
+FIX Bug 6: Added debug logging to trace in_text_bib_consistency calculation.
 """
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from integrity_checker.config import get_settings
@@ -33,17 +36,20 @@ from integrity_checker.models.validation import (
 if TYPE_CHECKING:
     from integrity_checker.linking.statuses import LinkingResult, StyleProfile
 
+logger = logging.getLogger(__name__)
+
 
 # Penalty per mapping status — cộng dồn vào "negative" bucket.
 # in_text_bib_consistency = 1 - (sum_penalties / total_citations)
+# FIX Bug 6: Updated penalties to match CISConfig rubric_penalty weights
 MAPPING_PENALTIES: dict[str, float] = {
     "matched": 0.0,
-    "missing_reference": 1.0,
-    "uncited_reference": 0.5,        # bibliography entry không có in-text → ít nghiêm trọng
-    "in_text_mismatch": 0.8,         # link OK nhưng field mismatch
-    "duplicate_reference": 0.3,      # 2 entries giống nhau
-    "ambiguous_mapping": 0.4,        # không quyết định được
-    "style_inconsistent": 0.2,       # style mixing — ít nghiêm trọng
+    "missing_reference": 0.20,    # FIX: Match CISConfig rubric_penalty
+    "uncited_reference": 0.10,   # FIX: Match CISConfig rubric_penalty
+    "in_text_mismatch": 0.15,   # FIX: Match CISConfig rubric_penalty
+    "duplicate_reference": 0.10, # FIX: Match CISConfig rubric_penalty
+    "ambiguous_mapping": 0.05,   # FIX: Match CISConfig rubric_penalty
+    "style_inconsistent": 0.02, # FIX: Match CISConfig rubric_penalty
 }
 
 
@@ -158,31 +164,40 @@ class CISCalculator:
     ) -> float:
         """Tính in_text_bib_consistency từ CitationLinker output.
 
-        Strategy A (preferred): dùng LinkingResult.links.
-        Strategy B (fallback): dùng verdict.mapping_status.
-
-        Formula:
-            consistency = 1 - (sum_penalties / total_links)
-            Nếu không có links → default 1.0 (conservative — không penalize).
+        FIX Bug 6: Added debug logging to trace calculation.
         """
+        # DEBUG: Log input state
+        logger.debug(
+            f"CIS link consistency: verdicts={len(verdicts)}, "
+            f"linking_result={'present' if linking_result else 'None'}"
+        )
+
         # Strategy A: LinkingResult có sẵn
         if linking_result is not None and linking_result.links:
             total = len(linking_result.links)
             penalty = 0.0
+            status_counts: dict[str, int] = {}
             for link in linking_result.links:
                 status = (
                     link.status.value
                     if hasattr(link.status, "value")
                     else str(link.status)
                 )
+                status_counts[status] = status_counts.get(status, 0) + 1
                 penalty += MAPPING_PENALTIES.get(status, 0.0)
-            return max(0.0, 1.0 - penalty / total)
+
+            logger.debug(f"CIS from links: status_counts={status_counts}, penalty={penalty:.2f}, total={total}")
+            result = max(0.0, 1.0 - penalty / total) if total > 0 else 1.0
+            logger.debug(f"CIS link consistency result: {result:.4f}")
+            return result
 
         # Strategy B: verdict-level (fallback khi không có linking_result)
         n = len(verdicts)
         if n == 0:
+            logger.debug("CIS: no verdicts, returning 1.0")
             return 1.0
-        penalty = 0.0
+
+        status_counts: dict[str, int] = {}
         for v in verdicts:
             if v.mapping_status is None:
                 continue
@@ -191,8 +206,19 @@ class CISCalculator:
                 if hasattr(v.mapping_status, "value")
                 else str(v.mapping_status)
             )
-            penalty += MAPPING_PENALTIES.get(status, 0.0)
-        return max(0.0, 1.0 - penalty / n)
+            status_counts[status] = status_counts.get(status, 0) + 1
+
+        logger.debug(f"CIS from verdicts: status_counts={status_counts}")
+
+        penalty = 0.0
+        for status, count in status_counts.items():
+            p = MAPPING_PENALTIES.get(status, 0.0)
+            logger.debug(f"  {status}: count={count}, penalty={p:.2f}, total_contrib={p * count:.2f}")
+            penalty += p * count
+
+        result = max(0.0, 1.0 - penalty / n) if n > 0 else 1.0
+        logger.debug(f"CIS link consistency result: {result:.4f} (penalty={penalty:.2f}, n={n})")
+        return result
 
     @staticmethod
     def _compute_format_consistency(

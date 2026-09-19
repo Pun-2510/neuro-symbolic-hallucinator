@@ -47,7 +47,7 @@ class SemanticScholarClient(BaseScholarClient):
     def __init__(
         self,
         api_key: str | None = None,
-        timeout: float = 10.0,
+        timeout: float = 30.0,  # FIX: Increased from 10.0 to 30.0 for better resilience
         max_retries: int | None = None,
     ) -> None:
         super().__init__(timeout=timeout)
