@@ -1,0 +1,1847 @@
+{
+  "essay_id": 0,
+  "filename": "thesis.pdf",
+  "num_pages": 91,
+  "num_citations": 56,
+  "verdicts": [
+    {
+      "citation_raw": "[1] American Psychiatric Association. (2022). Diagnostic and statistical manual of mental disorders (5th ed., text rev.). American Psychiatric Association Publishing. https://doi.org/10.1176/appi.books.9780890425787",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 0.9714338481426239,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": true,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[2] Campello, R. J. G. B., Moulavi, D., & Sander, J. (2013). Density-based clustering based on hierarchical density estimates. In Advances in knowledge discovery and data mining (Lecture Notes in Computer Science, Vol. 7819, pp. 160–172). Springer. https: //doi.org/10.1007/978-3-642-37456-2_14",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 1.0,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": true,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[3] Coppersmith, G., Dredze, M., & Harman, C. (2014). Quantifying mental health sig- nals in Twitter. In Proceedings of the Workshop on Computational Linguistics and Clin- ical Psychology: From Linguistic Signal to Clinical Reality (pp. 51–60). Association for Computational Linguistics. https://doi.org/10.3115/v1/W14-3207",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (0.92). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.9213483146067416,
+        "title_sim_semantic": 0.8987085521221161,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": true,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[4] De Choudhury, M., Gamon, M., Counts, S., & Horvitz, E. (2013). Predicting depres- sion via social media. Proceedings of the International AAAI Conference on Web and Social Media, 7(1), 128–137. https://doi.org/10.1609/icwsm.v7i1.14432",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (0.99). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.987012987012987,
+        "title_sim_semantic": 0.8899441361427307,
+        "author_jaccard": 1.0,
+        "year_distance": 8,
+        "doi_exact_match": true,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[5] Devlin, J., Chang, M.-W., Lee, K., & Toutanova, K. (2019). BERT: Pre-training of deep bidirectional transformers for language understanding. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (pp. 4171–4186). Association for Computational Linguistics. https://doi.org/10.18653/v1/N19-1423",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 1.0,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": true,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[6] Google. (n.d.). YouTube Data API v3. Google for Developers. Retrieved July 18, 2026, from https://developers.google.com/youtube/v3",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[7] Grootendorst, M. (2022). BERTopic: Neural topic modeling with a class-based TF- IDF procedure. arXiv. https://doi.org/10.48550/arXiv.2203.05794",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 0.9999999701976776,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": true,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[8] Gururangan, S., Marasović, A., Swayamdipta, S., Lo, K., Beltagy, I., Downey, D., & Smith, N. A. (2020). Don’t stop pretraining: Adapt language models to domains 72 and tasks. In Proceedings of the 58th Annual Meeting of the Association for Com- putational Linguistics (pp. 8342–8360). Association for Computational Linguistics. https://doi.org/10.18653/v1/2020.acl-main.740",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.75) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 0.9662928879261017,
+        "author_jaccard": 0.75,
+        "year_distance": 0,
+        "doi_exact_match": true,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[9] Guntuku, S. C., Yaden, D. B., Kern, M. L., Ungar, L. H., & Eichstaedt, J. C. (2017). Detecting depression and mental illness on social media: An integrative review. Current Opinion in Behavioral Sciences, 18, 43–49. https://doi.org/10.1016/j.cobeha. 2017.07.005",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 1.0,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[10] Guntuku, S. C., Preotiuc-Pietro, D., Eichstaedt, J. C., & Ungar, L. H. (2019). What Twitter profile and posted images reveal about depression and anxiety. Proceedings of the International AAAI Conference on Web and Social Media, 13, 236–246.",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 1.0,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[11] Hochreiter, S., & Schmidhuber, J. (1997). Long short-term memory. Neural Com- putation, 9(8), 1735–1780.",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 1.0,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[12] Kroenke, K., Spitzer, R. L., & Williams, J. B. W. (2001). The PHQ-9: Validity of a brief depression severity measure. Journal of General Internal Medicine, 16(9), 606–613.",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 0.7521857023239136,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[13] Liu, Y., Ott, M., Goyal, N., Du, J., Joshi, M., Chen, D., Levy, O., Lewis, M., Zettle- moyer, L., & Stoyanov, V. (2019). RoBERTa: A robustly optimized BERT pretraining approach. arXiv. https://doi.org/10.48550/arXiv.1907.11692",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.80) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 1.0,
+        "author_jaccard": 0.8,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[14] Losada, D. E., Crestani, F., & Parapar, J. (2019). Overview of eRisk 2019: Early risk prediction on the Internet. In F. Crestani et al. (Eds.), Experimental IR meets mul- tilinguality, multimodality, and interaction (Lecture Notes in Computer Science, Vol. 11696, pp. 340–357). Springer. https://doi.org/10.1007/978-3-030-28577-7_ 27",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 0.9957890808582306,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[15] McInnes, L., Healy, J., & Melville, J. (2018). UMAP: Uniform manifold approxi- mation and projection for dimension reduction. arXiv. https://doi.org/10.48550/ arXiv.1802.03426 73",
+      "label": "verified",
+      "confidence": 0.6,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity trung bình (0.50). Author mismatch (author_jaccard=0.00) là do 'et al.' citation. Có thể xác minh với lưu ý về metadata.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED-MODERATE"
+      ],
+      "mismatched_fields": [
+        "author"
+      ],
+      "features": {
+        "title_sim_fuzzy": 0.4206008583690987,
+        "title_sim_semantic": 0.500136386603117,
+        "author_jaccard": 0.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 3
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[16] Nguyen, D. Q., & Nguyen, A. T. (2020). PhoBERT: Pre-trained language mod- els for Vietnamese. In Findings of the Association for Computational Linguistics: EMNLP 2020 (pp. 1037–1042). Association for Computational Linguistics. https: //doi.org/10.18653/v1/2020.findings-emnlp.92",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (0.93). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.9306930693069307,
+        "title_sim_semantic": 0.9220308065414429,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": true,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[17] Nguyen, K. V., Nguyen, V. D., Nguyen, P. X. V., Truong, T. T. H., & Nguyen, N. L. T. (2018). UIT-VSFC: Vietnamese students’ feedback corpus for sentiment analysis. In 2018 10th International Conference on Knowledge and Systems Engineering (KSE) (pp. 19–24). IEEE. https://doi.org/10.1109/KSE.2018.8573337",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 1.0,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": true,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[18] Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O., Blondel, M., Prettenhofer, P., Weiss, R., Dubourg, V., Vanderplas, J., Passos, A., Cour- napeau, D., Brucher, M., Perrot, M., & Duchesnay, É. (2011). Scikit-learn: Machine learning in Python. Journal of Machine Learning Research, 12, 2825–2830.",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 1.0,
+        "author_jaccard": 0.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 3
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[19] Pennebaker, J. W., Boyd, R. L., Jordan, K., & Blackburn, K. (2015). The devel- opment and psychometric properties of LIWC2015. The University of Texas at Austin. https://doi.org/10.15781/T29G6Z",
+      "label": "verified",
+      "confidence": 0.6,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity trung bình (0.56). Author mismatch (author_jaccard=0.00) là do 'et al.' citation. Có thể xác minh với lưu ý về metadata.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED-MODERATE"
+      ],
+      "mismatched_fields": [
+        "author"
+      ],
+      "features": {
+        "title_sim_fuzzy": 0.5066666666666666,
+        "title_sim_semantic": 0.5599444396793842,
+        "author_jaccard": 0.0,
+        "year_distance": 11,
+        "doi_exact_match": false,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[20] Reimers, N., & Gurevych, I. (2019). Sentence-BERT: Sentence embeddings us- ing Siamese BERT-networks. In Proceedings of EMNLP-IJCNLP 2019 (pp. 3982– 3992). Association for Computational Linguistics. https://doi.org/10.18653/v1/ D19-1410",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (0.71). Author mismatch (author_jaccard=0.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.48148148148148145,
+        "title_sim_semantic": 0.7148019671440125,
+        "author_jaccard": 0.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[21] Underthesea NLP Team. (n.d.). Underthesea: Vietnamese natural language pro- cessing toolkit [Computer software]. GitHub. Retrieved July 18, 2026, from https: //github.com/undertheseanlp/underthesea",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[22] Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., & Polosukhin, I. (2017). Attention is all you need. In Advances in Neural Information Processing Systems 30 (pp. 5998–6008).",
+      "label": "verified",
+      "confidence": 0.6,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity trung bình (0.56). Author mismatch (author_jaccard=0.00) là do 'et al.' citation. Có thể xác minh với lưu ý về metadata.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED-MODERATE"
+      ],
+      "mismatched_fields": [
+        "author"
+      ],
+      "features": {
+        "title_sim_fuzzy": 0.42622950819672134,
+        "title_sim_semantic": 0.5636517107486725,
+        "author_jaccard": 0.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 3
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[23] Wolf, T., Debut, L., Sanh, V., Chaumond, J., Delangue, C., Moi, A., Cistac, P., Rault, T., Louf, R., Funtowicz, M., Davison, J., Shleifer, S., von Platen, P., Ma, C., 74 Jernite, Y., Plu, J., Xu, C., Le Scao, T., Gugger, S., & Rush, A. M. (2020). Transformers: State-of-the-art natural language processing. In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations (pp. 38– 45). Association for Computational Linguistics.",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.75) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 1.0,
+        "author_jaccard": 0.75,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[24] World Health Organization. (2023). Depressive disorder (depression). WHO. Retrieved from https://www.who.int/news-room/fact-sheets/detail/ depression",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (0.78). Author mismatch (author_jaccard=0.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.7755102040816326,
+        "title_sim_semantic": 0.7566233277320862,
+        "author_jaccard": 0.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[25] Yates, A., Cohan, A., & Goharian, N. (2017). Depression and self-harm risk assess- ment in online forums. Proceedings of the First Workshop on Computational Linguistics and Clinical Psychology, 1–10.",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (0.85). Author mismatch (author_jaccard=0.75) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.5614035087719298,
+        "title_sim_semantic": 0.852440595626831,
+        "author_jaccard": 0.75,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[26] Settles, B. (2012). Active learning. Synthesis Lectures on Artificial Intelligence and Machine Learning, 6(1), 1–114.",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 1.0,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[27] Settles, B., & Craven, M. (2008). An analysis of active learning strategies for se- quence labeling tasks. In Proceedings of the Conference on Empirical Methods in Natu- ral Language Processing (pp. 1070–1079). Association for Computational Linguistics.",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.95,
+      "citation_link": null,
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (0.96). Author mismatch (author_jaccard=1.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.9640287769784173,
+        "title_sim_semantic": 0.9384221434593201,
+        "author_jaccard": 1.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "Association (2013)",
+      "label": "suspected_hallucination",
+      "confidence": 0.44999999999999996,
+      "mapping_status": "missing_reference",
+      "mapping_confidence": 0.0,
+      "citation_link": {
+        "occurrence_id": "occ-0001",
+        "reference_id": null,
+        "status": "missing_reference",
+        "confidence": 0.0,
+        "method": "no_keys",
+        "evidence": {
+          "raw": "Association (2013)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Có candidate nhưng title sim=0.62, author=0.00, DOI match=False, consensus=1 — không đủ để xác minh.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WEAK-EVIDENCE"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.48648648648648646,
+        "title_sim_semantic": 0.6238611042499542,
+        "author_jaccard": 0.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Không tìm thấy nguồn trên CrossRef, OpenAlex, Semantic Scholar, arXiv.",
+        "Cần giảng viên kiểm tra thủ công.",
+        "Đề nghị sinh viên cung cấp URL/DOI bản gốc.",
+        "Yêu cầu sinh viên bổ sung reference entry cho trích dẫn này.",
+        "Hoặc kiểm tra lại xem có lỗi đánh máy trong in-text không."
+      ]
+    },
+    {
+      "citation_raw": "Sennrich et al. (2016)",
+      "label": "verified",
+      "confidence": 0.9,
+      "mapping_status": "missing_reference",
+      "mapping_confidence": 0.0,
+      "citation_link": {
+        "occurrence_id": "occ-0002",
+        "reference_id": null,
+        "status": "missing_reference",
+        "confidence": 0.0,
+        "method": "no_keys",
+        "evidence": {
+          "raw": "Sennrich et al. (2016)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Known seminal paper verified via known papers database: 'Neural Machine Translation by Jointly Learning to Align and Translate'. APIs failed but paper is well-documented.",
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.25,
+        "title_sim_semantic": 0.5738080143928528,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Yêu cầu sinh viên bổ sung reference entry cho trích dẫn này.",
+        "Hoặc kiểm tra lại xem có lỗi đánh máy trong in-text không."
+      ]
+    },
+    {
+      "citation_raw": "Yu et al. (2018)",
+      "label": "verified",
+      "confidence": 0.9,
+      "mapping_status": "missing_reference",
+      "mapping_confidence": 0.0,
+      "citation_link": {
+        "occurrence_id": "occ-0003",
+        "reference_id": null,
+        "status": "missing_reference",
+        "confidence": 0.0,
+        "method": "no_keys",
+        "evidence": {
+          "raw": "Yu et al. (2018)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Known seminal paper verified via known papers database: 'An Algorithm for Planning Collision-Free Paths Among Polyhedral Obstacles'. APIs failed but paper is well-documented.",
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.18604651162790703,
+        "title_sim_semantic": 0.5374865084886551,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Yêu cầu sinh viên bổ sung reference entry cho trích dẫn này.",
+        "Hoặc kiểm tra lại xem có lỗi đánh máy trong in-text không."
+      ]
+    },
+    {
+      "citation_raw": "Wei and Zou (2019)",
+      "label": "verified",
+      "confidence": 0.9,
+      "mapping_status": "missing_reference",
+      "mapping_confidence": 0.0,
+      "citation_link": {
+        "occurrence_id": "occ-0004",
+        "reference_id": null,
+        "status": "missing_reference",
+        "confidence": 0.0,
+        "method": "no_keys",
+        "evidence": {
+          "raw": "Wei and Zou (2019)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Known seminal paper verified via known papers database: 'EDA: Easy Data Augmentation Techniques for Boosting Performance on Text Classification Tasks'. APIs failed but paper is well-documented.",
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.16822429906542055,
+        "title_sim_semantic": 0.502751886844635,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Yêu cầu sinh viên bổ sung reference entry cho trích dẫn này.",
+        "Hoặc kiểm tra lại xem có lỗi đánh máy trong in-text không."
+      ]
+    },
+    {
+      "citation_raw": "Kobayashi (2018)",
+      "label": "suspected_hallucination",
+      "confidence": 0.44999999999999996,
+      "mapping_status": "missing_reference",
+      "mapping_confidence": 0.0,
+      "citation_link": {
+        "occurrence_id": "occ-0005",
+        "reference_id": null,
+        "status": "missing_reference",
+        "confidence": 0.0,
+        "method": "no_keys",
+        "evidence": {
+          "raw": "Kobayashi (2018)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Có candidate nhưng title sim=0.65, author=0.00, DOI match=False, consensus=1 — không đủ để xác minh.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WEAK-EVIDENCE"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.6153846153846154,
+        "title_sim_semantic": 0.6482615321874619,
+        "author_jaccard": 0.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Không tìm thấy nguồn trên CrossRef, OpenAlex, Semantic Scholar, arXiv.",
+        "Cần giảng viên kiểm tra thủ công.",
+        "Đề nghị sinh viên cung cấp URL/DOI bản gốc.",
+        "Yêu cầu sinh viên bổ sung reference entry cho trích dẫn này.",
+        "Hoặc kiểm tra lại xem có lỗi đánh máy trong in-text không."
+      ]
+    },
+    {
+      "citation_raw": "[24]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0006",
+        "reference_id": "ref-0024",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[24]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[1]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0007",
+        "reference_id": "ref-0001",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[1]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[4]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0008",
+        "reference_id": "ref-0004",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[4]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[9, 10]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0009",
+        "reference_id": "ref-0009",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[9, 10]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[3, 25]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0010",
+        "reference_id": "ref-0003",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[3, 25]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[17]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0011",
+        "reference_id": "ref-0017",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[17]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[12]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0012",
+        "reference_id": "ref-0012",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[12]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[9, 25]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0013",
+        "reference_id": "ref-0009",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[9, 25]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[19]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0014",
+        "reference_id": "ref-0019",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[19]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[3]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0015",
+        "reference_id": "ref-0003",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[3]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[22]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0016",
+        "reference_id": "ref-0022",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[22]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[5]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0017",
+        "reference_id": "ref-0005",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[5]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[16]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0018",
+        "reference_id": "ref-0016",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[16]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[14]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0019",
+        "reference_id": "ref-0014",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[14]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[26,\n27]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0020",
+        "reference_id": "ref-0026",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[26,\n27]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[6]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0021",
+        "reference_id": "ref-0006",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[6]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[18]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0022",
+        "reference_id": "ref-0018",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[18]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[11]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0023",
+        "reference_id": "ref-0011",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[11]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[13]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0024",
+        "reference_id": "ref-0013",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[13]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[21]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0025",
+        "reference_id": "ref-0021",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[21]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[7]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0026",
+        "reference_id": "ref-0007",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[7]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[20]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0027",
+        "reference_id": "ref-0020",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[20]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[15]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0028",
+        "reference_id": "ref-0015",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[15]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "[2]",
+      "label": "unresolved",
+      "confidence": 0.3,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0029",
+        "reference_id": "ref-0002",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "numeric_index",
+        "evidence": {
+          "raw": "[2]"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.0,
+        "title_sim_semantic": 0.0,
+        "author_jaccard": 0.0,
+        "year_distance": 999,
+        "doi_exact_match": false,
+        "source_consensus": 0
+      },
+      "suggestions": [
+        "Hệ thống chưa đủ bằng chứng để kết luận.",
+        "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    }
+  ],
+  "linking_summary": {
+    "matched": 51,
+    "missing_reference": 5,
+    "uncited_reference": 0,
+    "in_text_mismatch": 0,
+    "duplicate_reference": 0,
+    "ambiguous_mapping": 0,
+    "style_inconsistent": 0,
+    "unresolved": 0
+  },
+  "style_profile": {
+    "style": "MIXED",
+    "confidence": 0.5,
+    "apa_count": 0,
+    "numeric_count": 0,
+    "evidence": {
+      "ratios": {
+        "body_apa": 0.0,
+        "body_ieee": 0.8275862068965517,
+        "body_other": 0.1724137931034483,
+        "bib_apa": 1.0,
+        "bib_ieee": 0.0,
+        "bib_vancouver": 0.0,
+        "bib_chicago": 0.0,
+        "bib_other": 0.0,
+        "apa_combined": 0.5,
+        "ieee_combined": 0.41379310344827586
+      },
+      "explanation": "Both APA=0.50 and IEEE=0.41 > 0.3"
+    }
+  },
+  "cis": {
+    "score": 74.75,
+    "components": {
+      "verified_ratio": 0.5,
+      "metadata_accuracy": 0.9642857142857143,
+      "in_text_bib_consistency": 0.9655172413793104,
+      "format_consistency": 0.4,
+      "identifier_validity": 1.0
+    },
+    "weights_used": {
+      "verified_ratio": 0.35,
+      "metadata_accuracy": 0.25,
+      "in_text_bib_consistency": 0.25,
+      "format_consistency": 0.1,
+      "identifier_validity": 0.05
+    },
+    "num_citations": 56,
+    "num_unresolved": 26
+  },
+  "disclaimer": "Hệ thống này chỉ hỗ trợ giảng viên rà soát tính toàn vẹn trích dẫn trong tiểu luận. Hai lớp kết quả (đối chiếu in-text ↔ reference entry và độ tin cậy nguồn) đều là gợi ý dựa trên bằng chứng từ các cơ sở dữ liệu học thuật công khai (Crossref, OpenAlex, Semantic Scholar, arXiv) và quy luật Neuro-Symbolic có thể giải thích. Kết luận `SUSPECTED_HALLUCINATION` chỉ là suspect — không đồng nghĩa nguồn bị bịa. Giảng viên là người ra quyết định cuối cùng. Hệ thống KHÔNG tự động kết luận gian lận học thuật, KHÔNG kiểm chứng claim-level, và KHÔNG xem việc trích cùng một nguồn nhiều lần là \"dư thừa\".\n",
+  "generated_at": "2026-09-20T11:32:03.021464Z"
+}

@@ -639,5 +639,5 @@
     "num_unresolved": 0
   },
   "disclaimer": "Hệ thống này chỉ hỗ trợ giảng viên rà soát tính toàn vẹn trích dẫn trong tiểu luận. Hai lớp kết quả (đối chiếu in-text ↔ reference entry và độ tin cậy nguồn) đều là gợi ý dựa trên bằng chứng từ các cơ sở dữ liệu học thuật công khai (Crossref, OpenAlex, Semantic Scholar, arXiv) và quy luật Neuro-Symbolic có thể giải thích. Kết luận `SUSPECTED_HALLUCINATION` chỉ là suspect — không đồng nghĩa nguồn bị bịa. Giảng viên là người ra quyết định cuối cùng. Hệ thống KHÔNG tự động kết luận gian lận học thuật, KHÔNG kiểm chứng claim-level, và KHÔNG xem việc trích cùng một nguồn nhiều lần là \"dư thừa\".\n",
-  "generated_at": "2026-09-20T12:08:48.987711Z"
+  "generated_at": "2026-09-20T12:16:19.734504Z"
 }

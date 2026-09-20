@@ -1,13 +1,13 @@
-"""Validation models — output của logic module (Neuro-Symbolic checker).
+"""Validation models -- output của logic module (Neuro-Symbolic checker).
 
 Bao gồm cả các model cho **bidirectional linking** (v1.2 §3.5):
-    - ``CitationLink`` — quan hệ 1 occurrence ↔ 1 reference entry.
-    - ``MappingMethod`` — cách quyết định mapping (author_year / numeric / DOI / fuzzy).
+    - ``CitationLink`` -- quan hệ 1 occurrence ↔ 1 reference entry.
+    - ``MappingMethod`` -- cách quyết định mapping (author_year / numeric / DOI / fuzzy).
 
 Reference:
-    v1.2 §3.2.2 (mapping statuses — tách khỏi ValidationLabel)
+    v1.2 §3.2.2 (mapping statuses -- tách khỏi ValidationLabel)
     v1.2 §3.5 (bidirectional linking + 7 trạng thái)
-    v1.2 §5.2 (CitationLinker scaffold — tuần 8)
+    v1.2 §5.2 (CitationLinker scaffold -- tuần 8)
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from integrity_checker.models.source import SourceResult
 
 
 class ValidationLabel(str, Enum):
-    """Taxonomy 4 nhãn — đề cương §5.2.
+    """Taxonomy 4 nhãn -- đề cương §5.2.
 
     BẮT BUỘC dùng đúng các giá trị này (lowercase) để serialize/UI.
     """
@@ -47,36 +47,52 @@ class MatchFeatures:
     """Vector features so khớp giữa citation và candidate tốt nhất.
 
     Mọi score đều 0.0–1.0 (trừ `year_distance` là int).
+
+    v1.3: Bổ sung semantic_content_alignment cho Neural layer.
     """
 
     title_sim_fuzzy: float = 0.0       # RapidFuzz token_set_ratio / 100
-    title_sim_semantic: float = 0.0    # cosine similarity sentence-transformers
+    title_sim_semantic: float = 0.0    # cosine similarity sentence-transformers (title only)
     author_jaccard: float = 0.0        # |A ∩ B| / |A ∪ B| trên last-name
     year_distance: int = 999           # |cited.year - candidate.year|
     doi_exact_match: bool = False      # True nếu DOI khớp 100%
     source_consensus: int = 0          # số nguồn đồng thuận (≥1)
 
+    # NEW v1.3: Neural layer - content-context alignment
+    content_alignment_score: float = 0.0  # Semantic similarity giữa cited context và source
+    content_alignment_confidence: str = ""  # 'high', 'medium', 'low'
+    content_is_aligned: bool = False   # True nếu content có semantic alignment
+
     @property
     def title_sim_max(self) -> float:
-        """Lấy max(fuzzy, semantic) — dùng cho rules."""
+        """Lấy max(fuzzy, semantic) -- dùng cho rules."""
         return max(self.title_sim_fuzzy, self.title_sim_semantic)
+
+    @property
+    def neural_content_score(self) -> float:
+        """Neural layer score cho content alignment (0.0-1.0)."""
+        if self.content_is_aligned:
+            # Nếu aligned, dùng score thực
+            return self.content_alignment_score
+        # Nếu không aligned, trả về 0 (sẽ được xử lý bởi rules)
+        return 0.0
 
 
 @dataclass
 class CitationVerdict:
-    """Quyết định cuối cùng cho 1 citation — output chính của pipeline.
+    """Quyết định cuối cùng cho 1 citation -- output chính của pipeline.
 
-    v1.2 §3.2.2 — Tách 2 lớp:
-        - ``label`` (ValidationLabel) — nhãn nguồn (REAL / SUSPECTED_HALLUCINATION / ...).
-        - ``mapping_status`` (CitationMappingStatus) — trạng thái in-text ↔ reference
+    v1.2 §3.2.2 -- Tách 2 lớp:
+        - ``label`` (ValidationLabel) -- nhãn nguồn (REAL / SUSPECTED_HALLUCINATION / ...).
+        - ``mapping_status`` (CitationMappingStatus) -- trạng thái in-text ↔ reference
           mapping (MATCHED / MISSING_REFERENCE / UNCITED_REFERENCE / ...).
 
     Hai lớp này orthogonal: 1 citation có thể vừa MATCHED (link OK) vừa
-    METADATA_ERROR (sai năm) — đây là 2 chiều phân tích khác nhau.
+    METADATA_ERROR (sai năm) -- đây là 2 chiều phân tích khác nhau.
 
     Attributes:
         citation: Citation gốc từ PDF.
-        label: ValidationLabel (source verification — REAL / SUSPECTED_HALLUCINATION /
+        label: ValidationLabel (source verification -- REAL / SUSPECTED_HALLUCINATION /
             GENERATED / UNCERTAIN / UNRESOLVED).
         mapping_status: CitationMappingStatus (in-text ↔ reference integrity).
         mapping_confidence: 0.0–1.0, do CitationLinker đặt.
@@ -97,10 +113,10 @@ class CitationVerdict:
     label: ValidationLabel
     confidence: float                  # 0.0–1.0, source layer
 
-    # NEW v1.2 §3.2.2 — integrity layer (tách khỏi label)
-    mapping_status: object = None      # CitationMappingStatus — tránh circular import
+    # NEW v1.2 §3.2.2 -- integrity layer (tách khỏi label)
+    mapping_status: object = None      # CitationMappingStatus -- tránh circular import
     mapping_confidence: float = 0.0    # 0.0–1.0, integrity layer
-    citation_link: object = None       # CitationLink — tránh circular import
+    citation_link: object = None       # CitationLink -- tránh circular import
 
     # Bằng chứng
     matched_source: Optional[SourceResult] = None
@@ -158,7 +174,7 @@ class CitationIntegrityScore:
 class MappingMethod(str, Enum):
     """Cách CitationLinker quyết định ánh xạ occurrence ↔ reference.
 
-    BẮT BUỘC dùng đúng giá trị này (lowercase) — dùng cho evidence, audit log,
+    BẮT BUỘC dùng đúng giá trị này (lowercase) -- dùng cho evidence, audit log,
     và chấm điểm confidence (mỗi method có confidence mặc định khác nhau).
     """
 
@@ -190,7 +206,7 @@ class CitationLink:
 
     Mỗi ``CitationLink`` ứng với 1 mapping quyết định bởi ``CitationLinker``.
     Một in-text occurrence có thể gộp nhiều citation (e.g. (Smith, 2020; Doe, 2021))
-    được tách thành nhiều CitationLink — mỗi link ứng với 1 reference entry.
+    được tách thành nhiều CitationLink -- mỗi link ứng với 1 reference entry.
 
     Attributes:
         occurrence_id: id ổn định cho in-text occurrence (vd: 'occ-0001').
@@ -212,7 +228,7 @@ class CitationLink:
 
     occurrence_id: str
     reference_id: Optional[str]
-    status: object  # CitationMappingStatus — tránh circular import
+    status: object  # CitationMappingStatus -- tránh circular import
     confidence: float
     method: str | MappingMethod = MappingMethod.NO_KEYS  # str for backward compat
     evidence: dict = field(default_factory=dict)
