@@ -19,16 +19,16 @@ Mỗi kịch bản bao gồm:
 |---------|---------|
 | Tổng số trích dẫn | 17 |
 | Điểm CIS | 89.8/100 |
-| Khớp (MATCHED) | 16 |
-| Thiếu ref (MISSING_REFERENCE) | 1 |
+| Verified | 16 |
+| Suspected Hallucination | 1 |
 
 ### PDF 2 (IEEE Style)
 | Chỉ số | Giá trị |
 |---------|---------|
 | Tổng số trích dẫn | 16 |
 | Điểm CIS | 94.0/100 |
-| Khớp (MATCHED) | 16 |
-| Thiếu ref (MISSING_REFERENCE) | 0 |
+| Verified | 16 |
+| Suspected Hallucination | 0 |
 
 ---
 
@@ -328,6 +328,13 @@ if et_al_match:
 
 **File:** `src/integrity_checker/logic/rules.py`
 
+### 3. Metadata Populate Fix (Commit: 547c140)
+**Vấn đề:** Numeric citations như "[1]" không có title/author để verify
+
+**Giải pháp:** Copy metadata từ matched reference entry trước khi verify
+
+**File:** `src/integrity_checker/pipeline/integrity_pipeline.py`
+
 ---
 
 ## Tiến Trình Cải Tiến
@@ -336,7 +343,7 @@ if et_al_match:
 |-----------|-----------|-----------|----------|
 | v1.0 | 73.4 | 41.1 | Trước khi fix |
 | v1.1 | 71.0 | 64.0 | Sau fix author parsing |
-| v1.2 | 89.8 | 94.0 | Sau fix rules order |
+| v1.2 | 89.8 | 94.0 | Sau fix rules order + metadata populate |
 
 ---
 
