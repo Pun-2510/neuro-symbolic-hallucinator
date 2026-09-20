@@ -160,14 +160,20 @@ def _json_response(filename: str, essay, verdicts: list) -> StreamingResponse:
             "disclaimer": "",
         }
 
+    # v1.2 schema: trả về flat fields (essay_id, filename, num_pages, num_citations)
+    # ở top-level để frontend `AnalysisReport` interface map 1-1.
+    # Giữ `essay` nested để không phá clients khác (CSV/PDF export, scripts).
     payload = {
+        "essay_id": essay.id,
+        "filename": essay.filename,
+        "num_pages": essay.num_pages,
+        "num_citations": total,
         "essay": {
             "id": essay.id,
             "filename": essay.filename,
             "num_pages": essay.num_pages,
             "uploaded_at": essay.uploaded_at.isoformat() if essay.uploaded_at else None,
         },
-        "num_citations": total,
         "style_profile": style_profile_dict,
         "linking_summary": linking_summary,
         "verdicts": verdict_list,

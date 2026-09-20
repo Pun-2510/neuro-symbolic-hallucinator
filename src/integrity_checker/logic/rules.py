@@ -381,7 +381,59 @@ class SymbolicRules:
                     style_penalty=style_penalty,
                 )
 
-        # --- Rule 5: Vùng biên → UNRESOLVED (abstention) ---
+        # === NEW v1.3: Content Alignment Rule (Neural Layer) ===
+        # Check if Neural layer provided content alignment signal
+        # IMPORTANT: This comes BEFORE abstention rule to prioritize Neural signal
+        content_alignment_score = features.content_alignment_score
+        content_is_aligned = features.content_is_aligned
+
+        if content_alignment_score > 0:
+            triggered_rules.append("R-CONTENT-ALIGNMENT")
+
+            # Rule: High content alignment + moderate title = VERIFIED
+            if content_is_aligned and title_sim >= 0.5:
+                return RuleOutcome(
+                    label=ValidationLabel.VERIFIED,
+                    confidence=max(0.0, 0.85 - style_penalty),
+                    reasoning=(
+                        f"Neural content alignment verified (score={content_alignment_score:.2f}). "
+                        f"Content semantic match confirmed despite moderate title sim ({title_sim:.2f})."
+                    ),
+                    triggered_rules=triggered_rules,
+                    mismatched_fields=[],
+                    style_penalty=style_penalty,
+                )
+
+            # Rule: Low content alignment + high title sim = SUSPECTED_HALLUCINATION
+            if not content_is_aligned and content_alignment_score >= 0.3 and title_sim >= 0.7:
+                triggered_rules.append("R-CONTENT-MISMATCH")
+                return RuleOutcome(
+                    label=ValidationLabel.SUSPECTED_HALLUCINATION,
+                    confidence=max(0.0, 0.80 - style_penalty),
+                    reasoning=(
+                        f"WARNING: Title matches (sim={title_sim:.2f}) but content NOT aligned "
+                        f"(Neural score={content_alignment_score:.2f}). Citation may be misattributed."
+                    ),
+                    triggered_rules=triggered_rules,
+                    mismatched_fields=["content"],
+                    style_penalty=style_penalty,
+                )
+
+            # Rule: Moderate content alignment = UNRESOLVED
+            if not content_is_aligned and 0.2 <= content_alignment_score < 0.5:
+                return RuleOutcome(
+                    label=ValidationLabel.UNRESOLVED,
+                    confidence=max(0.0, content_alignment_score - style_penalty),
+                    reasoning=(
+                        f"Content alignment uncertain (score={content_alignment_score:.2f}). "
+                        f"Neural layer cannot confirm semantic match. Manual review recommended."
+                    ),
+                    triggered_rules=triggered_rules,
+                    mismatched_fields=[],
+                    style_penalty=style_penalty,
+                )
+
+        # --- Rule 5: Vuong bien -> UNRESOLVED (abstention) ---
         if self.abstention_low <= title_sim <= self.abstention_high:
             triggered_rules.append("R-ABSTENTION-BORDER")
             return RuleOutcome(

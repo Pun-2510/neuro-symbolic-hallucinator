@@ -1,8 +1,12 @@
-"""FeatureCalculator — gộp fuzzy + semantic + author/year/DOI thành MatchFeatures."""
+"""FeatureCalculator -- gộp fuzzy + semantic + author/year/DOI thành MatchFeatures.
+
+v1.3: Bổ sung content alignment features cho Neural layer.
+"""
 
 from __future__ import annotations
 
 import re
+from typing import Optional
 
 from integrity_checker.matching.author_matcher import author_match_score
 from integrity_checker.models.citation import Citation
@@ -21,14 +25,34 @@ class FeatureCalculator:
 
     2026-09-15: SemanticMatcher uses singleton pattern to avoid reloading
     the ML model on each instantiation (~5s speedup per pipeline run).
+
+    v1.3: Bổ sung content alignment check -- so sánh citation context
+    với source metadata bằng Neural embeddings.
     """
 
-    def __init__(self, fuzzy: FuzzyMatcher | None = None, semantic: SemanticMatcher | None = None) -> None:
+    def __init__(
+        self,
+        fuzzy: FuzzyMatcher | None = None,
+        semantic: SemanticMatcher | None = None,
+        enable_content_alignment: bool = True,
+    ) -> None:
         self.fuzzy = fuzzy or FuzzyMatcher()
         self.semantic = semantic or SemanticMatcher.get_instance()
+        self.enable_content_alignment = enable_content_alignment
 
-    def compute(self, citation: Citation, source: SourceResult) -> MatchFeatures:
-        """Tính features dựa trên candidate tốt nhất (highest confidence)."""
+    def compute(
+        self,
+        citation: Citation,
+        source: SourceResult,
+        citation_context: Optional[str] = None,
+    ) -> MatchFeatures:
+        """Tính features dựa trên candidate tốt nhất (highest confidence).
+
+        Args:
+            citation: Citation từ PDF extraction
+            source: SourceResult từ retrieval
+            citation_context: Optional context xung quanh citation (cho content alignment)
+        """
         best = source.best_candidate()
         if best is None:
             return MatchFeatures(source_consensus=source.consensus_count())
@@ -40,7 +64,7 @@ class FeatureCalculator:
         fuzzy_sim = self.fuzzy.token_set_ratio(c_title, cand_title)
         semantic_sim = self.semantic.similarity(citation.title or citation.raw_text, best.title or "")
 
-        # Author Jaccard — upgraded to author_matcher (task #29)
+        # Author Jaccard -- upgraded to author_matcher (task #29)
         author_sim = author_match_score(
             list(citation.authors or []),
             list(best.authors or []),
@@ -54,6 +78,21 @@ class FeatureCalculator:
             citation.doi and best.doi and citation.doi.lower() == best.doi.lower()
         )
 
+        # Content alignment (NEW v1.3) - Neural layer
+        content_alignment_score = 0.0
+        content_alignment_confidence = ""
+        content_is_aligned = False
+
+        if self.enable_content_alignment and citation_context:
+            alignment_result = self.semantic.check_content_alignment(
+                cited_context=citation_context,
+                source_title=best.title or "",
+                source_abstract=best.abstract if hasattr(best, "abstract") else None,
+            )
+            content_alignment_score = alignment_result.similarity
+            content_alignment_confidence = alignment_result.confidence
+            content_is_aligned = alignment_result.is_aligned
+
         return MatchFeatures(
             title_sim_fuzzy=fuzzy_sim,
             title_sim_semantic=semantic_sim,
@@ -61,6 +100,9 @@ class FeatureCalculator:
             year_distance=year_dist,
             doi_exact_match=doi_match,
             source_consensus=source.consensus_count(),
+            content_alignment_score=content_alignment_score,
+            content_alignment_confidence=content_alignment_confidence,
+            content_is_aligned=content_is_aligned,
         )
 
     @staticmethod

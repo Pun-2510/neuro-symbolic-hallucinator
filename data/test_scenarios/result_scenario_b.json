@@ -2,7 +2,7 @@
   "essay_id": 0,
   "filename": "test_cite_scenario_b.pdf",
   "num_pages": 3,
-  "num_citations": 16,
+  "num_citations": 22,
   "verdicts": [
     {
       "citation_raw": "[1] A. Vaswani et al., \"Attention Is All You Need,\" NeurIPS, 2017.",
@@ -25,7 +25,7 @@
         "author_jaccard": 0.0,
         "year_distance": 0,
         "doi_exact_match": false,
-        "source_consensus": 2
+        "source_consensus": 3
       },
       "suggestions": [
         "Nguồn đã được xác minh — không cần hành động thêm.",
@@ -34,48 +34,43 @@
     },
     {
       "citation_raw": "[2] J. Devlin et al., \"BERT: Pre-training,\" ACL, 2019.",
-      "label": "metadata_error",
-      "confidence": 0.5,
+      "label": "verified",
+      "confidence": 0.7,
       "mapping_status": "matched",
       "mapping_confidence": 0.95,
       "citation_link": null,
-      "reasoning": "2 nguồn đồng thuận nhưng có trường lệch: author.",
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.25) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
       "triggered_rules": [
         "R-STYLE-INCONSISTENT",
-        "R-CONSENSUS-PARTIAL"
+        "R-WELL-LINKED"
       ],
-      "mismatched_fields": [
-        "author"
-      ],
+      "mismatched_fields": [],
       "features": {
         "title_sim_fuzzy": 1.0,
         "title_sim_semantic": 0.7849360108375549,
-        "author_jaccard": 0.0,
+        "author_jaccard": 0.25,
         "year_distance": 0,
         "doi_exact_match": false,
-        "source_consensus": 2
+        "source_consensus": 3
       },
       "suggestions": [
-        "Kiểm tra lại các trường bị lệch trong reference list.",
-        "Đề nghị sinh viên cung cấp bản PDF nguồn gốc.",
+        "Nguồn đã được xác minh — không cần hành động thêm.",
         "Liên kết đã khớp — không cần hành động thêm."
       ]
     },
     {
       "citation_raw": "[3] T. B. Brown et al., \"GPT-3,\" NeurIPS, 2020.",
-      "label": "metadata_error",
-      "confidence": 0.5,
+      "label": "verified",
+      "confidence": 0.7,
       "mapping_status": "matched",
       "mapping_confidence": 0.95,
       "citation_link": null,
-      "reasoning": "3 nguồn đồng thuận nhưng có trường lệch: author.",
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
       "triggered_rules": [
         "R-STYLE-INCONSISTENT",
-        "R-CONSENSUS-PARTIAL"
+        "R-WELL-LINKED"
       ],
-      "mismatched_fields": [
-        "author"
-      ],
+      "mismatched_fields": [],
       "features": {
         "title_sim_fuzzy": 1.0,
         "title_sim_semantic": 0.8826038241386414,
@@ -85,26 +80,23 @@
         "source_consensus": 3
       },
       "suggestions": [
-        "Kiểm tra lại các trường bị lệch trong reference list.",
-        "Đề nghị sinh viên cung cấp bản PDF nguồn gốc.",
+        "Nguồn đã được xác minh — không cần hành động thêm.",
         "Liên kết đã khớp — không cần hành động thêm."
       ]
     },
     {
       "citation_raw": "[4] J. Smith, \"Classical Methods,\" 2018. (Not cited in body)",
-      "label": "metadata_error",
-      "confidence": 0.5,
+      "label": "verified",
+      "confidence": 0.7,
       "mapping_status": "matched",
       "mapping_confidence": 0.95,
       "citation_link": null,
-      "reasoning": "2 nguồn đồng thuận nhưng có trường lệch: author.",
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
       "triggered_rules": [
         "R-STYLE-INCONSISTENT",
-        "R-CONSENSUS-PARTIAL"
+        "R-WELL-LINKED"
       ],
-      "mismatched_fields": [
-        "author"
-      ],
+      "mismatched_fields": [],
       "features": {
         "title_sim_fuzzy": 1.0,
         "title_sim_semantic": 0.7043942213058472,
@@ -114,8 +106,7 @@
         "source_consensus": 2
       },
       "suggestions": [
-        "Kiểm tra lại các trường bị lệch trong reference list.",
-        "Đề nghị sinh viên cung cấp bản PDF nguồn gốc.",
+        "Nguồn đã được xác minh — không cần hành động thêm.",
         "Liên kết đã khớp — không cần hành động thêm."
       ]
     },
@@ -147,19 +138,17 @@
     },
     {
       "citation_raw": "[6] B. Author, \"Paper B,\" 2019.",
-      "label": "metadata_error",
-      "confidence": 0.5,
+      "label": "verified",
+      "confidence": 0.7,
       "mapping_status": "matched",
       "mapping_confidence": 0.95,
       "citation_link": null,
-      "reasoning": "2 nguồn đồng thuận nhưng có trường lệch: author.",
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
       "triggered_rules": [
         "R-STYLE-INCONSISTENT",
-        "R-CONSENSUS-PARTIAL"
+        "R-WELL-LINKED"
       ],
-      "mismatched_fields": [
-        "author"
-      ],
+      "mismatched_fields": [],
       "features": {
         "title_sim_fuzzy": 1.0,
         "title_sim_semantic": 0.6213156506419182,
@@ -169,26 +158,23 @@
         "source_consensus": 2
       },
       "suggestions": [
-        "Kiểm tra lại các trường bị lệch trong reference list.",
-        "Đề nghị sinh viên cung cấp bản PDF nguồn gốc.",
+        "Nguồn đã được xác minh — không cần hành động thêm.",
         "Liên kết đã khớp — không cần hành động thêm."
       ]
     },
     {
       "citation_raw": "[7] R. Johnson, \"Modern Methods,\" IEEE, 2018.",
-      "label": "metadata_error",
-      "confidence": 0.5,
+      "label": "verified",
+      "confidence": 0.7,
       "mapping_status": "matched",
       "mapping_confidence": 0.95,
       "citation_link": null,
-      "reasoning": "2 nguồn đồng thuận nhưng có trường lệch: author.",
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
       "triggered_rules": [
         "R-STYLE-INCONSISTENT",
-        "R-CONSENSUS-PARTIAL"
+        "R-WELL-LINKED"
       ],
-      "mismatched_fields": [
-        "author"
-      ],
+      "mismatched_fields": [],
       "features": {
         "title_sim_fuzzy": 1.0,
         "title_sim_semantic": 0.5589558035135269,
@@ -198,84 +184,75 @@
         "source_consensus": 2
       },
       "suggestions": [
-        "Kiểm tra lại các trường bị lệch trong reference list.",
-        "Đề nghị sinh viên cung cấp bản PDF nguồn gốc.",
+        "Nguồn đã được xác minh — không cần hành động thêm.",
         "Liên kết đã khớp — không cần hành động thêm."
       ]
     },
     {
       "citation_raw": "[8] I. Goodfellow et al., \"Generative Adversarial Networks,\" NeurIPS, 2014.",
-      "label": "metadata_error",
-      "confidence": 0.5,
+      "label": "verified",
+      "confidence": 0.7,
       "mapping_status": "matched",
       "mapping_confidence": 0.95,
       "citation_link": null,
-      "reasoning": "3 nguồn đồng thuận nhưng có trường lệch: author.",
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.12) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
       "triggered_rules": [
         "R-STYLE-INCONSISTENT",
-        "R-CONSENSUS-PARTIAL"
+        "R-WELL-LINKED"
       ],
-      "mismatched_fields": [
-        "author"
-      ],
+      "mismatched_fields": [],
       "features": {
         "title_sim_fuzzy": 1.0,
         "title_sim_semantic": 1.0,
-        "author_jaccard": 0.0,
+        "author_jaccard": 0.125,
         "year_distance": 0,
         "doi_exact_match": false,
         "source_consensus": 3
       },
       "suggestions": [
-        "Kiểm tra lại các trường bị lệch trong reference list.",
-        "Đề nghị sinh viên cung cấp bản PDF nguồn gốc.",
+        "Nguồn đã được xác minh — không cần hành động thêm.",
         "Liên kết đã khớp — không cần hành động thêm."
       ]
     },
     {
       "citation_raw": "[9] K. He et al., \"Deep Residual Learning,\" CVPR, 2016.",
-      "label": "metadata_error",
-      "confidence": 0.5,
+      "label": "verified",
+      "confidence": 0.7,
       "mapping_status": "matched",
       "mapping_confidence": 0.95,
       "citation_link": null,
-      "reasoning": "3 nguồn đồng thuận nhưng có trường lệch: author.",
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
       "triggered_rules": [
         "R-STYLE-INCONSISTENT",
-        "R-CONSENSUS-PARTIAL"
+        "R-WELL-LINKED"
       ],
-      "mismatched_fields": [
-        "author"
-      ],
+      "mismatched_fields": [],
       "features": {
         "title_sim_fuzzy": 1.0,
         "title_sim_semantic": 0.9192223846912384,
         "author_jaccard": 0.0,
         "year_distance": 0,
         "doi_exact_match": false,
-        "source_consensus": 3
+        "source_consensus": 2
       },
       "suggestions": [
-        "Kiểm tra lại các trường bị lệch trong reference list.",
-        "Đề nghị sinh viên cung cấp bản PDF nguồn gốc.",
+        "Nguồn đã được xác minh — không cần hành động thêm.",
         "Liên kết đã khớp — không cần hành động thêm."
       ]
     },
     {
       "citation_raw": "[10] Various Authors, \"Survey of Transformers,\" ACM Computing Surveys, 2023.",
-      "label": "metadata_error",
-      "confidence": 0.5,
+      "label": "verified",
+      "confidence": 0.7,
       "mapping_status": "matched",
       "mapping_confidence": 0.95,
       "citation_link": null,
-      "reasoning": "2 nguồn đồng thuận nhưng có trường lệch: author.",
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (0.93). Author mismatch (author_jaccard=0.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
       "triggered_rules": [
         "R-STYLE-INCONSISTENT",
-        "R-CONSENSUS-PARTIAL"
+        "R-WELL-LINKED"
       ],
-      "mismatched_fields": [
-        "author"
-      ],
+      "mismatched_fields": [],
       "features": {
         "title_sim_fuzzy": 0.926829268292683,
         "title_sim_semantic": 0.7185506820678711,
@@ -285,30 +262,262 @@
         "source_consensus": 2
       },
       "suggestions": [
-        "Kiểm tra lại các trường bị lệch trong reference list.",
-        "Đề nghị sinh viên cung cấp bản PDF nguồn gốc.",
+        "Nguồn đã được xác minh — không cần hành động thêm.",
         "Liên kết đã khớp — không cần hành động thêm."
       ]
     },
     {
       "citation_raw": "(Vaswani et al., 2017)",
-      "label": "suspected_hallucination",
-      "confidence": 0.44999999999999996,
-      "mapping_status": "missing_reference",
-      "mapping_confidence": 0.0,
+      "label": "verified",
+      "confidence": 0.6,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
       "citation_link": {
         "occurrence_id": "occ-0001",
-        "reference_id": null,
-        "status": "missing_reference",
-        "confidence": 0.0,
-        "method": "no_keys",
+        "reference_id": "ref-0001",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "author_year",
         "evidence": {
           "raw": "(Vaswani et al., 2017)"
         },
         "page": 0,
         "section": ""
       },
-      "reasoning": "Có candidate nhưng title sim=0.67, author=0.00, DOI match=False, consensus=1 — không đủ để xác minh.",
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity trung bình (0.56). Author mismatch (author_jaccard=0.00) là do 'et al.' citation. Có thể xác minh với lưu ý về metadata.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED-MODERATE"
+      ],
+      "mismatched_fields": [
+        "author"
+      ],
+      "features": {
+        "title_sim_fuzzy": 0.42622950819672134,
+        "title_sim_semantic": 0.5636517107486725,
+        "author_jaccard": 0.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 3
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "(Devlin et al., 2019)",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0002",
+        "reference_id": "ref-0002",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "author_year",
+        "evidence": {
+          "raw": "(Devlin et al., 2019)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.25) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 0.7849360108375549,
+        "author_jaccard": 0.25,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 3
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "(Brown et al., 2020)",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0003",
+        "reference_id": "ref-0003",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "author_year",
+        "evidence": {
+          "raw": "(Brown et al., 2020)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 0.8826038241386414,
+        "author_jaccard": 0.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 3
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "(NovelPaper, 2021)",
+      "label": "suspected_hallucination",
+      "confidence": 0.44999999999999996,
+      "mapping_status": "missing_reference",
+      "mapping_confidence": 0.0,
+      "citation_link": {
+        "occurrence_id": "occ-0004",
+        "reference_id": null,
+        "status": "missing_reference",
+        "confidence": 0.0,
+        "method": "no_keys",
+        "evidence": {
+          "raw": "(NovelPaper, 2021)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Có candidate nhưng title sim=0.71, author=0.00, DOI match=False, consensus=1 — không đủ để xác minh.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WEAK-EVIDENCE"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.4444444444444444,
+        "title_sim_semantic": 0.7066255360841751,
+        "author_jaccard": 0.0,
+        "year_distance": 1,
+        "doi_exact_match": false,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Không tìm thấy nguồn trên CrossRef, OpenAlex, Semantic Scholar, arXiv.",
+        "Cần giảng viên kiểm tra thủ công.",
+        "Đề nghị sinh viên cung cấp URL/DOI bản gốc.",
+        "Yêu cầu sinh viên bổ sung reference entry cho trích dẫn này.",
+        "Hoặc kiểm tra lại xem có lỗi đánh máy trong in-text không."
+      ]
+    },
+    {
+      "citation_raw": "(TraditionalMethod, 2018)",
+      "label": "suspected_hallucination",
+      "confidence": 0.44999999999999996,
+      "mapping_status": "missing_reference",
+      "mapping_confidence": 0.0,
+      "citation_link": {
+        "occurrence_id": "occ-0005",
+        "reference_id": null,
+        "status": "missing_reference",
+        "confidence": 0.0,
+        "method": "no_keys",
+        "evidence": {
+          "raw": "(TraditionalMethod, 2018)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Có candidate nhưng title sim=0.64, author=0.00, DOI match=False, consensus=1 — không đủ để xác minh.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WEAK-EVIDENCE"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.6153846153846154,
+        "title_sim_semantic": 0.6373389065265656,
+        "author_jaccard": 0.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Không tìm thấy nguồn trên CrossRef, OpenAlex, Semantic Scholar, arXiv.",
+        "Cần giảng viên kiểm tra thủ công.",
+        "Đề nghị sinh viên cung cấp URL/DOI bản gốc.",
+        "Yêu cầu sinh viên bổ sung reference entry cho trích dẫn này.",
+        "Hoặc kiểm tra lại xem có lỗi đánh máy trong in-text không."
+      ]
+    },
+    {
+      "citation_raw": "(AuthorA, 2018)",
+      "label": "suspected_hallucination",
+      "confidence": 0.44999999999999996,
+      "mapping_status": "missing_reference",
+      "mapping_confidence": 0.0,
+      "citation_link": {
+        "occurrence_id": "occ-0006",
+        "reference_id": null,
+        "status": "missing_reference",
+        "confidence": 0.0,
+        "method": "no_keys",
+        "evidence": {
+          "raw": "(AuthorA, 2018)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Có candidate nhưng title sim=0.66, author=0.00, DOI match=False, consensus=1 — không đủ để xác minh.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WEAK-EVIDENCE"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 0.6153846153846154,
+        "title_sim_semantic": 0.6630711406469345,
+        "author_jaccard": 0.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 1
+      },
+      "suggestions": [
+        "Không tìm thấy nguồn trên CrossRef, OpenAlex, Semantic Scholar, arXiv.",
+        "Cần giảng viên kiểm tra thủ công.",
+        "Đề nghị sinh viên cung cấp URL/DOI bản gốc.",
+        "Yêu cầu sinh viên bổ sung reference entry cho trích dẫn này.",
+        "Hoặc kiểm tra lại xem có lỗi đánh máy trong in-text không."
+      ]
+    },
+    {
+      "citation_raw": "(AuthorB, 2019)",
+      "label": "suspected_hallucination",
+      "confidence": 0.44999999999999996,
+      "mapping_status": "missing_reference",
+      "mapping_confidence": 0.0,
+      "citation_link": {
+        "occurrence_id": "occ-0007",
+        "reference_id": null,
+        "status": "missing_reference",
+        "confidence": 0.0,
+        "method": "no_keys",
+        "evidence": {
+          "raw": "(AuthorB, 2019)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Có candidate nhưng title sim=0.69, author=0.00, DOI match=False, consensus=1 — không đủ để xác minh.",
       "triggered_rules": [
         "R-STYLE-INCONSISTENT",
         "R-WEAK-EVIDENCE"
@@ -316,87 +525,7 @@
       "mismatched_fields": [],
       "features": {
         "title_sim_fuzzy": 0.5,
-        "title_sim_semantic": 0.6656622439622879,
-        "author_jaccard": 0.0,
-        "year_distance": 0,
-        "doi_exact_match": false,
-        "source_consensus": 1
-      },
-      "suggestions": [
-        "Không tìm thấy nguồn trên CrossRef, OpenAlex, Semantic Scholar, arXiv.",
-        "Cần giảng viên kiểm tra thủ công.",
-        "Đề nghị sinh viên cung cấp URL/DOI bản gốc.",
-        "Yêu cầu sinh viên bổ sung reference entry cho trích dẫn này.",
-        "Hoặc kiểm tra lại xem có lỗi đánh máy trong in-text không."
-      ]
-    },
-    {
-      "citation_raw": "(Devlin et al., 2019)",
-      "label": "suspected_hallucination",
-      "confidence": 0.44999999999999996,
-      "mapping_status": "missing_reference",
-      "mapping_confidence": 0.0,
-      "citation_link": {
-        "occurrence_id": "occ-0002",
-        "reference_id": null,
-        "status": "missing_reference",
-        "confidence": 0.0,
-        "method": "no_keys",
-        "evidence": {
-          "raw": "(Devlin et al., 2019)"
-        },
-        "page": 0,
-        "section": ""
-      },
-      "reasoning": "Có candidate nhưng title sim=0.62, author=0.00, DOI match=False, consensus=1 — không đủ để xác minh.",
-      "triggered_rules": [
-        "R-STYLE-INCONSISTENT",
-        "R-WEAK-EVIDENCE"
-      ],
-      "mismatched_fields": [],
-      "features": {
-        "title_sim_fuzzy": 0.48648648648648646,
-        "title_sim_semantic": 0.6153873056173325,
-        "author_jaccard": 0.0,
-        "year_distance": 0,
-        "doi_exact_match": false,
-        "source_consensus": 1
-      },
-      "suggestions": [
-        "Không tìm thấy nguồn trên CrossRef, OpenAlex, Semantic Scholar, arXiv.",
-        "Cần giảng viên kiểm tra thủ công.",
-        "Đề nghị sinh viên cung cấp URL/DOI bản gốc.",
-        "Yêu cầu sinh viên bổ sung reference entry cho trích dẫn này.",
-        "Hoặc kiểm tra lại xem có lỗi đánh máy trong in-text không."
-      ]
-    },
-    {
-      "citation_raw": "(Brown et al., 2020)",
-      "label": "suspected_hallucination",
-      "confidence": 0.44999999999999996,
-      "mapping_status": "missing_reference",
-      "mapping_confidence": 0.0,
-      "citation_link": {
-        "occurrence_id": "occ-0003",
-        "reference_id": null,
-        "status": "missing_reference",
-        "confidence": 0.0,
-        "method": "no_keys",
-        "evidence": {
-          "raw": "(Brown et al., 2020)"
-        },
-        "page": 0,
-        "section": ""
-      },
-      "reasoning": "Có candidate nhưng title sim=0.63, author=0.00, DOI match=False, consensus=1 — không đủ để xác minh.",
-      "triggered_rules": [
-        "R-STYLE-INCONSISTENT",
-        "R-WEAK-EVIDENCE"
-      ],
-      "mismatched_fields": [],
-      "features": {
-        "title_sim_fuzzy": 0.4897959183673469,
-        "title_sim_semantic": 0.632625550031662,
+        "title_sim_semantic": 0.6869729906320572,
         "author_jaccard": 0.0,
         "year_distance": 0,
         "doi_exact_match": false,
@@ -413,11 +542,11 @@
     {
       "citation_raw": "(Johnson, 2018)",
       "label": "verified",
-      "confidence": 0.6,
+      "confidence": 0.7,
       "mapping_status": "matched",
       "mapping_confidence": 0.9,
       "citation_link": {
-        "occurrence_id": "occ-0004",
+        "occurrence_id": "occ-0008",
         "reference_id": "ref-0007",
         "status": "matched",
         "confidence": 0.9,
@@ -428,21 +557,19 @@
         "page": 0,
         "section": ""
       },
-      "reasoning": "Citation được link chính xác (author-year match) và title similarity trung bình (0.66). Author mismatch (author_jaccard=0.00) là do 'et al.' citation. Có thể xác minh với lưu ý về metadata.",
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
       "triggered_rules": [
         "R-STYLE-INCONSISTENT",
-        "R-WELL-LINKED-MODERATE"
+        "R-WELL-LINKED"
       ],
-      "mismatched_fields": [
-        "author"
-      ],
+      "mismatched_fields": [],
       "features": {
-        "title_sim_fuzzy": 0.6153846153846154,
-        "title_sim_semantic": 0.6645302921533585,
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 0.5589558035135269,
         "author_jaccard": 0.0,
         "year_distance": 0,
         "doi_exact_match": false,
-        "source_consensus": 1
+        "source_consensus": 2
       },
       "suggestions": [
         "Nguồn đã được xác minh — không cần hành động thêm.",
@@ -450,19 +577,19 @@
       ]
     },
     {
-      "citation_raw": "(Goodfellow et al., 2014)",
+      "citation_raw": "(ModernPaper, 2019)",
       "label": "suspected_hallucination",
       "confidence": 0.44999999999999996,
       "mapping_status": "missing_reference",
       "mapping_confidence": 0.0,
       "citation_link": {
-        "occurrence_id": "occ-0005",
+        "occurrence_id": "occ-0009",
         "reference_id": null,
         "status": "missing_reference",
         "confidence": 0.0,
         "method": "no_keys",
         "evidence": {
-          "raw": "(Goodfellow et al., 2014)"
+          "raw": "(ModernPaper, 2019)"
         },
         "page": 0,
         "section": ""
@@ -474,8 +601,8 @@
       ],
       "mismatched_fields": [],
       "features": {
-        "title_sim_fuzzy": 0.5714285714285715,
-        "title_sim_semantic": 0.6881327778100967,
+        "title_sim_fuzzy": 0.5,
+        "title_sim_semantic": 0.6865312308073044,
         "author_jaccard": 0.0,
         "year_distance": 0,
         "doi_exact_match": false,
@@ -490,32 +617,106 @@
       ]
     },
     {
-      "citation_raw": "(He et al., 2016)",
-      "label": "suspected_hallucination",
-      "confidence": 0.44999999999999996,
-      "mapping_status": "missing_reference",
-      "mapping_confidence": 0.0,
+      "citation_raw": "(Goodfellow et al., 2014)",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
       "citation_link": {
-        "occurrence_id": "occ-0006",
-        "reference_id": null,
-        "status": "missing_reference",
-        "confidence": 0.0,
-        "method": "no_keys",
+        "occurrence_id": "occ-0010",
+        "reference_id": "ref-0008",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "author_year",
+        "evidence": {
+          "raw": "(Goodfellow et al., 2014)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.12) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 1.0,
+        "author_jaccard": 0.125,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 3
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "(He et al., 2016)",
+      "label": "verified",
+      "confidence": 0.7,
+      "mapping_status": "matched",
+      "mapping_confidence": 0.9,
+      "citation_link": {
+        "occurrence_id": "occ-0011",
+        "reference_id": "ref-0009",
+        "status": "matched",
+        "confidence": 0.9,
+        "method": "author_year",
         "evidence": {
           "raw": "(He et al., 2016)"
         },
         "page": 0,
         "section": ""
       },
-      "reasoning": "Có candidate nhưng title sim=0.71, author=0.00, DOI match=False, consensus=1 — không đủ để xác minh.",
+      "reasoning": "Citation được link chính xác (author-year match) và title similarity cao (1.00). Author mismatch (author_jaccard=0.00) là do 'et al.' citation không liệt kê đủ tác giả. Xác minh thành công.",
+      "triggered_rules": [
+        "R-STYLE-INCONSISTENT",
+        "R-WELL-LINKED"
+      ],
+      "mismatched_fields": [],
+      "features": {
+        "title_sim_fuzzy": 1.0,
+        "title_sim_semantic": 0.9192223846912384,
+        "author_jaccard": 0.0,
+        "year_distance": 0,
+        "doi_exact_match": false,
+        "source_consensus": 2
+      },
+      "suggestions": [
+        "Nguồn đã được xác minh — không cần hành động thêm.",
+        "Liên kết đã khớp — không cần hành động thêm."
+      ]
+    },
+    {
+      "citation_raw": "(SurveyAuthors, 2023)",
+      "label": "suspected_hallucination",
+      "confidence": 0.44999999999999996,
+      "mapping_status": "missing_reference",
+      "mapping_confidence": 0.0,
+      "citation_link": {
+        "occurrence_id": "occ-0012",
+        "reference_id": null,
+        "status": "missing_reference",
+        "confidence": 0.0,
+        "method": "no_keys",
+        "evidence": {
+          "raw": "(SurveyAuthors, 2023)"
+        },
+        "page": 0,
+        "section": ""
+      },
+      "reasoning": "Có candidate nhưng title sim=0.80, author=0.00, DOI match=False, consensus=1 — không đủ để xác minh.",
       "triggered_rules": [
         "R-STYLE-INCONSISTENT",
         "R-WEAK-EVIDENCE"
       ],
       "mismatched_fields": [],
       "features": {
-        "title_sim_fuzzy": 0.5625,
-        "title_sim_semantic": 0.7080899327993393,
+        "title_sim_fuzzy": 0.8,
+        "title_sim_semantic": 0.7018464803695679,
         "author_jaccard": 0.0,
         "year_distance": 0,
         "doi_exact_match": false,
@@ -531,8 +732,8 @@
     }
   ],
   "linking_summary": {
-    "matched": 11,
-    "missing_reference": 5,
+    "matched": 16,
+    "missing_reference": 6,
     "uncited_reference": 0,
     "in_text_mismatch": 0,
     "duplicate_reference": 0,
@@ -562,11 +763,11 @@
     }
   },
   "cis": {
-    "score": 41.08,
+    "score": 75.14,
     "components": {
-      "verified_ratio": 0.1875,
-      "metadata_accuracy": 0.1875,
-      "in_text_bib_consistency": 0.8333333333333334,
+      "verified_ratio": 0.7272727272727273,
+      "metadata_accuracy": 0.7272727272727273,
+      "in_text_bib_consistency": 0.9,
       "format_consistency": 0.4,
       "identifier_validity": 1.0
     },
@@ -577,9 +778,9 @@
       "format_consistency": 0.1,
       "identifier_validity": 0.05
     },
-    "num_citations": 16,
+    "num_citations": 22,
     "num_unresolved": 0
   },
   "disclaimer": "Hệ thống này chỉ hỗ trợ giảng viên rà soát tính toàn vẹn trích dẫn trong tiểu luận. Hai lớp kết quả (đối chiếu in-text ↔ reference entry và độ tin cậy nguồn) đều là gợi ý dựa trên bằng chứng từ các cơ sở dữ liệu học thuật công khai (Crossref, OpenAlex, Semantic Scholar, arXiv) và quy luật Neuro-Symbolic có thể giải thích. Kết luận `SUSPECTED_HALLUCINATION` chỉ là suspect — không đồng nghĩa nguồn bị bịa. Giảng viên là người ra quyết định cuối cùng. Hệ thống KHÔNG tự động kết luận gian lận học thuật, KHÔNG kiểm chứng claim-level, và KHÔNG xem việc trích cùng một nguồn nhiều lần là \"dư thừa\".\n",
-  "generated_at": "2026-09-20T10:49:51.379593Z"
+  "generated_at": "2026-09-20T12:07:41.226719Z"
 }
