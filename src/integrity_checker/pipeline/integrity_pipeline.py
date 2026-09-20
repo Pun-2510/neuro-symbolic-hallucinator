@@ -176,13 +176,11 @@ class IntegrityPipeline:
         self.ref_parser = ref_parser or ReferenceListParser(self.extractor)
         # Modern path — DocumentParser (PyMuPDF + GROBID + SectionSegmenter)
         self.document_parser = document_parser or DocumentParser()
-        # Auto-detect: dùng DocumentParser nếu enabled trong config
-        # Default False để backward compat với legacy pipeline tests;
-        # User phải explicit opt-in qua constructor hoặc CLI flag.
+        # Use DocumentParser by default in v1.2+ (fix 2026-09-20)
         self._use_document_parser: bool = (
             use_document_parser
             if use_document_parser is not None
-            else False
+            else True
         )
         self.orchestrator = orchestrator or RetrievalOrchestrator()
         self.checker = checker or NeuroSymbolicChecker()
