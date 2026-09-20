@@ -167,10 +167,11 @@ class ReferenceListParser:
 
         Strategy (fallback nhiều tầng):
             1. Bỏ prefix "References" / "Tài liệu tham khảo" / "Bibliography".
-            2. Nếu có dòng bắt đầu bằng `[N]` → IEEE entries.
-            3. Merge wrapped lines, rồi tách bằng year-marker boundary.
-            4. Fallback: tách bằng blank line.
-            5. Nếu vẫn chỉ 1 entry → trả nguyên text.
+            2. Nếu có dòng bắt đầu bằng `[N]` → IEEE entries (từng dòng).
+            3. Tách IEEE entries trên cùng dòng (do PDF wrapping): [N]...[M]...
+            4. Merge wrapped lines, rồi tách bằng year-marker boundary.
+            5. Fallback: tách bằng blank line.
+            6. Nếu vẫn chỉ 1 entry → trả nguyên text.
         """
         # 1. Strip header prefix
         header_strip_re = re.compile(
@@ -183,7 +184,7 @@ class ReferenceListParser:
         if not text:
             return []
 
-        # 2. IEEE entries
+        # 2. IEEE entries (each on separate line)
         if re.search(r"^\s*\[\d+\]", text, flags=re.MULTILINE):
             entries: list[str] = []
             for line in text.splitlines():
@@ -199,22 +200,79 @@ class ReferenceListParser:
                         entries[-1] = entries[-1] + " " + line
             result = [e for e in entries if len(e) > 20]
             if len(result) >= 2:
-                return result
+                # FIX: Check if any entries contain multiple [N] references (inline merge)
+                # Split them using _split_ieee_inline
+                final_entries = []
+                for entry in result:
+                    sub_entries = self._split_ieee_inline(entry)
+                    if len(sub_entries) >= 2:
+                        final_entries.extend(sub_entries)
+                    else:
+                        final_entries.append(entry)
+                return final_entries if len(final_entries) >= 2 else result
+            return result
 
-        # 3. Merge wrapped lines + year-marker boundary split
+        # 3. FIX: Split IEEE entries that are on the same line (PDF wrapping issue)
+        # Pattern: [N] ... [M] ... where each [N] starts a new entry
+        # This handles cases like: [9] ... 2010. [10] ... 2020.
+        ieee_inline_split = self._split_ieee_inline(text)
+        if len(ieee_inline_split) >= 2:
+            return ieee_inline_split
+
+        # 4. Merge wrapped lines + year-marker boundary split
         entries = self._split_by_year_boundary(text)
         if len(entries) >= 2:
             return entries
 
-        # 4. Fallback: blank-line split
+        # 5. Fallback: blank-line split
         merged = text.replace("\r\n", "\n").replace("\r", "\n")
         parts = re.split(r"\n\s*\n", merged)
         result = [p.strip() for p in parts if len(p.strip()) > 20]
         if len(result) >= 2:
             return result
 
-        # 5. Chỉ 1 entry
+        # 6. Chỉ 1 entry
         return [text] if len(text) > 20 else []
+
+    def _split_ieee_inline(self, text: str) -> list[str]:
+        """Split IEEE entries that are on the same line due to PDF text wrapping.
+
+        Pattern: [N] ... [M] ... where each [N] starts a new entry.
+        This handles cases like:
+            [9] S. J. Pan and Q. Yang. "A Survey..." IEEE Transactions, 2010. [10] F. Pan et al. "Transfer Learning..." 2020.
+
+        Returns list of individual entries.
+        """
+        # Pattern: [N] followed by text, then [M] (a new entry)
+        # Split at: ] followed by space and capital letter (start of next entry)
+        # But be careful not to split inside quotes
+
+        # Find all [N] positions
+        bracket_pattern = re.compile(r'\[\d+\]')
+        matches = list(bracket_pattern.finditer(text))
+
+        if len(matches) < 2:
+            return []
+
+        # Build entries by splitting at [N] positions
+        entries = []
+        for i, m in enumerate(matches):
+            start = m.start()
+            # Find the end of this entry (start of next [N] or end of text)
+            if i + 1 < len(matches):
+                end = matches[i + 1].start()
+            else:
+                end = len(text)
+
+            entry = text[start:end].strip()
+            # Clean up: remove leading whitespace and period before [
+            entry = re.sub(r'^\s*\.\s*', '', entry)
+            entry = re.sub(r'\s+', ' ', entry)
+
+            if len(entry) > 20:
+                entries.append(entry)
+
+        return entries if len(entries) >= 2 else []
 
     def _split_by_year_boundary(self, text: str) -> list[str]:
         """Tach entries bang DOI URL boundaries.
