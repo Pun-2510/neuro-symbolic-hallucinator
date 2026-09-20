@@ -285,26 +285,30 @@ class DocumentParser:
         if grobid is not None and grobid.is_available and grobid.bibliography:
             return self._grobid_to_citations(grobid)
 
-        # Ưu tiên 2: regex parser trên bibliography section — build Document
-        # từ text trong section để dùng parse_reference_section (đã được test).
+        # Ưu tiên 2: regex parser trên bibliography section
+        # Bug fix: parse_reference_section gọi find_reference_section để tìm ref header,
+        # nhưng Document đã chỉ chứa bibliography text rồi (không tìm thấy header).
+        # Fix: gọi trực tiếp _split_entries và _parse_entry thay vì parse_reference_section.
         for section in sections:
             if section.section_type == SectionType.BIBLIOGRAPHY and section.text:
                 try:
-                    doc = Document(
-                        file_path="",
-                        num_pages=section.end_page - section.start_page + 1,
-                        pages=[
-                            Page(
-                                page_num=section.start_page + i,
-                                text=section.text,
-                                has_text_layer=True,
-                            )
-                            for i in range(
-                                max(1, section.end_page - section.start_page + 1)
-                            )
-                        ],
-                    )
-                    return self._reference_parser.parse_reference_section(doc)
+                    # Light normalize — KHÔNG qua _fix_broken_lines
+                    pp = self._citation_extractor.preprocessor
+                    section_text = pp._normalize_unicode(pp._fix_ligatures(section.text))
+
+                    entries = self._reference_parser._split_entries(section_text)
+                    citations: list[Citation] = []
+                    for idx, entry in enumerate(entries, start=1):
+                        if len(entry) < 20:
+                            continue
+                        citation = self._reference_parser._parse_entry(
+                            entry, order_index=idx, page_num=section.start_page
+                        )
+                        if citation:
+                            citations.append(citation)
+                    if citations:
+                        logger.info(f"Extracted {len(citations)} references from bibliography section")
+                        return citations
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("Reference parser failed: %s", exc)
         return []
