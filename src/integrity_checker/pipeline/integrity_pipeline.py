@@ -262,7 +262,12 @@ class IntegrityPipeline:
         linking_result = self._run_linking(in_text_citations, ref_citations, style_profile)
         link_by_raw_text = self._build_link_lookup(linking_result.links)
 
-        # 1d. Merge citations theo priority (cho retrieval/checker).
+        # 1d. Populate metadata for in-text citations from matched references
+        # FIX: For numeric citations like "[1]" that have no title/author/year,
+        # copy metadata from the matched reference entry
+        self._populate_citation_metadata(in_text_citations, ref_citations, link_by_raw_text)
+
+        # 1e. Merge citations theo priority (cho retrieval/checker).
         # Appendix chỉ dùng cho linking thống kê, không retrieval.
         all_citations = self._merge_citations(
             in_text_citations, ref_citations, []
@@ -504,6 +509,48 @@ class IntegrityPipeline:
             "numeric_count": profile.numeric_count,
             "evidence": dict(profile.evidence) if profile.evidence else {},
         }
+
+    @staticmethod
+    def _populate_citation_metadata(
+        in_text: list[Citation],
+        references: list[Citation],
+        link_lookup: dict[str, CitationLink],
+    ) -> None:
+        """Populate citation metadata from matched reference entries.
+
+        For numeric citations like "[1]" that have no title/author/year,
+        copy metadata from the matched reference entry.
+
+        This ensures that verification can use the full reference metadata
+        even when the in-text citation is just a number.
+        """
+        # Build reference lookup by reference_id
+        ref_by_id: dict[str, Citation] = {}
+        for ref in references:
+            if ref.reference_id:
+                ref_by_id[ref.reference_id] = ref
+
+        for citation in in_text:
+            # Only populate if citation lacks essential metadata
+            if citation.title and citation.authors and citation.year:
+                continue
+
+            # Try to find matching reference via link lookup
+            normalized_key = IntegrityPipeline._normalize_identifier(citation.raw_text)
+            link = link_lookup.get(normalized_key)
+
+            if link and link.reference_id:
+                ref = ref_by_id.get(link.reference_id)
+                if ref:
+                    # Copy metadata from reference if citation lacks it
+                    if not citation.title and ref.title:
+                        citation.title = ref.title
+                    if not citation.authors and ref.authors:
+                        citation.authors = ref.authors
+                    if not citation.year and ref.year:
+                        citation.year = ref.year
+                    if not citation.doi and ref.doi:
+                        citation.doi = ref.doi
 
     def _run_linking(
         self,
