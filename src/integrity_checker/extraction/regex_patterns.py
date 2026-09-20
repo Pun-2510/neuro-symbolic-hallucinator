@@ -30,11 +30,13 @@ class CitationPattern:
 
 
 # --- In-text APA ---
+# Pattern cho phép compound words như "NovelPaper", "AuthorA", "SurveyAuthors"
+# [A-Z] khớp chữ cái đầu, [a-zÀ-ž]* khớp phần còn lại (có thể có uppercase ở giữa)
 _APA_INTEXT_SINGLE = (
-    r"\(([A-Z][a-zÀ-ž]+(?:\s+(?:et\s+al\.|and\s+[A-Z][a-zÀ-ž]+))?,?\s*\d{4}[a-z]?)\)"
+    r"\(([A-Z][a-zÀ-ž]*(?:[A-Z][a-zÀ-ž]*)*,?\s*(?:et\s+al\.|and\s+[A-Z][a-zÀ-ž]*(?:[A-Z][a-zÀ-ž]*)*)?,?\s*\d{4}[a-z]?)\)"
 )
 _APA_NAMED_SINGLE = (
-    r"([A-Z][a-zÀ-ž]+(?:\s+(?:et\s+al\.|and\s+[A-Z][a-zÀ-ž]+))?,?\s*\(\d{4}[a-z]?\))"
+    r"([A-Z][a-zÀ-ž]*(?:[A-Z][a-zÀ-ž]*)*,?\s*(?:et\s+al\.|and\s+[A-Z][a-zÀ-ž]*(?:[A-Z][a-zÀ-ž]*)*)?,?\s*\(\d{4}[a-z]?\))"
 )
 
 # --- Numeric (IEEE, Vancouver) ---

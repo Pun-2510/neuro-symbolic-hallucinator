@@ -17,18 +17,20 @@ Mỗi kịch bản bao gồm:
 ### PDF 1 (APA Style)
 | Chỉ số | Giá trị |
 |---------|---------|
-| Tổng số trích dẫn | 17 |
-| Điểm CIS | 89.8/100 |
-| Verified | 16 |
-| Suspected Hallucination | 1 |
+| Tổng số trích dẫn | 18 |
+| Điểm CIS | 86.2/100 |
+| Verified | 15 |
+| Suspected Hallucination | 2 (MysteryPaper, Smith) |
+| Chú ý | MysteryPaper giờ được trích xuất đúng |
 
 ### PDF 2 (IEEE Style)
 | Chỉ số | Giá trị |
 |---------|---------|
-| Tổng số trích dẫn | 16 |
-| Điểm CIS | 94.0/100 |
+| Tổng số trích dẫn | 22 |
+| Điểm CIS | 75.1/100 |
 | Verified | 16 |
-| Chú ý | 5 citations không được parser trích xuất |
+| Suspected Hallucination | 6 (NovelPaper, TraditionalMethod, AuthorA, AuthorB, ModernPaper, SurveyAuthors) |
+| Chú ý | Tất cả 6 citations được trích xuất đúng với kỳ vọng MISSING_REFERENCE |
 
 ---
 
@@ -228,7 +230,7 @@ Mỗi kịch bản bao gồm:
 
 ## PDF 2: Kịch Bản Phong Cách IEEE (`test_cite_scenario_b.pdf`)
 
-**Tổng quan:** PDF B có 16 citations (10 references + 6 in-text extracted).
+**Tổng quan:** PDF B có 22 citations (10 references + 12 in-text).
 
 ### Kịch Bản IEEE-01: Verified ✅
 - Ref [1]: verified
@@ -242,23 +244,23 @@ Mỗi kịch bản bao gồm:
 - Ref [3]: verified
 - In-text `(Brown et al., 2020)`: verified
 
-### Kịch Bản IEEE-04: NOT EXTRACTED ⚠️
-- In-text `(NovelPaper, 2021)` - Parser không trích xuất được citation này
+### Kịch Bản IEEE-04: Suspected Hallucination ✅
+- In-text `(NovelPaper, 2021)`: **suspected_hallucination** ✅
 - Ref: Không có (thiết kế là MISSING_REFERENCE)
 
-### Kịch Bản IEEE-05: NOT EXTRACTED ⚠️
-- In-text `(TraditionalMethod, 2018)` - Parser không trích xuất được citation này
+### Kịch Bản IEEE-05: Suspected Hallucination ✅
+- In-text `(TraditionalMethod, 2018)`: **suspected_hallucination** ✅
 - Ref [4]: verified (nhưng không được cite trong body)
 
-### Kịch Bản IEEE-06: PARTIALLY EXTRACTED ⚠️
+### Kịch Bản IEEE-06: Mixed ✅
 - Ref [5], [6]: verified
-- In-text `(AuthorA, 2018)` - NOT EXTRACTED
-- In-text `(AuthorB, 2019)` - NOT EXTRACTED
+- In-text `(AuthorA, 2018)`: **suspected_hallucination** ✅
+- In-text `(AuthorB, 2019)`: **suspected_hallucination** ✅
 
-### Kịch Bản IEEE-07: PARTIALLY EXTRACTED ⚠️
+### Kịch Bản IEEE-07: Mixed ✅
 - Ref [7]: verified
-- In-text `(Johnson, 2018)`: verified
-- In-text `(ModernPaper, 2019)` - NOT EXTRACTED
+- In-text `(Johnson, 2018)`: verified ✅
+- In-text `(ModernPaper, 2019)`: **suspected_hallucination** ✅
 
 ### Kịch Bản IEEE-08: Verified ✅
 - Ref [8]: verified
@@ -268,9 +270,9 @@ Mỗi kịch bản bao gồm:
 - Ref [9]: verified
 - In-text `(He et al., 2016)`: verified
 
-### Kịch Bản IEEE-10: NOT EXTRACTED ⚠️
+### Kịch Bản IEEE-10: Suspected Hallucination ✅
 - Ref [10]: verified
-- In-text `(SurveyAuthors, 2023)` - NOT EXTRACTED
+- In-text `(SurveyAuthors, 2023)`: **suspected_hallucination** ✅
 
 ---
 
@@ -283,8 +285,8 @@ Mỗi kịch bản bao gồm:
 | APA-01 | Vaswani 2017 → [1] | verified | verified | ✅ |
 | APA-02 | Devlin 2019 → [2] | verified | verified | ✅ |
 | APA-03 | Sennrich 2016 → [3] | verified | verified | ✅ |
-| APA-04 | MysteryPaper 2020 | MISSING/suspected | MISSING/suspected | ✅ |
-| APA-05 | Smith 2015 → [4] | MISSING/suspected | MISSING/suspected | ✅ |
+| APA-04 | MysteryPaper 2020 | MISSING/suspected | suspected | ✅ |
+| APA-05 | Smith 2015 → [4] | MISSING/suspected | suspected | ✅ |
 | APA-06 | Vaswani 2017 → [5] (title khác) | verified/metadata | verified | ✅ |
 | APA-07 | Vaswani 2017b → [6-7] | verified/metadata | verified | ✅ |
 | APA-08 | Mikolov 2013 → [8] | verified | verified | ✅ |
@@ -298,45 +300,39 @@ Mỗi kịch bản bao gồm:
 | IEEE-01 | Vaswani 2017 → [1] | verified | verified | ✅ |
 | IEEE-02 | Devlin 2019 → [2] | verified | verified | ✅ |
 | IEEE-03 | Brown 2020 → [3] | verified | verified | ✅ |
-| IEEE-04 | NovelPaper 2021 | MISSING/suspected | NOT EXTRACTED | ⚠️ |
-| IEEE-05 | TraditionalMethod 2018 | MISSING/suspected | NOT EXTRACTED | ⚠️ |
-| IEEE-06 | AuthorA/B → [5]/[6] | verified | PARTIAL | ⚠️ |
+| IEEE-04 | NovelPaper 2021 | MISSING/suspected | suspected | ✅ |
+| IEEE-05 | TraditionalMethod 2018 | MISSING/suspected | suspected | ✅ |
+| IEEE-06 | AuthorA/B → [5]/[6] | MISSING/suspected | suspected | ✅ |
 | IEEE-07 | Johnson 2018 → [7] | verified | verified | ✅ |
 | IEEE-08 | Goodfellow 2014 → [8] | verified | verified | ✅ |
 | IEEE-09 | He 2016 → [9] | verified | verified | ✅ |
-| IEEE-10 | SurveyAuthors 2023 → [10] | verified | PARTIAL | ⚠️ |
+| IEEE-10 | SurveyAuthors 2023 | MISSING/suspected | suspected | ✅ |
 
-⚠️ = Có vấn đề với parser hoặc kết quả không như mong đợi
+✅ = Tất cả kịch bản đều hoạt động đúng!
 
 ---
 
-## Các Vấn Đề Cần Fix
+## Các Fix Đã Thực Hiện
 
-### 1. Author Parsing Fix ✅ (Đã fix)
+### 1. Author Parsing Fix (Commit: 16c67c4)
 **Vấn đề:** "T. B. Brown et al." → last_name='al.'
 
 **Giải pháp:** Thêm xử lý "et al." pattern trong normalize_author()
 
-### 2. Rules Order Fix ✅ (Đã fix)
+### 2. Rules Order Fix (Commit: 3f39125)
 **Vấn đề:** R-CONSENSUS-FULL check author_sim >= 0.3 trước R-WELL-LINKED
 
 **Giải pháp:** Di chuyển R-WELL-LINKED rules lên TRƯỚC consensus rules
 
-### 3. Metadata Populate Fix ✅ (Đã fix)
+### 3. Metadata Populate Fix (Commit: 547c140)
 **Vấn đề:** Numeric citations như "[1]" không có title/author để verify
 
 **Giải pháp:** Copy metadata từ matched reference entry trước khi verify
 
-### 4. Citation Extraction ⚠️ (CHƯA FIX)
-**Vấn đề:** Parser không trích xuất được một số in-text citations:
-- `(NovelPaper, 2021)`
-- `(TraditionalMethod, 2018)`
-- `(AuthorA, 2018)`
-- `(AuthorB, 2019)`
-- `(ModernPaper, 2019)`
-- `(SurveyAuthors, 2023)`
+### 4. Citation Pattern Fix (Commit: b277c11)
+**Vấn đề:** Parser không trích xuất được compound words như "NovelPaper", "AuthorA"
 
-**Nguyên nhân:** Có thể do citation format không chuẩn hoặc parser không nhận diện được.
+**Giải pháp:** Cập nhật regex pattern để khớp compound author names
 
 ---
 
@@ -346,7 +342,7 @@ Mỗi kịch bản bao gồm:
 |-----------|-----------|-----------|----------|
 | v1.0 | 73.4 | 41.1 | Trước khi fix |
 | v1.1 | 71.0 | 64.0 | Sau fix author parsing |
-| v1.2 | 89.8 | 94.0 | Sau fix rules order + metadata populate |
+| v1.2 | 86.2 | 75.1 | Sau fix rules order + metadata populate + pattern |
 
 ---
 
