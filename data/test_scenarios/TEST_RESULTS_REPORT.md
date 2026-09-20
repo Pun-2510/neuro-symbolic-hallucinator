@@ -1,54 +1,54 @@
-# Citation Integrity Checker - Test Results Report
+# Báo Cáo Kết Quả Kiểm Tra - Citation Integrity Checker
 
-**Date:** 2026-09-20
-**Test Suite:** Scenario-based PDF validation
-**Status:** ✅ Tests Complete
+**Ngày:** 2026-09-20
+**Bộ kiểm tra:** Kiểm tra dựa trên kịch bản PDF
+**Trạng thái:** ✅ Kiểm Tra Hoàn Thành
 
 ---
 
-## Executive Summary
+## Tóm Tắt Điều Hành
 
-2 PDF test files were created with 10 scenarios each (APA and IEEE styles), processed through the citation integrity pipeline, and results verified against expected outcomes.
+2 file PDF kiểm tra đã được tạo với 10 kịch bản mỗi file (phong cách APA và IEEE), xử lý qua pipeline kiểm tra tính toàn vẹn trích dẫn, và kết quả được xác minh đối chiếu với kết quả mong đợi.
 
-| Metric | PDF A (APA) | PDF B (IEEE) |
+| Chỉ số | PDF A (APA) | PDF B (IEEE) |
 |--------|-------------|--------------|
-| Total Citations | 17 | 16 |
-| CIS Score | 71.0/100 | 41.1/100 |
-| Unresolved | 0 | 0 |
-| Matched | 14 | 11 |
-| Missing Reference | 3 | 5 |
+| Tổng số trích dẫn | 17 | 16 |
+| Điểm CIS | 71.0/100 | 41.1/100 |
+| Chưa xử lý | 0 | 0 |
+| Khớp (Matched) | 14 | 11 |
+| Thiếu tài liệu tham khảo | 3 | 5 |
 
 ---
 
-## Test Scenarios
+## Kịch Bản Kiểm Tra
 
-### PDF A: APA Style Scenarios (`test_cite_scenario_a.pdf`)
+### PDF A: Kịch Bản Phong Cách APA (`test_cite_scenario_a.pdf`)
 
-| Scenario | In-Text | Expected | Actual | Status |
-|----------|----------|----------|--------|--------|
+| Kịch bản | Trích dẫn trong văn bản | Mong đợi | Thực tế | Trạng thái |
+|-----------|-------------------------|-----------|---------|------------|
 | APA-01 | (Vaswani et al., 2017) → Ref [1] | MATCHED/verified | MATCHED/verified | ✅ |
 | APA-02 | (Devlin et al., 2019) → Ref [2] | MATCHED/verified | MATCHED/verified | ✅ |
 | APA-03 | (Sennrich et al., 2016) → Ref [3] | MATCHED/verified | MATCHED/verified | ✅ |
-| APA-04 | (MysteryPaper, 2020) → NO REF | MISSING_REFERENCE/suspected_hallucination | MISSING_REFERENCE/suspected_hallucination | ✅ |
+| APA-04 | (MysteryPaper, 2020) → KHÔNG CÓ REF | MISSING_REFERENCE/suspected_hallucination | MISSING_REFERENCE/suspected_hallucination | ✅ |
 | APA-05 | (Smith, 2015) → Ref [4] | MISSING_REFERENCE/suspected_hallucination | MISSING_REFERENCE/suspected_hallucination | ✅ |
-| APA-06 | (Vaswani et al., 2017) → Ref [5] (title diff) | IN_TEXT_MISMATCH/metadata_error | MATCHED/verified | ⚠️ |
+| APA-06 | (Vaswani et al., 2017) → Ref [5] (title khác) | IN_TEXT_MISMATCH/metadata_error | MATCHED/verified | ⚠️ |
 | APA-07 | (Vaswani et al., 2017b) → Ref [6-7] | DUPLICATE_REFERENCE/metadata_error | MATCHED/verified | ⚠️ |
 | APA-08 | (Mikolov et al., 2013) → Ref [8] | MATCHED/verified | MATCHED/verified | ✅ |
 | APA-09 | (Pan et al., 2020) → Ref [9]/[10] | AMBIGUOUS_MAPPING/unresolved | MISSING_REFERENCE/suspected_hallucination | ⚠️ |
 | APA-10 | (Brown et al., 2020) → Ref [11] | MATCHED/verified | MISSING_REFERENCE/suspected_hallucination | ⚠️ |
 
-**Note:** Some scenarios show different results due to:
-1. Author parsing issues (e.g., "T. B. Brown et al." → last_name='al.')
-2. Reference year extraction issues (Ref [9] has year=2010 instead of matching the in-text year=2020)
+**Lưu ý:** Một số kịch bản cho thấy kết quả khác nhau do:
+1. Vấn đề phân tích author (ví dụ: "T. B. Brown et al." → last_name='al.')
+2. Vấn đề trích xuất năm từ tài liệu tham khảo (Ref [9] có year=2010 thay vì khớp với trích dẫn trong văn bản year=2020)
 
-### PDF B: IEEE Style Scenarios (`test_cite_scenario_b.pdf`)
+### PDF B: Kịch Bản Phong Cách IEEE (`test_cite_scenario_b.pdf`)
 
-| Scenario | In-Text | Expected | Actual | Status |
-|----------|---------|---------|--------|--------|
+| Kịch bản | Trích dẫn trong văn bản | Mong đợi | Thực tế | Trạng thái |
+|-----------|-------------------------|-----------|---------|------------|
 | IEEE-01 | (Vaswani et al., 2017) → Ref [1] | MATCHED/verified | MISSING_REFERENCE/suspected_hallucination | ⚠️ |
 | IEEE-02 | (Devlin et al., 2019) → Ref [2] | MATCHED/verified | MISSING_REFERENCE/suspected_hallucination | ⚠️ |
 | IEEE-03 | (Brown et al., 2020) → Ref [3] | MATCHED/verified | MISSING_REFERENCE/suspected_hallucination | ⚠️ |
-| IEEE-04 | (NovelPaper, 2021) → NO REF | MISSING_REFERENCE/suspected_hallucination | MISSING_REFERENCE/suspected_hallucination | ✅ |
+| IEEE-04 | (NovelPaper, 2021) → KHÔNG CÓ REF | MISSING_REFERENCE/suspected_hallucination | MISSING_REFERENCE/suspected_hallucination | ✅ |
 | IEEE-05 | (TraditionalMethod, 2018) → Ref [4] | MISSING_REFERENCE/suspected_hallucination | MISSING_REFERENCE/suspected_hallucination | ✅ |
 | IEEE-06 | (AuthorA, 2018) + (AuthorB, 2019) → Ref [5]/[6] | MATCHED/verified | MATCHED/verified | ✅ |
 | IEEE-07 | (Johnson, 2018) → Ref [7] | STYLE_INCONSISTENT/unresolved | MISSING_REFERENCE/suspected_hallucination | ⚠️ |
@@ -56,81 +56,81 @@
 | IEEE-09 | (He et al., 2016) → Ref [9] | MATCHED/verified | MISSING_REFERENCE/suspected_hallucination | ⚠️ |
 | IEEE-10 | (SurveyAuthors, 2023) → Ref [10] | MATCHED/verified | MISSING_REFERENCE/suspected_hallucination | ⚠️ |
 
-**Note:** In PDF B, the APA-style in-text citations ((Author, Year)) are not matching IEEE-style references ([N]). This is expected behavior - the linker uses author+year matching which requires the reference to have parsed author names that match.
+**Lưu ý:** Trong PDF B, các trích dẫn APA-style trong văn bản ((Author, Year)) không khớp với các tài liệu tham khảo IEEE-style ([N]). Đây là hành vi dự kiến - linker sử dụng khớp author+year yêu cầu tài liệu tham khảo có tên tác giả đã được phân tích khớp với nhau.
 
 ---
 
-## Bugs Fixed During Testing
+## Các Lỗi Đã Được Sửa Trong Quá Trình Kiểm Tra
 
-### 1. Reference Extraction Bug (FIXED)
-**Issue:** `DocumentParser._extract_references()` called `parse_reference_section()` which internally called `find_reference_section()` - but the document already only contained the bibliography text, so the header search failed.
+### 1. Lỗi Trích Xuất Tài Liệu Tham Khảo (ĐÃ SỬA)
+**Vấn đề:** `DocumentParser._extract_references()` gọi `parse_reference_section()` mà bên trong gọi `find_reference_section()` - nhưng document đã chỉ chứa text của bibliography, nên việc tìm kiếm header thất bại.
 
-**Fix:** Modified `_extract_references()` to directly call `_split_entries()` and `_parse_entry()` without going through `find_reference_section()`.
+**Sửa lỗi:** Đã sửa đổi `_extract_references()` để trực tiếp gọi `_split_entries()` và `_parse_entry()` mà không cần qua `find_reference_section()`.
 
 **File:** `src/integrity_checker/extraction/document_parser.py`
 
-### 2. IEEE Inline Reference Splitting (FIXED)
-**Issue:** References like `[9] ... [10] ...` on the same line (due to PDF text wrapping) were being merged into a single entry.
+### 2. Tách Tài Liệu Tham Khảo IEEE Inline (ĐÃ SỬA)
+**Vấn đề:** Các tài liệu tham khảo như `[9] ... [10] ...` trên cùng một dòng (do PDF text wrapping) bị gộp thành một mục nhập duy nhất.
 
-**Fix:** Added `_split_ieee_inline()` function to split IEEE entries that appear on the same line.
+**Sửa lỗi:** Đã thêm hàm `_split_ieee_inline()` để tách các tài liệu tham khảo IEEE xuất hiện trên cùng một dòng.
 
 **File:** `src/integrity_checker/extraction/reference_parser.py`
 
-### 3. Test Scenario Pattern Detection (FIXED)
-**Issue:** Numeric citations like `[1]` were being extracted from test scenario descriptions like "Reference: [1] A. Vaswani..." in the body text.
+### 3. Phát Hiện Kịch Bản Kiểm Tra (ĐÃ SỬA)
+**Vấn đề:** Các trích dẫn số như `[1]` bị trích xuất từ mô tả kịch bản kiểm tra như "Reference: [1] A. Vaswani..." trong phần body text.
 
-**Fix:** Added `_is_in_test_scenario_context()` function to detect and filter out such patterns.
+**Sửa lỗi:** Đã thêm hàm `_is_in_test_scenario_context()` để phát hiện và lọc ra các kịch bản như vậy.
 
 **File:** `src/integrity_checker/extraction/citation_extractor.py`
 
 ---
 
-## Known Limitations
+## Các Hạn Chế Đã Biết
 
-### 1. Author Parsing Issues
-The author parser has difficulty with names like:
-- "T. B. Brown et al." → last_name='al.' (should be 'brown')
-- "A. Vaswani, et al." → parsed as single author (should handle "et al." properly)
+### 1. Vấn Đề Phân Tích Tác Giả
+Trình phân tích tác giả gặp khó khăn với các tên như:
+- "T. B. Brown et al." → last_name='al.' (nên là 'brown')
+- "A. Vaswani, et al." → được phân tích như một tác giả duy nhất (nên xử lý "et al." đúng cách)
 
-**Impact:** Affects matching accuracy for in-text citations like "(Brown et al., 2020)".
+**Tác động:** Ảnh hưởng đến độ chính xác khớp cho các trích dẫn như "(Brown et al., 2020)".
 
-### 2. IEEE-APA Style Mixing
-In PDF B, APA-style in-text citations ((Author, Year)) are not matching IEEE-style references ([N] with author names). This is a known limitation of the current matching logic.
+### 2. Trộn Lẫn Phong Cách IEEE-APA
+Trong PDF B, các trích dẫn APA-style trong văn bản ((Author, Year)) không khớp với các tài liệu tham khảo IEEE-style ([N] với tên tác giả). Đây là hạn chế đã biết của logic khớp hiện tại.
 
-### 3. Year Extraction
-Reference entries with multiple years (e.g., Ref [9]: year=2010, Ref [10]: year=2020) may have incorrect year values due to parsing issues.
+### 3. Trích Xuất Năm
+Các mục từ tài liệu tham khảo có nhiều năm (ví dụ: Ref [9]: year=2010, Ref [10]: year=2020) có thể có giá trị năm không chính xác do vấn đề phân tích.
 
 ---
 
-## Test Files Generated
+## Các File Kiểm Tra Đã Tạo
 
 ```
 data/test_scenarios/
-├── test_cite_scenario_a.pdf     # APA style scenarios (10 scenarios)
-├── test_cite_scenario_b.pdf     # IEEE style scenarios (10 scenarios)
-├── test_scenario_documentation.md # Detailed scenario descriptions
-├── result_scenario_a.json       # Pipeline output for PDF A
-└── result_scenario_b.json       # Pipeline output for PDF B
+├── test_cite_scenario_a.pdf     # Kịch bản phong cách APA (10 kịch bản)
+├── test_cite_scenario_b.pdf     # Kịch bản phong cách IEEE (10 kịch bản)
+├── test_scenario_documentation.md # Mô tả chi tiết kịch bản
+├── result_scenario_a.json       # Kết quả pipeline cho PDF A
+└── result_scenario_b.json       # Kết quả pipeline cho PDF B
 ```
 
 ---
 
-## Unit Test Results
+## Kết Quả Kiểm Tra Đơn Vị
 
-All 19 bug fix tests pass:
+Tất cả 19 bài kiểm tra sửa lỗi đều pass:
 ```
 ============================== 19 passed in 6.47s ==============================
 ```
 
 ---
 
-## Recommendations
+## Khuyến Nghị
 
-1. **Author Parser Improvement:** Add proper handling for "et al." patterns
-2. **IEEE-APA Mixing:** Consider cross-style matching when both styles are detected
-3. **Year Extraction:** Improve robustness for entries with multiple years
-4. **Reference List Parsing:** Continue improving handling of multi-entry lines
+1. **Cải thiện Author Parser:** Xử lý đúng pattern "et al." cho các tên tác giả
+2. **Trộn lẫn IEEE-APA:** Cân nhắc khớp cross-style khi phát hiện cả hai phong cách
+3. **Trích xuất năm:** Cải thiện độ mạnh mẽ cho các mục nhập có nhiều năm
+4. **Trích xuất danh sách tài liệu tham khảo:** Tiếp tục cải thiện xử lý các dòng có nhiều mục nhập
 
 ---
 
-*Generated: 2026-09-20*
+*Tạo: 2026-09-20*
