@@ -32,7 +32,7 @@ from integrity_checker.extraction import (
     PdfPlumberParser,
     ReferenceListParser,
 )
-from integrity_checker.extraction.base import BasePDFParser, Document, chain_parsers
+from integrity_checker.extraction.base import BasePDFParser, Document, Page, chain_parsers
 from integrity_checker.extraction.document_parser import ParsedDocument
 from integrity_checker.linking.citation_linker import CitationLinker
 from integrity_checker.linking.duplicate_detector import DuplicateDetector
@@ -227,6 +227,8 @@ class IntegrityPipeline:
         appendix_citations: list[Citation] = []
         parser_warnings: list[str] = []
         style_profile_dict: dict[str, Any] | None = None
+        document_pages: list[Page] = []  # Store pages for context extraction
+
         if self._use_document_parser:
             # Modern path: DocumentParser (PyMuPDF + GROBID + SectionSegmenter)
             parsed = self.document_parser.parse(pdf_path)
@@ -235,6 +237,7 @@ class IntegrityPipeline:
             ref_citations = parsed.references
             appendix_citations = parsed.appendix_citations
             parser_warnings = parsed.parser_warnings
+            document_pages = parsed.document.pages  # Store for context extraction
             logger.info(
                 f"DocumentParser: {len(parsed.body_citations)} body + "
                 f"{len(parsed.references)} ref + "
@@ -247,6 +250,7 @@ class IntegrityPipeline:
             num_pages = doc.num_pages
             in_text_citations = self.extractor.extract_from_document(doc)
             ref_citations = self.ref_parser.parse_reference_section(doc)
+            document_pages = doc.pages  # Store for context extraction
             logger.info(
                 f"Legacy parse: {doc.num_pages} pages via {doc.parser_used}, "
                 f"{len(in_text_citations)} in-text + {len(ref_citations)} ref-list"
@@ -336,12 +340,25 @@ class IntegrityPipeline:
                         mapping_status = CitationMappingStatus.AMBIGUOUS_MAPPING
                         mapping_confidence = 0.0
                         citation_link = None
-            # Pass mapping_status + style_profile vào checker
+            # Extract citation context from page text (v1.3 - Neural content alignment)
+            citation_context = None
+            # Search all pages for the citation (page_num may be incorrect from extraction)
+            for page in document_pages:
+                if citation.raw_text.lower() in page.text.lower():
+                    citation_context = IntegrityPipeline._extract_citation_context(
+                        citation.raw_text,
+                        page.text,
+                        window_chars=200,
+                    )
+                    break
+
+            # Pass mapping_status + style_profile + citation_context vào checker
             verdict = self.checker.check(
                 citation,
                 source,
                 mapping_status=mapping_status,
                 style_profile=style_profile,
+                citation_context=citation_context,
             )
             verdict.mapping_status = mapping_status
             verdict.mapping_confidence = mapping_confidence
@@ -406,6 +423,44 @@ class IntegrityPipeline:
                 break
         # Chuẩn hóa: lowercase + strip
         return text.strip().lower()
+
+    @staticmethod
+    def _extract_citation_context(
+        citation_raw: str,
+        page_text: str,
+        window_chars: int = 150,
+    ) -> str | None:
+        """Extract context around a citation from page text.
+
+        Args:
+            citation_raw: The citation text (e.g., "(Vaswani et al., 2017)")
+            page_text: Full text of the page containing the citation
+            window_chars: Number of characters before/after to include
+
+        Returns:
+            String containing citation with surrounding context, or None if not found
+        """
+        if not citation_raw or not page_text:
+            return None
+
+        # Find citation in page text
+        citation_lower = citation_raw.lower()
+        page_lower = page_text.lower()
+
+        pos = page_lower.find(citation_lower)
+        if pos == -1:
+            return None
+
+        # Extract context window
+        start = max(0, pos - window_chars)
+        end = min(len(page_text), pos + len(citation_raw) + window_chars)
+
+        context = page_text[start:end].strip()
+
+        # Clean up: remove newlines in the middle and limit length
+        context = " ".join(context.split())  # Normalize whitespace
+
+        return context if len(context) > 20 else None
 
     @staticmethod
     def _merge_citations(

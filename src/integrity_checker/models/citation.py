@@ -96,6 +96,10 @@ class Citation:
     # Backward compatible: callers cũ không truyền field này vẫn chạy bình thường.
     reference_id: Optional[str] = None
 
+    # NEW v1.3 — citation context: đoạn văn xung quanh citation
+    # Dùng cho Neural content alignment check
+    context: Optional[str] = None
+
     def to_search_query(self) -> str:
         """Ghép chuỗi truy vấn để gọi API theo title + author + year.
 
