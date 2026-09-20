@@ -154,6 +154,15 @@ def normalize_author(raw: str) -> Author:
     # Chuẩn hoá Unicode (NFC) trước
     raw = unicodedata.normalize("NFC", raw)
 
+    # FIX: Handle "et al." pattern - this is NOT part of the author name
+    # "T. B. Brown et al." → "T. B. Brown"
+    # "A. Vaswani, et al." → "A. Vaswani"
+    et_al_match = re.search(r'\s+et\s+al\.?\s*$', raw, re.IGNORECASE)
+    if et_al_match:
+        raw = raw[:et_al_match.start()].strip().rstrip(',')
+        if not raw:
+            return Author(last_name="", raw=raw)
+
     # Strategy 1: comma-split (APA / Chicago)
     parts = _split_on_comma(raw)
     if parts:
