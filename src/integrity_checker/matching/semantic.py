@@ -202,8 +202,8 @@ class SemanticMatcher:
             normalized_weights = [w / total_weight for w in weights]
             weighted_similarity = sum(s * w for s, w in zip(scores, normalized_weights))
 
-            # Final similarity
-            final_sim = max(scores) if not scores else 0.0  # Fallback to max
+            # Final similarity - use weighted average
+            final_sim = weighted_similarity if scores else 0.0
 
             # Determine confidence và alignment
             confidence, is_aligned = self._determine_alignment(final_sim)

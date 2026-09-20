@@ -69,14 +69,8 @@ class TestSemanticContentAlignment:
         """Low semantic similarity should result in is_aligned=False."""
         from integrity_checker.matching.semantic import SemanticMatcher
 
-        mock_model = MagicMock()
-        mock_model.encode.return_value = MagicMock()
-        mock_model.encode.return_value.__getitem__ = MagicMock()
-        mock_cos = MagicMock()
-        mock_cos.item.return_value = 0.2  # Low similarity
-        mock_model.encode.return_value.__getitem__.return_value.__matmul__ = MagicMock(return_value=mock_cos)
-
-        with patch.object(SemanticMatcher, '_get_model', return_value=mock_model):
+        # Mock the _compute_similarity method to return low similarity
+        with patch.object(SemanticMatcher, '_compute_similarity', return_value=0.2):
             matcher = SemanticMatcher()
             result = matcher.check_content_alignment(
                 cited_context="Cooking methods for Italian cuisine.",
