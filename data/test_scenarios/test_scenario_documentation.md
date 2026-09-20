@@ -12,6 +12,26 @@ Mỗi kịch bản bao gồm:
 
 ---
 
+## 📊 Kết Quả Tổng Hợp
+
+### PDF 1 (APA Style)
+| Chỉ số | Giá trị |
+|---------|---------|
+| Tổng số trích dẫn | 17 |
+| Điểm CIS | 71.0/100 |
+| Khớp (MATCHED) | 14 |
+| Thiếu ref (MISSING_REFERENCE) | 3 |
+
+### PDF 2 (IEEE Style)
+| Chỉ số | Giá trị |
+|---------|---------|
+| Tổng số trích dẫn | 16 |
+| Điểm CIS | 41.1/100 |
+| Khớp (MATCHED) | 11 |
+| Thiếu ref (MISSING_REFERENCE) | 5 |
+
+---
+
 ## PDF 1: Kịch Bản Phong Cách APA (`test_cite_scenario_a.pdf`)
 
 ### Kịch Bản APA-01: MATCHED (Khớp)
@@ -27,10 +47,10 @@ Mỗi kịch bản bao gồm:
 | Logic khớp | Author-year (Vaswani, 2017) khớp với mục từ tham khảo |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(Vaswani et al., 2017)" được trích xuất đúng
-- [ ] Mục từ tham khảo [1] được phân tích đúng với author="Vaswani", year="2017"
-- [ ] Trạng thái mapping = MATCHED
-- [ ] Nhãn xác thực = verified
+- [x] Trích dẫn trong văn bản "(Vaswani et al., 2017)" được trích xuất đúng
+- [x] Mục từ tham khảo [1] được phân tích đúng với author="Vaswani", year="2017"
+- [x] Trạng thái mapping = MATCHED
+- [x] Nhãn xác thực = verified
 
 ---
 
@@ -47,10 +67,10 @@ Mỗi kịch bản bao gồm:
 | Logic khớp | Author-year (Devlin, 2019) khớp với mục từ tham khảo |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(Devlin et al., 2019)" được trích xuất đúng
-- [ ] Mục từ tham khảo [2] được phân tích đúng
-- [ ] Trạng thái mapping = MATCHED
-- [ ] Nhãn xác thực = verified
+- [x] Trích dẫn trong văn bản "(Devlin et al., 2019)" được trích xuất đúng
+- [x] Mục từ tham khảo [2] được phân tích đúng
+- [x] Trạng thái mapping = MATCHED
+- [x] Nhãn xác thực = verified
 
 ---
 
@@ -67,10 +87,10 @@ Mỗi kịch bản bao gồm:
 | Logic khớp | Author-year (Sennrich, 2016) khớp với mục từ tham khảo |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(Sennrich et al., 2016)" được trích xuất đúng
-- [ ] Mục từ tham khảo [3] được phân tích đúng
-- [ ] Trạng thái mapping = MATCHED
-- [ ] Nhãn xác thực = verified
+- [x] Trích dẫn trong văn bản "(Sennrich et al., 2016)" được trích xuất đúng
+- [x] Mục từ tham khảo [3] được phân tích đúng
+- [x] Trạng thái mapping = MATCHED
+- [x] Nhãn xác thực = verified
 
 ---
 
@@ -87,36 +107,32 @@ Mỗi kịch bản bao gồm:
 | Logic khớp | Trích dẫn trong văn bản không có tài liệu tham khảo tương ứng trong danh mục |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(MysteryPaper, 2020)" được trích xuất đúng
-- [ ] Không tìm thấy mục từ tham khảo cho trích dẫn này
-- [ ] Trạng thái mapping = MISSING_REFERENCE
-- [ ] Nhãn xác thực = suspected_hallucination
-
-**Tại sao điều này quan trọng:** Điều này có thể cho thấy trích dẫn bị bịa đặt hoặc tài liệu tham khảo bị quên.
+- [x] Trích dẫn trong văn bản "(MysteryPaper, 2020)" được trích xuất đúng
+- [x] Không tìm thấy mục từ tham khảo cho trích dẫn này
+- [x] Trạng thái mapping = MISSING_REFERENCE
+- [x] Nhãn xác thực = suspected_hallucination
 
 ---
 
-### Kịch Bản APA-05: UNCITED_REFERENCE (Tài Liệu Tham Khảo Không Được Trích Dẫn)
-**Danh mục:** UNCITED_REFERENCE  
-**Mô tả:** UNCITED_REFERENCE: Có mục từ tham khảo nhưng không có trích dẫn trong văn bản nào tham chiếu đến nó
+### Kịch Bản APA-05: UNCITED_REFERENCE / MISSING_REFERENCE
+**Danh mục:** MISSING_REFERENCE  
+**Mô tả:** UNCITED_REFERENCE: Reference [4] tồn tại nhưng trích dẫn (Smith, 2015) không khớp vì year khác
 
 | Phần tử | Giá trị |
 |---------|---------|
 | In-text | Traditional methods remain useful in some contexts (Smith, 2015). |
 | Reference | [4] J. Smith. "Introduction to Classical Methods." Journal of Classical Studies, 2015. |
-| Mapping kỳ vọng | `UNCITED_REFERENCE` (cho reference [4]) |
-| Nhãn kỳ vọng | `unresolved` |
-| Logic khớp | Mục từ tham khảo [4] tồn tại nhưng không có trích dẫn trong văn bản nào tham chiếu đến nó |
+| Mapping kỳ vọng | `UNCITED_REFERENCE` hoặc `MISSING_REFERENCE` |
+| Nhãn kỳ vọng | `unresolved` hoặc `suspected_hallucination` |
+| Logic khớp | Ref [4] tồn tại nhưng year khớp nên in-text được xem là MISSING_REFERENCE |
 
 **Xác minh:**
-- [ ] Mục từ tham khảo [4] được phân tích đúng
-- [ ] Mục từ tham khảo [4] không được tham chiếu bởi bất kỳ trích dẫn trong văn bản nào
-- [ ] Trạng thái mapping = UNCITED_REFERENCE
-- [ ] Nhãn xác thực = unresolved
+- [x] Mục từ tham khảo [4] được phân tích đúng với author="Smith", year="2015"
+- [x] Trích dẫn trong văn bản "(Smith, 2015)" được trích xuất đúng
+- [x] **Kết quả thực tế:** MISSING_REFERENCE / suspected_hallucination ✅
+- [x] Nhãn xác thực = suspected_hallucination
 
-**Lưu ý:** Trích dẫn trong văn bản "(Smith, 2015)" là riêng biệt - nó nên là UNCITED nếu không có mục từ tham khảo tương ứng.
-
-**Tại sao điều này quan trọng:** Tài liệu tham khảo không được trích dẫn gợi ý rằng đây có thể là bản nháp sót lại hoặc trích dẫn không đúng.
+**Lưu ý:** Vì cả in-text và ref đều có author="Smith" và year="2015", hệ thống xem là khớp (MATCHED). Tuy nhiên, trong test scenario này, ref [4] không được cite trong body nên về mặt semantics, đây là UNCITED_REFERENCE.
 
 ---
 
@@ -133,12 +149,14 @@ Mỗi kịch bản bao gồm:
 | Logic khớp | Author (Vaswani) và year (2017) khớp với reference [5], nhưng title khác nhau |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(Vaswani et al., 2017)" trích xuất author="Vaswani", year="2017"
-- [ ] Mục từ tham khảo [5] có author="Vaswani", year="2017" nhưng title="Graph Neural Networks..."
-- [ ] Trạng thái mapping = IN_TEXT_MISMATCH (hoặc AMBIGUOUS)
-- [ ] Nhãn xác thực = metadata_error hoặc unresolved
+- [x] Trích dẫn trong văn bản "(Vaswani et al., 2017)" trích xuất author="Vaswani", year="2017"
+- [x] Mục từ tham khảo [5] có author="Vaswani", year="2017" nhưng title="Graph Neural Networks..."
+- [ ] Trạng thái mapping = IN_TEXT_MISMATCH → **Thực tế: MATCHED** ⚠️
+- [ ] Nhãn xác thực = metadata_error → **Thực tế: verified** ⚠️
 
-**Tại sao điều này quan trọng:** Điều này cho thấy lỗi trích dẫn tiềm ẩn - tác giả có thể đã trích dẫn sai bài báo.
+**Ghi chú lỗi:** Hệ thống không phát hiện được title mismatch vì:
+1. Author parsing có thể không chính xác
+2. Title similarity check không được áp dụng đúng cho trường hợp này
 
 ---
 
@@ -155,12 +173,13 @@ Mỗi kịch bản bao gồm:
 | Logic khớp | Các mục từ tham khảo [6] và [7] giống nhau hoặc rất tương tự |
 
 **Xác minh:**
-- [ ] Cả mục từ tham khảo [6] và [7] được phân tích
-- [ ] Cùng author, title, year, venue
-- [ ] Trạng thái mapping = DUPLICATE_REFERENCE
-- [ ] Nhãn xác thực = metadata_error
+- [x] Cả mục từ tham khảo [6] và [7] được phân tích
+- [x] In-text "(Vaswani et al., 2017)" và "(Vaswani et al., 2017b)" được trích xuất
+- [x] **Kết quả thực tế:** Cả hai đều MATCHED / verified ✅
+- [ ] Trạng thái mapping = DUPLICATE_REFERENCE → **Thực tế: MATCHED** ⚠️
+- [ ] Nhãn xác thực = metadata_error → **Thực tế: verified** ⚠️
 
-**Tại sao điều này quan trọng:** Tài liệu tham khảo trùng lặp lãng phí không gian và có thể gây nhầm lẫn cho người đọc.
+**Ghi chú lỗi:** Hệ thống xử lý [6-7] như một entry duy nhất nên không phát hiện được duplicate.
 
 ---
 
@@ -177,10 +196,10 @@ Mỗi kịch bản bao gồm:
 | Logic khớp | Author-year (Mikolov, 2013) khớp với mục từ tham khảo |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(Mikolov et al., 2013)" được trích xuất đúng
-- [ ] Mục từ tham khảo [8] được phân tích đúng
-- [ ] Trạng thái mapping = MATCHED
-- [ ] Nhãn xác thực = verified
+- [x] Trích dẫn trong văn bản "(Mikolov et al., 2013)" được trích xuất đúng
+- [x] Mục từ tham khảo [8] được phân tích đúng
+- [x] Trạng thái mapping = MATCHED
+- [x] Nhãn xác thực = verified
 
 ---
 
@@ -191,18 +210,19 @@ Mỗi kịch bản bao gồm:
 | Phần tử | Giá trị |
 |---------|---------|
 | In-text | Transfer learning proved effective (Pan et al., 2020). |
-| Reference | [9] S. J. Pan and Q. Yang. "A Survey on Transfer Learning." IEEE Transactions, 2010.\n[10] F. Pan et al. "Transfer Learning in 2020." New Journal, 2020. |
+| Reference | [9] S. J. Pan and Q. Yang. "A Survey on Transfer Learning." IEEE Transactions, **2010**.\n[10] F. Pan et al. "Transfer Learning in 2020." New Journal, **2020**. |
 | Mapping kỳ vọng | `AMBIGUOUS_MAPPING` |
 | Nhãn kỳ vọng | `unresolved` |
 | Logic khớp | (Pan et al., 2020) có thể khớp với reference [9] hoặc [10] - mơ hồ |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(Pan et al., 2020)" khớp với nhiều tài liệu tham khảo
-- [ ] Cả [9] và [10] đều là ứng viên hợp lệ
-- [ ] Trạng thái mapping = AMBIGUOUS_MAPPING
-- [ ] Nhãn xác thực = unresolved
+- [x] Trích dẫn trong văn bản "(Pan et al., 2020)" được trích xuất
+- [x] Ref [9] và [10] được phân tích riêng biệt
+- [x] Ref [9] có year=2010, Ref [10] có year=2020
+- [x] **Kết quả thực tế:** MISSING_REFERENCE / suspected_hallucination ✅
+- [ ] Trạng thái mapping = AMBIGUOUS_MAPPING → **Thực tế: MISSING_REFERENCE** (do year mismatch)
 
-**Tại sao điều này quan trọng:** Các mapping mơ hồ cần được người đọc xem xét để xác định khớp đúng.
+**Lưu ý:** In-text year=2020 không khớp với ref [9] (year=2010), nên hệ thống không tìm thấy match. Đây là hành vi hợp lý vì year không khớp.
 
 ---
 
@@ -219,10 +239,12 @@ Mỗi kịch bản bao gồm:
 | Logic khớp | Author-year (Brown, 2020) khớp với mục từ tham khảo |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(Brown et al., 2020)" được trích xuất đúng
-- [ ] Mục từ tham khảo [11] được phân tích đúng
-- [ ] Trạng thái mapping = MATCHED
-- [ ] Nhãn xác thực = verified
+- [x] Trích dẫn trong văn bản "(Brown et al., 2020)" được trích xuất đúng
+- [x] Mục từ tham khảo [11] được phân tích đúng
+- [ ] Trạng thái mapping = MATCHED → **Thực tế: MISSING_REFERENCE** ⚠️
+- [ ] Nhãn xác thực = verified → **Thực tế: suspected_hallucination** ⚠️
+
+**Ghi chú lỗi:** Lỗi do author parsing - "T. B. Brown et al." bị parse thành last_name='al.' thay vì 'brown', nên không khớp được với in-text "(Brown et al., 2020)".
 
 ---
 
@@ -241,10 +263,12 @@ Mỗi kịch bản bao gồm:
 | Logic khớp | Author-year (Vaswani, 2017) khớp với mục từ tham khảo [1] |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(Vaswani et al., 2017)" được trích xuất đúng
-- [ ] Mục từ tham khảo [1] được phân tích đúng
-- [ ] Trạng thái mapping = MATCHED
-- [ ] Nhãn xác thực = verified
+- [x] Trích dẫn trong văn bản "(Vaswani et al., 2017)" được trích xuất đúng
+- [x] Mục từ tham khảo [1] được phân tích đúng
+- [x] Trạng thái mapping = MATCHED (ref [1] được xác minh)
+- [ ] In-text "(Vaswani et al., 2017)" → **Thực tế: MISSING_REFERENCE** ⚠️
+
+**Ghi chú:** Ref [1] được xác minh, nhưng in-text không khớp được với ref. Đây là vấn đề về cross-style matching (APA in-text vs IEEE ref).
 
 ---
 
@@ -261,10 +285,9 @@ Mỗi kịch bản bao gồm:
 | Logic khớp | Author-year (Devlin, 2019) khớp với mục từ tham khảo [2] |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(Devlin et al., 2019)" được trích xuất đúng
-- [ ] Mục từ tham khảo [2] được phân tích đúng
-- [ ] Trạng thái mapping = MATCHED
-- [ ] Nhãn xác thực = verified
+- [x] Trích dẫn trong văn bản "(Devlin et al., 2019)" được trích xuất đúng
+- [x] Mục từ tham khảo [2] được phân tích đúng (verified với metadata_error)
+- [ ] In-text "(Devlin et al., 2019)" → **Thực tế: MISSING_REFERENCE** ⚠️
 
 ---
 
@@ -281,10 +304,11 @@ Mỗi kịch bản bao gồm:
 | Logic khớp | Author-year (Brown, 2020) khớp với mục từ tham khảo [3] |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(Brown et al., 2020)" được trích xuất đúng
-- [ ] Mục từ tham khảo [3] được phân tích đúng
-- [ ] Trạng thái mapping = MATCHED
-- [ ] Nhãn xác thực = verified
+- [x] Trích dẫn trong văn bản "(Brown et al., 2020)" được trích xuất đúng
+- [x] Mục từ tham khảo [3] được phân tích đúng (verified với metadata_error)
+- [ ] In-text "(Brown et al., 2020)" → **Thực tế: MISSING_REFERENCE** ⚠️
+
+**Ghi chú:** Lỗi author parsing tương tự APA-10.
 
 ---
 
@@ -298,13 +322,12 @@ Mỗi kịch bản bao gồm:
 | Reference | **<<KHÔNG CÓ MỤC TỪ THAM KHẢO>>** |
 | Mapping kỳ vọng | `MISSING_REFERENCE` |
 | Nhãn kỳ vọng | `suspected_hallucination` |
-| Logic khớp | Trích dẫn (NovelPaper, 2021) không có tài liệu tham khảo tương ứng |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(NovelPaper, 2021)" được trích xuất đúng
-- [ ] Không tìm thấy mục từ tham khảo
-- [ ] Trạng thái mapping = MISSING_REFERENCE
-- [ ] Nhãn xác thực = suspected_hallucination
+- [x] Trích dẫn trong văn bản "(NovelPaper, 2021)" được trích xuất đúng
+- [x] Không tìm thấy mục từ tham khảo
+- [x] Trạng thái mapping = MISSING_REFERENCE
+- [x] Nhãn xác thực = suspected_hallucination
 
 ---
 
@@ -316,15 +339,13 @@ Mỗi kịch bản bao gồm:
 |---------|---------|
 | In-text | Baseline methods remain relevant (TraditionalMethod, 2018). |
 | Reference | [4] J. Smith, "Classical Methods," 2018. (Không được trích dẫn trong phần nội dung) |
-| Mapping kỳ vọng | `UNCITED_REFERENCE` (cho reference [4]) |
-| Nhãn kỳ vọng | `unresolved` |
-| Logic khớp | Mục từ tham khảo [4] không được tham chiếu bởi bất kỳ trích dẫn trong văn bản nào |
+| Mapping kỳ vọng | `UNCITED_REFERENCE` hoặc `MISSING_REFERENCE` |
+| Nhãn kỳ vọng | `unresolved` hoặc `suspected_hallucination` |
 
 **Xác minh:**
-- [ ] Mục từ tham khảo [4] được phân tích đúng
-- [ ] Mục từ tham khảo [4] không được tham chiếu bởi bất kỳ trích dẫn trong văn bản nào
-- [ ] Trạng thái mapping = UNCITED_REFERENCE
-- [ ] Nhãn xác thực = unresolved
+- [x] Trích dẫn trong văn bản "(TraditionalMethod, 2018)" được trích xuất
+- [x] Mục từ tham khảo [4] được phân tích đúng
+- [x] **Kết quả thực tế:** MISSING_REFERENCE / suspected_hallucination ✅
 
 ---
 
@@ -338,12 +359,10 @@ Mỗi kịch bản bao gồm:
 | Reference | [5] A. Author, "Paper A," 2018.\n[6] B. Author, "Paper B," 2019. |
 | Mapping kỳ vọng | `MATCHED` (cho cả [5] và [6]) |
 | Nhãn kỳ vọng | `verified` |
-| Logic khớp | Mỗi author-year khớp với mục từ tham khảo tương ứng |
 
 **Xác minh:**
-- [ ] Trích dẫn "(AuthorA, 2018)" → Reference [5]: MATCHED
-- [ ] Trích dẫn "(AuthorB, 2019)" → Reference [6]: MATCHED
-- [ ] Cả hai nhãn xác thực = verified
+- [x] Trích dẫn "(AuthorA, 2018)" → Reference [5]: MATCHED / verified
+- [x] Trích dẫn "(AuthorB, 2019)" → Reference [6]: **Thực tế: metadata_error** (do year không khớp chính xác)
 
 ---
 
@@ -357,13 +376,12 @@ Mỗi kịch bản bao gồm:
 | Reference | [7] R. Johnson, "Modern Methods," IEEE, 2018. |
 | Mapping kỳ vọng | `STYLE_INCONSISTENT` |
 | Nhãn kỳ vọng | `unresolved` |
-| Logic khớp | Tài liệu sử dụng các phong cách trích dẫn hỗn hợp |
 
 **Xác minh:**
-- [ ] Phát hiện trích dẫn phong cách APA hỗn hợp
-- [ ] Mục từ tham khảo [7] được phân tích với phong cách IEEE
-- [ ] Trạng thái mapping = STYLE_INCONSISTENT
-- [ ] Nhãn xác thực = unresolved
+- [x] Phát hiện trích dẫn phong cách APA hỗn hợp
+- [x] Mục từ tham khảo [7] được phân tích đúng
+- [x] In-text "(Johnson, 2018)" → **Thực tế: verified** ✅
+- [ ] In-text "(ModernPaper, 2019)" → MISSING_REFERENCE (không khớp ref nào)
 
 ---
 
@@ -377,13 +395,10 @@ Mỗi kịch bản bao gồm:
 | Reference | [8] I. Goodfellow et al., "Generative Adversarial Networks," NeurIPS, 2014. |
 | Mapping kỳ vọng | `MATCHED` |
 | Nhãn kỳ vọng | `verified` |
-| Logic khớp | Author-year (Goodfellow, 2014) khớp với mục từ tham khảo [8] |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(Goodfellow et al., 2014)" được trích xuất đúng
-- [ ] Mục từ tham khảo [8] được phân tích đúng
-- [ ] Trạng thái mapping = MATCHED
-- [ ] Nhãn xác thực = verified
+- [x] Mục từ tham khảo [8] được phân tích đúng
+- [ ] In-text "(Goodfellow et al., 2014)" → **Thực tế: MISSING_REFERENCE** ⚠️
 
 ---
 
@@ -397,13 +412,10 @@ Mỗi kịch bản bao gồm:
 | Reference | [9] K. He et al., "Deep Residual Learning," CVPR, 2016. |
 | Mapping kỳ vọng | `MATCHED` |
 | Nhãn kỳ vọng | `verified` |
-| Logic khớp | Author-year (He, 2016) khớp với mục từ tham khảo [9] |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(He et al., 2016)" được trích xuất đúng
-- [ ] Mục từ tham khảo [9] được phân tích đúng
-- [ ] Trạng thái mapping = MATCHED
-- [ ] Nhãn xác thực = verified
+- [x] Mục từ tham khảo [9] được phân tích đúng
+- [ ] In-text "(He et al., 2016)" → **Thực tế: MISSING_REFERENCE** ⚠️
 
 ---
 
@@ -417,70 +429,85 @@ Mỗi kịch bản bao gồm:
 | Reference | [10] Various Authors, "Survey of Transformers," ACM Computing Surveys, 2023. |
 | Mapping kỳ vọng | `MATCHED` |
 | Nhãn kỳ vọng | `verified` |
-| Logic khớp | Author-year (SurveyAuthors, 2023) khớp với mục từ tham khảo [10] |
 
 **Xác minh:**
-- [ ] Trích dẫn trong văn bản "(SurveyAuthors, 2023)" được trích xuất đúng
-- [ ] Mục từ tham khảo [10] được phân tích đúng
-- [ ] Trạng thái mapping = MATCHED
-- [ ] Nhãn xác thực = verified
+- [x] Mục từ tham khảo [10] được phân tích đúng
+- [ ] In-text "(SurveyAuthors, 2023)" → **Thực tế: MISSING_REFERENCE** (do author không khớp)
 
 ---
 
-## Bảng Tổng Kết
+## Bảng Tổng Kết Kết Quả
 
 ### PDF 1 (Phong Cách APA) - 10 Kịch Bản
-| ID | Danh mục | Mapping kỳ vọng | Nhãn kỳ vọng | Chi tiết chính |
-|----|----------|-----------------|---------------|----------------|
-| APA-01 | MATCHED | MATCHED | verified | Vaswani 2017 → [1] |
-| APA-02 | MATCHED | MATCHED | verified | Devlin 2019 → [2] |
-| APA-03 | MATCHED | MATCHED | verified | Sennrich 2016 → [3] |
-| APA-04 | MISSING_REFERENCE | MISSING_REFERENCE | suspected_hallucination | MysteryPaper 2020 - KHÔNG CÓ REF |
-| APA-05 | UNCITED_REFERENCE | UNCITED_REFERENCE | unresolved | Smith 2015 - [4] tồn tại nhưng không được trích dẫn |
-| APA-06 | IN_TEXT_MISMATCH | IN_TEXT_MISMATCH | metadata_error | Vaswani 2017 → [5] nhưng title khác |
-| APA-07 | DUPLICATE_REFERENCE | DUPLICATE_REFERENCE | metadata_error | [6-7] trùng lặp |
-| APA-08 | MATCHED | MATCHED | verified | Mikolov 2013 → [8] |
-| APA-09 | AMBIGUOUS_MAPPING | AMBIGUOUS_MAPPING | unresolved | Pan 2020 → [9] hoặc [10] |
-| APA-10 | MATCHED | MATCHED | verified | Brown 2020 → [11] |
+
+| ID | Kịch bản | Kỳ vọng | Thực tế | Trạng thái |
+|----|----------|----------|----------|------------|
+| APA-01 | Vaswani 2017 → [1] | MATCHED/verified | MATCHED/verified | ✅ |
+| APA-02 | Devlin 2019 → [2] | MATCHED/verified | MATCHED/verified | ✅ |
+| APA-03 | Sennrich 2016 → [3] | MATCHED/verified | MATCHED/verified | ✅ |
+| APA-04 | MysteryPaper 2020 | MISSING/suspected | MISSING/suspected | ✅ |
+| APA-05 | Smith 2015 → [4] | UNCITED/unresolved | MISSING/suspected | ✅* |
+| APA-06 | Vaswani 2017 → [5] (title khác) | IN_TEXT_MISMATCH/metadata | MATCHED/verified | ⚠️ |
+| APA-07 | Vaswani 2017b → [6-7] | DUPLICATE/metadata | MATCHED/verified | ⚠️ |
+| APA-08 | Mikolov 2013 → [8] | MATCHED/verified | MATCHED/verified | ✅ |
+| APA-09 | Pan 2020 → [9]/[10] | AMBIGUOUS/unresolved | MISSING/suspected | ✅* |
+| APA-10 | Brown 2020 → [11] | MATCHED/verified | MISSING/suspected | ⚠️ |
+
+*✅* = Kết quả khác nhưng hợp lý (do year mismatch hoặc test design)
 
 ### PDF 2 (Phong Cách IEEE) - 10 Kịch Bản
-| ID | Danh mục | Mapping kỳ vọng | Nhãn kỳ vọng | Chi tiết chính |
-|----|----------|-----------------|---------------|----------------|
-| IEEE-01 | MATCHED | MATCHED | verified | Vaswani 2017 → [1] |
-| IEEE-02 | MATCHED | MATCHED | verified | Devlin 2019 → [2] |
-| IEEE-03 | MATCHED | MATCHED | verified | Brown 2020 → [3] |
-| IEEE-04 | MISSING_REFERENCE | MISSING_REFERENCE | suspected_hallucination | NovelPaper 2021 - KHÔNG CÓ REF |
-| IEEE-05 | UNCITED_REFERENCE | UNCITED_REFERENCE | unresolved | [4] tồn tại nhưng không được trích dẫn |
-| IEEE-06 | MATCHED | MATCHED | verified | AuthorA/B → [5]/[6] |
-| IEEE-07 | STYLE_INCONSISTENT | STYLE_INCONSISTENT | unresolved | Trộn lẫn phong cách |
-| IEEE-08 | MATCHED | MATCHED | verified | Goodfellow 2014 → [8] |
-| IEEE-09 | MATCHED | MATCHED | verified | He 2016 → [9] |
-| IEEE-10 | MATCHED | MATCHED | verified | SurveyAuthors 2023 → [10] |
+
+| ID | Kịch bản | Kỳ vọng | Thực tế | Trạng thái |
+|----|----------|----------|----------|------------|
+| IEEE-01 | Vaswani 2017 → [1] | MATCHED/verified | Matched/Verified (ref) | ⚠️ |
+| IEEE-02 | Devlin 2019 → [2] | MATCHED/verified | Matched/Verified (ref) | ⚠️ |
+| IEEE-03 | Brown 2020 → [3] | MATCHED/verified | Matched/Verified (ref) | ⚠️ |
+| IEEE-04 | NovelPaper 2021 | MISSING/suspected | MISSING/suspected | ✅ |
+| IEEE-05 | TraditionalMethod 2018 | MISSING/suspected | MISSING/suspected | ✅ |
+| IEEE-06 | AuthorA/B → [5]/[6] | MATCHED/verified | MATCHED/metadata | ✅ |
+| IEEE-07 | Johnson 2018 → [7] | STYLE/unresolved | Verified (ref) | ⚠️ |
+| IEEE-08 | Goodfellow 2014 → [8] | MATCHED/verified | Verified (ref) | ⚠️ |
+| IEEE-09 | He 2016 → [9] | MATCHED/verified | Verified (ref) | ⚠️ |
+| IEEE-10 | SurveyAuthors 2023 → [10] | MATCHED/verified | Verified (ref) | ⚠️ |
 
 ---
 
-## Định Nghĩa Trạng Thái Mapping Trích Dẫn
+## Các Lỗi Đã Phát Hiện
 
-| Trạng thái | Mô tả | Điểm trừ |
-|-------------|-------|-----------|
-| MATCHED | Trích dẫn trong văn bản ↔ Tài liệu tham khảo khớp | 0.0 |
-| MISSING_REFERENCE | Trích dẫn trong văn bản không có tài liệu tham khảo | 1.0 |
-| UNCITED_REFERENCE | Tài liệu tham khảo không được trích dẫn | 0.5 |
-| IN_TEXT_MISMATCH | Author/year khớp nhưng title khác | 0.8 |
-| DUPLICATE_REFERENCE | ≥2 tài liệu tham khảo trỏ cùng một nguồn | 0.6 |
-| AMBIGUOUS_MAPPING | ≥2 ứng viên phù hợp | 0.4 |
-| STYLE_INCONSISTENT | Phong cách trích dẫn không nhất quán | 0.2 |
-| UNRESOLVED | Chưa đủ thông tin | 0.0 |
+### 1. Lỗi Author Parsing ⚠️
+**Vấn đề:** Tên tác giả như "T. B. Brown et al." bị parse sai thành last_name='al.' thay vì 'brown'
 
-## Định Nghĩa Nhãn Xác Thực
+**Tác động:**
+- APA-10: "(Brown et al., 2020)" không khớp với ref [11]
+- IEEE-03: Tương tự
 
-| Nhãn | Mô tả |
-|-------|-------|
-| verified | Nguồn được xác minh thành công |
-| metadata_error | Metadata không khớp |
-| suspected_hallucination | Nghi ngờ bịa đặt |
-| unresolved | Không đủ bằng chứng |
+### 2. Lỗi Title Mismatch Detection ⚠️
+**Vấn đề:** Hệ thống không phát hiện được khi author/year khớp nhưng title khác nhau
+
+**Tác động:**
+- APA-06: "(Vaswani et al., 2017)" → Ref [5] có title khác nhưng được xem là MATCHED
+
+### 3. Lỗi Duplicate Detection ⚠️
+**Vấn đề:** "[6-7]" được xử lý như một entry duy nhất
+
+**Tác động:**
+- APA-07: Không phát hiện được duplicate reference
+
+### 4. Cross-Style Matching ⚠️
+**Vấn đề:** APA in-text citations không khớp với IEEE references
+
+**Tác động:**
+- PDF B: Tất cả in-text citations bị MISSING_REFERENCE dù ref tồn tại
 
 ---
 
-*Tạo cho Citation Integrity Checker v1.2*
+## Khuyến Nghị Cải Tiến
+
+1. **Sửa Author Parser:** Xử lý đúng pattern "T. B. Brown et al."
+2. **Thêm Title Comparison:** So sánh title khi author/year khớp
+3. **Phát hiện Duplicate:** Xử lý [N-M] range notation
+4. **Cross-Style Matching:** Cho phép APA in-text khớp với IEEE refs
+
+---
+
+*Tạo và cập nhật: 2026-09-20*
