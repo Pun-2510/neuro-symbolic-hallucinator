@@ -246,10 +246,10 @@ class TestPipelineWithDocumentParser:
         assert report.num_citations == 2
 
     @pytest.mark.asyncio
-    async def test_pipeline_default_uses_legacy_path(self):
-        """Default (use_document_parser=None) → False (backward compat)."""
+    async def test_pipeline_default_uses_modern_path(self):
+        """Default (use_document_parser=None) → True (DocumentParser) for v1.2+."""
         pipeline = IntegrityPipeline()
-        assert pipeline._use_document_parser is False
+        assert pipeline._use_document_parser is True
 
         pipeline = IntegrityPipeline(use_document_parser=True)
         assert pipeline._use_document_parser is True
