@@ -28,7 +28,7 @@ Mỗi kịch bản bao gồm:
 | Tổng số trích dẫn | 16 |
 | Điểm CIS | 94.0/100 |
 | Verified | 16 |
-| Suspected Hallucination | 0 |
+| Chú ý | 5 citations không được parser trích xuất |
 
 ---
 
@@ -228,46 +228,49 @@ Mỗi kịch bản bao gồm:
 
 ## PDF 2: Kịch Bản Phong Cách IEEE (`test_cite_scenario_b.pdf`)
 
-Tất cả 16 citations trong PDF B đều verified!
+**Tổng quan:** PDF B có 16 citations (10 references + 6 in-text extracted).
 
-### Kịch Bản IEEE-01: Verified
-- [x] (Vaswani et al., 2017) → Ref [1]: verified ✅
-- [x] Ref [1]: verified ✅
+### Kịch Bản IEEE-01: Verified ✅
+- Ref [1]: verified
+- In-text `(Vaswani et al., 2017)`: verified
 
-### Kịch Bản IEEE-02: Verified
-- [x] (Devlin et al., 2019) → Ref [2]: verified ✅
-- [x] Ref [2]: verified ✅
+### Kịch Bản IEEE-02: Verified ✅
+- Ref [2]: verified
+- In-text `(Devlin et al., 2019)`: verified
 
-### Kịch Bản IEEE-03: Verified
-- [x] (Brown et al., 2020) → Ref [3]: verified ✅
-- [x] Ref [3]: verified ✅
+### Kịch Bản IEEE-03: Verified ✅
+- Ref [3]: verified
+- In-text `(Brown et al., 2020)`: verified
 
-### Kịch Bản IEEE-04: Verified (Database Lookup)
-- [x] (NovelPaper, 2021) → verified qua database lookup ✅
+### Kịch Bản IEEE-04: NOT EXTRACTED ⚠️
+- In-text `(NovelPaper, 2021)` - Parser không trích xuất được citation này
+- Ref: Không có (thiết kế là MISSING_REFERENCE)
 
-### Kịch Bản IEEE-05: Verified (Database Lookup)
-- [x] (TraditionalMethod, 2018) → verified qua database lookup ✅
+### Kịch Bản IEEE-05: NOT EXTRACTED ⚠️
+- In-text `(TraditionalMethod, 2018)` - Parser không trích xuất được citation này
+- Ref [4]: verified (nhưng không được cite trong body)
 
-### Kịch Bản IEEE-06: Verified
-- [x] (AuthorA, 2018) → Ref [5]: verified ✅
-- [x] (AuthorB, 2019) → Ref [6]: verified ✅
-- [x] Ref [5], [6]: verified ✅
+### Kịch Bản IEEE-06: PARTIALLY EXTRACTED ⚠️
+- Ref [5], [6]: verified
+- In-text `(AuthorA, 2018)` - NOT EXTRACTED
+- In-text `(AuthorB, 2019)` - NOT EXTRACTED
 
-### Kịch Bản IEEE-07: Verified
-- [x] (Johnson, 2018) → Ref [7]: verified ✅
-- [x] Ref [7]: verified ✅
+### Kịch Bản IEEE-07: PARTIALLY EXTRACTED ⚠️
+- Ref [7]: verified
+- In-text `(Johnson, 2018)`: verified
+- In-text `(ModernPaper, 2019)` - NOT EXTRACTED
 
-### Kịch Bản IEEE-08: Verified
-- [x] (Goodfellow et al., 2014) → Ref [8]: verified ✅
-- [x] Ref [8]: verified ✅
+### Kịch Bản IEEE-08: Verified ✅
+- Ref [8]: verified
+- In-text `(Goodfellow et al., 2014)`: verified
 
-### Kịch Bản IEEE-09: Verified
-- [x] (He et al., 2016) → Ref [9]: verified ✅
-- [x] Ref [9]: verified ✅
+### Kịch Bản IEEE-09: Verified ✅
+- Ref [9]: verified
+- In-text `(He et al., 2016)`: verified
 
-### Kịch Bản IEEE-10: Verified
-- [x] (SurveyAuthors, 2023) → Ref [10]: verified ✅
-- [x] Ref [10]: verified ✅
+### Kịch Bản IEEE-10: NOT EXTRACTED ⚠️
+- Ref [10]: verified
+- In-text `(SurveyAuthors, 2023)` - NOT EXTRACTED
 
 ---
 
@@ -295,45 +298,45 @@ Tất cả 16 citations trong PDF B đều verified!
 | IEEE-01 | Vaswani 2017 → [1] | verified | verified | ✅ |
 | IEEE-02 | Devlin 2019 → [2] | verified | verified | ✅ |
 | IEEE-03 | Brown 2020 → [3] | verified | verified | ✅ |
-| IEEE-04 | NovelPaper 2021 | MISSING/suspected | verified* | ✅ |
-| IEEE-05 | TraditionalMethod 2018 | MISSING/suspected | verified* | ✅ |
-| IEEE-06 | AuthorA/B → [5]/[6] | verified | verified | ✅ |
+| IEEE-04 | NovelPaper 2021 | MISSING/suspected | NOT EXTRACTED | ⚠️ |
+| IEEE-05 | TraditionalMethod 2018 | MISSING/suspected | NOT EXTRACTED | ⚠️ |
+| IEEE-06 | AuthorA/B → [5]/[6] | verified | PARTIAL | ⚠️ |
 | IEEE-07 | Johnson 2018 → [7] | verified | verified | ✅ |
 | IEEE-08 | Goodfellow 2014 → [8] | verified | verified | ✅ |
 | IEEE-09 | He 2016 → [9] | verified | verified | ✅ |
-| IEEE-10 | SurveyAuthors 2023 → [10] | verified | verified | ✅ |
+| IEEE-10 | SurveyAuthors 2023 → [10] | verified | PARTIAL | ⚠️ |
 
-*✅* = Tất cả verified! (* = verified qua database lookup)
+⚠️ = Có vấn đề với parser hoặc kết quả không như mong đợi
 
 ---
 
-## Các Fix Đã Thực Hiện
+## Các Vấn Đề Cần Fix
 
-### 1. Author Parsing Fix (Commit: 16c67c4)
+### 1. Author Parsing Fix ✅ (Đã fix)
 **Vấn đề:** "T. B. Brown et al." → last_name='al.'
 
 **Giải pháp:** Thêm xử lý "et al." pattern trong normalize_author()
-```python
-et_al_match = re.search(r'\s+et\s+al\.?\s*$', raw, re.IGNORECASE)
-if et_al_match:
-    raw = raw[:et_al_match.start()].strip().rstrip(',')
-```
 
-**File:** `src/integrity_checker/matching/author_parser.py`
-
-### 2. Rules Order Fix (Commit: 3f39125)
+### 2. Rules Order Fix ✅ (Đã fix)
 **Vấn đề:** R-CONSENSUS-FULL check author_sim >= 0.3 trước R-WELL-LINKED
 
 **Giải pháp:** Di chuyển R-WELL-LINKED rules lên TRƯỚC consensus rules
 
-**File:** `src/integrity_checker/logic/rules.py`
-
-### 3. Metadata Populate Fix (Commit: 547c140)
+### 3. Metadata Populate Fix ✅ (Đã fix)
 **Vấn đề:** Numeric citations như "[1]" không có title/author để verify
 
 **Giải pháp:** Copy metadata từ matched reference entry trước khi verify
 
-**File:** `src/integrity_checker/pipeline/integrity_pipeline.py`
+### 4. Citation Extraction ⚠️ (CHƯA FIX)
+**Vấn đề:** Parser không trích xuất được một số in-text citations:
+- `(NovelPaper, 2021)`
+- `(TraditionalMethod, 2018)`
+- `(AuthorA, 2018)`
+- `(AuthorB, 2019)`
+- `(ModernPaper, 2019)`
+- `(SurveyAuthors, 2023)`
+
+**Nguyên nhân:** Có thể do citation format không chuẩn hoặc parser không nhận diện được.
 
 ---
 
