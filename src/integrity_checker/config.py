@@ -172,10 +172,15 @@ class SourceToggleConfig(BaseModel):
 
 
 class RateLimitsConfig(BaseModel):
-    crossref_per_sec: float = 50.0
+    # arXiv: very conservative (1 req per 3 seconds max)
+    # arXiv enforces 1 request per 3 seconds per IP
+    arxiv_per_sec: float = 0.33  # ~1 req per 3 seconds
+    # OpenAlex: moderate (10 req/s is fine)
     openalex_per_sec: float = 10.0
+    # Semantic Scholar: very conservative (1 req/s with API key, less without)
     semantic_scholar_per_sec: float = 1.0
-    arxiv_per_sec: float = 3.0
+    # Crossref: moderate (50 req/s with polite pool)
+    crossref_per_sec: float = 10.0
 
 
 class CacheConfig(BaseModel):

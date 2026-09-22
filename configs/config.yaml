@@ -102,10 +102,12 @@ retrieval:
       max_seconds: 120.0   # FIX: Increased from 10.0 to 120.0
       multiplier: 2.0
   rate_limits:
-    crossref_per_sec: 50
-    openalex_per_sec: 10
-    semantic_scholar_per_sec: 1.0   # polite default
-    arxiv_per_sec: 3.0
+    # arXiv: VERY conservative - 1 req per 3 seconds max
+    # arXiv enforces 1 request per 3 seconds per IP
+    crossref_per_sec: 10.0    # Reduced from 50 for safety
+    openalex_per_sec: 10.0
+    semantic_scholar_per_sec: 1.0
+    arxiv_per_sec: 0.33       # ~1 req per 3 seconds
   contact_email: "student@tdtu.edu.vn"   # cho Crossref polite pool
 
 # --- Matching thresholds ---
