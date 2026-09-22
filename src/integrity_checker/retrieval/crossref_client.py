@@ -199,10 +199,18 @@ class CrossrefClient(BaseScholarClient):
         if citation.title:
             parts.append(citation.title)
         if citation.authors:
-            # Chỉ lấy last name của author đầu
-            last = citation.authors[0].last_name
-            if last:
-                parts.append(last)
+            # Handle both Author objects and plain strings
+            first_author = citation.authors[0]
+            if hasattr(first_author, 'last_name'):
+                # Author object
+                last = first_author.last_name
+                if last:
+                    parts.append(last)
+            elif isinstance(first_author, str):
+                # Plain string - extract last name
+                author_str = first_author.replace(',', ' ').split()
+                if author_str:
+                    parts.append(author_str[-1])  # Last name is usually last
         if citation.year:
             parts.append(citation.year)
         return " ".join(parts) if parts else ""
