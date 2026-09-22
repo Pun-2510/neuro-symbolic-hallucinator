@@ -262,7 +262,7 @@ class RetrievalOrchestrator:
                 logger.debug(f"Local DB HIT: {citation.raw_text[:50]}")
                 # Log query
                 self._local_db.log_query(
-                    {"doi": citation.doi, "arxiv_id": citation.arxiv_id, "title": citation.title},
+                    {"doi": citation.doi, "title": citation.title},
                     found=True,
                     source="local_db",
                     paper_id=None,
