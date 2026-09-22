@@ -413,28 +413,42 @@ class SymbolicRules:
 
         # === NEW v1.3: Content Alignment Rule (Neural Layer) ===
         # Check if Neural layer provided content alignment signal
-        # IMPORTANT: This comes BEFORE abstention rule to prioritize Neural signal
+        # IMPORTANT: Neural should NOT override symbolic rules for MISSING_REFERENCE cases
         content_alignment_score = features.content_alignment_score
         content_is_aligned = features.content_is_aligned
 
-        if content_alignment_score > 0:
+        # NEW: Check if citation has MISSING_REFERENCE status
+        # If missing reference, Neural cannot verify - this is a hard block
+        is_missing_reference = (
+            mapping_status is not None
+            and hasattr(mapping_status, "value")
+            and mapping_status.value == "missing_reference"
+        )
+
+        if content_alignment_score > 0 and not is_missing_reference:
             triggered_rules.append("R-CONTENT-ALIGNMENT")
 
-            # Rule: High content alignment + moderate title = VERIFIED
+            # Rule: High content alignment + moderate title + strong consensus = VERIFIED
+            # Neural can verify ONLY if:
+            # 1. Citation has a matched reference entry (not missing_reference)
+            # 2. Title similarity >= 0.5
+            # 3. At least 2 sources confirm OR mapping is matched
             if content_is_aligned and title_sim >= 0.5:
-                return RuleOutcome(
-                    label=ValidationLabel.VERIFIED,
-                    confidence=max(0.0, 0.85 - style_penalty),
-                    reasoning=(
-                        f"Neural content alignment verified (score={content_alignment_score:.2f}). "
-                        f"Content semantic match confirmed despite moderate title sim ({title_sim:.2f})."
-                    ),
-                    triggered_rules=triggered_rules,
-                    mismatched_fields=[],
-                    style_penalty=style_penalty,
-                )
+                if consensus >= 2 or (mapping_status and hasattr(mapping_status, "value") and mapping_status.value == "matched"):
+                    return RuleOutcome(
+                        label=ValidationLabel.VERIFIED,
+                        confidence=max(0.0, 0.85 - style_penalty),
+                        reasoning=(
+                            f"Neural content alignment verified (score={content_alignment_score:.2f}). "
+                            f"Content semantic match confirmed with title sim={title_sim:.2f}, consensus={consensus}."
+                        ),
+                        triggered_rules=triggered_rules,
+                        mismatched_fields=[],
+                        style_penalty=style_penalty,
+                    )
 
             # Rule: Low content alignment + high title sim = SUSPECTED_HALLUCINATION
+            # Also applies to MISSING_REFERENCE cases
             if not content_is_aligned and content_alignment_score >= 0.3 and title_sim >= 0.7:
                 triggered_rules.append("R-CONTENT-MISMATCH")
                 return RuleOutcome(
