@@ -45,12 +45,17 @@ class OpenAlexClient(BaseScholarClient):
         contact_email: str | None = None,
         timeout: float = 10.0,
         max_retries: int | None = None,
+        api_key: str | None = None,
     ) -> None:
         super().__init__(timeout=timeout)
         settings = get_settings()
         self.contact_email = contact_email or os.getenv("CONTACT_EMAIL", "") or settings.retrieval.contact_email
         self.max_retries = max_retries or settings.retrieval.retry.max_attempts
         self._backoff = settings.retrieval.retry.backoff
+
+        # Get API key from env or settings
+        self.api_key = api_key or os.environ.get("OPENALEX_API_KEY", "")
+
         self._headers = {
             "User-Agent": (
                 f"EssayIntegrityChecker/0.1 (mailto:{self.contact_email})"
@@ -58,6 +63,10 @@ class OpenAlexClient(BaseScholarClient):
                 else "EssayIntegrityChecker/0.1"
             ),
         }
+
+        # Add Authorization header if API key is available
+        if self.api_key:
+            self._headers["Authorization"] = f"Bearer {self.api_key}"
 
     async def lookup(self, citation: Citation) -> SourceCandidate:
         """Lookup bằng DOI exact; fallback bằng search.
