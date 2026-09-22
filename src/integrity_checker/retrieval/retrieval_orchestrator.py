@@ -436,6 +436,60 @@ class RetrievalOrchestrator:
                     sources_failed={},
                 )
 
+        # Try FTS5 search by title (fuzzy fallback)
+        # This helps when citation has no DOI but has title/author
+        if citation.title and self._local_db is not None:
+            try:
+                # Extract first author last name from citation
+                first_author = None
+                if citation.authors and len(citation.authors) > 0:
+                    author = citation.authors[0]
+                    if hasattr(author, 'last_name'):
+                        first_author = author.last_name
+                    elif isinstance(author, str):
+                        # Parse "LastName, FirstName" or "FirstName LastName"
+                        parts = author.replace(',', ' ').split()
+                        if parts:
+                            first_author = parts[-1]  # Last name is usually last
+
+                year = citation.year
+
+                # Use FTS5 fuzzy search (without year filter for better recall)
+                # Year mismatch is common (e.g., citation says 2013, DB has 2021)
+                results = self._local_db.fuzzy_search(
+                    title=citation.title,
+                    authors=first_author,
+                    year=None,  # Don't filter by year - causes false negatives
+                    limit=5,
+                )
+
+                if results:
+                    # Take best match
+                    paper = results[0]
+                    cand = SourceCandidate(
+                        source_name="local_db",
+                        found=True,
+                        doi=paper.doi,
+                        title=paper.title,
+                        authors=paper.authors,
+                        year=str(paper.year) if paper.year else None,
+                        venue=paper.venue,
+                        url=paper.external_ids.get("url") if paper.external_ids else None,
+                        external_ids=paper.external_ids or {},
+                        confidence=0.85,  # Slightly lower than DOI match
+                        cached=True,
+                    )
+                    logger.debug(f"Local DB FTS HIT: {citation.title[:40]} -> {paper.title[:40]}")
+                    return SourceResult(
+                        citation_raw=citation.raw_text,
+                        candidates=[cand],
+                        sources_queried=["local_db"],
+                        sources_succeeded=["local_db"],
+                        sources_failed={},
+                    )
+            except Exception as e:
+                logger.debug(f"Local DB FTS search failed: {e}")
+
         return None
 
     @staticmethod
