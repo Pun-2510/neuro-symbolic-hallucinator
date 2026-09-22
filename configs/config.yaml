@@ -104,11 +104,11 @@ retrieval:
   rate_limits:
     # arXiv: VERY conservative - 1 req per 3 seconds max
     # arXiv enforces 1 request per 3 seconds per IP
-    crossref_per_sec: 10.0    # Reduced from 50 for safety
-    openalex_per_sec: 10.0
+    crossref_per_sec: 3.0     # With API key and polite pool
+    openalex_per_sec: 50.0    # With API key
     semantic_scholar_per_sec: 1.0
     arxiv_per_sec: 0.33       # ~1 req per 3 seconds
-  contact_email: "student@tdtu.edu.vn"   # cho Crossref polite pool
+  contact_email: "iannwendii@gmail.com"   # cho Crossref polite pool
 
 # --- Matching thresholds ---
 # TODO(user): tối ưu trên validation set trong tuần 10–11

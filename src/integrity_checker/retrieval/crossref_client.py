@@ -35,7 +35,9 @@ class CrossrefClient(BaseScholarClient):
         - DOI exact lookup (GET /works/{doi}).
         - Bibliographic search fallback (GET /works?query.bibliographic=...).
         - Tenacity retry với exponential backoff (429, 5xx, network errors).
-        - Polite pool headers (User-Agent có email) nếu CONTACT_EMAIL set.
+        - API key support via CROSSREF_API_KEY env variable.
+        - Rate limit: 50 req/s (polite pool nếu có email + API key).
+        - User-Agent header format: "MyResearchProject/1.0 (mailto:email@example.com)"
     """
 
     BASE_URL = "https://api.crossref.org"
@@ -44,21 +46,27 @@ class CrossrefClient(BaseScholarClient):
     def __init__(
         self,
         contact_email: str | None = None,
-        timeout: float = 30.0,  # FIX: Increased from 10.0 to 30.0 for better resilience
+        timeout: float = 30.0,
         max_retries: int | None = None,
+        api_key: str | None = None,
     ) -> None:
         super().__init__(timeout=timeout)
         settings = get_settings()
         self.contact_email = contact_email or os.getenv("CONTACT_EMAIL", "") or settings.retrieval.contact_email
         self.max_retries = max_retries or settings.retrieval.retry.max_attempts
         self._backoff = settings.retrieval.retry.backoff
+
+        # Get API key from env
+        self.api_key = api_key or os.environ.get("CROSSREF_API_KEY", "")
+
+        # Build User-Agent header (required by Crossref for polite pool)
         self._headers = {
-            "User-Agent": (
-                f"EssayIntegrityChecker/0.1 (mailto:{self.contact_email})"
-                if self.contact_email
-                else "EssayIntegrityChecker/0.1"
-            ),
+            "User-Agent": f"MyResearchProject/1.0 (mailto:{self.contact_email})",
         }
+
+        # Add Authorization header if API key is available
+        if self.api_key:
+            self._headers["Authorization"] = f"Bearer {self.api_key}"
 
     async def lookup(self, citation: Citation) -> SourceCandidate:
         """Lookup bằng DOI exact; fallback bằng bibliographic query.

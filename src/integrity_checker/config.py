@@ -175,12 +175,12 @@ class RateLimitsConfig(BaseModel):
     # arXiv: very conservative (1 req per 3 seconds max)
     # arXiv enforces 1 request per 3 seconds per IP
     arxiv_per_sec: float = 0.33  # ~1 req per 3 seconds
-    # OpenAlex: moderate (10 req/s is fine)
-    openalex_per_sec: float = 10.0
+    # OpenAlex: high with API key (50 req/s)
+    openalex_per_sec: float = 50.0
     # Semantic Scholar: very conservative (1 req/s with API key, less without)
     semantic_scholar_per_sec: float = 1.0
-    # Crossref: moderate (50 req/s with polite pool)
-    crossref_per_sec: float = 10.0
+    # Crossref: moderate with polite pool + API key (3 req/s recommended)
+    crossref_per_sec: float = 3.0
 
 
 class CacheConfig(BaseModel):
@@ -218,7 +218,7 @@ class RetrievalConfig(BaseModel):
     cache: CacheConfig = Field(default_factory=CacheConfig)
     retry: RetryConfig = Field(default_factory=RetryConfig)   # MỚI v1.2
     rate_limits: RateLimitsConfig = Field(default_factory=RateLimitsConfig)
-    contact_email: str = "student@tdtu.edu.vn"
+    contact_email: str = "iannwendii@gmail.com"
 
 
 # --- Matching (giữ nguyên v1.1, sẽ tinh chỉnh ở tuần 10–11) ---
@@ -346,7 +346,7 @@ class Settings(BaseSettings):
     out_of_scope: list[str] = Field(default_factory=lambda: list(_DEFAULT_OUT_OF_SCOPE))
 
     # Env override
-    contact_email: str = "student@tdtu.edu.vn"
+    contact_email: str = "iannwendii@gmail.com"
     s2_api_key: str = ""
     config_file: Path | None = None
 
@@ -391,7 +391,11 @@ class Settings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Lazy singleton — load YAML nếu có, merge với env."""
+    """Lazy singleton — load .env + YAML nếu có, merge với env."""
+    # Load .env file first
+    from dotenv import load_dotenv
+    load_dotenv(Path(".env"), override=True)
+
     config_file = Path("configs/config.yaml")
     if not config_file.exists():
         config_file = Path("configs/config.example.yaml")
