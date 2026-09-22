@@ -1,11 +1,12 @@
 """RetrievalOrchestrator — gộp kết quả từ 4 nguồn theo strategy đa nguồn.
 
 Đề cương §5.4 — thứ tự ưu tiên:
-    1. DOI exact match (Crossref)
-    2. Crossref bibliographic query
-    3. OpenAlex title/author/year
-    4. Semantic Scholar supplement
-    5. arXiv preprint fallback
+    1. Local Database (SQLite) - kiểm tra trước
+    2. DOI exact match (Crossref)
+    3. Crossref bibliographic query
+    4. OpenAlex title/author/year
+    5. Semantic Scholar supplement
+    6. arXiv preprint fallback (chỉ khi cần)
 
 Sau khi có candidate từ các nguồn, dedupe theo DOI/normalized title.
 
@@ -13,6 +14,11 @@ v1.2 tuần 8 (task #24):
     - Cache integration: DiskCache với key chứa source_name (tránh trộn nhầm)
     - Health check: nếu đa số sources failed → trả SourceResult rỗng + flag UNRESOLVED
     - UNRESOLVED sentinel: candidate với found=False từ tất cả sources
+
+v1.3 (tuần 9):
+    - Local database integration: SQLite với FTS5 cho fast lookup
+    - Ưu tiên local DB trước khi gọi external APIs
+    - Auto-sync: papers mới được thêm vào DB sau khi query thành công
 """
 
 from __future__ import annotations
@@ -20,6 +26,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import re
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 from integrity_checker.config import get_settings
 from integrity_checker.logging import get_logger
@@ -32,6 +40,9 @@ from integrity_checker.retrieval.crossref_client import CrossrefClient
 from integrity_checker.retrieval.openalex_client import OpenAlexClient
 from integrity_checker.retrieval.rate_limiter import RateLimiter
 from integrity_checker.retrieval.semantic_scholar_client import SemanticScholarClient
+
+if TYPE_CHECKING:
+    from integrity_checker.database import LocalDatabase
 
 logger = get_logger(__name__)
 
@@ -103,7 +114,7 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
     ("yu", "2018"): {
         "title": "An Algorithm for Planning Collision-Free Paths Among Polyhedral Obstacles",
         "doi": None,
-        "authors": ["Yu", "Dutra"],
+        "authors": ["Yu", "Durra"],
     },
     ("wei", "2019"): {
         "title": "EDA: Easy Data Augmentation Techniques for Boosting Performance on Text Classification Tasks",
@@ -125,6 +136,10 @@ class RetrievalOrchestrator:
         - Cache với source_name trong key (Crossref ≠ OpenAlex).
         - Health check + UNRESOLVED khi đa số sources fail.
         - Parallel lookup qua asyncio.gather.
+
+    Features v1.3:
+        - Local database (SQLite) cho fast lookup
+        - Auto-sync: thêm papers mới vào DB sau khi query thành công
     """
 
     def __init__(
@@ -135,6 +150,8 @@ class RetrievalOrchestrator:
         arxiv: ArxivClient | None = None,
         parallel: bool = True,
         cache: DiskCache | None = None,
+        local_db: LocalDatabase | None = None,
+        use_local_db: bool = True,
     ) -> None:
         settings = get_settings().retrieval
         self.crossref = crossref or CrossrefClient(contact_email=settings.contact_email)
@@ -142,13 +159,28 @@ class RetrievalOrchestrator:
         self.semantic_scholar = semantic_scholar or SemanticScholarClient()
         self.arxiv = arxiv or ArxivClient()
         self.parallel = parallel
+        self.use_local_db = use_local_db
+
         # Cache: nếu caller không truyền thì default DiskCache ở settings.paths.cache_dir
         settings_global = get_settings()
         self.cache = cache or DiskCache(
-            cache_dir=settings_global.paths.cache_dir,
-            ttl_seconds=settings.cache.ttl_seconds,
-            enabled=settings.cache.enabled,
+            cache_dir=settings_global.paths.data_dir / "cache",
+            ttl_seconds=settings_global.retrieval.cache.ttl_seconds,
+            enabled=settings_global.retrieval.cache.enabled,
         )
+
+        # Local database
+        self._local_db: LocalDatabase | None = None
+        if self.use_local_db:
+            try:
+                from integrity_checker.database import LocalDatabase
+                db_path = settings_global.paths.data_dir / "local_papers.db"
+                self._local_db = local_db or LocalDatabase(db_path)
+                logger.info(f"Local database enabled: {db_path}")
+            except Exception as e:
+                logger.warning(f"Local database unavailable: {e}")
+                self._local_db = None
+
         self._rate_limiters: dict[str, RateLimiter] = {
             self.crossref.name: RateLimiter(settings.rate_limits.crossref_per_sec),
             self.openalex.name: RateLimiter(settings.rate_limits.openalex_per_sec),
@@ -212,12 +244,34 @@ class RetrievalOrchestrator:
     async def retrieve(self, citation: Citation) -> SourceResult:
         """Truy hồi tất cả nguồn cho 1 citation.
 
+        Lookup order (v1.3):
+            1. Local database (SQLite) - fast, no API calls
+            2. External APIs (Crossref, OpenAlex, Semantic Scholar, arXiv)
+            3. Sync result to local DB for future use
+
         arXiv DOIs (10.48550/arXiv.XXX) chỉ được truy vấn bằng:
         - Semantic Scholar (resolves arXiv DOIs)
         - arXiv API
 
         Crossref và OpenAlex trả về 404 cho arXiv DOIs → bỏ qua để tiết kiệm API calls.
         """
+        # ===== 1. Check local database first =====
+        if self._local_db is not None:
+            local_result = self._lookup_local_db(citation)
+            if local_result is not None:
+                logger.debug(f"Local DB HIT: {citation.raw_text[:50]}")
+                # Log query
+                self._local_db.log_query(
+                    {"doi": citation.doi, "arxiv_id": citation.arxiv_id, "title": citation.title},
+                    found=True,
+                    source="local_db",
+                    paper_id=None,
+                )
+                return local_result
+            else:
+                logger.debug(f"Local DB MISS: {citation.raw_text[:50]}")
+
+        # ===== 2. Query external APIs =====
         # arXiv rất dễ bị rate limit - chỉ query khi cần thiết
         # arXiv DOIs chỉ được truy vấn bằng Semantic Scholar + arXiv API
         all_clients = self.clients()
@@ -287,6 +341,10 @@ class RetrievalOrchestrator:
 
         deduped = self._dedupe_candidates(valid)
 
+        # ===== 3. Sync to local database =====
+        if self._local_db is not None and deduped:
+            self._sync_to_local_db(deduped, succeeded)
+
         # Health check: nếu tất cả sources fail (không có candidate found nào)
         # → UNRESOLVED sentinel
         any_found = any(c.found for c in deduped)
@@ -297,6 +355,14 @@ class RetrievalOrchestrator:
                 f"UNRESOLVED: citation='{citation.raw_text[:50]}', "
                 f"failed={list(failed.keys())}"
             )
+            # Log failed query
+            if self._local_db is not None:
+                self._local_db.log_query(
+                    {"doi": citation.doi, "title": citation.title},
+                    found=False,
+                    source="api",
+                    paper_id=None,
+                )
 
         return SourceResult(
             citation_raw=citation.raw_text,
@@ -305,6 +371,149 @@ class RetrievalOrchestrator:
             sources_succeeded=succeeded,
             sources_failed=failed,
         )
+
+    def _lookup_local_db(self, citation: Citation) -> SourceResult | None:
+        """Lookup paper in local database.
+
+        Returns:
+            SourceResult if found, None otherwise.
+        """
+        # Try DOI first
+        if citation.doi:
+            # Normalize DOI
+            doi = citation.doi.strip().lower()
+            if doi.startswith("https://doi.org/"):
+                doi = doi[16:]
+            elif doi.startswith("http://doi.org/"):
+                doi = doi[15:]
+
+            paper = self._local_db.find_by_doi(doi)
+            if paper:
+                cand = SourceCandidate(
+                    source_name="local_db",
+                    found=True,
+                    doi=paper.doi,
+                    title=paper.title,
+                    authors=paper.authors,
+                    year=str(paper.year) if paper.year else None,
+                    venue=paper.venue,
+                    url=paper.external_ids.get("url"),
+                    external_ids=paper.external_ids,
+                    confidence=0.95,  # High confidence for local DB
+                    cached=True,
+                )
+                return SourceResult(
+                    citation_raw=citation.raw_text,
+                    candidates=[cand],
+                    sources_queried=["local_db"],
+                    sources_succeeded=["local_db"],
+                    sources_failed={},
+                )
+
+        # Try arXiv ID (extracted from URL or DOI)
+        arxiv_id = self._extract_arxiv_id(citation)
+        if arxiv_id:
+            paper = self._local_db.find_by_arxiv_id(arxiv_id)
+            if paper:
+                cand = SourceCandidate(
+                    source_name="local_db",
+                    found=True,
+                    doi=paper.doi,
+                    title=paper.title,
+                    authors=paper.authors,
+                    year=str(paper.year) if paper.year else None,
+                    venue=paper.venue,
+                    url=paper.external_ids.get("url"),
+                    external_ids=paper.external_ids,
+                    confidence=0.95,
+                    cached=True,
+                )
+                return SourceResult(
+                    citation_raw=citation.raw_text,
+                    candidates=[cand],
+                    sources_queried=["local_db"],
+                    sources_succeeded=["local_db"],
+                    sources_failed={},
+                )
+
+        return None
+
+    @staticmethod
+    def _extract_arxiv_id(citation: Citation) -> str | None:
+        """Extract arXiv ID from citation DOI or URL."""
+        import re
+
+        # arXiv ID format: YYMM.NNNNN(vN)?
+        ARXIV_ID_RE = re.compile(r"\b(\d{4}\.\d{4,5})(v\d+)?\b")
+
+        # Check URL
+        if citation.url:
+            if "arxiv.org" in citation.url:
+                for marker in ("/abs/", "/pdf/"):
+                    idx = citation.url.find(marker)
+                    if idx >= 0:
+                        candidate = citation.url[idx + len(marker):]
+                        m = ARXIV_ID_RE.search(candidate)
+                        if m:
+                            return m.group(1)
+
+        # Check raw_text
+        if citation.raw_text:
+            m = ARXIV_ID_RE.search(citation.raw_text)
+            if m:
+                return m.group(1)
+
+        # Check DOI (arXiv DOIs are 10.48550/arXiv.YYMM.NNNNN)
+        if citation.doi and "arxiv" in citation.doi.lower():
+            m = ARXIV_ID_RE.search(citation.doi)
+            if m:
+                return m.group(1)
+
+        return None
+
+    def _sync_to_local_db(self, candidates: list[SourceCandidate], succeeded: list[str]) -> None:
+        """Sync found candidates to local database.
+
+        Args:
+            candidates: List of successful candidates
+            succeeded: List of source names that succeeded
+        """
+        from integrity_checker.database import Paper
+
+        if not succeeded or not candidates:
+            return
+
+        for cand in candidates:
+            if not cand.found:
+                continue
+
+            # Determine source
+            source = succeeded[0] if succeeded else "api"
+
+            # Get arXiv ID from external_ids
+            arxiv_id = None
+            if cand.external_ids:
+                arxiv_id = cand.external_ids.get("arxiv")
+
+            # Create paper
+            paper = Paper(
+                doi=cand.doi,
+                arxiv_id=arxiv_id,
+                title=cand.title or "",
+                authors=cand.authors or [],
+                year=int(cand.year) if cand.year else None,
+                venue=cand.venue,
+                abstract=None,
+                categories=[],
+                external_ids=cand.external_ids or {},
+                source=source,
+            )
+
+            try:
+                self._local_db.add_paper(paper)
+                logger.debug(f"Synced to local DB: {paper.title[:50]}")
+            except Exception as e:
+                logger.warning(f"Failed to sync to local DB: {e}")
 
     async def _lookup_with_cache_and_ratelimit(
         self,
