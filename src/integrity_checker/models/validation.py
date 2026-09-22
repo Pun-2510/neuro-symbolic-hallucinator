@@ -133,6 +133,12 @@ class CitationVerdict:
     overridden_by: Optional[str] = None  # user id / lecturer email
     override_note: Optional[str] = None
 
+    # NEW v1.3: Provenance tracking
+    sources_succeeded: list[str] = field(default_factory=list)  # e.g. ["crossref", "openalex"]
+    sources_failed: dict[str, str] = field(default_factory=dict)  # e.g. {"semantic_scholar": "429 Too Many Requests"}
+    api_exhausted: bool = False  # True if all external APIs failed
+    used_cache: bool = False  # True if result came from cache
+
 
 @dataclass
 class CISComponents:

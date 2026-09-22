@@ -73,6 +73,9 @@ class NeuroSymbolicChecker:
         mapping_status: "CitationMappingStatus | None" = None,
         style_profile: "StyleProfile | None" = None,
         citation_context: Optional[str] = None,
+        # NEW v1.3: Provenance tracking
+        api_exhausted: bool = False,
+        used_cache: bool = False,
     ) -> CitationVerdict:
         """Trả CitationVerdict đầy đủ (label + confidence + reasoning + features).
 
@@ -134,6 +137,9 @@ class NeuroSymbolicChecker:
             style_profile=style_profile,
             citation_doi=citation.doi,
             citation_url=citation.url,
+            # NEW v1.3: Provenance tracking
+            api_exhausted=api_exhausted,
+            used_cache=used_cache,
         )
 
         # Enhance reasoning với content alignment info (Neural layer feedback)

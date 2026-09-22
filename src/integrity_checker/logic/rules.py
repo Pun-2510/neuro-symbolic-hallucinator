@@ -140,6 +140,9 @@ class SymbolicRules:
         style_profile: "StyleProfile | None" = None,
         citation_doi: str | None = None,
         citation_url: str | None = None,
+        # NEW v1.3: Provenance tracking
+        api_exhausted: bool = False,
+        used_cache: bool = False,
     ) -> RuleOutcome:
         """Apply rules theo thứ tự ưu tiên:
             0. FAKE-URL → SUSPECTED_HALLUCINATION (high priority, pre-flight)
@@ -151,7 +154,28 @@ class SymbolicRules:
             6. Không có candidate, API 200 OK → SUSPECTED_HALLUCINATION
             7. Vùng biên / API lỗi → UNRESOLVED
             8. DOMAIN-EXCEPTION (URL broken + record exists) → keep label + flag
+
+        NEW v1.3: Provenance penalty for cache/API-exhausted results:
+            - api_exhausted=True: -0.1 penalty (less trust in verification)
+            - used_cache=True (no external API): -0.05 penalty
+            - Only_local_db=True: -0.15 penalty (limited verification)
         """
+        # --- Provenance penalty (NEW v1.3) ---
+        provenance_penalty = 0.0
+        provenance_warnings: list[str] = []
+
+        if api_exhausted:
+            provenance_penalty = 0.1
+            provenance_warnings.append("API_EXHAUSTED")
+        elif used_cache:
+            provenance_penalty = 0.05
+            provenance_warnings.append("CACHE_HIT")
+
+        # Check if only local_db was used
+        if source.sources_succeeded == ["local_db"]:
+            provenance_penalty += 0.15
+            provenance_warnings.append("LOCAL_DB_ONLY")
+
         # --- Pre-flight: STYLE_INCONSISTENT penalty ---
         style_penalty = 0.0
         style_triggered = False
@@ -245,6 +269,11 @@ class SymbolicRules:
         if style_triggered:
             triggered_rules.append("R-STYLE-INCONSISTENT")
 
+        # Apply provenance penalty to base confidence
+        provenance_note = ""
+        if provenance_penalty > 0:
+            provenance_note = f" [provenance penalty: -{provenance_penalty:.0%}]"
+
         # --- Rule 1: DOI + title + author khớp mạnh → VERIFIED ---
         if (
             not mapping_is_matched  # Only apply if not already well-linked
@@ -258,11 +287,12 @@ class SymbolicRules:
                 confidence=max(
                     0.0,
                     min(0.95, 0.7 + title_sim * 0.2 + author_sim * 0.1)
-                    - style_penalty,
+                    - style_penalty
+                    - provenance_penalty,
                 ),
                 reasoning=(
                     f"DOI khớp chính xác, title similarity={title_sim:.2f}, "
-                    f"author overlap={author_sim:.2f}."
+                    f"author overlap={author_sim:.2f}.{provenance_note}"
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=[],
@@ -275,12 +305,12 @@ class SymbolicRules:
             triggered_rules.append("R-WELL-LINKED")
             return RuleOutcome(
                 label=ValidationLabel.VERIFIED,
-                confidence=max(0.0, 0.85 - style_penalty),
+                confidence=max(0.0, 0.85 - style_penalty - provenance_penalty),
                 reasoning=(
                     f"Citation được link chính xác (author-year match) và title "
                     f"similarity cao ({title_sim:.2f}). Author mismatch "
                     f"(author_jaccard={author_sim:.2f}) là do 'et al.' citation "
-                    f"không liệt kê đủ tác giả. Xác minh thành công."
+                    f"không liệt kê đủ tác giả. Xác minh thành công.{provenance_note}"
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=[],
@@ -292,12 +322,12 @@ class SymbolicRules:
             triggered_rules.append("R-WELL-LINKED-MODERATE")
             return RuleOutcome(
                 label=ValidationLabel.VERIFIED,
-                confidence=max(0.0, 0.75 - style_penalty),
+                confidence=max(0.0, 0.75 - style_penalty - provenance_penalty),
                 reasoning=(
                     f"Citation được link chính xác (author-year match) và title "
                     f"similarity trung bình ({title_sim:.2f}). Author mismatch "
                     f"(author_jaccard={author_sim:.2f}) là do 'et al.' citation. "
-                    f"Có thể xác minh với lưu ý về metadata."
+                    f"Có thể xác minh với lưu ý về metadata.{provenance_note}"
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=["author"],
@@ -334,8 +364,8 @@ class SymbolicRules:
                 triggered_rules.append("R-CONSENSUS-FULL")
                 return RuleOutcome(
                     label=ValidationLabel.VERIFIED,
-                    confidence=max(0.0, 0.8 - style_penalty),
-                    reasoning=f"{consensus} nguồn đồng thuận về title + author + year.",
+                    confidence=max(0.0, 0.8 - style_penalty - provenance_penalty),
+                    reasoning=f"{consensus} nguồn đồng thuận về title + author + year.{provenance_note}",
                     triggered_rules=triggered_rules,
                     mismatched_fields=[],
                     style_penalty=style_penalty,
