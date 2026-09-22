@@ -184,9 +184,14 @@ def main():
 
     # ACL Anthology
     if args.acl_only or (not args.s2orc_path):
-        print("Building database from ACL Anthology...")
-        count = build_acl_database(args.db_path, args.limit)
-        total_added += count
+        print("Building database from ACL Anthology XML...")
+        try:
+            from scripts.import_acl_xml import parse_acl_xml
+            db = LocalDatabase(args.db_path)
+            count = parse_acl_xml(args.data_dir / "acl_data" / "data" / "xml", db)
+            total_added += count
+        except Exception as e:
+            print(f"Error importing ACL: {e}")
     else:
         print("Skipping ACL Anthology (use --acl-only to include)")
 
