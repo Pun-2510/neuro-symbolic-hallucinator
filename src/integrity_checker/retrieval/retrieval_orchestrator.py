@@ -218,34 +218,52 @@ class RetrievalOrchestrator:
 
         Crossref và OpenAlex trả về 404 cho arXiv DOIs → bỏ qua để tiết kiệm API calls.
         """
-        # Filter clients based on DOI type to avoid wasted 404 calls
+        # arXiv rất dễ bị rate limit - chỉ query khi cần thiết
+        # arXiv DOIs chỉ được truy vấn bằng Semantic Scholar + arXiv API
         all_clients = self.clients()
+        arxiv_client = self.arxiv
+        use_arxiv = False
+
         if self.is_arxiv_doi(citation.doi):
             # arXiv DOIs only work with S2 and arXiv API
-            clients = [self.semantic_scholar, self.arxiv]
+            clients = [self.semantic_scholar, arxiv_client]
+            use_arxiv = True
             logger.debug(
                 f"arXiv DOI detected, skipping Crossref/OpenAlex: {citation.doi}"
             )
         else:
-            clients = all_clients
+            # Non-arXiv: skip arXiv API (it's too rate-limited)
+            # Only use Crossref, OpenAlex, Semantic Scholar
+            clients = [self.crossref, self.openalex, self.semantic_scholar]
 
         if self.parallel:
+            # Parallel lookup cho non-arXiv clients
+            non_arxiv_clients = [c for c in clients if c.name != "arxiv"]
             candidates = await asyncio.gather(
-                *[self._lookup_with_cache_and_ratelimit(c, citation) for c in clients],
+                *[self._lookup_with_cache_and_ratelimit(c, citation) for c in non_arxiv_clients],
                 return_exceptions=True,
             )
+            # arXiv được gọi tuần tự, sau cùng (chỉ khi cần)
+            arxiv_result = None
+            if use_arxiv:
+                arxiv_result = await self._lookup_with_cache_and_ratelimit(arxiv_client, citation)
         else:
             candidates = []
             for c in clients:
                 candidates.append(
                     await self._lookup_with_cache_and_ratelimit(c, citation)
                 )
+            arxiv_result = None
 
         # Filter exceptions
         valid: list[SourceCandidate] = []
         succeeded: list[str] = []
         failed: dict[str, str] = {}
-        for client, cand in zip(clients, candidates):
+        sources_queried: list[str] = []
+
+        # Process non-arXiv results
+        for client, cand in zip(non_arxiv_clients if self.parallel else clients, candidates):
+            sources_queried.append(client.name)
             if isinstance(cand, Exception):
                 failed[client.name] = str(cand)
                 continue
@@ -255,13 +273,24 @@ class RetrievalOrchestrator:
             elif cand.error:
                 failed[client.name] = cand.error
 
+        # Process arXiv result (if applicable)
+        if use_arxiv and arxiv_result is not None:
+            sources_queried.append("arxiv")
+            if isinstance(arxiv_result, Exception):
+                failed["arxiv"] = str(arxiv_result)
+            else:
+                valid.append(arxiv_result)
+                if arxiv_result.found:
+                    succeeded.append("arxiv")
+                elif arxiv_result.error:
+                    failed["arxiv"] = arxiv_result.error
+
         deduped = self._dedupe_candidates(valid)
 
         # Health check: nếu tất cả sources fail (không có candidate found nào)
         # → UNRESOLVED sentinel
-        # Note: arXiv DOIs chỉ query 2 sources (S2 + arXiv), nên threshold thấp hơn
         any_found = any(c.found for c in deduped)
-        min_failures_for_unresolved = 2 if len(clients) <= 2 else len(clients) // 2 + 1
+        min_failures_for_unresolved = 2 if len(sources_queried) <= 2 else len(sources_queried) // 2 + 1
         if not any_found and len(failed) >= min_failures_for_unresolved:
             # Đa số sources failed → trả UNRESOLVED
             logger.warning(
@@ -272,7 +301,7 @@ class RetrievalOrchestrator:
         return SourceResult(
             citation_raw=citation.raw_text,
             candidates=deduped,
-            sources_queried=[c.name for c in clients],
+            sources_queried=sources_queried,
             sources_succeeded=succeeded,
             sources_failed=failed,
         )

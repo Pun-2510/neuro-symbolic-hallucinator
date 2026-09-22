@@ -43,7 +43,7 @@ class ArxivClient(BaseScholarClient):
     # arXiv ID format: YYMM.NNNNN(vN)?
     ARXIV_ID_RE = re.compile(r"\b(\d{4}\.\d{4,5})(v\d+)?\b")
 
-    def __init__(self, timeout: float = 15.0, max_retries: int = 3) -> None:
+    def __init__(self, timeout: float = 30.0, max_retries: int = 5) -> None:
         super().__init__(timeout=timeout)
         self.max_retries = max_retries
 
@@ -85,12 +85,12 @@ class ArxivClient(BaseScholarClient):
             return None
 
     @staticmethod
-    def _fetch_arxiv_sync(url: str, max_retries: int = 3) -> str:
+    def _fetch_arxiv_sync(url: str, max_retries: int = 5) -> str:
         """Sync fetch via urllib with exponential backoff retry.
 
         Args:
             url: The arXiv API URL to fetch.
-            max_retries: Maximum number of retry attempts (default 3).
+            max_retries: Maximum number of retry attempts (default 5).
 
         Returns:
             Raw XML response string.
@@ -107,15 +107,30 @@ class ArxivClient(BaseScholarClient):
             try:
                 req = urllib.request.Request(
                     url,
-                    headers={"User-Agent": "EssayIntegrityChecker/1.0 (mailto:student@tdtu.edu.vn)"}
+                    headers={
+                        "User-Agent": "EssayIntegrityChecker/1.0 (mailto:student@tdtu.edu.vn)"
+                    }
                 )
-                with urllib.request.urlopen(req, timeout=15) as resp:
+                with urllib.request.urlopen(req, timeout=30) as resp:
                     return resp.read().decode("utf-8")
             except urllib.error.HTTPError as e:
                 last_error = e
                 if e.code == 429 and attempt < max_retries - 1:
-                    # Rate limited — exponential backoff: 2, 4, 8 seconds
-                    wait_time = 2 ** (attempt + 1)
+                    # Check for Retry-After header first
+                    retry_after = e.headers.get("Retry-After")
+                    if retry_after:
+                        try:
+                            wait_time = int(retry_after)
+                        except ValueError:
+                            # Exponential backoff: 30, 60, 120, 240, 480 seconds
+                            wait_time = 30 * (2 ** attempt)
+                    else:
+                        # No Retry-After header: conservative backoff starting at 30s
+                        wait_time = 30 * (2 ** attempt)
+
+                    # Cap at 5 minutes
+                    wait_time = min(wait_time, 300)
+
                     logger.warning(
                         f"arXiv rate-limited (429), retrying in {wait_time}s "
                         f"(attempt {attempt + 2}/{max_retries})"
@@ -125,8 +140,8 @@ class ArxivClient(BaseScholarClient):
                     # Not found — don't retry
                     raise
                 elif attempt < max_retries - 1:
-                    # Other HTTP errors — retry with backoff
-                    wait_time = 2 ** (attempt + 1)
+                    # Other HTTP errors — retry with moderate backoff
+                    wait_time = min(30 * (2 ** attempt), 120)
                     logger.warning(
                         f"arXiv HTTP {e.code}, retrying in {wait_time}s "
                         f"(attempt {attempt + 2}/{max_retries})"
@@ -137,7 +152,7 @@ class ArxivClient(BaseScholarClient):
             except urllib.error.URLError as e:
                 last_error = e
                 if attempt < max_retries - 1:
-                    wait_time = 2 ** (attempt + 1)
+                    wait_time = min(30 * (2 ** attempt), 120)
                     logger.warning(
                         f"arXiv network error: {e.reason}, retrying in {wait_time}s"
                     )
