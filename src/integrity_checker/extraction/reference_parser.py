@@ -404,17 +404,13 @@ class ReferenceListParser:
             return citation
 
         # FIX: Fallback - create citation with numeric_index if available
+        # and extract whatever metadata we can from the raw entry
         if numeric_index is not None:
-            citation = Citation(
-                raw_text=entry.strip(),
-                citation_type=CitationType.REFERENCE_LIST,
-                style=CitationStyle.APA,  # Default to APA
-                page_num=page_num,
-                matched_pattern="fallback_reference_entry",
-                order_index=order_index,
-                numeric_index=numeric_index,
+            citation = self._parse_fallback_entry(
+                entry, numeric_index, order_index, page_num
             )
-            return citation
+            if citation:
+                return citation
 
         return None
 
@@ -518,6 +514,134 @@ class ReferenceListParser:
         doi_m = _DOI_RE.search(entry)
         if doi_m:
             citation.doi = doi_m.group(0).rstrip(".")
+        return citation
+
+    def _parse_fallback_entry(
+        self, entry: str, numeric_index: int, order_index: int, page_num: int
+    ) -> Citation | None:
+        """Fallback parser: extract whatever metadata possible from an unparseable entry.
+
+        Handles IEEE-style entries that lack quoted titles, or have unusual formatting.
+        Extracts: numeric_index, DOI/arXiv, year, authors, venue, and a best-effort title.
+        """
+        text = entry.strip()
+
+        # Extract DOI if present
+        doi_m = _DOI_RE.search(text)
+        doi = doi_m.group(0).rstrip(".").rstrip(",") if doi_m else None
+
+        # Extract arXiv ID if present
+        arxiv_m = re.search(r"(?:arXiv:|arxiv\.org/abs/)(\d+\.\d+)", text, re.IGNORECASE)
+        arxiv_id = arxiv_m.group(1) if arxiv_m else None
+
+        # Extract year
+        year_m = _YEAR_RE.search(text)
+        year = year_m.group(1) if year_m else None
+        year_suffix = year_m.group(2) if year_m and year_m.group(2) else None
+
+        # Extract authors: everything after [N] up to first recognizable year/doi
+        # Pattern: [N] Authors, "Title" OR just Authors (year) until next [N]
+        after_index = re.sub(r"^\[\s*\d+\s*\]\s*", "", text).strip()
+
+        # Remove common metadata patterns that confuse title extraction
+        # "vol. N", "no. N", "pp. N-N", "pp. N", "p. N", "Chapter N"
+        clean_text = after_index
+        for pattern in [
+            r',?\s*vol\.\s*\d+[A-Z]?(?:-\d+)?',      # vol. 5 or vol. 5-7
+            r',?\s*no\.\s*\d+',                       # no. 3
+            r',?\s*pp\.\s*[\d\-–]+',                 # pp. 1-20 or pp. 123
+            r',?\s*p\.\s*\d+',                        # p. 42
+            r',?\s*chapters?\s+\d+',                   # chapter 3
+            r',?\s*edition',                           # edition marker
+            r',?\s*technical\s+report[^,]*',          # technical report
+            r'\s+\d{4}[a-z]?\s*$',                    # trailing year at end
+        ]:
+            clean_text = re.sub(pattern, "", clean_text, flags=re.IGNORECASE).strip()
+
+        # Try to find title: text between quotes, or text after authors
+        title_raw = None
+        # Quoted title
+        quote_m = re.search(r'[""]([^""]+)[""]', clean_text)
+        if quote_m:
+            title_raw = quote_m.group(1).strip().rstrip(",")
+        else:
+            # Fallback title: everything after authors, before year/DOI
+            remaining = clean_text
+            if doi_m:
+                remaining = remaining[:doi_m.start()].strip()
+            if year_m:
+                # Only use year as boundary if it's followed by end or punctuation
+                y_end = year_m.end()
+                remaining = remaining[:year_m.start()].strip()
+
+            # The title is what remains after stripping authors
+            # Authors typically end with a comma followed by a capitalized word (title)
+            author_end = re.search(
+                r",\s*(?=[A-Z][a-z])", remaining
+            )
+            if author_end:
+                candidate = remaining[author_end.end():].strip()
+                if candidate and len(candidate) > 10:
+                    title_raw = candidate.rstrip(".,").strip()
+            elif "," in remaining:
+                # Last comma before end is likely the author-title boundary
+                parts = remaining.rsplit(",", 1)
+                if len(parts) >= 2 and len(parts[1].strip()) > 10:
+                    title_raw = parts[1].strip().rstrip(".,").strip()
+
+            if remaining and len(remaining) > 10 and not title_raw:
+                title_raw = remaining.rstrip(".,").strip()
+
+        # Extract authors: everything before the title or year
+        authors_part = ""
+        if title_raw:
+            idx = after_index.find(title_raw)
+            if idx > 0:
+                authors_part = after_index[:idx].strip().rstrip(",").rstrip()
+        elif year_m:
+            idx = after_index.find(year_m.group(0))
+            if idx > 0:
+                authors_part = after_index[:idx].strip().rstrip(",").rstrip()
+
+        # Parse authors
+        authors = parse_authors(authors_part) if authors_part else []
+
+        # Extract venue: text after year (before DOI)
+        venue = None
+        if year_m and doi_m:
+            venue = text[year_m.end():doi_m.start()].strip().rstrip(".,")
+        elif year_m:
+            venue = text[year_m.end():].strip().rstrip(".,")
+        elif doi_m:
+            venue = text[:doi_m.start()].strip().rstrip(".,")
+            # Try to remove the authors from venue
+            if authors_part and venue.startswith(authors_part):
+                venue = venue[len(authors_part):].strip().lstrip(",").rstrip(".,")
+
+        # Build title if not found: use arXiv ID or first part
+        if not title_raw:
+            if arxiv_id:
+                title_raw = f"arXiv:{arxiv_id}"
+            elif len(after_index) > 20:
+                title_raw = after_index[:100].strip()
+
+        citation = Citation(
+            raw_text=text,
+            citation_type=CitationType.REFERENCE_LIST,
+            style=CitationStyle.IEEE,
+            page_num=page_num,
+            matched_pattern="fallback_ieee_entry",
+            order_index=order_index,
+            numeric_index=numeric_index,
+            title=title_raw if title_raw else None,
+            title_normalized=_normalize_title(title_raw) if title_raw else None,
+            year=year,
+            year_suffix=year_suffix,
+            authors=authors if authors else None,
+            venue=venue if venue and len(venue) > 2 else None,
+            doi=doi,
+            confidence=0.7,  # Lower confidence for fallback parsing
+        )
         return citation
 
     def _parse_vancouver_entry(

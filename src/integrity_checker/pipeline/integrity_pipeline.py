@@ -588,9 +588,9 @@ class IntegrityPipeline:
             if citation.title and citation.authors and citation.year:
                 continue
 
-            # Try to find matching reference via link lookup
-            normalized_key = IntegrityPipeline._normalize_identifier(citation.raw_text)
-            link = link_lookup.get(normalized_key)
+            # Find matching reference via link lookup by occurrence_id
+            # (in-text citations have occurrence_id as their reference_id)
+            link = link_lookup.get(citation.reference_id)
 
             if link and link.reference_id:
                 ref = ref_by_id.get(link.reference_id)
@@ -638,11 +638,17 @@ class IntegrityPipeline:
     ) -> dict[str, CitationLink]:
         """Map normalized identifier → CitationLink cho O(1) lookup từ verdict.
 
-        Uses _normalize_identifier on evidence['raw'] to ensure DOI vs DOI-URL
-        forms map to the same key. Also index by occurrence_id for in-text citations.
+        Indexes by (in priority order):
+          1. occurrence_id (in-text citation's stable ID)
+          2. normalized identifier (DOI/URL forms)
+          3. raw text lowercased (for non-DOI citations)
         """
         lookup: dict[str, CitationLink] = {}
         for link in links:
+            # Index by occurrence_id FIRST (most reliable for numeric citations)
+            if link.occurrence_id:
+                lookup[link.occurrence_id] = link
+
             evidence = link.evidence or {}
             raw = evidence.get("raw", "") or evidence.get("raw_text", "")
             if raw:
@@ -653,9 +659,6 @@ class IntegrityPipeline:
                 lookup[normalized] = link
                 # Also index by raw as fallback (for non-DOI citations)
                 lookup[raw_normalized.lower()] = link
-            # Index by occurrence_id as fallback
-            if link.occurrence_id:
-                lookup[link.occurrence_id] = link
         return lookup
 
     @staticmethod
@@ -734,7 +737,12 @@ def main() -> None:
     parser.add_argument(
         "--output", "-o",
         default=None,
-        help="Ghi report JSON ra file (mặc định: in ra stdout)",
+        help="Đường dẫn output JSON (mặc định: reports/<pdf-stem>.json)",
+    )
+    parser.add_argument(
+        "--stdout",
+        action="store_true",
+        help="Chỉ in summary ra stdout, không ghi file JSON",
     )
     parser.add_argument("--essay-id", type=int, default=0)
     parser.add_argument(
@@ -779,13 +787,21 @@ def main() -> None:
     print("\n ⚠ " + report.disclaimer)
     print()
 
-    # Ghi file JSON nếu có --output
+    # Ghi file JSON: --stdout bỏ qua, mặc định ghi vào reports/, --output ghi đúng path chỉ định
+    if args.stdout:
+        return
+
     if args.output:
         out_path = Path(args.output)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        with out_path.open("w", encoding="utf-8") as f:
-            json.dump(report.to_dict(), f, ensure_ascii=False, indent=2)
-        logger.info(f"Wrote report → {out_path}")
+    else:
+        # Default: reports/<pdf-stem>.json (relative to CWD)
+        out_path = Path("reports") / f"{pdf_path.stem}.json"
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as f:
+        json.dump(report.to_dict(), f, ensure_ascii=False, indent=2)
+    print(f" 📄 Report saved → {out_path}")
+    logger.info(f"Wrote report → {out_path}")
 
 
 if __name__ == "__main__":
