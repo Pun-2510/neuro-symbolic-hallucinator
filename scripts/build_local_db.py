@@ -144,6 +144,12 @@ def main():
         help='Build only from ACL Anthology'
     )
     parser.add_argument(
+        '--acl-data-dir',
+        type=Path,
+        default=Path('./data/acl_data/data/xml'),
+        help='Path to ACL Anthology XML directory'
+    )
+    parser.add_argument(
         '--s2orc-path',
         type=Path,
         help='Path to S2ORC JSONL file or directory'
@@ -182,13 +188,22 @@ def main():
     # Build database
     total_added = 0
 
+    # Default to ACL import if nothing specified
+    do_acl = args.acl_only or (not args.s2orc_path)
+
     # ACL Anthology
-    if args.acl_only or (not args.s2orc_path):
+    if do_acl:
         print("Building database from ACL Anthology XML...")
         try:
             from scripts.import_acl_xml import parse_acl_xml
             db = LocalDatabase(args.db_path)
-            count = parse_acl_xml(args.data_dir / "acl_data" / "data" / "xml", db)
+
+            # Check existing count
+            stats = db.get_stats()
+            existing = stats['source_counts'].get('acl', 0)
+            print(f"Existing ACL papers in DB: {existing}")
+
+            count = parse_acl_xml(args.acl_data_dir, db, limit=args.limit)
             total_added += count
         except Exception as e:
             print(f"Error importing ACL: {e}")
