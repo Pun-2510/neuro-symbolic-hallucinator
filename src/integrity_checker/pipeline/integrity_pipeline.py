@@ -124,6 +124,14 @@ class AnalysisReport:
                         "doi_exact_match": v.features.doi_exact_match,
                         "source_consensus": v.features.source_consensus,
                     },
+                    # NEW v1.3: Provenance tracking
+                    "provenance": {
+                        "sources_succeeded": v.sources_succeeded,
+                        "sources_failed": dict(v.sources_failed),
+                        "api_exhausted": v.api_exhausted,
+                        "used_cache": v.used_cache,
+                    },
+                    "warnings": _get_verdict_warnings_from_verdict(v),
                     "suggestions": ExplanationGenerator.suggestions(v),
                 }
                 for v in self.verdicts
@@ -352,17 +360,31 @@ class IntegrityPipeline:
                     )
                     break
 
-            # Pass mapping_status + style_profile + citation_context vào checker
+            # NEW v1.3: Provenance tracking - compute before calling checker
+            api_exhausted = len(source.sources_succeeded) == 0 and len(source.sources_failed) > 0
+            used_cache = source.sources_succeeded == ["local_db"] if source.sources_succeeded else False
+
+            # Pass mapping_status + style_profile + citation_context + provenance vào checker
             verdict = self.checker.check(
                 citation,
                 source,
                 mapping_status=mapping_status,
                 style_profile=style_profile,
                 citation_context=citation_context,
+                # NEW v1.3: Provenance tracking
+                api_exhausted=api_exhausted,
+                used_cache=used_cache,
             )
             verdict.mapping_status = mapping_status
             verdict.mapping_confidence = mapping_confidence
             verdict.citation_link = citation_link
+
+            # NEW v1.3: Provenance tracking on verdict
+            verdict.sources_succeeded = source.sources_succeeded
+            verdict.sources_failed = source.sources_failed
+            verdict.api_exhausted = api_exhausted
+            verdict.used_cache = used_cache
+
             verdicts.append(verdict)
             logger.debug(
                 f"  [{verdict.label.value}] conf={verdict.confidence:.2f} "
@@ -702,7 +724,39 @@ def _serialize_verdict_for_json(v: CitationVerdict) -> dict[str, Any]:
             "doi_exact_match": v.features.doi_exact_match,
             "source_consensus": v.features.source_consensus,
         },
+        # NEW v1.3: Provenance tracking
+        "provenance": {
+            "sources_succeeded": v.sources_succeeded,
+            "sources_failed": v.sources_failed,
+            "api_exhausted": v.api_exhausted,
+            "used_cache": v.used_cache,
+        },
+        "warnings": _get_verdict_warnings(v),
     }
+
+
+def _get_verdict_warnings(v: CitationVerdict) -> list[str]:
+    """Generate warning flags based on provenance (for CLI)."""
+    return _get_verdict_warnings_from_verdict(v)
+
+
+def _get_verdict_warnings_from_verdict(v: CitationVerdict) -> list[str]:
+    """Generate warning flags based on provenance (for JSON serialization)."""
+    warnings = []
+
+    if v.api_exhausted:
+        warnings.append("API_EXHAUSTED: All external APIs failed - verification based on limited data")
+
+    if v.used_cache and not v.api_exhausted:
+        warnings.append("CACHE_HIT: Result from local cache - may be stale")
+
+    if v.api_exhausted and v.label.value == "verified":
+        warnings.append("CAUTION: Verified despite API failures - confidence reduced")
+
+    if len(v.sources_succeeded) == 1 and v.sources_succeeded[0] == "local_db":
+        warnings.append("LOCAL_DB_ONLY: Verification from local database only")
+
+    return warnings
 
 
 def _serialize_citation_link(link: Any) -> dict[str, Any]:
@@ -780,8 +834,21 @@ def main() -> None:
             "suspected_hallucination": "✗",
             "unresolved": "?",
         }[v.label.value]
+
+        # Build provenance string
+        prov_parts = []
+        if v.sources_succeeded:
+            prov_parts.append(f"sources={','.join(v.sources_succeeded)}")
+        if v.api_exhausted:
+            prov_parts.append("API_EXHAUSTED")
+
+        prov_str = f" ({', '.join(prov_parts)})" if prov_parts else ""
+
+        # Add warnings indicator
+        warn_indicator = " ⚠" if v.api_exhausted or v.used_cache else ""
+
         print(
-            f"  {marker} [{v.label.value:25s}] conf={v.confidence:.0%}  "
+            f"  {marker} [{v.label.value:25s}] conf={v.confidence:.0%}{prov_str}{warn_indicator}  "
             f"raw={v.citation.raw_text[:80]}"
         )
     print("\n ⚠ " + report.disclaimer)
