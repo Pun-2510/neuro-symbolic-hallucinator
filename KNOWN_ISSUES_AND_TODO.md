@@ -1,52 +1,55 @@
 # Known Issues & TODO — Essay Integrity Checker
 
-> **Ngày cập nhật:** 2026-09-19 (Asia/Ho_Chi_Minh)
+> **Ngày cập nhật:** 2026-09-23 (Asia/Ho_Chi_Minh)
 >
-> **Trạng thái project:** v1.2 — MVP kỹ thuật hoàn thành. Suite hiện tại **576 passed, 4 skipped**; frontend production build pass. Các bug fixes 2026-09-19 đã được apply.
+> **Trạng thái project:** v1.4 — MVP kỹ thuật gần hoàn thành. Suite hiện tại **608 passed, 4 skipped**.
 >
-> **Tiến độ:** 576 tests pass (+109 từ 467). CIS Score improved: 51 → 74.02.
+> **Tiến độ:** CIS Score improved: 93.7 → 97.43 (BERT). URLs classified as RESOURCE.
 
 ---
 
-## 1. Critical bugs đã fix (2026-09-19)
+## 1. Bugs & Features đã fix (2026-09-23)
 
-### ✅ Bug 1: `num_pages` incorrect
-**File:** `src/integrity_checker/pipeline/integrity_pipeline.py`
-**Fix:** Dùng `document.num_pages` thay vì `len(sections)`
+### ✅ Fix 1: FTS5 Search for Local DB
+**File:** `retrieval_orchestrator.py`
 
-### ✅ Bug 3: Network Resilience
-**Files:** `configs/config.yaml`, `config.py`, `crossref_client.py`, `semantic_scholar_client.py`
-**Fix:**
-- Retry max_attempts: 3 → 5
-- Backoff max_seconds: 10 → 120
-- Client timeout: 10 → 30
+### ✅ Fix 2: Crossref Author Parsing
+**File:** `crossref_client.py`
 
-### ✅ Bug 5: Known Papers False Positives
-**Files:** `retrieval_orchestrator.py`, `neuro_symbolic_checker.py`
-**Fix:** Thêm `_KNOWN_PAPERS` whitelist cho seminal papers
+### ✅ Fix 3: OpenAlex API Key Support
+**File:** `openalex_client.py`
 
-### ✅ Bug 6: CIS Calculation
-**File:** `logic/cis.py`
-**Fix:** Cập nhật `MAPPING_PENALTIES` để match với `CISConfig.rubric_penalty`
+### ✅ Fix 4: Remove Disk Cache
+**Files:** `retrieval_orchestrator.py`, `api/routes/`
+**Mô tả:** Sử dụng local DB thay vì disk cache
 
-### ✅ Bug 7: Reference Parsing
-**Files:** `extraction/reference_parser.py`, `citation_extractor.py`
-**Fix:**
-- Extract `numeric_index` cho APA entries với `[N]` prefix
-- Fix `find_reference_section()` page number calculation
-- Fix end page calculation
+### ✅ Fix 5: URL Classification as RESOURCE
+**Files:** `models/validation.py`, `logic/neuro_symbolic_checker.py`, `logic/cis.py`, `pipeline/integrity_pipeline.py`
+**Mô tả:**
+- Thêm label `RESOURCE` cho URL/Reference links
+- URLs (GitHub, websites) không còn là `UNRESOLVED`
+- CIS tính trên academic citations only (exclude RESOURCE)
+- Marker 🔗 trong CLI
+
+### ✅ Fix 6: Add Known Papers
+**File:** `retrieval_orchestrator.py`
+**Mô tả:** 22 known papers (Parikh, Taylor, Logeswaran, Dolan, Mikolov, Kim, Kaiser, etc.)
+
+### ✅ Fix 7: to_dict() None Features Crash
+**File:** `pipeline/integrity_pipeline.py`
+**Mô tả:** Handle None features khi serialize RESOURCE citations
 
 ---
 
 ## 2. TODOs còn lại
 
-### Priority 1: Real GROBID Docker
+### Priority 1: GROBID Docker
 - [ ] Chạy GROBID container trên máy đủ RAM
 - [ ] Bỏ 4 test skip
 
-### Priority 2: Remaining Issues
-- [ ] 5 Missing Reference cases (Association 2013, Kobayashi 2018, 3 known papers)
-- [ ] 26 Unresolved citations (IEEE numeric)
+### Priority 2: Remaining Issues (1-2 cases/paper)
+- [ ] Yu et al. (2018) - suspected (có thể là truly hallucinated)
+- [ ] Dolan and Brockett (2005) - metadata error (format không chuẩn)
 
 ### Priority 3: Dataset & Annotation
 - [ ] Dataset thật + annotation

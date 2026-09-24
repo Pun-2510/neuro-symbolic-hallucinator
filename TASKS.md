@@ -1,20 +1,18 @@
 # TASK LIST - Essay Integrity Checker
-## Cập nhật: 2026-09-19 | Định hướng: Engineering Contribution
+## Cập nhật: 2026-09-23 | Định hướng: Engineering Contribution
 
 ---
 
 ## PHASE 1: HOÀN THÀNH TRƯỚC KHI NỘP ĐỀ CƯƠNG (Tuần 12)
 
 ### Task 1.1: ExplanationGenerator - Sinh lý do bằng tiếng Việt
-**Priority:** HIGH  
-**Status:** HOÀN THÀNH (2026-08-23)  
+**Priority:** HIGH
+**Status:** HOÀN THÀNH (2026-08-23)
 **File:** `src/integrity_checker/logic/explanation.py`
 
----
-
 ### Task 1.2: ExplanationGenerator - Unit Tests
-**Priority:** HIGH  
-**Status:** HOÀN THÀNH (2026-08-23)  
+**Priority:** HIGH
+**Status:** HOÀN THÀNH (2026-08-23)
 **File:** `tests/unit/test_explanation.py`
 **Test coverage:** 43 test cases
 
@@ -22,221 +20,127 @@
 
 ## PHASE 2: WEB UI (Tuần 13-14)
 
-### Task 2.1: Web UI - Style Profile View
-**Priority:** MEDIUM
+### Task 2.1-2.5: Web UI Components
 **Status:** HOÀN THÀNH (2026-08-23)
+- Style Profile View
+- Citation Graph View (2 chiều)
+- Override Mapping/Labels
+- Evidence Drawer mở rộng
+- Export PDF/CSV/JSON
 
-### Task 2.2: Web UI - Citation Graph View (2 chiều)
-**Priority:** MEDIUM
-**Status:** HOÀN THÀNH (2026-08-23)
-
-### Task 2.3: Web UI - Override Mapping/Labels
-**Priority:** MEDIUM
-**Status:** HOÀN THÀNH (2026-08-23)
-
-### Task 2.4: Web UI - Evidence Drawer mở rộng
-**Priority:** MEDIUM
-**Status:** HOÀN THÀNH (2026-08-23)
-
-### Task 2.5: Web UI - Export PDF/CSV/JSON
-**Priority:** MEDIUM
-**Status:** HOÀN THÀNH (2026-08-23)
-
-### Task 2.6: Frontend UI Improvements (2026-09-19)
-**Priority:** MEDIUM
-**Status:** HOÀN THÀNH
+### Task 2.6: Frontend UI Improvements
+**Status:** HOÀN THÀNH (2026-09-19)
 **Files:** `VerdictTable.tsx`, `MappingStatusBadge.tsx`
 
-**Đã implement:**
-- Header labels rõ ràng: "Link Status (↔ Ref)", "Source Verify (✓ Source)"
-- Tooltips giải thích cho mỗi mapping status
-- Phân biệt 2 layers: Integrity vs Source verification
-
 ---
 
-## PHASE 3: INTEGRATION & TESTING (Tuần 15)
+## PHASE 3: INTEGRATION & TESTING
 
-### Task 3.1: Integration Test - GROBID Docker
-**Priority:** HIGH  
-**Status:** MOCK HOÀN THÀNH; REAL DOCKER ĐANG CHỜ MÁY ĐỦ RAM
+### Task 3.1: GROBID Docker
+**Status:** MOCK - Real Docker cần máy đủ RAM
 
-### Task 3.2: Integration Test - Full PDF Pipeline v1.2
-**Priority:** HIGH  
-**Status:** HOÀN THÀNH (2026-08-25, 9 tests pass)
-
-### Task 3.3: Unit Tests - Retrieval Orchestrator
-**Priority:** MEDIUM
-**Status:** HOÀN THÀNH (2026-08-23)
-**Test coverage:** 14 tests
-
-### Task 3.4: Unit Tests - Semantic Matcher
-**Priority:** MEDIUM
-**Status:** HOÀN THÀNH (2026-08-23)
-**Test coverage:** 11 tests
-
-### Task 3.5: Unit Tests - Calibration
-**Priority:** MEDIUM
+### Task 3.2-3.5: Unit Tests
 **Status:** HOÀN THÀNH
-**Test coverage:** 24 tests
+- Retrieval Orchestrator (14 tests)
+- Semantic Matcher (11 tests)
+- Calibration (24 tests)
+- Bug Fixes (19 tests)
 
-### Task 3.6: Bug Fixes Tests (2026-09-19)
-**Priority:** HIGH
+---
+
+## PHASE 4: DOCUMENTATION (2026-09-23)
+
+### Task 4.1-4.4: Documentation Updates
 **Status:** HOÀN THÀNH
-**File:** `tests/unit/test_bug_fixes.py`
-**Test coverage:** 19 tests
-
-**Bao gồm:**
-- Bug 1: num_pages calculation
-- Bug 3: retry config, timeout values
-- Bug 5: known papers whitelist
-- Bug 6: CIS penalties alignment
-- Bug 7: reference parsing, numeric_index extraction
+- [x] README.md (v1.4)
+- [x] CLAUDE.md (v1.4)
+- [x] TASKS.md (2026-09-23)
+- [x] USER_MANUAL.md (cập nhật RESOURCE label)
+- [x] CHECKPOINT_2026-09-23_v2.md
 
 ---
 
-## PHASE 4: DOCUMENTATION (Tuần 16)
+## CRITICAL BUG FIXES & FEATURES (2026-09-23)
 
-### Task 4.1: Update CHANGES_VS_V1.1.md
-**Priority:** MEDIUM  
-**Status:** HOÀN THÀNH (2026-09-12)
+### Fix 1: FTS5 Search for Local DB
+**Status:** ✅ FIXED
+**File:** `retrieval_orchestrator.py`
 
-### Task 4.2: Update API Documentation
-**Priority:** MEDIUM  
-**Status:** ĐANG CẬP NHẬT
+### Fix 2: Crossref Author Parsing
+**Status:** ✅ FIXED
+**File:** `crossref_client.py`
 
-### Task 4.3: Update User Manual
-**Priority:** MEDIUM  
-**Status:** HOÀN THÀNH (2026-09-12)
+### Fix 3: OpenAlex API Key Support
+**Status:** ✅ FIXED
+**File:** `openalex_client.py`
 
-### Task 4.4: Update Checkpoints
-**Priority:** MEDIUM
-**Status:** HOÀN THÀNH (2026-09-19)
-**File:** `CHECKPOINT_2026-09-19.md`
+### Fix 4: Remove Disk Cache
+**Status:** ✅ FIXED
+**Files:** `retrieval_orchestrator.py`, `api/routes/`
+**Mô tả:** Sử dụng local DB thay vì disk cache
 
----
+### Fix 5: URL Classification as RESOURCE (NEW)
+**Status:** ✅ FIXED
+**Files:** `models/validation.py`, `logic/neuro_symbolic_checker.py`, `logic/cis.py`, `pipeline/integrity_pipeline.py`
+**Mô tả:**
+- Thêm label `RESOURCE` cho URL/Reference links
+- URLs (GitHub, websites) không còn là `UNRESOLVED`
+- CIS tính trên academic citations only
+- Marker 🔗 trong CLI
 
-## PHASE 5: THESIS WRITING (Tuần 17-20)
+### Fix 6: Add Known Papers
+**Status:** ✅ FIXED
+**File:** `retrieval_orchestrator.py`
+**Mô tả:** 22 known papers (Parikh, Taylor, Logeswaran, Dolan, Mikolov, Kim, Kaiser, etc.)
 
-### Task 5.1: Chapter 1 - Giới thiệu
-**Priority:** HIGH  
-**Status:** Chưa bắt đầu
-
-### Task 5.2: Chapter 2 - Cơ sở lý thuyết
-**Priority:** HIGH  
-**Status:** Chưa bắt đầu
-
-### Task 5.3: Chapter 3 - Phân tích và Thiết kế
-**Priority:** HIGH  
-**Status:** Chưa bắt đầu
-
-### Task 5.4: Chapter 4 - Xây dựng và Triển khai
-**Priority:** HIGH  
-**Status:** Chưa bắt đầu
-
-### Task 5.5: Chapter 5 - Đánh giá
-**Priority:** MEDIUM  
-**Status:** Chưa bắt đầu
-
-### Task 5.6: Chapter 6 - Kết luận
-**Priority:** MEDIUM  
-**Status:** Chưa bắt đầu
+### Fix 7: to_dict() None Features Crash
+**Status:** ✅ FIXED
+**File:** `pipeline/integrity_pipeline.py`
+**Mô tả:** Handle None features khi serialize RESOURCE citations
 
 ---
 
-## PHASE 6: PRESENTATION & DEMO (Tuần 21-22)
-
-### Task 6.1: Presentation Slides
-**Priority:** HIGH  
-**Status:** Chưa bắt đầu
-
-### Task 6.2: Demo Script
-**Priority:** HIGH  
-**Status:** Chưa bắt đầu
-
-### Task 6.3: Demo Video (Optional)
-**Priority:** LOW  
-**Status:** Chưa bắt đầu
-
----
-
-## CRITICAL BUG FIXES (2026-09-19)
-
-### Bug 1: num_pages incorrect
-**Status:** ✅ ĐÃ FIX
-**File:** `src/integrity_checker/pipeline/integrity_pipeline.py`
-**Mô tả:** num_pages = len(sections) → document.num_pages
-
-### Bug 3: Network Resilience
-**Status:** ✅ ĐÃ FIX
-**Files:** `configs/config.yaml`, `config.py`, `crossref_client.py`, `semantic_scholar_client.py`
-**Mô tả:** Tăng retry attempts (3→5), backoff max (10→120s), timeout (10→30s)
-
-### Bug 5: Known Papers False Positives
-**Status:** ✅ ĐÃ FIX
-**Files:** `retrieval_orchestrator.py`, `neuro_symbolic_checker.py`
-**Mô tả:** Thêm whitelist cho seminal papers (Vaswani, Devlin, Sennrich, etc.)
-
-### Bug 6: CIS Calculation
-**Status:** ✅ ĐÃ FIX
-**File:** `logic/cis.py`
-**Mô tả:** Cập nhật MAPPING_PENALTIES để match với rubric
-
-### Bug 7: Reference Parsing
-**Status:** ✅ ĐÃ FIX
-**Files:** `extraction/reference_parser.py`, `citation_extractor.py`
-**Mô tả:** 
-- Extract numeric_index cho APA entries với [N] prefix
-- Fix find_reference_section() page number calculation
-
----
-
-## TASKS ĐÃ HOÀN THÀNH
-
-### Sprint 1-2 (Tuần 6-11)
-- [x] SectionSegmenter
-- [x] AuthorParser
-- [x] ReferenceListParser
-- [x] GROBID adapter
-- [x] StyleDetector
-- [x] CitationLinker
-- [x] DuplicateDetector
-- [x] DocumentParser
-- [x] CrossRef client
-- [x] OpenAlex client
-- [x] Semantic Scholar client
-- [x] arXiv client
-- [x] AuthorMatcher
-- [x] VenueNormalizer
-- [x] SourceConsensus
-- [x] FuzzyTuner
-- [x] Rules extension
-- [x] Calibration
-- [x] Output schema tách integrity vs source
-- [x] CIS calculator
-- [x] ExplanationGenerator
-- [x] Unit tests - 467 tests pass
-
-### Sprint 3 (Tuần 12-16) - Updated 2026-09-19
-- [x] Critical Bug Fixes (Bug 1, 3, 5, 6, 7)
-- [x] Frontend UI Improvements
-- [x] Bug Fix Tests (19 tests)
-- [x] **Total: 576 tests pass** (+109 from previous)
-
----
-
-## METRICS HIỆN TẠI
+## METRICS HIỆN TẠI (v1.4 - 2026-09-23)
 
 | Metric | Value |
 |--------|-------|
-| **Total Tests** | 576 passed |
+| **Version** | v1.4 |
+| **Total Tests** | 608 passed |
 | **Skipped** | 4 (GROBID Docker) |
 | **Failed** | 0 |
-| **CIS Score (thesis.pdf)** | 74.02 |
-| **Verified Citations** | 28 |
-| **Matched References** | 52 |
-| **Missing Reference** | 5 |
+| **Known Papers** | 22 |
+| **Validation Labels** | 5 (VERIFIED, METADATA_ERROR, SUSPECTED, UNRESOLVED, RESOURCE) |
+
+### Test Results - Verified Papers
+
+| Paper | CIS | Verified | Suspected | Resource | Unresolved |
+|-------|-----|----------|-----------|----------|------------|
+| BERT.pdf | **97.43** | 93.1% | 1 | 5 | 0 |
+| Attention.pdf | **92.99** | 98.6% | 1 | 0 | 0 |
+| VietDepression.pdf | **~100** | 100% | 0 | 0 | 0 |
+| Scenario A | **96.3** | 95% | 0 | 1 | 0 |
+| Scenario B | **81.1** | 73% | 1 | 4 | 0 |
 
 ---
 
-**Last updated:** 2026-09-19
+## TASKS CÒN LẠI
+
+### High Priority
+- [ ] GROBID Docker (cần máy đủ RAM)
+- [ ] Dataset annotation - ground truth
+- [ ] Baselines B0-B5
+
+### Medium Priority
+- [ ] Performance optimization - batch API calls
+- [ ] Crossref API key integration
+
+### Low Priority
+- [ ] Write thesis Chapter 1-6
+- [ ] Presentation slides
+- [ ] Demo video
+
+---
+
+**Last updated:** 2026-09-23
+**Version:** v1.4
 **Maintained by:** Nguyen Bao Minh (523H0054) & Tran Gia Thanh (523H0096)

@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
+import inspect
 import json
 import re
 from dataclasses import asdict, dataclass, field
@@ -48,12 +50,16 @@ from integrity_checker.logging import configure_logging, get_logger
 from integrity_checker.logic.cis import CISCalculator
 from integrity_checker.logic.explanation import ExplanationGenerator
 from integrity_checker.logic.neuro_symbolic_checker import NeuroSymbolicChecker
-from integrity_checker.models.citation import Citation, CitationType
+from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 from integrity_checker.models.validation import (
+    CISComponents,
     CitationIntegrityScore,
     CitationVerdict,
+    MatchFeatures,
+    ValidationLabel,
 )
 from integrity_checker.retrieval import RetrievalOrchestrator
+from integrity_checker.retrieval.normalization import citation_key
 
 logger = get_logger(__name__)
 
@@ -86,6 +92,7 @@ class AnalysisReport:
     style_profile: dict[str, Any] | None = None  # NEW v1.2 — style profile summary
     disclaimer: str = ""
     generated_at: str = ""
+    cache_hit: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize sang JSON-friendly dict."""
@@ -98,6 +105,7 @@ class AnalysisReport:
                 {
                     # Lớp 1: source verification (nhãn 4 chiều)
                     "citation_raw": v.citation.raw_text,
+                    "citation": _serialize_citation(v.citation),
                     "label": v.label.value,
                     "confidence": v.confidence,
                     # Lớp 2: integrity mapping (7 trạng thái v1.2 §3.2.2)
@@ -117,19 +125,19 @@ class AnalysisReport:
                     "triggered_rules": v.triggered_rules,
                     "mismatched_fields": v.mismatched_fields,
                     "features": {
-                        "title_sim_fuzzy": v.features.title_sim_fuzzy,
-                        "title_sim_semantic": v.features.title_sim_semantic,
-                        "author_jaccard": v.features.author_jaccard,
-                        "year_distance": v.features.year_distance,
-                        "doi_exact_match": v.features.doi_exact_match,
-                        "source_consensus": v.features.source_consensus,
+                        "title_sim_fuzzy": v.features.title_sim_fuzzy if v.features else None,
+                        "title_sim_semantic": v.features.title_sim_semantic if v.features else None,
+                        "author_jaccard": v.features.author_jaccard if v.features else None,
+                        "year_distance": v.features.year_distance if v.features else None,
+                        "doi_exact_match": v.features.doi_exact_match if v.features else None,
+                        "source_consensus": v.features.source_consensus if v.features else None,
                     },
                     # NEW v1.3: Provenance tracking
                     "provenance": {
                         "sources_succeeded": v.sources_succeeded,
                         "sources_failed": dict(v.sources_failed),
                         "api_exhausted": v.api_exhausted,
-                        "used_cache": v.used_cache,
+                        "used_local_db": v.used_local_db,
                     },
                     "warnings": _get_verdict_warnings_from_verdict(v),
                     "suggestions": ExplanationGenerator.suggestions(v),
@@ -151,7 +159,86 @@ class AnalysisReport:
             ),
             "disclaimer": self.disclaimer,
             "generated_at": self.generated_at,
+            "cache_hit": self.cache_hit,
         }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "AnalysisReport":
+        """Rehydrate a report from the persistent JSON report cache."""
+        verdicts: list[CitationVerdict] = []
+        for raw_verdict in payload.get("verdicts", []):
+            citation_data = raw_verdict.get("citation") or {
+                "raw_text": raw_verdict.get("citation_raw", ""),
+            }
+            citation = _deserialize_citation(citation_data)
+            feature_data = raw_verdict.get("features") or {}
+            features = _match_features_from_dict(feature_data)
+
+            mapping_status = raw_verdict.get("mapping_status")
+            if mapping_status:
+                mapping_status = CitationMappingStatus(mapping_status)
+            citation_link = _deserialize_citation_link(raw_verdict.get("citation_link"))
+
+            verdict = CitationVerdict(
+                citation=citation,
+                label=ValidationLabel(raw_verdict.get("label", "unresolved")),
+                confidence=float(raw_verdict.get("confidence", 0.0)),
+                mapping_status=mapping_status,
+                mapping_confidence=float(raw_verdict.get("mapping_confidence", 0.0)),
+                citation_link=citation_link,
+                features=features,
+                reasoning=raw_verdict.get("reasoning", ""),
+                triggered_rules=list(raw_verdict.get("triggered_rules", [])),
+                mismatched_fields=list(raw_verdict.get("mismatched_fields", [])),
+                is_overridden=bool(raw_verdict.get("is_overridden", False)),
+                sources_succeeded=list(
+                    (raw_verdict.get("provenance") or {}).get("sources_succeeded", [])
+                ),
+                sources_failed=dict(
+                    (raw_verdict.get("provenance") or {}).get("sources_failed", {})
+                ),
+                api_exhausted=bool(
+                    (raw_verdict.get("provenance") or {}).get("api_exhausted", False)
+                ),
+                used_local_db=bool(
+                    (raw_verdict.get("provenance") or {}).get("used_local_db", False)
+                ),
+            )
+            verdicts.append(verdict)
+
+        cis_payload = payload.get("cis")
+        cis = None
+        if cis_payload:
+            components = cis_payload.get("components") or {}
+            cis = CitationIntegrityScore(
+                score=float(cis_payload.get("score", 0.0)),
+                components=CISComponents(
+                    verified_ratio=float(components.get("verified_ratio", 0.0)),
+                    metadata_accuracy=float(components.get("metadata_accuracy", 0.0)),
+                    in_text_bib_consistency=float(
+                        components.get("in_text_bib_consistency", 0.0)
+                    ),
+                    format_consistency=float(components.get("format_consistency", 0.0)),
+                    identifier_validity=float(components.get("identifier_validity", 0.0)),
+                ),
+                weights_used=dict(cis_payload.get("weights_used") or {}),
+                num_citations=int(cis_payload.get("num_citations", 0)),
+                num_unresolved=int(cis_payload.get("num_unresolved", 0)),
+            )
+
+        return cls(
+            essay_id=int(payload.get("essay_id", 0)),
+            filename=payload.get("filename", ""),
+            num_pages=int(payload.get("num_pages", 0)),
+            num_citations=int(payload.get("num_citations", len(verdicts))),
+            verdicts=verdicts,
+            cis=cis,
+            linking_summary=dict(payload.get("linking_summary") or {}),
+            style_profile=payload.get("style_profile"),
+            disclaimer=payload.get("disclaimer", ""),
+            generated_at=payload.get("generated_at", ""),
+            cache_hit=True,
+        )
 
 
 class IntegrityPipeline:
@@ -177,6 +264,7 @@ class IntegrityPipeline:
         document_parser: DocumentParser | None = None,
         use_document_parser: bool | None = None,
         linker: CitationLinker | None = None,
+        use_report_cache: bool | None = None,
     ) -> None:
         # Legacy components (fallback path)
         self.parser = parser or self._build_default_parser()
@@ -190,11 +278,23 @@ class IntegrityPipeline:
             if use_document_parser is not None
             else True
         )
+        self._document_parser_explicit = use_document_parser is not None
         self.orchestrator = orchestrator or RetrievalOrchestrator()
         self.checker = checker or NeuroSymbolicChecker()
         self.cis_calc = cis_calc or CISCalculator()
         # NEW v1.2 §3.2.2 — CitationLinker cho in-text ↔ reference integrity
         self.linker = linker or CitationLinker()
+        settings = get_settings()
+        self._use_report_cache = (
+            use_report_cache
+            if use_report_cache is not None
+            else (
+                settings.app.env.casefold() not in {"test", "testing"}
+                and orchestrator is None
+                and checker is None
+            )
+        )
+        self._report_cache_dir = settings.paths.cache_dir / "reports"
 
     def _build_default_parser(self) -> BasePDFParser:
         """Theo config: mupdf | pdfplumber | hybrid (mupdf → pdfplumber fallback)."""
@@ -204,6 +304,52 @@ class IntegrityPipeline:
         if mode == "pdfplumber":
             return PdfPlumberParser()
         return chain_parsers([MuPdfParser(), PdfPlumberParser()])
+
+    @staticmethod
+    def _pdf_sha256(pdf_path: str) -> str | None:
+        """Compute a stable content hash without loading the whole PDF."""
+        path = Path(pdf_path)
+        if not path.is_file():
+            return None
+        digest = hashlib.sha256()
+        try:
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+        except OSError:
+            return None
+        return digest.hexdigest()
+
+    def _report_cache_key(self, pdf_path: str) -> str | None:
+        digest = self._pdf_sha256(pdf_path)
+        return f"report-v3-{digest}" if digest else None
+
+    def _report_cache_path(self, cache_key: str) -> Path:
+        return self._report_cache_dir / f"{cache_key}.json"
+
+    def _load_report_cache(self, cache_key: str) -> AnalysisReport | None:
+        path = self._report_cache_path(cache_key)
+        if not path.is_file():
+            return None
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            return AnalysisReport.from_dict(payload)
+        except (OSError, json.JSONDecodeError, TypeError, ValueError, KeyError) as exc:
+            logger.warning(f"Invalid report cache {path}: {exc}; recomputing")
+            return None
+
+    def _save_report_cache(self, cache_key: str, report: AnalysisReport) -> None:
+        path = self._report_cache_path(cache_key)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temp_path = path.with_suffix(".tmp")
+            temp_path.write_text(
+                json.dumps(report.to_dict(), ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            temp_path.replace(path)
+        except OSError as exc:
+            logger.warning(f"Could not write report cache {path}: {exc}")
 
     # -- sync entry (CLI / tests) --
 
@@ -227,6 +373,27 @@ class IntegrityPipeline:
             7. AnalysisReport
         """
         logger.info(f"Pipeline start: {pdf_path}")
+
+        if (
+            not Path(pdf_path).is_file()
+            and self._use_document_parser
+            and not self._document_parser_explicit
+        ):
+            # Preserve the legacy sync API contract for callers that did not
+            # explicitly opt into DocumentParser's graceful empty-report mode.
+            raise FileNotFoundError(pdf_path)
+
+        cache_key = self._report_cache_key(pdf_path)
+        if cache_key and self._use_report_cache:
+            cached_report = self._load_report_cache(cache_key)
+            if cached_report is not None:
+                cached_report.essay_id = essay_id
+                cached_report.filename = Path(pdf_path).name
+                logger.info(
+                    f"Report cache HIT: {Path(pdf_path).name} "
+                    f"(sha256={cache_key.removeprefix('report-v3-')[:12]}...)"
+                )
+                return cached_report
 
         # 1. Parse PDF
         num_pages = 0
@@ -283,11 +450,28 @@ class IntegrityPipeline:
             in_text_citations, ref_citations, []
         )
 
-        # 2. Retrieve + check từng citation (PARALLEL cho tốc độ)
-        sources = await asyncio.gather(
-            *(self.orchestrator.retrieve(c) for c in all_citations),
+        # 2. Retrieve + check từng citation (PARALLEL cho tốc độ).  Keep one
+        # verdict per extracted citation, but retrieve one canonical paper
+        # only once when a bibliography entry and in-text occurrence refer to
+        # the same paper.
+        unique_citations: dict[str, Citation] = {}
+        citation_keys: list[str] = []
+        for citation in all_citations:
+            key = citation_key(citation)
+            citation_keys.append(key)
+            unique_citations.setdefault(key, citation)
+
+        unique_sources = await asyncio.gather(
+            *(self.orchestrator.retrieve(c) for c in unique_citations.values()),
             return_exceptions=False,
         )
+        source_by_key = dict(zip(unique_citations, unique_sources))
+        sources = [source_by_key[key] for key in citation_keys]
+        if len(unique_citations) != len(all_citations):
+            logger.info(
+                f"Retrieval dedupe: {len(all_citations)} citations -> "
+                f"{len(unique_citations)} unique paper keys"
+            )
 
         verdicts: list[CitationVerdict] = []
         for citation, source in zip(all_citations, sources):
@@ -362,19 +546,25 @@ class IntegrityPipeline:
 
             # NEW v1.3: Provenance tracking - compute before calling checker
             api_exhausted = len(source.sources_succeeded) == 0 and len(source.sources_failed) > 0
-            used_cache = source.sources_succeeded == ["local_db"] if source.sources_succeeded else False
+            used_local_db = source.sources_succeeded == ["local_db"] if source.sources_succeeded else False
 
             # Pass mapping_status + style_profile + citation_context + provenance vào checker
-            verdict = self.checker.check(
-                citation,
-                source,
-                mapping_status=mapping_status,
-                style_profile=style_profile,
-                citation_context=citation_context,
-                # NEW v1.3: Provenance tracking
-                api_exhausted=api_exhausted,
-                used_cache=used_cache,
-            )
+            check_kwargs = {
+                "mapping_status": mapping_status,
+                "style_profile": style_profile,
+                "citation_context": citation_context,
+                "api_exhausted": api_exhausted,
+                "used_local_db": used_local_db,
+            }
+            # Older injected checkers (used by downstream integrations and
+            # legacy tests) do not accept the v1.3 provenance parameters.
+            accepted = inspect.signature(self.checker.check).parameters
+            check_kwargs = {
+                key: value
+                for key, value in check_kwargs.items()
+                if key in accepted
+            }
+            verdict = self.checker.check(citation, source, **check_kwargs)
             verdict.mapping_status = mapping_status
             verdict.mapping_confidence = mapping_confidence
             verdict.citation_link = citation_link
@@ -383,7 +573,7 @@ class IntegrityPipeline:
             verdict.sources_succeeded = source.sources_succeeded
             verdict.sources_failed = source.sources_failed
             verdict.api_exhausted = api_exhausted
-            verdict.used_cache = used_cache
+            verdict.used_local_db = used_local_db
 
             verdicts.append(verdict)
             logger.debug(
@@ -416,6 +606,8 @@ class IntegrityPipeline:
         logger.info(
             f"Pipeline done: {report.num_citations} citations, CIS={cis.score:.1f}/100"
         )
+        if cache_key and self._use_report_cache:
+            self._save_report_cache(cache_key, report)
         return report
 
     @staticmethod
@@ -707,6 +899,127 @@ class IntegrityPipeline:
 # ============================================================
 
 
+def _serialize_author(author: Any) -> str:
+    """Serialize parser Author objects and plain strings uniformly."""
+    if isinstance(author, str):
+        return author
+    if hasattr(author, "last_name"):
+        parts = [getattr(author, "last_name", "")]
+        for attr in ("first_name", "middle_name"):
+            value = getattr(author, attr, None)
+            if value:
+                parts.append(value)
+        return " ".join(part for part in parts if part)
+    return str(author)
+
+
+def _serialize_citation(citation: Citation) -> dict[str, Any]:
+    """Serialize all citation metadata needed by report-cache rehydration."""
+    return {
+        "raw_text": citation.raw_text,
+        "citation_type": citation.citation_type.value,
+        "style": citation.style.value,
+        "authors": [_serialize_author(author) for author in (citation.authors or [])],
+        "year": citation.year,
+        "title": citation.title,
+        "venue": citation.venue,
+        "doi": citation.doi,
+        "url": citation.url,
+        "volume": citation.volume,
+        "issue": citation.issue,
+        "pages": citation.pages,
+        "title_normalized": citation.title_normalized,
+        "year_suffix": citation.year_suffix,
+        "order_index": citation.order_index,
+        "numeric_index": citation.numeric_index,
+        "page_num": citation.page_num,
+        "paragraph_num": citation.paragraph_num,
+        "matched_pattern": citation.matched_pattern,
+        "raw_in_text_citation": citation.raw_in_text_citation,
+        "confidence": citation.confidence,
+        "reference_id": citation.reference_id,
+        "context": citation.context,
+    }
+
+
+def _deserialize_citation(data: dict[str, Any]) -> Citation:
+    """Deserialize a cached citation without rerunning PDF extraction."""
+    try:
+        citation_type = CitationType(data.get("citation_type", CitationType.UNKNOWN.value))
+    except ValueError:
+        citation_type = CitationType.UNKNOWN
+    try:
+        style = CitationStyle(data.get("style", CitationStyle.UNKNOWN.value))
+    except ValueError:
+        style = CitationStyle.UNKNOWN
+    return Citation(
+        raw_text=data.get("raw_text", ""),
+        citation_type=citation_type,
+        style=style,
+        authors=list(data.get("authors") or []),
+        year=data.get("year"),
+        title=data.get("title"),
+        venue=data.get("venue"),
+        doi=data.get("doi"),
+        url=data.get("url"),
+        volume=data.get("volume"),
+        issue=data.get("issue"),
+        pages=data.get("pages"),
+        title_normalized=data.get("title_normalized"),
+        year_suffix=data.get("year_suffix"),
+        order_index=int(data.get("order_index", 0)),
+        numeric_index=data.get("numeric_index"),
+        page_num=int(data.get("page_num", 0)),
+        paragraph_num=int(data.get("paragraph_num", 0)),
+        matched_pattern=data.get("matched_pattern"),
+        raw_in_text_citation=data.get("raw_in_text_citation"),
+        confidence=float(data.get("confidence", 0.0)),
+        reference_id=data.get("reference_id"),
+        context=data.get("context"),
+    )
+
+
+def _match_features_from_dict(data: dict[str, Any]) -> MatchFeatures:
+    """Build ``MatchFeatures`` while tolerating older cache schemas."""
+    return MatchFeatures(
+        title_sim_fuzzy=float(data.get("title_sim_fuzzy", 0.0)),
+        title_sim_semantic=float(data.get("title_sim_semantic", 0.0)),
+        author_jaccard=float(data.get("author_jaccard", 0.0)),
+        year_distance=int(data.get("year_distance", 999)),
+        doi_exact_match=bool(data.get("doi_exact_match", False)),
+        source_consensus=int(data.get("source_consensus", 0)),
+        content_alignment_score=float(data.get("content_alignment_score", 0.0)),
+        content_alignment_confidence=data.get("content_alignment_confidence", ""),
+        content_is_aligned=bool(data.get("content_is_aligned", False)),
+    )
+
+
+def _deserialize_citation_link(data: Any) -> CitationLink | None:
+    """Deserialize an optional linker edge from a cached report."""
+    if not data:
+        return None
+    try:
+        status = CitationMappingStatus(data.get("status", CitationMappingStatus.UNRESOLVED.value))
+    except ValueError:
+        status = CitationMappingStatus.UNRESOLVED
+    try:
+        from integrity_checker.models.validation import MappingMethod
+
+        method = MappingMethod(data.get("method", MappingMethod.NO_KEYS.value))
+    except ValueError:
+        method = "no_keys"
+    return CitationLink(
+        occurrence_id=data.get("occurrence_id", ""),
+        reference_id=data.get("reference_id"),
+        status=status,
+        confidence=float(data.get("confidence", 0.0)),
+        method=method,
+        evidence=dict(data.get("evidence") or {}),
+        page=int(data.get("page", 0)),
+        section=data.get("section", ""),
+    )
+
+
 def _serialize_verdict_for_json(v: CitationVerdict) -> dict[str, Any]:
     """CitationVerdict không JSON-serializable do Citation dataclass nested."""
     return {
@@ -729,7 +1042,7 @@ def _serialize_verdict_for_json(v: CitationVerdict) -> dict[str, Any]:
             "sources_succeeded": v.sources_succeeded,
             "sources_failed": v.sources_failed,
             "api_exhausted": v.api_exhausted,
-            "used_cache": v.used_cache,
+            "used_local_db": v.used_local_db,
         },
         "warnings": _get_verdict_warnings(v),
     }
@@ -747,8 +1060,8 @@ def _get_verdict_warnings_from_verdict(v: CitationVerdict) -> list[str]:
     if v.api_exhausted:
         warnings.append("API_EXHAUSTED: All external APIs failed - verification based on limited data")
 
-    if v.used_cache and not v.api_exhausted:
-        warnings.append("CACHE_HIT: Result from local cache - may be stale")
+    if v.used_local_db and not v.api_exhausted:
+        warnings.append("LOCAL_DB: Result from local database")
 
     if v.api_exhausted and v.label.value == "verified":
         warnings.append("CAUTION: Verified despite API failures - confidence reduced")
@@ -833,6 +1146,7 @@ def main() -> None:
             "metadata_error": "△",
             "suspected_hallucination": "✗",
             "unresolved": "?",
+            "resource": "🔗",
         }[v.label.value]
 
         # Build provenance string
@@ -845,7 +1159,7 @@ def main() -> None:
         prov_str = f" ({', '.join(prov_parts)})" if prov_parts else ""
 
         # Add warnings indicator
-        warn_indicator = " ⚠" if v.api_exhausted or v.used_cache else ""
+        warn_indicator = " ⚠" if v.api_exhausted or v.used_local_db else ""
 
         print(
             f"  {marker} [{v.label.value:25s}] conf={v.confidence:.0%}{prov_str}{warn_indicator}  "

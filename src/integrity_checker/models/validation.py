@@ -21,7 +21,7 @@ from integrity_checker.models.source import SourceResult
 
 
 class ValidationLabel(str, Enum):
-    """Taxonomy 4 nhãn -- đề cương §5.2.
+    """Taxonomy 5 nhãn -- đề cương §5.2.
 
     BẮT BUỘC dùng đúng các giá trị này (lowercase) để serialize/UI.
     """
@@ -30,6 +30,7 @@ class ValidationLabel(str, Enum):
     METADATA_ERROR = "metadata_error"
     SUSPECTED_HALLUCINATION = "suspected_hallucination"
     UNRESOLVED = "unresolved"
+    RESOURCE = "resource"  # URL/Reference links, không phải academic citations
 
     @property
     def color(self) -> str:
@@ -39,6 +40,7 @@ class ValidationLabel(str, Enum):
             ValidationLabel.METADATA_ERROR: "#ca8a04",         # vàng
             ValidationLabel.SUSPECTED_HALLUCINATION: "#dc2626",  # đỏ
             ValidationLabel.UNRESOLVED: "#6b7280",             # xám
+            ValidationLabel.RESOURCE: "#8b5cf6",              # tím - URLs/Resources
         }[self]
 
 
@@ -137,7 +139,7 @@ class CitationVerdict:
     sources_succeeded: list[str] = field(default_factory=list)  # e.g. ["crossref", "openalex"]
     sources_failed: dict[str, str] = field(default_factory=dict)  # e.g. {"semantic_scholar": "429 Too Many Requests"}
     api_exhausted: bool = False  # True if all external APIs failed
-    used_cache: bool = False  # True if result came from cache
+    used_local_db: bool = False  # True if result came from local database
 
 
 @dataclass

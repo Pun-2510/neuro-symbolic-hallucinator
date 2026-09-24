@@ -108,7 +108,7 @@ class ExplanationGenerator:
         if best.venue:
             parts.append(f"venue={best.venue}")
         if best.cached:
-            parts.append("(từ cache)")
+            parts.append("(từ local DB)")
 
         return ", ".join(parts)
 

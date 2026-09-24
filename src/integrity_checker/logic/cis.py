@@ -96,12 +96,14 @@ class CISCalculator:
             + components.identifier_validity * self.w.identifier_validity
         ) * 100.0
 
-        num_unresolved = sum(1 for v in verdicts if v.label == ValidationLabel.UNRESOLVED)
+        num_unresolved = sum(1 for v in verdicts if v.label in (ValidationLabel.UNRESOLVED, ValidationLabel.RESOURCE))
+        num_citations = len(verdicts)
+        num_academic = sum(1 for v in verdicts if v.label != ValidationLabel.RESOURCE)
         return CitationIntegrityScore(
             score=round(score, 2),
             components=components,
             weights_used=self.w.model_dump(),
-            num_citations=len(verdicts),
+            num_citations=num_citations,
             num_unresolved=num_unresolved,
         )
 
@@ -119,11 +121,15 @@ class CISCalculator:
         meta_err = sum(1 for v in verdicts if v.label == ValidationLabel.METADATA_ERROR)
         halluc = sum(1 for v in verdicts if v.label == ValidationLabel.SUSPECTED_HALLUCINATION)
 
-        # 1. Verified ratio — tỉ lệ citations được verify bởi retrieval
-        verified_ratio = verified / n
+        # Filter out RESOURCE (URLs/References) from academic citation stats
+        academic_verdicts = [v for v in verdicts if v.label != ValidationLabel.RESOURCE]
+        n_academic = len(academic_verdicts)
 
-        # 2. Metadata accuracy = 1 - (METADATA_ERROR + SUSPECTED) / n
-        metadata_accuracy = max(0.0, 1.0 - (meta_err + halluc) / n)
+        # 1. Verified ratio — tỉ lệ academic citations được verify
+        verified_ratio = verified / n_academic if n_academic > 0 else 0.0
+
+        # 2. Metadata accuracy = 1 - (METADATA_ERROR + SUSPECTED) / academic citations
+        metadata_accuracy = max(0.0, 1.0 - (meta_err + halluc) / n_academic) if n_academic > 0 else 0.0
 
         # 3. In-text ↔ bib consistency — TÍNH TỪ CitationLinker (không còn stub)
         # 2 strategies (ưu tiên linking_result nếu có):

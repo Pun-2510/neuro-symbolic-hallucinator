@@ -29,6 +29,7 @@ from integrity_checker.pipeline.integrity_pipeline import (
     IntegrityPipeline,
 )
 from integrity_checker.retrieval.cache import DiskCache
+from integrity_checker.retrieval.normalization import citation_key
 
 ESSAYS_DIR = Path("data/essays")
 
@@ -286,5 +287,8 @@ class TestPipelineV12WithMockedRetrieval:
             str(ESSAYS_DIR / "essay_01_real_only.pdf"), essay_id=1
         )
 
-        assert call_count["n"] == report.num_citations
+        # Retrieval is deduplicated by canonical paper identity while the
+        # report still retains one verdict per extracted citation.
+        expected_unique = len({citation_key(v.citation) for v in report.verdicts})
+        assert call_count["n"] == expected_unique
         assert call_count["n"] >= 1

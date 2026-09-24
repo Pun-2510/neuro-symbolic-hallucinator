@@ -18,7 +18,7 @@ class SourceCandidate:
         score: score do source trả về (relevance), không dùng làm ground truth.
         confidence: 0.0–1.0, do source tự gán (thường heuristic của source).
         error: thông báo lỗi nếu API call thất bại.
-        cached: True nếu lấy từ disk cache.
+        cached: True nếu lấy từ local database (DB hoặc known papers).
     """
 
     source_name: str
@@ -37,6 +37,7 @@ class SourceCandidate:
 
     error: Optional[str] = None
     cached: bool = False
+    paper_id: int | None = None  # local_papers.db row id, when available
 
     def fingerprint(self) -> str:
         """Hash key để dedupe giữa các nguồn.
@@ -61,6 +62,7 @@ class SourceResult:
     sources_queried: list[str] = field(default_factory=list)
     sources_succeeded: list[str] = field(default_factory=list)
     sources_failed: dict[str, str] = field(default_factory=dict)  # source → error
+    api_exhausted: bool = False
 
     def best_candidate(self) -> Optional[SourceCandidate]:
         """Trả về candidate tốt nhất (highest confidence) trong số found=True."""

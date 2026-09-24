@@ -18,6 +18,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Generator
 
+from integrity_checker.retrieval.normalization import (
+    author_keys,
+    normalize_arxiv_id,
+    normalize_doi,
+    title_similarity,
+    title_tokens,
+    year_key,
+)
+
 from .models import Paper, QueryLog
 from .schemas import INIT_STATEMENTS
 
@@ -74,6 +83,17 @@ class LocalDatabase:
         Returns:
             Paper ID if successful, None if failed
         """
+        paper.doi = normalize_doi(paper.doi)
+        paper.arxiv_id = normalize_arxiv_id(paper.arxiv_id)
+
+        # SQLite UNIQUE permits multiple NULL values.  API results without a
+        # DOI would therefore be inserted repeatedly on every run.  Reuse an
+        # existing metadata record before attempting the insert.
+        if not paper.doi:
+            existing = self._find_existing_metadata_paper(paper)
+            if existing is not None:
+                return existing.id
+
         with self._get_conn() as conn:
             cursor = conn.execute(
                 """
@@ -106,7 +126,41 @@ class LocalDatabase:
                 ),
             )
             conn.commit()
-            return cursor.lastrowid
+            if cursor.lastrowid:
+                return cursor.lastrowid
+
+            # ``ON CONFLICT(doi) DO UPDATE`` can return a zero/ambiguous
+            # lastrowid.  Resolve the actual row id for query provenance.
+            if paper.doi:
+                row = conn.execute(
+                    "SELECT id FROM papers WHERE doi = ? COLLATE NOCASE",
+                    (paper.doi,),
+                ).fetchone()
+                return int(row["id"]) if row else None
+            return None
+
+    def _find_existing_metadata_paper(self, paper: Paper) -> Paper | None:
+        """Find an existing no-DOI record using normalized metadata."""
+        if not paper.title:
+            return None
+        candidates = self.fuzzy_search(
+            title=paper.title,
+            authors=paper.authors,
+            year=paper.year,
+            limit=20,
+        )
+        for candidate in candidates:
+            if title_similarity(paper.title, candidate.title) < 0.90:
+                continue
+            query_year = year_key(paper.year)
+            if query_year and candidate.year and abs(query_year - candidate.year) > 1:
+                continue
+            query_authors = author_keys(paper.authors)
+            candidate_authors = author_keys(candidate.authors)
+            if query_authors and candidate_authors and not query_authors & candidate_authors:
+                continue
+            return candidate
+        return None
 
     def get_paper(self, paper_id: int) -> Paper | None:
         """Get paper by ID."""
@@ -130,14 +184,9 @@ class LocalDatabase:
         if not doi:
             return None
 
-        # Normalize DOI
-        doi = doi.strip().lower()
-        if doi.startswith("https://doi.org/"):
-            doi = doi[16:]
-        elif doi.startswith("http://doi.org/"):
-            doi = doi[15:]
-        elif doi.startswith("doi.org/"):
-            doi = doi[9:]
+        doi = normalize_doi(doi)
+        if not doi:
+            return None
 
         with self._get_conn() as conn:
             row = conn.execute(
@@ -157,14 +206,9 @@ class LocalDatabase:
         if not arxiv_id:
             return None
 
-        # Normalize arXiv ID
-        arxiv_id = arxiv_id.strip()
-        if arxiv_id.startswith("https://arxiv.org/abs/"):
-            arxiv_id = arxiv_id[21:]
-        elif arxiv_id.startswith("http://arxiv.org/abs/"):
-            arxiv_id = arxiv_id[22:]
-        elif arxiv_id.startswith("arxiv:"):
-            arxiv_id = arxiv_id[6:]
+        arxiv_id = normalize_arxiv_id(arxiv_id)
+        if not arxiv_id:
+            return None
 
         with self._get_conn() as conn:
             row = conn.execute(
@@ -191,8 +235,12 @@ class LocalDatabase:
             List of matching papers
         """
         with self._get_conn() as conn:
-            # Build FTS query
-            fts_query = f'"{title}"'
+            tokens = title_tokens(title)
+            if not tokens:
+                return []
+            # Match all meaningful words instead of the raw title string.
+            # This tolerates terminal punctuation and Unicode dash variants.
+            fts_query = " AND ".join(f'"{token}"' for token in tokens)
 
             if year:
                 query = """
@@ -230,7 +278,7 @@ class LocalDatabase:
     def fuzzy_search(
         self,
         title: str | None = None,
-        authors: list[str] | None = None,
+        authors: list[str] | str | None = None,
         year: int | None = None,
         limit: int = 10,
     ) -> list[Paper]:
@@ -248,36 +296,60 @@ class LocalDatabase:
         Returns:
             List of matching papers
         """
-        conditions = []
-        params = []
+        query_authors = author_keys(authors)
+        query_year = year_key(year)
+        query_tokens = title_tokens(title)
 
-        if title:
-            conditions.append("title LIKE ?")
-            params.append(f"%{title}%")
-
-        if year:
-            conditions.append("year BETWEEN ? AND ?")
-            params.extend([year - 1, year + 1])
-
-        if authors:
-            # Search in authors field (JSON array)
-            author_condition = " OR ".join(["authors LIKE ?" for _ in authors])
-            conditions.append(f"({author_condition})")
-            params.extend([f"%{a}%" for a in authors])
-
-        where_clause = " AND ".join(conditions) if conditions else "1=1"
-
-        query = f"""
-            SELECT * FROM papers
-            WHERE {where_clause}
-            ORDER BY year DESC
-            LIMIT ?
-        """
-        params.append(limit)
-
+        # FTS narrows the 80k+ ACL rows efficiently.  If an old database was
+        # created before FTS was populated, fall back to a broad title query.
+        rows: list[sqlite3.Row] = []
         with self._get_conn() as conn:
-            rows = conn.execute(query, params).fetchall()
-            return [Paper.from_dict(dict(row)) for row in rows]
+            if query_tokens:
+                fts_query = " AND ".join(f'"{token}"' for token in query_tokens)
+                rows = conn.execute(
+                    """
+                    SELECT p.*
+                    FROM papers_fts
+                    JOIN papers p ON papers_fts.rowid = p.id
+                    WHERE papers_fts MATCH ?
+                    LIMIT ?
+                    """,
+                    (fts_query, max(limit * 20, 50)),
+                ).fetchall()
+
+            if not rows and title:
+                first_token = query_tokens[0] if query_tokens else str(title)
+                rows = conn.execute(
+                    "SELECT * FROM papers WHERE lower(title) LIKE ? LIMIT ?",
+                    (f"%{first_token.casefold()}%", max(limit * 20, 50)),
+                ).fetchall()
+
+        papers = [Paper.from_dict(dict(row)) for row in rows]
+        scored: list[tuple[float, Paper]] = []
+        for paper in papers:
+            score = title_similarity(title, paper.title) if title else 0.0
+            if title and score < 0.70:
+                continue
+
+            candidate_authors = author_keys(paper.authors)
+            author_match = bool(query_authors & candidate_authors)
+            if query_authors and candidate_authors and not author_match:
+                # A title containing generic words such as "transfer learning"
+                # is not enough to identify a paper.  Require the first author
+                # whenever both sides provide author metadata.
+                continue
+
+            if query_year and paper.year:
+                distance = abs(query_year - paper.year)
+                if distance > 3:
+                    continue
+                score += max(0.0, 0.08 - distance * 0.02)
+            if author_match:
+                score += 0.08
+            scored.append((score, paper))
+
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [paper for _, paper in scored[:limit]]
 
     # ==================== Query Logging ====================
 

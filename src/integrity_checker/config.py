@@ -168,6 +168,7 @@ class SourceToggleConfig(BaseModel):
     crossref: bool = True
     openalex: bool = True
     semantic_scholar: bool = True
+    serpapi: bool = True  # Fallback khi các API free thất bại
     arxiv: bool = True
 
 
@@ -181,12 +182,8 @@ class RateLimitsConfig(BaseModel):
     semantic_scholar_per_sec: float = 1.0
     # Crossref: moderate with polite pool + API key (3 req/s recommended)
     crossref_per_sec: float = 3.0
-
-
-class CacheConfig(BaseModel):
-    enabled: bool = True
-    ttl_seconds: int = 86400
-    include_source_in_key: bool = True   # MỚI v1.2 — tránh trộn nhầm giữa các nguồn
+    # SerpApi: conservative (rate limit depends on subscription)
+    serpapi_per_sec: float = 1.0
 
 
 class RetryBackoffConfig(BaseModel):
@@ -215,7 +212,6 @@ class RetrievalConfig(BaseModel):
     sources: SourceToggleConfig = Field(default_factory=SourceToggleConfig)
     per_source_top_k: int = 5
     parallel: bool = True
-    cache: CacheConfig = Field(default_factory=CacheConfig)
     retry: RetryConfig = Field(default_factory=RetryConfig)   # MỚI v1.2
     rate_limits: RateLimitsConfig = Field(default_factory=RateLimitsConfig)
     contact_email: str = "iannwendii@gmail.com"
@@ -348,6 +344,7 @@ class Settings(BaseSettings):
     # Env override
     contact_email: str = "iannwendii@gmail.com"
     s2_api_key: str = ""
+    serpapi_api_key: str = ""  # SerpApi API key (SERPAPI_API_KEY)
     config_file: Path | None = None
 
     model_config = SettingsConfigDict(
@@ -394,7 +391,11 @@ def get_settings() -> Settings:
     """Lazy singleton — load .env + YAML nếu có, merge với env."""
     # Load .env file first
     from dotenv import load_dotenv
-    load_dotenv(Path(".env"), override=True)
+    # Respect process-level overrides (pytest, Docker, CI) over the local
+    # developer .env file.  The previous ``override=True`` made APP_ENV=test
+    # ineffective and accidentally enabled production report/local-db caches
+    # during tests.
+    load_dotenv(Path(".env"), override=False)
 
     config_file = Path("configs/config.yaml")
     if not config_file.exists():

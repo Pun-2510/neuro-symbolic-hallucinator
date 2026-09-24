@@ -11,6 +11,7 @@ Test các scenarios:
 
 from __future__ import annotations
 
+import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -303,9 +304,14 @@ class TestRetrievalOrchestratorPartialFailure:
             cache=mock_cache,
         )
 
-        result = await orchestrator.retrieve(mock_citation)
+        # Mock SerpApi fallback to not be called (returns None)
+        # This test verifies the behavior before SerpApi fallback kicks in
+        with patch.object(
+            orchestrator, "_lookup_serpapi_fallback", return_value=None
+        ):
+            result = await orchestrator.retrieve(mock_citation)
 
-        # All sources failed
+        # All sources failed (serpapi not called in this scenario)
         assert len(result.sources_succeeded) == 0
         assert len(result.sources_failed) == 4
         # Candidates list still contains failed candidates (for debugging)
@@ -654,7 +660,20 @@ class TestArxivDoiRouting:
         arxiv_doi_citation,
         mock_cache,
     ):
-        """arXiv DOI citation should only query S2 and arXiv, not Crossref/OpenAlex."""
+        """arXiv DOI citation should only query S2 and arXiv, not Crossref/OpenAlex.
+
+        Note: Vaswani 2017 is in known_papers, so it returns early.
+        Use a different citation to test the routing logic.
+        """
+        # Use a different arXiv citation that's not in known_papers
+        other_arxiv_citation = Citation(
+            raw_text="Brown et al. (2020). Language Models are Few-Shot Learners. arXiv:2005.14165.",
+            title="Language Models are Few-Shot Learners",
+            year="2020",
+            doi="10.48550/arXiv.2005.14165",
+            authors=[],
+        )
+
         # Create mock clients
         mock_crossref = AsyncMock()
         mock_crossref.name = "crossref"
@@ -671,13 +690,13 @@ class TestArxivDoiRouting:
         mock_s2 = AsyncMock()
         mock_s2.name = "semantic_scholar"
         mock_s2.lookup.return_value = SourceCandidate(
-            source_name="semantic_scholar", found=True, doi="10.48550/arXiv.1706.03762", confidence=0.95
+            source_name="semantic_scholar", found=True, doi="10.48550/arXiv.2005.14165", confidence=0.95
         )
 
         mock_arxiv = AsyncMock()
         mock_arxiv.name = "arxiv"
         mock_arxiv.lookup.return_value = SourceCandidate(
-            source_name="arxiv", found=True, title="Attention Is All You Need", confidence=0.90
+            source_name="arxiv", found=True, title="Language Models are Few-Shot Learners", confidence=0.90
         )
 
         orchestrator = RetrievalOrchestrator(
@@ -689,9 +708,9 @@ class TestArxivDoiRouting:
             cache=mock_cache,
         )
 
-        result = await orchestrator.retrieve(arxiv_doi_citation)
+        result = await orchestrator.retrieve(other_arxiv_citation)
 
-        # Only S2 and arXiv should be queried
+        # Only S2 and arXiv should be queried (crossref/openalex skipped for arXiv DOIs)
         assert set(result.sources_queried) == {"semantic_scholar", "arxiv"}
         assert "crossref" not in result.sources_queried
         assert "openalex" not in result.sources_queried
@@ -753,10 +772,21 @@ class TestArxivDoiRouting:
     @pytest.mark.asyncio
     async def test_arxiv_doi_health_check_with_2_sources(
         self,
-        arxiv_doi_citation,
         mock_cache,
     ):
-        """arXiv DOI with 2 failing sources should trigger UNRESOLVED."""
+        """arXiv DOI with 2 failing sources should trigger UNRESOLVED.
+
+        Note: Use a citation not in known_papers to test the health check logic.
+        """
+        # Use a different arXiv citation that's not in known_papers
+        other_arxiv_citation = Citation(
+            raw_text="Some Author et al. (2019). Some Paper. arXiv:1901.01234.",
+            title="Some Paper",
+            year="2019",
+            doi="10.48550/arXiv.1901.01234",
+            authors=["Some Author"],
+        )
+
         mock_s2 = AsyncMock()
         mock_s2.name = "semantic_scholar"
         mock_s2.lookup.return_value = SourceCandidate(
@@ -778,7 +808,11 @@ class TestArxivDoiRouting:
             cache=mock_cache,
         )
 
-        result = await orchestrator.retrieve(arxiv_doi_citation)
+        # Mock SerpApi fallback to not be called
+        with patch.object(
+            orchestrator, "_lookup_serpapi_fallback", return_value=None
+        ):
+            result = await orchestrator.retrieve(other_arxiv_citation)
 
         # Both sources failed
         assert len(result.sources_succeeded) == 0

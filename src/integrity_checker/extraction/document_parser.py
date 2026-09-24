@@ -376,6 +376,11 @@ class DocumentParser:
                 venue=bib.venue,
                 doi=bib.doi,
                 order_index=idx,
+                # GROBID bibliography entries are structured and may not
+                # retain the printed ``[N]`` marker.  Their document order is
+                # the numeric reference index used by IEEE/Vancouver in-text
+                # citations.
+                numeric_index=idx,
                 year_suffix=year_suffix,
                 confidence=0.9,  # GROBID quality thường cao
             )

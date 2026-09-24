@@ -1,0 +1,2382 @@
+[
+  {
+    "citation_id": "eval_0001",
+    "citation_raw": "Edunov et al. (2018)",
+    "citation_formatted": "Edunov et al. (2018). Understanding Back-Translation at Scale. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Edunov et al.",
+      "year": 2018,
+      "title": "Understanding Back-Translation at Scale",
+      "venue": "EMNLP",
+      "doi": "10.18653/v1/D18-1045"
+    }
+  },
+  {
+    "citation_id": "eval_0002",
+    "citation_raw": "Rocktäschel et al. (2016)",
+    "citation_formatted": "Rocktäschel et al. (2016). Reasoning about Entailment with Neural Attention. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Rocktäschel et al.",
+      "year": 2016,
+      "title": "Reasoning about Entailment with Neural Attention",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1509.06664"
+    }
+  },
+  {
+    "citation_id": "eval_0003",
+    "citation_raw": "Velickovic et al. (2018)",
+    "citation_formatted": "Velickovic et al. (2018). Graph Attention Networks. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Velickovic et al.",
+      "year": 2018,
+      "title": "Graph Attention Networks",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1710.10903"
+    }
+  },
+  {
+    "citation_id": "eval_0004",
+    "citation_raw": "Radford et al. (2021)",
+    "citation_formatted": "Radford et al. (2021). Learning Transferable Visual Models From Natural Language Supervision. ICML.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Radford et al.",
+      "year": 2021,
+      "title": "Learning Transferable Visual Models From Natural Language Supervision",
+      "venue": "ICML",
+      "doi": "10.48550/arXiv.2103.00020"
+    }
+  },
+  {
+    "citation_id": "eval_0005",
+    "citation_raw": "Fictional Scholar (2016)",
+    "citation_formatted": "Fictional Scholar (2016). Advanced Techniques in Imaginary Science. Review of Pseudoscientific Studies.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_title",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0006",
+    "citation_raw": "Velickovic et al. (2027)",
+    "citation_formatted": "Velickovic et al. (2027). Graph Attention Networks. ICLR.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_year",
+    "original_paper": {
+      "authors": "Velickovic et al.",
+      "year": 2018,
+      "title": "Graph Attention Networks",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1710.10903"
+    }
+  },
+  {
+    "citation_id": "eval_0007",
+    "citation_raw": "Goodfellow et al. (2087)",
+    "citation_formatted": "Goodfellow et al. (2087). Generative Adversarial Networks. NeurIPS.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0008",
+    "citation_raw": "Counterfeit Scholar (2019)",
+    "citation_formatted": "Counterfeit Scholar (2019). Quantum Dreams and Fake Realities. Advances in Counterfeit Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0009",
+    "citation_raw": "Artificial Author (2017)",
+    "citation_formatted": "Artificial Author (2017). A Novel Approach to Fake Research. International Conference on Made-Up Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_title",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0010",
+    "citation_raw": "Kipf and Welling (2078)",
+    "citation_formatted": "Kipf and Welling (2078). Semi-Supervised Classification with Graph Convolutional Networks. ICLR.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0011",
+    "citation_raw": "Wang et al. (2032)",
+    "citation_formatted": "Wang et al. (2032). Glue: A Multi-Task Benchmark. ICLR.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_year",
+    "original_paper": {
+      "authors": "Wang et al.",
+      "year": 2018,
+      "title": "Glue: A Multi-Task Benchmark",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1804.07461"
+    }
+  },
+  {
+    "citation_id": "eval_0012",
+    "citation_raw": "Sutskever et al. (2014)",
+    "citation_formatted": "Sutskever et al. (2014). Quantum Dreams and Fake Realities. NeurIPS.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_title",
+    "original_paper": {
+      "authors": "Sutskever et al.",
+      "year": 2014,
+      "title": "Sequence to Sequence Learning with Neural Networks",
+      "venue": "NeurIPS",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0013",
+    "citation_raw": "Brown et al. (2020)",
+    "citation_formatted": "Brown et al. (2020). Language Models are Few-Shot Learners. Proceedings of the Imaginary Academy.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_venue",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0014",
+    "citation_raw": "Nguyen et al. (2013)",
+    "citation_formatted": "Nguyen et al. (2013). Recursive Deep Models for Semantic Compositionality. EMNLP.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_author",
+    "original_paper": {
+      "authors": "Socher et al.",
+      "year": 2013,
+      "title": "Recursive Deep Models for Semantic Compositionality",
+      "venue": "EMNLP",
+      "doi": "10.3115/v1/D13-1170"
+    }
+  },
+  {
+    "citation_id": "eval_0015",
+    "citation_raw": "Phantom Author (2023)",
+    "citation_formatted": "Phantom Author (2023). Advanced Techniques in Imaginary Science. Journal of Non-Existent Research.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0016",
+    "citation_raw": "Nguyen et al. (2017)",
+    "citation_formatted": "Nguyen et al. (2017). Enriching Word Vectors with Subword Information. TACL.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_author",
+    "original_paper": {
+      "authors": "Bojanowski et al.",
+      "year": 2017,
+      "title": "Enriching Word Vectors with Subword Information",
+      "venue": "TACL",
+      "doi": "10.1162/tacl_a_00051"
+    }
+  },
+  {
+    "citation_id": "eval_0017",
+    "citation_raw": "Fabricated Author (2016)",
+    "citation_formatted": "Fabricated Author (2016). An Impossible Study of Nothing. Transactions on Invented Knowledge.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0018",
+    "citation_raw": "Liu et al. (2019)",
+    "citation_formatted": "Liu et al. (2019). RoBERTa: A Robustly Optimized BERT Pretraining Approach. arXiv.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Liu et al.",
+      "year": 2019,
+      "title": "RoBERTa: A Robustly Optimized BERT Pretraining Approach",
+      "venue": "arXiv",
+      "doi": "10.48550/arXiv.1907.11692"
+    }
+  },
+  {
+    "citation_id": "eval_0019",
+    "citation_raw": "Bahdanau et al. (2014)",
+    "citation_formatted": "Bahdanau et al. (2014). Neural Machine Translation by Jointly Learning to Align. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Bahdanau et al.",
+      "year": 2014,
+      "title": "Neural Machine Translation by Jointly Learning to Align",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1409.0473"
+    }
+  },
+  {
+    "citation_id": "eval_0020",
+    "citation_raw": "Dosovitskiy et al. (2021)",
+    "citation_formatted": "Dosovitskiy et al. (2021). An Image is Worth 16x16 Words: Transformers for Image Recognition. ICLR.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Dosovitskiy et al.",
+      "year": 2021,
+      "title": "An Image is Worth 16x16 Words: Transformers for Image Recognition",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.2010.11929"
+    }
+  },
+  {
+    "citation_id": "eval_0021",
+    "citation_raw": "OpenAI (2023)",
+    "citation_formatted": "OpenAI (2023). GPT-4 Technical Report. OpenAI.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "OpenAI",
+      "year": 2023,
+      "title": "GPT-4 Technical Report",
+      "venue": "OpenAI",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0022",
+    "citation_raw": "Levy et al. (2015)",
+    "citation_formatted": "Levy et al. (2015). The Art of Fabricating Research. TACL.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_title",
+    "original_paper": {
+      "authors": "Levy et al.",
+      "year": 2015,
+      "title": "Improving Distributional Similarity with Lessons Learned from Word Embeddings",
+      "venue": "TACL",
+      "doi": "10.1162/tacl_a_00134"
+    }
+  },
+  {
+    "citation_id": "eval_0023",
+    "citation_raw": "OpenAI et al. (2032)",
+    "citation_formatted": "OpenAI et al. (2032). OpenAI Five Defeats World Champion Dota 2 Team. arXiv.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_year",
+    "original_paper": {
+      "authors": "OpenAI et al.",
+      "year": 2019,
+      "title": "OpenAI Five Defeats World Champion Dota 2 Team",
+      "venue": "arXiv",
+      "doi": "10.48550/arXiv.1912.06680"
+    }
+  },
+  {
+    "citation_id": "eval_0024",
+    "citation_raw": "Bar-Haim et al. (2006)",
+    "citation_formatted": "Bar-Haim et al. (2006). The Second PASCAL Recognizing Textual Entailment Challenge. PASCAL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Bar-Haim et al.",
+      "year": 2006,
+      "title": "The Second PASCAL Recognizing Textual Entailment Challenge",
+      "venue": "PASCAL",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0025",
+    "citation_raw": "Wieting and Gimpel (2017)",
+    "citation_formatted": "Wieting and Gimpel (2017). PNGR: ParaNMT-50M: Pushing the Limits of Paraphrastic Sentence Embeddings. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Wieting and Gimpel",
+      "year": 2017,
+      "title": "PNGR: ParaNMT-50M: Pushing the Limits of Paraphrastic Sentence Embeddings",
+      "venue": "EMNLP",
+      "doi": "10.18653/v1/D17-1132"
+    }
+  },
+  {
+    "citation_id": "eval_0026",
+    "citation_raw": "Hypothetical Research (2019). DOI: 10.null.2697.999",
+    "citation_formatted": "Hypothetical Research (2019). Fake Paper Title. DOI: 10.null.2697.999.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0027",
+    "citation_raw": "Wang et al. (2020)",
+    "citation_formatted": "Wang et al. (2020). ALBERT: A Lite BERT for Self-supervised Learning. ICLR.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_author",
+    "original_paper": {
+      "authors": "Lan et al.",
+      "year": 2020,
+      "title": "ALBERT: A Lite BERT for Self-supervised Learning",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1909.11942"
+    }
+  },
+  {
+    "citation_id": "eval_0028",
+    "citation_raw": "Kim et al. (2019)",
+    "citation_formatted": "Kim et al. (2019). Large Scale GAN Training for High Fidelity Image Synthesis. ICLR.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_author",
+    "original_paper": {
+      "authors": "Brock et al.",
+      "year": 2019,
+      "title": "Large Scale GAN Training for High Fidelity Image Synthesis",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1809.11096"
+    }
+  },
+  {
+    "citation_id": "eval_0029",
+    "citation_raw": "OpenAI et al. (2019)",
+    "citation_formatted": "OpenAI et al. (2019). OpenAI Five Defeats World Champion Dota 2 Team. arXiv.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "OpenAI et al.",
+      "year": 2019,
+      "title": "OpenAI Five Defeats World Champion Dota 2 Team",
+      "venue": "arXiv",
+      "doi": "10.48550/arXiv.1912.06680"
+    }
+  },
+  {
+    "citation_id": "eval_0030",
+    "citation_raw": "Goodfellow et al. (2014)",
+    "citation_formatted": "Goodfellow et al. (2014). Generative Adversarial Networks. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Goodfellow et al.",
+      "year": 2014,
+      "title": "Generative Adversarial Networks",
+      "venue": "NeurIPS",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0031",
+    "citation_raw": "Faruqui et al. (2015)",
+    "citation_formatted": "Faruqui et al. (2015). Retrofitting Word Vectors to Semantic Lexicons. NAACL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Faruqui et al.",
+      "title": "Retrofitting Word Vectors to Semantic Lexicons",
+      "year": 2015,
+      "venue": "NAACL",
+      "doi": "10.18653/v1/N15-1184"
+    }
+  },
+  {
+    "citation_id": "eval_0032",
+    "citation_raw": "Jiao et al. (2020)",
+    "citation_formatted": "Jiao et al. (2020). TinyBERT: Distilling BERT for Natural Language Understanding. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Jiao et al.",
+      "year": 2020,
+      "title": "TinyBERT: Distilling BERT for Natural Language Understanding",
+      "venue": "EMNLP",
+      "doi": "10.18653/v1/2020.emnlp-main.363"
+    }
+  },
+  {
+    "citation_id": "eval_0033",
+    "citation_raw": "Kaplan et al. (2020)",
+    "citation_formatted": "Kaplan et al. (2020). Scaling Laws for Neural Language Models. arXiv.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Kaplan et al.",
+      "year": 2020,
+      "title": "Scaling Laws for Neural Language Models",
+      "venue": "arXiv",
+      "doi": "10.48550/arXiv.2001.08361"
+    }
+  },
+  {
+    "citation_id": "eval_0034",
+    "citation_raw": "Mou et al. (2016)",
+    "citation_formatted": "Mou et al. (2016). Revolutionary Discovery in Pseudoscience. EMNLP Workshop.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_title",
+    "original_paper": {
+      "authors": "Mou et al.",
+      "year": 2016,
+      "title": "Natural Language Inference by Tree-Based Convolution",
+      "venue": "EMNLP Workshop",
+      "doi": "10.18653/v1/W16-2922"
+    }
+  },
+  {
+    "citation_id": "eval_0035",
+    "citation_raw": "MysteryPaper (2017)",
+    "citation_formatted": "MysteryPaper (2017). Advanced Techniques in Imaginary Science. Journal of Non-Existent Research.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0036",
+    "citation_raw": "Li et al. (2019)",
+    "citation_formatted": "Li et al. (2019). BERT: Pre-training of Deep Bidirectional Transformers. ACL.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_author",
+    "original_paper": {
+      "authors": "Devlin et al.",
+      "year": 2019,
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers",
+      "venue": "ACL",
+      "doi": "10.18653/v1/N19-1423"
+    }
+  },
+  {
+    "citation_id": "eval_0037",
+    "citation_raw": "Counterfeit Scholar (2018)",
+    "citation_formatted": "Counterfeit Scholar (2018). The Non-Existent Method. Advances in Counterfeit Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0038",
+    "citation_raw": "Kojima et al. (2022)",
+    "citation_formatted": "Kojima et al. (2022). Large Language Models are Zero-Shot Reasoners. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Kojima et al.",
+      "year": 2022,
+      "title": "Large Language Models are Zero-Shot Reasoners",
+      "venue": "NeurIPS",
+      "doi": "10.48550/arXiv.2205.11916"
+    }
+  },
+  {
+    "citation_id": "eval_0039",
+    "citation_raw": "Mnih et al. (2013)",
+    "citation_formatted": "Mnih et al. (2013). Playing Atari with Deep Reinforcement Learning. arXiv.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Mnih et al.",
+      "year": 2013,
+      "title": "Playing Atari with Deep Reinforcement Learning",
+      "venue": "arXiv",
+      "doi": "10.48550/arXiv.1312.5602"
+    }
+  },
+  {
+    "citation_id": "eval_0040",
+    "citation_raw": "Radford et al. (2016)",
+    "citation_formatted": "Radford et al. (2016). Unsupervised Representation Learning with Deep Convolutional GANs. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Radford et al.",
+      "year": 2016,
+      "title": "Unsupervised Representation Learning with Deep Convolutional GANs",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1511.06434"
+    }
+  },
+  {
+    "citation_id": "eval_0041",
+    "citation_raw": "Grill et al. (2020)",
+    "citation_formatted": "Grill et al. (2020). Bootstrap Your Own Latent: A New Approach to Self-Supervised Learning. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Grill et al.",
+      "year": 2020,
+      "title": "Bootstrap Your Own Latent: A New Approach to Self-Supervised Learning",
+      "venue": "NeurIPS",
+      "doi": "10.48550/arXiv.2006.07733"
+    }
+  },
+  {
+    "citation_id": "eval_0042",
+    "citation_raw": "Loshchilov and Hutter (2019)",
+    "citation_formatted": "Loshchilov and Hutter (2019). Decoupled Weight Decay Regularization. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Loshchilov and Hutter",
+      "year": 2019,
+      "title": "Decoupled Weight Decay Regularization",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1711.05101"
+    }
+  },
+  {
+    "citation_id": "eval_0043",
+    "citation_raw": "Synthetic Scientist (2022)",
+    "citation_formatted": "Synthetic Scientist (2022). Groundbreaking False Findings. Transactions on Invented Knowledge.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0044",
+    "citation_raw": "Wang et al. (2017)",
+    "citation_formatted": "Wang et al. (2017). Groundbreaking False Findings. IEEE TKDE.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_title",
+    "original_paper": {
+      "authors": "Wang et al.",
+      "year": 2017,
+      "title": "Knowledge Graph Embedding: A Survey of Approaches",
+      "venue": "IEEE TKDE",
+      "doi": "10.1109/TKDE.2017.2754499"
+    }
+  },
+  {
+    "citation_id": "eval_0045",
+    "citation_raw": "Silver et al. (2016)",
+    "citation_formatted": "Silver et al. (2016). Mastering the Game of Go with Deep Neural Networks. Nature.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Silver et al.",
+      "year": 2016,
+      "title": "Mastering the Game of Go with Deep Neural Networks",
+      "venue": "Nature",
+      "doi": "10.1038/nature16961"
+    }
+  },
+  {
+    "citation_id": "eval_0046",
+    "citation_raw": "Fictional Scholar (2021). DOI: 10.null.5065.373",
+    "citation_formatted": "Fictional Scholar (2021). Fake Paper Title. DOI: 10.null.5065.373.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0047",
+    "citation_raw": "Synthetic Scientist (2018)",
+    "citation_formatted": "Synthetic Scientist (2018). Advanced Techniques in Imaginary Science. Proceedings of the Imaginary Academy.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0048",
+    "citation_raw": "Radford and Narasimhan (2018)",
+    "citation_formatted": "Radford and Narasimhan (2018). Improving Language Understanding by Generative Pre-Training. OpenAI Technical Report.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Radford and Narasimhan",
+      "year": 2018,
+      "title": "Improving Language Understanding by Generative Pre-Training",
+      "venue": "OpenAI Technical Report",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0049",
+    "citation_raw": "Finn et al. (2017)",
+    "citation_formatted": "Finn et al. (2017). Model-Agnostic Meta-Learning for Fast Adaptation. ICML.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Finn et al.",
+      "year": 2017,
+      "title": "Model-Agnostic Meta-Learning for Fast Adaptation",
+      "venue": "ICML",
+      "doi": "10.48550/arXiv.1703.03400"
+    }
+  },
+  {
+    "citation_id": "eval_0050",
+    "citation_raw": "Clark et al. (2031)",
+    "citation_formatted": "Clark et al. (2031). ELECTRA: Pre-training Text Encoders as Discriminators. ICLR.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_year",
+    "original_paper": {
+      "authors": "Clark et al.",
+      "year": 2020,
+      "title": "ELECTRA: Pre-training Text Encoders as Discriminators",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.2003.10555"
+    }
+  },
+  {
+    "citation_id": "eval_0051",
+    "citation_raw": "Clark and Manning (2016)",
+    "citation_formatted": "Clark and Manning (2016). Deep Reinforcement Learning for Mention Ranking. NAACL.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Clark and Manning",
+      "year": 2016,
+      "title": "Deep Reinforcement Learning for Mention Ranking",
+      "venue": "NAACL",
+      "doi": "10.18653/v1/N16-1175"
+    }
+  },
+  {
+    "citation_id": "eval_0052",
+    "citation_raw": "Radford et al. (2016)",
+    "citation_formatted": "Radford et al. (2016). The Non-Existent Method. ICLR.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_title",
+    "original_paper": {
+      "authors": "Radford et al.",
+      "year": 2016,
+      "title": "Unsupervised Representation Learning with Deep Convolutional GANs",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1511.06434"
+    }
+  },
+  {
+    "citation_id": "eval_0053",
+    "citation_raw": "Shen et al. (2066)",
+    "citation_formatted": "Shen et al. (2066). Bi-directional Block Self-Attention for Fast and Memory-Efficient. ICLR.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0054",
+    "citation_raw": "Levy et al. (2015)",
+    "citation_formatted": "Levy et al. (2015). Improving Distributional Similarity with Lessons Learned from Word Embeddings. TACL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Levy et al.",
+      "year": 2015,
+      "title": "Improving Distributional Similarity with Lessons Learned from Word Embeddings",
+      "venue": "TACL",
+      "doi": "10.1162/tacl_a_00134"
+    }
+  },
+  {
+    "citation_id": "eval_0055",
+    "citation_raw": "Jones et al. (2020)",
+    "citation_formatted": "Jones et al. (2020). REALM: Retrieval-Augmented Language Model Pre-Training. ICML.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_author",
+    "original_paper": {
+      "authors": "Guu et al.",
+      "year": 2020,
+      "title": "REALM: Retrieval-Augmented Language Model Pre-Training",
+      "venue": "ICML",
+      "doi": "10.48550/arXiv.2002.08909"
+    }
+  },
+  {
+    "citation_id": "eval_0056",
+    "citation_raw": "Loshchilov and Hutter (2019)",
+    "citation_formatted": "Loshchilov and Hutter (2019). Groundbreaking False Findings. ICLR.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_title",
+    "original_paper": {
+      "authors": "Loshchilov and Hutter",
+      "year": 2019,
+      "title": "Decoupled Weight Decay Regularization",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1711.05101"
+    }
+  },
+  {
+    "citation_id": "eval_0057",
+    "citation_raw": "Kim (2014)",
+    "citation_formatted": "Kim (2014). Convolutional Neural Networks for Sentence Classification. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Kim",
+      "year": 2014,
+      "title": "Convolutional Neural Networks for Sentence Classification",
+      "venue": "EMNLP",
+      "doi": "10.3115/v1/D14-1181"
+    }
+  },
+  {
+    "citation_id": "eval_0058",
+    "citation_raw": "Liu et al. (2021)",
+    "citation_formatted": "Liu et al. (2021). Swin Transformer: Hierarchical Vision Transformer. ICCV.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Liu et al.",
+      "year": 2021,
+      "title": "Swin Transformer: Hierarchical Vision Transformer",
+      "venue": "ICCV",
+      "doi": "10.1109/ICCV48922.2021.00986"
+    }
+  },
+  {
+    "citation_id": "eval_0059",
+    "citation_raw": "Rajpurkar et al. (2016)",
+    "citation_formatted": "Rajpurkar et al. (2016). SQuAD: 100,000+ Questions for Machine Comprehension of Text. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Rajpurkar et al.",
+      "year": 2016,
+      "title": "SQuAD: 100,000+ Questions for Machine Comprehension of Text",
+      "venue": "EMNLP",
+      "doi": "10.18653/v1/D16-1264"
+    }
+  },
+  {
+    "citation_id": "eval_0060",
+    "citation_raw": "Socher et al. (2059)",
+    "citation_formatted": "Socher et al. (2059). Recursive Deep Models for Semantic Compositionality. EMNLP.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0061",
+    "citation_raw": "Bentivogli et al. (2009)",
+    "citation_formatted": "Bentivogli et al. (2009). The Fifth PASCAL Recognizing Textual Entailment Challenge. TAC.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Bentivogli et al.",
+      "year": 2009,
+      "title": "The Fifth PASCAL Recognizing Textual Entailment Challenge",
+      "venue": "TAC",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0062",
+    "citation_raw": "Imaginary Scholar (2023)",
+    "citation_formatted": "Imaginary Scholar (2023). The Study of Undiscovered Discoveries. International Conference on Made-Up Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_title",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0063",
+    "citation_raw": "Devlin and Chang (2018)",
+    "citation_formatted": "Devlin and Chang (2018). Open Source Release of BERT. Google AI Blog.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Devlin and Chang",
+      "year": 2018,
+      "title": "Open Source Release of BERT",
+      "venue": "Google AI Blog",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0064",
+    "citation_raw": "Mnih et al. (2015)",
+    "citation_formatted": "Mnih et al. (2015). Human-level Control through Deep Reinforcement Learning. Nature.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Mnih et al.",
+      "year": 2015,
+      "title": "Human-level Control through Deep Reinforcement Learning",
+      "venue": "Nature",
+      "doi": "10.1038/nature14236"
+    }
+  },
+  {
+    "citation_id": "eval_0065",
+    "citation_raw": "Garcia et al. (2013)",
+    "citation_formatted": "Garcia et al. (2013). Distributed Representations of Words and Phrases. NeurIPS.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_author",
+    "original_paper": {
+      "authors": "Mikolov et al.",
+      "year": 2013,
+      "title": "Distributed Representations of Words and Phrases",
+      "venue": "NeurIPS",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0066",
+    "citation_raw": "Hinton et al. (2015)",
+    "citation_formatted": "Hinton et al. (2015). Distilling the Knowledge in a Neural Network. NeurIPS Workshop.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Hinton et al.",
+      "year": 2015,
+      "title": "Distilling the Knowledge in a Neural Network",
+      "venue": "NeurIPS Workshop",
+      "doi": "10.48550/arXiv.1503.02531"
+    }
+  },
+  {
+    "citation_id": "eval_0067",
+    "citation_raw": "Lan et al. (2020)",
+    "citation_formatted": "Lan et al. (2020). ALBERT: A Lite BERT for Self-supervised Learning. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Lan et al.",
+      "year": 2020,
+      "title": "ALBERT: A Lite BERT for Self-supervised Learning",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1909.11942"
+    }
+  },
+  {
+    "citation_id": "eval_0068",
+    "citation_raw": "Luong et al. (2015)",
+    "citation_formatted": "Luong et al. (2015). Effective Approaches to Attention-based Neural Machine Translation. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Luong et al.",
+      "year": 2015,
+      "title": "Effective Approaches to Attention-based Neural Machine Translation",
+      "venue": "EMNLP",
+      "doi": "10.18653/v1/D15-1166"
+    }
+  },
+  {
+    "citation_id": "eval_0069",
+    "citation_raw": "Ioffe and Szegedy (2015)",
+    "citation_formatted": "Ioffe and Szegedy (2015). Batch Normalization: Accelerating Deep Network Training. ICML.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Ioffe and Szegedy",
+      "year": 2015,
+      "title": "Batch Normalization: Accelerating Deep Network Training",
+      "venue": "ICML",
+      "doi": "10.48550/arXiv.1502.03167"
+    }
+  },
+  {
+    "citation_id": "eval_0070",
+    "citation_raw": "Fictional Scholar (2018). DOI: 10.1234.7484.234",
+    "citation_formatted": "Fictional Scholar (2018). Fake Paper Title. DOI: 10.1234.7484.234.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0071",
+    "citation_raw": "Finn et al. (2031)",
+    "citation_formatted": "Finn et al. (2031). Model-Agnostic Meta-Learning for Fast Adaptation. ICML.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_year",
+    "original_paper": {
+      "authors": "Finn et al.",
+      "year": 2017,
+      "title": "Model-Agnostic Meta-Learning for Fast Adaptation",
+      "venue": "ICML",
+      "doi": "10.48550/arXiv.1703.03400"
+    }
+  },
+  {
+    "citation_id": "eval_0072",
+    "citation_raw": "Synthetic Scientist (2023)",
+    "citation_formatted": "Synthetic Scientist (2023). Revolutionary Discovery in Pseudoscience. Annals of Fake Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0073",
+    "citation_raw": "Zhang et al. (2020)",
+    "citation_formatted": "Zhang et al. (2020). PEBUG: A Large-Scale Dialogue Generative Pre-Training. TACL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Zhang et al.",
+      "year": 2020,
+      "title": "PEBUG: A Large-Scale Dialogue Generative Pre-Training",
+      "venue": "TACL",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0074",
+    "citation_raw": "Shen et al. (2018)",
+    "citation_formatted": "Shen et al. (2018). Bi-directional Block Self-Attention for Fast and Memory-Efficient. Review of Pseudoscientific Studies.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_venue",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0075",
+    "citation_raw": "Conneau et al. (2017)",
+    "citation_formatted": "Conneau et al. (2017). Supervised Learning of Universal Sentence Representations. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Conneau et al.",
+      "year": 2017,
+      "title": "Supervised Learning of Universal Sentence Representations",
+      "venue": "EMNLP",
+      "doi": "10.18653/v1/D17-1070"
+    }
+  },
+  {
+    "citation_id": "eval_0076",
+    "citation_raw": "Mrkšić et al. (2016)",
+    "citation_formatted": "Mrkšić et al. (2016). Counter-fitting Word Vectors to Linguistic Constraints. NAACL.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Mrkšić et al.",
+      "year": 2016,
+      "title": "Counter-fitting Word Vectors to Linguistic Constraints",
+      "venue": "NAACL",
+      "doi": "10.18653/v1/N16-1018"
+    }
+  },
+  {
+    "citation_id": "eval_0077",
+    "citation_raw": "Yao et al. (2032)",
+    "citation_formatted": "Yao et al. (2032). Tree of Thoughts: Deliberate Problem Solving with Large Models. NeurIPS.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_year",
+    "original_paper": {
+      "authors": "Yao et al.",
+      "year": 2023,
+      "title": "Tree of Thoughts: Deliberate Problem Solving with Large Models",
+      "venue": "NeurIPS",
+      "doi": "10.48550/arXiv.2305.10601"
+    }
+  },
+  {
+    "citation_id": "eval_0078",
+    "citation_raw": "Wieting et al. (2016)",
+    "citation_formatted": "Wieting et al. (2016). Towards Universal Paraphrastic Sentence Embeddings. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Wieting et al.",
+      "year": 2016,
+      "title": "Towards Universal Paraphrastic Sentence Embeddings",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1511.08198"
+    }
+  },
+  {
+    "citation_id": "eval_0079",
+    "citation_raw": "Clark et al. (2076)",
+    "citation_formatted": "Clark et al. (2076). ELECTRA: Pre-training Text Encoders as Discriminators. ICLR.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0080",
+    "citation_raw": "Miller et al. (2020)",
+    "citation_formatted": "Miller et al. (2020). Bootstrap Your Own Latent: A New Approach to Self-Supervised Learning. NeurIPS.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_author",
+    "original_paper": {
+      "authors": "Grill et al.",
+      "year": 2020,
+      "title": "Bootstrap Your Own Latent: A New Approach to Self-Supervised Learning",
+      "venue": "NeurIPS",
+      "doi": "10.48550/arXiv.2006.07733"
+    }
+  },
+  {
+    "citation_id": "eval_0081",
+    "citation_raw": "Chowdhery et al. (2022)",
+    "citation_formatted": "Chowdhery et al. (2022). PaLM: Scaling Language Modeling with Pathways. arXiv.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Chowdhery et al.",
+      "year": 2022,
+      "title": "PaLM: Scaling Language Modeling with Pathways",
+      "venue": "arXiv",
+      "doi": "10.48550/arXiv.2204.02311"
+    }
+  },
+  {
+    "citation_id": "eval_0082",
+    "citation_raw": "Rae et al. (2021)",
+    "citation_formatted": "Rae et al. (2021). Scaling Language Models: Methods, Analysis & Insights. arXiv.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Rae et al.",
+      "year": 2021,
+      "title": "Scaling Language Models: Methods, Analysis & Insights",
+      "venue": "arXiv",
+      "doi": "10.48550/arXiv.2112.11446"
+    }
+  },
+  {
+    "citation_id": "eval_0083",
+    "citation_raw": "Liu et al. (2019)",
+    "citation_formatted": "Liu et al. (2019). The Art of Fabricating Research. arXiv.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_title",
+    "original_paper": {
+      "authors": "Liu et al.",
+      "year": 2019,
+      "title": "RoBERTa: A Robustly Optimized BERT Pretraining Approach",
+      "venue": "arXiv",
+      "doi": "10.48550/arXiv.1907.11692"
+    }
+  },
+  {
+    "citation_id": "eval_0084",
+    "citation_raw": "Melamud et al. (2016)",
+    "citation_formatted": "Melamud et al. (2016). context2vec: Learning Generic Context Embedding. CoNLL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Melamud et al.",
+      "year": 2016,
+      "title": "context2vec: Learning Generic Context Embedding",
+      "venue": "CoNLL",
+      "doi": "10.18653/v1/K16-1006"
+    }
+  },
+  {
+    "citation_id": "eval_0085",
+    "citation_raw": "Alayrac et al. (2022)",
+    "citation_formatted": "Alayrac et al. (2022). Flamingo: a Visual Language Model for Few-Shot Learning. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Alayrac et al.",
+      "year": 2022,
+      "title": "Flamingo: a Visual Language Model for Few-Shot Learning",
+      "venue": "NeurIPS",
+      "doi": "10.48550/arXiv.2204.14198"
+    }
+  },
+  {
+    "citation_id": "eval_0086",
+    "citation_raw": "Imagined Paper (2020)",
+    "citation_formatted": "Imagined Paper (2020). Groundbreaking False Findings. Advances in Counterfeit Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0087",
+    "citation_raw": "Cer et al. (2018)",
+    "citation_formatted": "Cer et al. (2018). Universal Sentence Encoder. NAACL Workshop.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Cer et al.",
+      "year": 2018,
+      "title": "Universal Sentence Encoder",
+      "venue": "NAACL Workshop",
+      "doi": "10.18653/v1/W18-2608"
+    }
+  },
+  {
+    "citation_id": "eval_0088",
+    "citation_raw": "Mou et al. (2016)",
+    "citation_formatted": "Mou et al. (2016). Natural Language Inference by Tree-Based Convolution. EMNLP Workshop.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Mou et al.",
+      "year": 2016,
+      "title": "Natural Language Inference by Tree-Based Convolution",
+      "venue": "EMNLP Workshop",
+      "doi": "10.18653/v1/W16-2922"
+    }
+  },
+  {
+    "citation_id": "eval_0089",
+    "citation_raw": "Wang et al. (2018)",
+    "citation_formatted": "Wang et al. (2018). Glue: A Multi-Task Benchmark. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Wang et al.",
+      "year": 2018,
+      "title": "Glue: A Multi-Task Benchmark",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1804.07461"
+    }
+  },
+  {
+    "citation_id": "eval_0090",
+    "citation_raw": "Peters et al. (2018)",
+    "citation_formatted": "Peters et al. (2018). Deep Contextualized Word Representations. NAACL.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Peters et al.",
+      "year": 2018,
+      "title": "Deep Contextualized Word Representations",
+      "venue": "NAACL",
+      "doi": "10.18653/v1/N18-1202"
+    }
+  },
+  {
+    "citation_id": "eval_0091",
+    "citation_raw": "Guo et al. (2017)",
+    "citation_formatted": "Guo et al. (2017). On Calibration of Modern Neural Networks. ICML.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Guo et al.",
+      "year": 2017,
+      "title": "On Calibration of Modern Neural Networks",
+      "venue": "ICML",
+      "doi": "10.48550/arXiv.1706.04599"
+    }
+  },
+  {
+    "citation_id": "eval_0092",
+    "citation_raw": "Invented Scientist (2017). DOI: 10.null.3621.911",
+    "citation_formatted": "Invented Scientist (2017). Fake Paper Title. DOI: 10.null.3621.911.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0093",
+    "citation_raw": "MysteryPaper (2015)",
+    "citation_formatted": "MysteryPaper (2015). Groundbreaking False Findings. International Conference on Made-Up Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0094",
+    "citation_raw": "McCann et al. (2017)",
+    "citation_formatted": "McCann et al. (2017). Learned in Translation: Contextualized Word Vectors. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "McCann et al.",
+      "year": 2017,
+      "title": "Learned in Translation: Contextualized Word Vectors",
+      "venue": "NeurIPS",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0095",
+    "citation_raw": "Zaheer et al. (2020)",
+    "citation_formatted": "Zaheer et al. (2020). The Art of Fabricating Research. NeurIPS.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_title",
+    "original_paper": {
+      "authors": "Zaheer et al.",
+      "year": 2020,
+      "title": "Big Bird: Transformers for Longer Sequences",
+      "venue": "NeurIPS",
+      "doi": "10.48550/arXiv.2007.14062"
+    }
+  },
+  {
+    "citation_id": "eval_0096",
+    "citation_raw": "Mikolov et al. (2013)",
+    "citation_formatted": "Mikolov et al. (2013). Distributed Representations of Words and Phrases. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Mikolov et al.",
+      "year": 2013,
+      "title": "Distributed Representations of Words and Phrases",
+      "venue": "NeurIPS",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0097",
+    "citation_raw": "Kipf and Welling (2032)",
+    "citation_formatted": "Kipf and Welling (2032). Semi-Supervised Classification with Graph Convolutional Networks. ICLR.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_year",
+    "original_paper": {
+      "authors": "Kipf and Welling",
+      "year": 2017,
+      "title": "Semi-Supervised Classification with Graph Convolutional Networks",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1609.02907"
+    }
+  },
+  {
+    "citation_id": "eval_0098",
+    "citation_raw": "Sanh et al. (2019)",
+    "citation_formatted": "Sanh et al. (2019). DistilBERT, a Distilled Version of BERT. NeurIPS Workshop.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Sanh et al.",
+      "year": 2019,
+      "title": "DistilBERT, a Distilled Version of BERT",
+      "venue": "NeurIPS Workshop",
+      "doi": "10.48550/arXiv.1910.01108"
+    }
+  },
+  {
+    "citation_id": "eval_0099",
+    "citation_raw": "Counterfeit Scholar (2023)",
+    "citation_formatted": "Counterfeit Scholar (2023). The Art of Fabricating Research. Journal of Non-Existent Research.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0100",
+    "citation_raw": "Chen et al. (2020)",
+    "citation_formatted": "Chen et al. (2020). A Simple Framework for Contrastive Learning of Visual Representations. ICML.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Chen et al.",
+      "year": 2020,
+      "title": "A Simple Framework for Contrastive Learning of Visual Representations",
+      "venue": "ICML",
+      "doi": "10.48550/arXiv.2002.05709"
+    }
+  },
+  {
+    "citation_id": "eval_0101",
+    "citation_raw": "Constructed Scholar (2018)",
+    "citation_formatted": "Constructed Scholar (2018). An Impossible Study of Nothing. Review of Pseudoscientific Studies.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0102",
+    "citation_raw": "He et al. (2016)",
+    "citation_formatted": "He et al. (2016). Deep Residual Learning for Image Recognition. CVPR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "He et al.",
+      "year": 2016,
+      "title": "Deep Residual Learning for Image Recognition",
+      "venue": "CVPR",
+      "doi": "10.1109/CVPR.2016.90"
+    }
+  },
+  {
+    "citation_id": "eval_0103",
+    "citation_raw": "Guu et al. (2020)",
+    "citation_formatted": "Guu et al. (2020). REALM: Retrieval-Augmented Language Model Pre-Training. ICML.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Guu et al.",
+      "year": 2020,
+      "title": "REALM: Retrieval-Augmented Language Model Pre-Training",
+      "venue": "ICML",
+      "doi": "10.48550/arXiv.2002.08909"
+    }
+  },
+  {
+    "citation_id": "eval_0104",
+    "citation_raw": "Brock et al. (2019)",
+    "citation_formatted": "Brock et al. (2019). Large Scale GAN Training for High Fidelity Image Synthesis. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Brock et al.",
+      "year": 2019,
+      "title": "Large Scale GAN Training for High Fidelity Image Synthesis",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1809.11096"
+    }
+  },
+  {
+    "citation_id": "eval_0105",
+    "citation_raw": "Socher et al. (2013)",
+    "citation_formatted": "Socher et al. (2013). Recursive Deep Models for Semantic Compositionality. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Socher et al.",
+      "year": 2013,
+      "title": "Recursive Deep Models for Semantic Compositionality",
+      "venue": "EMNLP",
+      "doi": "10.3115/v1/D13-1170"
+    }
+  },
+  {
+    "citation_id": "eval_0106",
+    "citation_raw": "Lewis et al. (2020)",
+    "citation_formatted": "Lewis et al. (2020). Retrieval-Augmented Generation for Knowledge-Intensive NLP. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Lewis et al.",
+      "year": 2020,
+      "title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP",
+      "venue": "NeurIPS",
+      "doi": "10.48550/arXiv.2005.11401"
+    }
+  },
+  {
+    "citation_id": "eval_0107",
+    "citation_raw": "Fabricated Author (2021). DOI: 10.9999.5033.692",
+    "citation_formatted": "Fabricated Author (2021). Fake Paper Title. DOI: 10.9999.5033.692.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0108",
+    "citation_raw": "Silver et al. (2017)",
+    "citation_formatted": "Silver et al. (2017). Mastering the Game of Go without Human Knowledge. Nature.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Silver et al.",
+      "year": 2017,
+      "title": "Mastering the Game of Go without Human Knowledge",
+      "venue": "Nature",
+      "doi": "10.1038/nature24270"
+    }
+  },
+  {
+    "citation_id": "eval_0109",
+    "citation_raw": "Phantom Author (2021)",
+    "citation_formatted": "Phantom Author (2021). A Novel Approach to Fake Research. Transactions on Invented Knowledge.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_title",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0110",
+    "citation_raw": "Ba et al. (2062)",
+    "citation_formatted": "Ba et al. (2062). Layer Normalization. arXiv.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0111",
+    "citation_raw": "Snell et al. (2017)",
+    "citation_formatted": "Snell et al. (2017). Prototypical Networks for Few-shot Learning. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Snell et al.",
+      "year": 2017,
+      "title": "Prototypical Networks for Few-shot Learning",
+      "venue": "NeurIPS",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0112",
+    "citation_raw": "Sun et al. (2020)",
+    "citation_formatted": "Sun et al. (2020). MobileBERT: a Compact Task-Agnostic BERT. ACL.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Sun et al.",
+      "year": 2020,
+      "title": "MobileBERT: a Compact Task-Agnostic BERT",
+      "venue": "ACL",
+      "doi": "10.18653/v1/2020.acl-main.195"
+    }
+  },
+  {
+    "citation_id": "eval_0113",
+    "citation_raw": "Le and Mikolov (2014)",
+    "citation_formatted": "Le and Mikolov (2014). Distributed Representations of Sentences and Documents. ICML.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Le and Mikolov",
+      "year": 2014,
+      "title": "Distributed Representations of Sentences and Documents",
+      "venue": "ICML",
+      "doi": "10.48550/arXiv.1405.4053"
+    }
+  },
+  {
+    "citation_id": "eval_0114",
+    "citation_raw": "Zhang et al. (2020)",
+    "citation_formatted": "Zhang et al. (2020). Quantum Dreams and Fake Realities. TACL.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_title",
+    "original_paper": {
+      "authors": "Zhang et al.",
+      "year": 2020,
+      "title": "PEBUG: A Large-Scale Dialogue Generative Pre-Training",
+      "venue": "TACL",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0115",
+    "citation_raw": "Phony Paper (2020)",
+    "citation_formatted": "Phony Paper (2020). Quantum Dreams and Fake Realities. Transactions on Invented Knowledge.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0116",
+    "citation_raw": "Joulin et al. (2017)",
+    "citation_formatted": "Joulin et al. (2017). Bag of Tricks for Efficient Text Classification. EACL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Joulin et al.",
+      "year": 2017,
+      "title": "Bag of Tricks for Efficient Text Classification",
+      "venue": "EACL",
+      "doi": "10.18653/v1/E17-2068"
+    }
+  },
+  {
+    "citation_id": "eval_0117",
+    "citation_raw": "Dagan et al. (2006)",
+    "citation_formatted": "Dagan et al. (2006). The PASCAL Recognising Textual Entailment Challenge. Machine Learning Challenges.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Dagan et al.",
+      "year": 2006,
+      "title": "The PASCAL Recognising Textual Entailment Challenge",
+      "venue": "Machine Learning Challenges",
+      "doi": "10.1007/11736790_3"
+    }
+  },
+  {
+    "citation_id": "eval_0118",
+    "citation_raw": "Inexistent Author (2016)",
+    "citation_formatted": "Inexistent Author (2016). Groundbreaking False Findings. Frontiers in Non-Existent Research.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0119",
+    "citation_raw": "Choi et al. (2018)",
+    "citation_formatted": "Choi et al. (2018). Decomposing Question and Context. TACL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Choi et al.",
+      "year": 2018,
+      "title": "Decomposing Question and Context",
+      "venue": "TACL",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0120",
+    "citation_raw": "Brown et al. (2020)",
+    "citation_formatted": "Brown et al. (2020). Language Models are Few-Shot Learners. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Brown et al.",
+      "year": 2020,
+      "title": "Language Models are Few-Shot Learners",
+      "venue": "NeurIPS",
+      "doi": "10.48550/arXiv.2005.14165"
+    }
+  },
+  {
+    "citation_id": "eval_0121",
+    "citation_raw": "Invented Scientist (2016)",
+    "citation_formatted": "Invented Scientist (2016). Advanced Techniques in Imaginary Science. Proceedings of the Imaginary Academy.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0122",
+    "citation_raw": "Subramanian et al. (2018)",
+    "citation_formatted": "Subramanian et al. (2018). Learning General Purpose Distributed Sentence Representations. ICML.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Subramanian et al.",
+      "year": 2018,
+      "title": "Learning General Purpose Distributed Sentence Representations",
+      "venue": "ICML",
+      "doi": "10.48550/arXiv.1803.02810"
+    }
+  },
+  {
+    "citation_id": "eval_0123",
+    "citation_raw": "Guo et al. (2017)",
+    "citation_formatted": "Guo et al. (2017). On Calibration of Modern Neural Networks. International Conference on Made-Up Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_venue",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0124",
+    "citation_raw": "Artificial Author (2019)",
+    "citation_formatted": "Artificial Author (2019). Advanced Techniques in Imaginary Science. Journal of Non-Existent Research.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_title",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0125",
+    "citation_raw": "MadeUp Name (2018)",
+    "citation_formatted": "MadeUp Name (2018). A Novel Approach to Fake Research. Journal of Non-Existent Research.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0126",
+    "citation_raw": "Karras et al. (2019)",
+    "citation_formatted": "Karras et al. (2019). A Style-Based Generator Architecture for GANs. CVPR.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Karras et al.",
+      "year": 2019,
+      "title": "A Style-Based Generator Architecture for GANs",
+      "venue": "CVPR",
+      "doi": "10.1109/CVPR.2019.00409"
+    }
+  },
+  {
+    "citation_id": "eval_0127",
+    "citation_raw": "Kingma and Ba (2014)",
+    "citation_formatted": "Kingma and Ba (2014). Adam: A Method for Stochastic Optimization. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Kingma and Ba",
+      "year": 2014,
+      "title": "Adam: A Method for Stochastic Optimization",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1412.6980"
+    }
+  },
+  {
+    "citation_id": "eval_0128",
+    "citation_raw": "Imagined Paper (2016)",
+    "citation_formatted": "Imagined Paper (2016). The Non-Existent Method. Advances in Counterfeit Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0129",
+    "citation_raw": "Guo et al. (2017)",
+    "citation_formatted": "Guo et al. (2017). On Calibration of Modern Neural Networks. Proceedings of the Imaginary Academy.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_venue",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0130",
+    "citation_raw": "Parikh et al. (2016)",
+    "citation_formatted": "Parikh et al. (2016). A Decomposable Attention Model for Natural Language Inference. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Parikh et al.",
+      "year": 2016,
+      "title": "A Decomposable Attention Model for Natural Language Inference",
+      "venue": "EMNLP",
+      "doi": "10.18653/v1/D16-1244"
+    }
+  },
+  {
+    "citation_id": "eval_0131",
+    "citation_raw": "Inexistent Author (2019)",
+    "citation_formatted": "Inexistent Author (2019). Groundbreaking False Findings. Journal of Non-Existent Research.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0132",
+    "citation_raw": "Phantom Author (2022)",
+    "citation_formatted": "Phantom Author (2022). A Novel Approach to Fake Research. Annals of Fake Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0133",
+    "citation_raw": "Chowdhery et al. (2093)",
+    "citation_formatted": "Chowdhery et al. (2093). PaLM: Scaling Language Modeling with Pathways. arXiv.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0134",
+    "citation_raw": "Li et al. (2013)",
+    "citation_formatted": "Li et al. (2013). Playing Atari with Deep Reinforcement Learning. arXiv.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_author",
+    "original_paper": {
+      "authors": "Mnih et al.",
+      "year": 2013,
+      "title": "Playing Atari with Deep Reinforcement Learning",
+      "venue": "arXiv",
+      "doi": "10.48550/arXiv.1312.5602"
+    }
+  },
+  {
+    "citation_id": "eval_0135",
+    "citation_raw": "Arora et al. (2017)",
+    "citation_formatted": "Arora et al. (2017). A Simple but Tough-to-Beat Baseline for Sentence Embeddings. ICLR.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Arora et al.",
+      "year": 2017,
+      "title": "A Simple but Tough-to-Beat Baseline for Sentence Embeddings",
+      "venue": "ICLR",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0136",
+    "citation_raw": "Hypothetical Research (2015)",
+    "citation_formatted": "Hypothetical Research (2015). The Non-Existent Method. Review of Pseudoscientific Studies.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0137",
+    "citation_raw": "Liu et al. (2019)",
+    "citation_formatted": "Liu et al. (2019). RoBERTa: A Robustly Optimized BERT Pretraining Approach. International Conference on Made-Up Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_venue",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0138",
+    "citation_raw": "Joshi et al. (2017)",
+    "citation_formatted": "Joshi et al. (2017). TriviaQA: A Large Scale Dataset for Reading Comprehension. ACL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Joshi et al.",
+      "year": 2017,
+      "title": "TriviaQA: A Large Scale Dataset for Reading Comprehension",
+      "venue": "ACL",
+      "doi": "10.18653/v1/P17-1147"
+    }
+  },
+  {
+    "citation_id": "eval_0139",
+    "citation_raw": "He et al. (2016)",
+    "citation_formatted": "He et al. (2016). Revolutionary Discovery in Pseudoscience. CVPR.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_title",
+    "original_paper": {
+      "authors": "He et al.",
+      "year": 2016,
+      "title": "Deep Residual Learning for Image Recognition",
+      "venue": "CVPR",
+      "doi": "10.1109/CVPR.2016.90"
+    }
+  },
+  {
+    "citation_id": "eval_0140",
+    "citation_raw": "Ba et al. (2016)",
+    "citation_formatted": "Ba et al. (2016). Layer Normalization. arXiv.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Ba et al.",
+      "year": 2016,
+      "title": "Layer Normalization",
+      "venue": "arXiv",
+      "doi": "10.48550/arXiv.1607.06450"
+    }
+  },
+  {
+    "citation_id": "eval_0141",
+    "citation_raw": "Seo et al. (2017)",
+    "citation_formatted": "Seo et al. (2017). Bidirectional Attention Flow for Machine Comprehension. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Seo et al.",
+      "year": 2017,
+      "title": "Bidirectional Attention Flow for Machine Comprehension",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1611.01603"
+    }
+  },
+  {
+    "citation_id": "eval_0142",
+    "citation_raw": "Wang et al. (2017)",
+    "citation_formatted": "Wang et al. (2017). Knowledge Graph Embedding: A Survey of Approaches. IEEE TKDE.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Wang et al.",
+      "year": 2017,
+      "title": "Knowledge Graph Embedding: A Survey of Approaches",
+      "venue": "IEEE TKDE",
+      "doi": "10.1109/TKDE.2017.2754499"
+    }
+  },
+  {
+    "citation_id": "eval_0143",
+    "citation_raw": "Chen et al. (2063)",
+    "citation_formatted": "Chen et al. (2063). A Simple Framework for Contrastive Learning of Visual Representations. ICML.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0144",
+    "citation_raw": "Peters et al. (2077)",
+    "citation_formatted": "Peters et al. (2077). Deep Contextualized Word Representations. NAACL.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0145",
+    "citation_raw": "Wang et al. (2022)",
+    "citation_formatted": "Wang et al. (2022). Self-Consistency Improves Chain of Thought Reasoning. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Wang et al.",
+      "year": 2022,
+      "title": "Self-Consistency Improves Chain of Thought Reasoning",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.2203.11171"
+    }
+  },
+  {
+    "citation_id": "eval_0146",
+    "citation_raw": "Pennington et al. (2014)",
+    "citation_formatted": "Pennington et al. (2014). GloVe: Global Vectors for Word Representation. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Pennington et al.",
+      "year": 2014,
+      "title": "GloVe: Global Vectors for Word Representation",
+      "venue": "EMNLP",
+      "doi": "10.3115/v1/D14-1162"
+    }
+  },
+  {
+    "citation_id": "eval_0147",
+    "citation_raw": "Invented Scientist (2023). DOI: 10.1234.6573.214",
+    "citation_formatted": "Invented Scientist (2023). Fake Paper Title. DOI: 10.1234.6573.214.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0148",
+    "citation_raw": "Karpukhin et al. (2020)",
+    "citation_formatted": "Karpukhin et al. (2020). Dense Passage Retrieval for Open-Domain Question Answering. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Karpukhin et al.",
+      "year": 2020,
+      "title": "Dense Passage Retrieval for Open-Domain Question Answering",
+      "venue": "EMNLP",
+      "doi": "10.18653/v1/2020.emnlp-main.550"
+    }
+  },
+  {
+    "citation_id": "eval_0149",
+    "citation_raw": "Bojanowski et al. (2017)",
+    "citation_formatted": "Bojanowski et al. (2017). Enriching Word Vectors with Subword Information. TACL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Bojanowski et al.",
+      "year": 2017,
+      "title": "Enriching Word Vectors with Subword Information",
+      "venue": "TACL",
+      "doi": "10.1162/tacl_a_00051"
+    }
+  },
+  {
+    "citation_id": "eval_0150",
+    "citation_raw": "Imaginary Scholar (2018)",
+    "citation_formatted": "Imaginary Scholar (2018). Revolutionary Discovery in Pseudoscience. Proceedings of the Imaginary Academy.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_title",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0151",
+    "citation_raw": "Rae et al. (2069)",
+    "citation_formatted": "Rae et al. (2069). Scaling Language Models: Methods, Analysis & Insights. arXiv.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0152",
+    "citation_raw": "Fabricated Author (2023)",
+    "citation_formatted": "Fabricated Author (2023). Advanced Techniques in Imaginary Science. Annals of Fake Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0153",
+    "citation_raw": "Imagined Paper (2024). DOI: 10.abric.4981.903",
+    "citation_formatted": "Imagined Paper (2024). Fake Paper Title. DOI: 10.abric.4981.903.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0154",
+    "citation_raw": "Giampiccolo et al. (2007)",
+    "citation_formatted": "Giampiccolo et al. (2007). The Third PASCAL Recognizing Textual Entailment Challenge. ACL Workshop.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Giampiccolo et al.",
+      "year": 2007,
+      "title": "The Third PASCAL Recognizing Textual Entailment Challenge",
+      "venue": "ACL Workshop",
+      "doi": "10.3115/1611628.1611637"
+    }
+  },
+  {
+    "citation_id": "eval_0155",
+    "citation_raw": "Lewis et al. (2019)",
+    "citation_formatted": "Lewis et al. (2019). BART: Denoising Sequence-to-Sequence Pre-training. ACL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Lewis et al.",
+      "year": 2019,
+      "title": "BART: Denoising Sequence-to-Sequence Pre-training",
+      "venue": "ACL",
+      "doi": "10.18653/v1/2020.acl-main.703"
+    }
+  },
+  {
+    "citation_id": "eval_0156",
+    "citation_raw": "MadeUp Name (2022). DOI: 10.1234.2188.109",
+    "citation_formatted": "MadeUp Name (2022). Fake Paper Title. DOI: 10.1234.2188.109.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0157",
+    "citation_raw": "Constructed Scholar (2016). DOI: 10.abric.7252.710",
+    "citation_formatted": "Constructed Scholar (2016). Fake Paper Title. DOI: 10.abric.7252.710.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0158",
+    "citation_raw": "Jiao et al. (2020)",
+    "citation_formatted": "Jiao et al. (2020). TinyBERT: Distilling BERT for Natural Language Understanding. Proceedings of the Imaginary Academy.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_venue",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0159",
+    "citation_raw": "Kipf and Welling (2017)",
+    "citation_formatted": "Kipf and Welling (2017). Semi-Supervised Classification with Graph Convolutional Networks. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Kipf and Welling",
+      "year": 2017,
+      "title": "Semi-Supervised Classification with Graph Convolutional Networks",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1609.02907"
+    }
+  },
+  {
+    "citation_id": "eval_0160",
+    "citation_raw": "Manufactured Author (2021)",
+    "citation_formatted": "Manufactured Author (2021). The Art of Fabricating Research. Journal of Non-Existent Research.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0161",
+    "citation_raw": "Le and Mikolov (2014)",
+    "citation_formatted": "Le and Mikolov (2014). An Impossible Study of Nothing. ICML.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_title",
+    "original_paper": {
+      "authors": "Le and Mikolov",
+      "year": 2014,
+      "title": "Distributed Representations of Sentences and Documents",
+      "venue": "ICML",
+      "doi": "10.48550/arXiv.1405.4053"
+    }
+  },
+  {
+    "citation_id": "eval_0162",
+    "citation_raw": "Johnson et al. (2017)",
+    "citation_formatted": "Johnson et al. (2017). Google's Multilingual Neural Machine Translation System. ACL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Johnson et al.",
+      "year": 2017,
+      "title": "Google's Multilingual Neural Machine Translation System",
+      "venue": "ACL",
+      "doi": "10.18653/v1/P17-1009"
+    }
+  },
+  {
+    "citation_id": "eval_0163",
+    "citation_raw": "Clark et al. (2020)",
+    "citation_formatted": "Clark et al. (2020). ELECTRA: Pre-training Text Encoders as Discriminators. ICLR.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Clark et al.",
+      "year": 2020,
+      "title": "ELECTRA: Pre-training Text Encoders as Discriminators",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.2003.10555"
+    }
+  },
+  {
+    "citation_id": "eval_0164",
+    "citation_raw": "Devlin et al. (2019)",
+    "citation_formatted": "Devlin et al. (2019). BERT: Pre-training of Deep Bidirectional Transformers. ACL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Devlin et al.",
+      "year": 2019,
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers",
+      "venue": "ACL",
+      "doi": "10.18653/v1/N19-1423"
+    }
+  },
+  {
+    "citation_id": "eval_0165",
+    "citation_raw": "Hill et al. (2016)",
+    "citation_formatted": "Hill et al. (2016). Learning Distributed Representations of Sentences. NAACL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Hill et al.",
+      "year": 2016,
+      "title": "Learning Distributed Representations of Sentences",
+      "venue": "NAACL",
+      "doi": "10.18653/v1/N16-1082"
+    }
+  },
+  {
+    "citation_id": "eval_0166",
+    "citation_raw": "Touvron et al. (2023)",
+    "citation_formatted": "Touvron et al. (2023). LLaMA: Open and Efficient Foundation Language Models. Meta AI Research.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Touvron et al.",
+      "year": 2023,
+      "title": "LLaMA: Open and Efficient Foundation Language Models",
+      "venue": "Meta AI Research",
+      "doi": "10.48550/arXiv.2302.13971"
+    }
+  },
+  {
+    "citation_id": "eval_0167",
+    "citation_raw": "Wei et al. (2022)",
+    "citation_formatted": "Wei et al. (2022). Chain-of-Thought Prompting Elicits Reasoning. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Wei et al.",
+      "year": 2022,
+      "title": "Chain-of-Thought Prompting Elicits Reasoning",
+      "venue": "NeurIPS",
+      "doi": "10.48550/arXiv.2201.11903"
+    }
+  },
+  {
+    "citation_id": "eval_0168",
+    "citation_raw": "Lakshminarayanan et al. (2017)",
+    "citation_formatted": "Lakshminarayanan et al. (2017). Simple and Scalable Predictive Uncertainty Estimation. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Lakshminarayanan et al.",
+      "year": 2017,
+      "title": "Simple and Scalable Predictive Uncertainty Estimation",
+      "venue": "NeurIPS",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0169",
+    "citation_raw": "Cho et al. (2014)",
+    "citation_formatted": "Cho et al. (2014). Learning Phrase Representations using RNN Encoder-Decoder. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Cho et al.",
+      "year": 2014,
+      "title": "Learning Phrase Representations using RNN Encoder-Decoder",
+      "venue": "EMNLP",
+      "doi": "10.3115/v1/D14-1179"
+    }
+  },
+  {
+    "citation_id": "eval_0170",
+    "citation_raw": "Sutskever et al. (2014)",
+    "citation_formatted": "Sutskever et al. (2014). Sequence to Sequence Learning with Neural Networks. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Sutskever et al.",
+      "year": 2014,
+      "title": "Sequence to Sequence Learning with Neural Networks",
+      "venue": "NeurIPS",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0171",
+    "citation_raw": "Bowman et al. (2015)",
+    "citation_formatted": "Bowman et al. (2015). A Large Annotated Corpus for Learning Natural Language Inference. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Bowman et al.",
+      "year": 2015,
+      "title": "A Large Annotated Corpus for Learning Natural Language Inference",
+      "venue": "EMNLP",
+      "doi": "10.18653/v1/D15-1075"
+    }
+  },
+  {
+    "citation_id": "eval_0172",
+    "citation_raw": "Chen et al. (2085)",
+    "citation_formatted": "Chen et al. (2085). A Simple Framework for Contrastive Learning of Visual Representations. ICML.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0173",
+    "citation_raw": "Rae et al. (2072)",
+    "citation_formatted": "Rae et al. (2072). Scaling Language Models: Methods, Analysis & Insights. arXiv.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0174",
+    "citation_raw": "Unknown Research (2021)",
+    "citation_formatted": "Unknown Research (2021). An Impossible Study of Nothing. Annals of Fake Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0175",
+    "citation_raw": "Invented Scientist (2018)",
+    "citation_formatted": "Invented Scientist (2018). Groundbreaking False Findings. Review of Pseudoscientific Studies.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0176",
+    "citation_raw": "Vaswani et al. (2017)",
+    "citation_formatted": "Vaswani et al. (2017). Attention Is All You Need. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Vaswani et al.",
+      "year": 2017,
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "doi": "10.48550/arXiv.1706.03762"
+    }
+  },
+  {
+    "citation_id": "eval_0177",
+    "citation_raw": "Zaheer et al. (2020)",
+    "citation_formatted": "Zaheer et al. (2020). Big Bird: Transformers for Longer Sequences. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Zaheer et al.",
+      "year": 2020,
+      "title": "Big Bird: Transformers for Longer Sequences",
+      "venue": "NeurIPS",
+      "doi": "10.48550/arXiv.2007.14062"
+    }
+  },
+  {
+    "citation_id": "eval_0178",
+    "citation_raw": "Counterfeit Scholar (2020)",
+    "citation_formatted": "Counterfeit Scholar (2020). The Art of Fabricating Research. Review of Pseudoscientific Studies.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0179",
+    "citation_raw": "Sennrich et al. (2016)",
+    "citation_formatted": "Sennrich et al. (2016). Neural Machine Translation of Rare Words with Subword Units. ACL.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Sennrich et al.",
+      "year": 2016,
+      "title": "Neural Machine Translation of Rare Words with Subword Units",
+      "venue": "ACL",
+      "doi": "10.18653/v1/P16-1162"
+    }
+  },
+  {
+    "citation_id": "eval_0180",
+    "citation_raw": "Fabricated Author (2016)",
+    "citation_formatted": "Fabricated Author (2016). An Impossible Study of Nothing. Journal of Non-Existent Research.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0181",
+    "citation_raw": "Manufactured Author (2016). DOI: 10.9999.7596.845",
+    "citation_formatted": "Manufactured Author (2016). Fake Paper Title. DOI: 10.9999.7596.845.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0182",
+    "citation_raw": "Radford et al. (2019)",
+    "citation_formatted": "Radford et al. (2019). Language Models are Unsupervised Multitask Learners. OpenAI Technical Report.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Radford et al.",
+      "year": 2019,
+      "title": "Language Models are Unsupervised Multitask Learners",
+      "venue": "OpenAI Technical Report",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0183",
+    "citation_raw": "Tran et al. (2016)",
+    "citation_formatted": "Tran et al. (2016). context2vec: Learning Generic Context Embedding. CoNLL.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_author",
+    "original_paper": {
+      "authors": "Melamud et al.",
+      "year": 2016,
+      "title": "context2vec: Learning Generic Context Embedding",
+      "venue": "CoNLL",
+      "doi": "10.18653/v1/K16-1006"
+    }
+  },
+  {
+    "citation_id": "eval_0184",
+    "citation_raw": "Radford et al. (2021)",
+    "citation_formatted": "Radford et al. (2021). Quantum Dreams and Fake Realities. ICML.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_title",
+    "original_paper": {
+      "authors": "Radford et al.",
+      "year": 2021,
+      "title": "Learning Transferable Visual Models From Natural Language Supervision",
+      "venue": "ICML",
+      "doi": "10.48550/arXiv.2103.00020"
+    }
+  },
+  {
+    "citation_id": "eval_0185",
+    "citation_raw": "Lewis et al. (2051)",
+    "citation_formatted": "Lewis et al. (2051). BART: Denoising Sequence-to-Sequence Pre-training. ACL.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0186",
+    "citation_raw": "Unknown Research (2019)",
+    "citation_formatted": "Unknown Research (2019). Quantum Dreams and Fake Realities. Frontiers in Non-Existent Research.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_title",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0187",
+    "citation_raw": "Shen et al. (2018)",
+    "citation_formatted": "Shen et al. (2018). Bi-directional Block Self-Attention for Fast and Memory-Efficient. ICLR.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Shen et al.",
+      "year": 2018,
+      "title": "Bi-directional Block Self-Attention for Fast and Memory-Efficient",
+      "venue": "ICLR",
+      "doi": "10.48550/arXiv.1805.08328"
+    }
+  },
+  {
+    "citation_id": "eval_0188",
+    "citation_raw": "Invented Scientist (2021)",
+    "citation_formatted": "Invented Scientist (2021). A Novel Approach to Fake Research. Advances in Counterfeit Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0189",
+    "citation_raw": "NonExistent et al. (2023). DOI: 10.abric.5114.966",
+    "citation_formatted": "NonExistent et al. (2023). Fake Paper Title. DOI: 10.abric.5114.966.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0190",
+    "citation_raw": "Radford and Narasimhan (2054)",
+    "citation_formatted": "Radford and Narasimhan (2054). Improving Language Understanding by Generative Pre-Training. OpenAI Technical Report.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_future_year",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0191",
+    "citation_raw": "Phantom Author (2023)",
+    "citation_formatted": "Phantom Author (2023). The Non-Existent Method. Annals of Fake Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_title",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0192",
+    "citation_raw": "Bordes et al. (2013)",
+    "citation_formatted": "Bordes et al. (2013). Translating Embeddings for Modeling Multi-relational Data. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Bordes et al.",
+      "year": 2013,
+      "title": "Translating Embeddings for Modeling Multi-relational Data",
+      "venue": "NeurIPS",
+      "doi": ""
+    }
+  },
+  {
+    "citation_id": "eval_0193",
+    "citation_raw": "Schnabel et al. (2015)",
+    "citation_formatted": "Schnabel et al. (2015). Evaluation methods for unsupervised word embeddings. EMNLP.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Schnabel et al.",
+      "year": 2015,
+      "title": "Evaluation methods for unsupervised word embeddings",
+      "venue": "EMNLP",
+      "doi": "10.18653/v1/D15-1036"
+    }
+  },
+  {
+    "citation_id": "eval_0194",
+    "citation_raw": "Karpukhin et al. (2031)",
+    "citation_formatted": "Karpukhin et al. (2031). Dense Passage Retrieval for Open-Domain Question Answering. EMNLP.",
+    "ground_truth": "METADATA_ERROR",
+    "source": "Error_wrong_year",
+    "original_paper": {
+      "authors": "Karpukhin et al.",
+      "year": 2020,
+      "title": "Dense Passage Retrieval for Open-Domain Question Answering",
+      "venue": "EMNLP",
+      "doi": "10.18653/v1/2020.emnlp-main.550"
+    }
+  },
+  {
+    "citation_id": "eval_0195",
+    "citation_raw": "Yao et al. (2023)",
+    "citation_formatted": "Yao et al. (2023). Tree of Thoughts: Deliberate Problem Solving with Large Models. NeurIPS.",
+    "ground_truth": "REAL",
+    "source": "Famous",
+    "original_paper": {
+      "authors": "Yao et al.",
+      "year": 2023,
+      "title": "Tree of Thoughts: Deliberate Problem Solving with Large Models",
+      "venue": "NeurIPS",
+      "doi": "10.48550/arXiv.2305.10601"
+    }
+  },
+  {
+    "citation_id": "eval_0196",
+    "citation_raw": "FakeAuthor et al. (2015). DOI: 10.invalid.8811.614",
+    "citation_formatted": "FakeAuthor et al. (2015). Fake Paper Title. DOI: 10.invalid.8811.614.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0197",
+    "citation_raw": "Phony Paper (2024). DOI: 10.abric.6930.324",
+    "citation_formatted": "Phony Paper (2024). Fake Paper Title. DOI: 10.abric.6930.324.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0198",
+    "citation_raw": "Williams et al. (2018)",
+    "citation_formatted": "Williams et al. (2018). A Broad-Coverage Challenge Corpus for Sentence Understanding. NAACL.",
+    "ground_truth": "REAL",
+    "source": "ACL",
+    "original_paper": {
+      "authors": "Williams et al.",
+      "year": 2018,
+      "title": "A Broad-Coverage Challenge Corpus for Sentence Understanding",
+      "venue": "NAACL",
+      "doi": "10.18653/v1/N18-1201"
+    }
+  },
+  {
+    "citation_id": "eval_0199",
+    "citation_raw": "Imagined Paper (2023). DOI: 10.1234.5272.309",
+    "citation_formatted": "Imagined Paper (2023). Fake Paper Title. DOI: 10.1234.5272.309.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_doi",
+    "original_paper": null
+  },
+  {
+    "citation_id": "eval_0200",
+    "citation_raw": "Imaginary Scholar (2019)",
+    "citation_formatted": "Imaginary Scholar (2019). Revolutionary Discovery in Pseudoscience. Advances in Counterfeit Science.",
+    "ground_truth": "HALLUCINATED",
+    "source": "Synthetic_fake_author",
+    "original_paper": null
+  }
+]

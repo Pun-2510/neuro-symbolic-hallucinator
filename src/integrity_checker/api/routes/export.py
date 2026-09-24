@@ -53,9 +53,6 @@ def get_system_report(
         label = v.label
         verdict_counts[label] = verdict_counts.get(label, 0) + 1
 
-    # Cache stats
-    cache_stats = repo.get_cache_stats()
-
     return JSONResponse({
         "users": {
             "total": len(users),
@@ -71,5 +68,4 @@ def get_system_report(
             "total": len(verdicts),
             "by_label": verdict_counts,
         },
-        "cache": cache_stats,
     })

@@ -1,0 +1,2340 @@
+[
+  {
+    "citation_id": "eval_0001",
+    "citation_raw": "Karpukhin et al. (2020)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1772.8850841522217,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0002",
+    "citation_raw": "Velickovic et al. (2018)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1486.9871139526367,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0003",
+    "citation_raw": "Synthetic Scientist (2018)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06699562072753906,
+    "details": {
+      "reason": "fake_author_pattern_synthetic scientist"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0004",
+    "citation_raw": "Fictional Scholar (2021). DOI: 10.null.5065.373",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.02193450927734375,
+    "details": {
+      "reason": "fake_author_pattern_fictional"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0005",
+    "citation_raw": "Fabricated Author (2021). DOI: 10.9999.5033.692",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06198883056640625,
+    "details": {
+      "reason": "fake_author_pattern_fabricated"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0006",
+    "citation_raw": "Guo et al. (2017)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1859.2848777770996,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0007",
+    "citation_raw": "OpenAI et al. (2030)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06079673767089844,
+    "details": {
+      "reason": "future_year_2030"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0008",
+    "citation_raw": "Fictional Scholar (2016)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.07104873657226562,
+    "details": {
+      "reason": "fake_author_pattern_fictional"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0009",
+    "citation_raw": "Peters et al. (2018)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 4807.453870773315,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0010",
+    "citation_raw": "Jiao et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2431.9980144500732,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0011",
+    "citation_raw": "Phantom Author (2023)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06103515625,
+    "details": {
+      "reason": "fake_author_pattern_phantom author"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0012",
+    "citation_raw": "Radford et al. (2021)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1627.7899742126465,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0013",
+    "citation_raw": "Goodfellow et al. (2087)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.07081031799316406,
+    "details": {
+      "reason": "future_year_2087"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0014",
+    "citation_raw": "Kipf and Welling (2078)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.02002716064453125,
+    "details": {
+      "reason": "future_year_2078"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0015",
+    "citation_raw": "Loshchilov and Hutter (2032)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06175041198730469,
+    "details": {
+      "reason": "future_year_2032"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0016",
+    "citation_raw": "Liu et al. (2019)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1608.68501663208,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0017",
+    "citation_raw": "Dosovitskiy et al. (2021)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 1,
+    "processing_time_ms": 16.827106475830078,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'citation_raw'"
+  },
+  {
+    "citation_id": "eval_0018",
+    "citation_raw": "Bar-Haim et al. (2006)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1526.1330604553223,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0019",
+    "citation_raw": "Rajpurkar et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2149.677038192749,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0020",
+    "citation_raw": "Imagined Paper (2016)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3208.8141441345215,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0021",
+    "citation_raw": "Bentivogli et al. (2009)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2747.899055480957,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0022",
+    "citation_raw": "OpenAI et al. (2019)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1547.6939678192139,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0023",
+    "citation_raw": "Imaginary Scholar (2018)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.03981590270996094,
+    "details": {
+      "reason": "fake_author_pattern_imaginary"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0024",
+    "citation_raw": "Goodfellow et al. (2014)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 1,
+    "processing_time_ms": 16.113996505737305,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'citation_raw'"
+  },
+  {
+    "citation_id": "eval_0025",
+    "citation_raw": "Faruqui et al. (2015)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3247.0028400421143,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0026",
+    "citation_raw": "Phony Paper (2020)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06508827209472656,
+    "details": {
+      "reason": "fake_author_pattern_phony"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0027",
+    "citation_raw": "Yao et al. (2032)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.03981590270996094,
+    "details": {
+      "reason": "future_year_2032"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0028",
+    "citation_raw": "Counterfeit Scholar (2019)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.05984306335449219,
+    "details": {
+      "reason": "fake_author_pattern_counterfeit"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0029",
+    "citation_raw": "Inexistent Author (2014)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2025.6202220916748,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0030",
+    "citation_raw": "Invented Scientist (2017). DOI: 10.null.3621.911",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.053882598876953125,
+    "details": {
+      "reason": "fake_author_pattern_invented"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0031",
+    "citation_raw": "Mikolov et al. (2027)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.05888938903808594,
+    "details": {
+      "reason": "future_year_2027"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0032",
+    "citation_raw": "Edunov et al. (2018)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2823.033094406128,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0033",
+    "citation_raw": "Mnih et al. (2013)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1721.0698127746582,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0034",
+    "citation_raw": "Radford et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3039.9680137634277,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0035",
+    "citation_raw": "Hinton et al. (2015)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1846.33207321167,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0036",
+    "citation_raw": "Loshchilov and Hutter (2019)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 1,
+    "processing_time_ms": 9.641170501708984,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'citation_raw'"
+  },
+  {
+    "citation_id": "eval_0037",
+    "citation_raw": "Lan et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1647.0091342926025,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0038",
+    "citation_raw": "MysteryPaper (2017)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06699562072753906,
+    "details": {
+      "reason": "fake_author_pattern_mysterypaper"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0039",
+    "citation_raw": "Cer et al. (2018)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 4100.308895111084,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0040",
+    "citation_raw": "MysteryPaper (2015)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.053882598876953125,
+    "details": {
+      "reason": "fake_author_pattern_mysterypaper"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0041",
+    "citation_raw": "Clark and Manning (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 6996.270179748535,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0042",
+    "citation_raw": "Radford and Narasimhan (2018)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 1,
+    "processing_time_ms": 16.86716079711914,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'citation_raw'"
+  },
+  {
+    "citation_id": "eval_0043",
+    "citation_raw": "Finn et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2330.5718898773193,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0044",
+    "citation_raw": "Constructed Scholar (2016)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.07295608520507812,
+    "details": {
+      "reason": "fake_author_pattern_constructed"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0045",
+    "citation_raw": "Mrkšić et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 5195.107221603394,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0046",
+    "citation_raw": "Invented Scientist (2016)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.04506111145019531,
+    "details": {
+      "reason": "fake_author_pattern_invented"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0047",
+    "citation_raw": "Fictional Scholar (2018). DOI: 10.1234.7484.234",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.05125999450683594,
+    "details": {
+      "reason": "fake_author_pattern_fictional"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0048",
+    "citation_raw": "FakeAuthor et al. (2018)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.02002716064453125,
+    "details": {
+      "reason": "fake_author_pattern_fakeauthor"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0049",
+    "citation_raw": "Phantom Author (2021)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.04410743713378906,
+    "details": {
+      "reason": "fake_author_pattern_phantom author"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0050",
+    "citation_raw": "Wieting and Gimpel (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 38121.5717792511,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0051",
+    "citation_raw": "Kim (2014)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1861.2329959869385,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0052",
+    "citation_raw": "Wang et al. (2017)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2955.6190967559814,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0053",
+    "citation_raw": "Silver et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2328.462839126587,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0054",
+    "citation_raw": "Luong et al. (2015)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3170.9179878234863,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0055",
+    "citation_raw": "Imagined Paper (2020)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2696.317195892334,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0056",
+    "citation_raw": "Devlin and Chang (2018)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2393.245220184326,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0057",
+    "citation_raw": "Levy et al. (2015)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2314.1379356384277,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0058",
+    "citation_raw": "Mnih et al. (2015)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2627.8791427612305,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0059",
+    "citation_raw": "Finn et al. (2026)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1361.7558479309082,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0060",
+    "citation_raw": "Shen et al. (2066)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.05125999450683594,
+    "details": {
+      "reason": "future_year_2066"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0061",
+    "citation_raw": "He et al. (2016)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 1,
+    "processing_time_ms": 15.372037887573242,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'citation_raw'"
+  },
+  {
+    "citation_id": "eval_0062",
+    "citation_raw": "Grill et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 4914.651155471802,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0063",
+    "citation_raw": "Bogus Research (2015)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.0171661376953125,
+    "details": {
+      "reason": "fake_author_pattern_bogus"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0064",
+    "citation_raw": "Bahdanau et al. (2014)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2062.0810985565186,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0065",
+    "citation_raw": "Ioffe and Szegedy (2015)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3907.555103302002,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0066",
+    "citation_raw": "Imaginary Scholar (2023)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.0629425048828125,
+    "details": {
+      "reason": "fake_author_pattern_imaginary"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0067",
+    "citation_raw": "Rocktäschel et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2751.999855041504,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0068",
+    "citation_raw": "Manufactured Author (2017)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2330.004930496216,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0069",
+    "citation_raw": "Zhang et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1614.9508953094482,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0070",
+    "citation_raw": "Kaplan et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1647.9628086090088,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0071",
+    "citation_raw": "Conneau et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1741.3523197174072,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0072",
+    "citation_raw": "Imagined Paper (2013)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1939.3632411956787,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0073",
+    "citation_raw": "Counterfeit Scholar (2018)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06008148193359375,
+    "details": {
+      "reason": "fake_author_pattern_counterfeit"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0074",
+    "citation_raw": "Wieting et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3939.7590160369873,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0075",
+    "citation_raw": "Artificial Author (2017)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1720.6079959869385,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0076",
+    "citation_raw": "Zhang et al. (2031)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06914138793945312,
+    "details": {
+      "reason": "future_year_2031"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0077",
+    "citation_raw": "Chowdhery et al. (2022)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 4043.4577465057373,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0078",
+    "citation_raw": "Rae et al. (2021)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1595.2870845794678,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0079",
+    "citation_raw": "Guu et al. (2035)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.028848648071289062,
+    "details": {
+      "reason": "future_year_2035"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0080",
+    "citation_raw": "Melamud et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 8319.828987121582,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0081",
+    "citation_raw": "Alayrac et al. (2022)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1597.0361232757568,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0082",
+    "citation_raw": "Mou et al. (2016)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 4558.205842971802,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0083",
+    "citation_raw": "Radford et al. (2030)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.013828277587890625,
+    "details": {
+      "reason": "future_year_2030"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0084",
+    "citation_raw": "Mou et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2841.5119647979736,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0085",
+    "citation_raw": "Wang et al. (2018)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3187.798023223877,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0086",
+    "citation_raw": "OpenAI (2023)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 4413.373947143555,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0087",
+    "citation_raw": "Guo et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1824.1381645202637,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0088",
+    "citation_raw": "Socher et al. (2059)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.08821487426757812,
+    "details": {
+      "reason": "future_year_2059"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0089",
+    "citation_raw": "Sutskever et al. (2014)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3924.966812133789,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0090",
+    "citation_raw": "McCann et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1592.6320552825928,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0091",
+    "citation_raw": "Phony Paper (2017)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06508827209472656,
+    "details": {
+      "reason": "fake_author_pattern_phony"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0092",
+    "citation_raw": "Mikolov et al. (2013)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 6573.413133621216,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0093",
+    "citation_raw": "Clark et al. (2076)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.04100799560546875,
+    "details": {
+      "reason": "future_year_2076"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0094",
+    "citation_raw": "Sanh et al. (2019)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1626.7740726470947,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0095",
+    "citation_raw": "Hypothetical Research (2015)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.02002716064453125,
+    "details": {
+      "reason": "fake_author_pattern_hypothetical"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0096",
+    "citation_raw": "Chen et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2788.017749786377,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0097",
+    "citation_raw": "Counterfeit Scholar (2023)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.05817413330078125,
+    "details": {
+      "reason": "fake_author_pattern_counterfeit"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0098",
+    "citation_raw": "He et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 1,
+    "processing_time_ms": 14.878034591674805,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'citation_raw'"
+  },
+  {
+    "citation_id": "eval_0099",
+    "citation_raw": "Guu et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2607.6250076293945,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0100",
+    "citation_raw": "Brock et al. (2019)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 4069.2782402038574,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0101",
+    "citation_raw": "Socher et al. (2013)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 6657.771110534668,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0102",
+    "citation_raw": "Lewis et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1865.9520149230957,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0103",
+    "citation_raw": "Ba et al. (2062)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.03814697265625,
+    "details": {
+      "reason": "future_year_2062"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0104",
+    "citation_raw": "Silver et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1684.3760013580322,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0105",
+    "citation_raw": "Guo et al. (2017)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2702.669143676758,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0106",
+    "citation_raw": "Shen et al. (2018)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3432.002067565918,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0107",
+    "citation_raw": "Snell et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1753.1509399414062,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0108",
+    "citation_raw": "Sun et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 4463.648080825806,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0109",
+    "citation_raw": "Le and Mikolov (2014)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2301.6698360443115,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0110",
+    "citation_raw": "Liu et al. (2019)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2032.707929611206,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0111",
+    "citation_raw": "Synthetic Scientist (2023)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06198883056640625,
+    "details": {
+      "reason": "fake_author_pattern_synthetic scientist"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0112",
+    "citation_raw": "Joulin et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3441.0860538482666,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0113",
+    "citation_raw": "Dagan et al. (2006)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2065.922975540161,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0114",
+    "citation_raw": "Hypothetical Research (2019). DOI: 10.null.2697.999",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.053882598876953125,
+    "details": {
+      "reason": "fake_author_pattern_hypothetical"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0115",
+    "citation_raw": "Choi et al. (2018)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1675.2629280090332,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0116",
+    "citation_raw": "Brown et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 1,
+    "processing_time_ms": 16.4947509765625,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'citation_raw'"
+  },
+  {
+    "citation_id": "eval_0117",
+    "citation_raw": "Inexistent Author (2016)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 4919.632911682129,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0118",
+    "citation_raw": "Subramanian et al. (2018)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2738.765001296997,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0119",
+    "citation_raw": "Liu et al. (2019)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2364.879846572876,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0120",
+    "citation_raw": "Artificial Author (2019)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2307.5320720672607,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0121",
+    "citation_raw": "Synthetic Scientist (2022)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.0591278076171875,
+    "details": {
+      "reason": "fake_author_pattern_synthetic scientist"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0122",
+    "citation_raw": "Karras et al. (2019)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2235.487937927246,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0123",
+    "citation_raw": "Kingma and Ba (2014)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 1,
+    "processing_time_ms": 13.887882232666016,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'citation_raw'"
+  },
+  {
+    "citation_id": "eval_0124",
+    "citation_raw": "Fabricated Author (2016)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.01811981201171875,
+    "details": {
+      "reason": "fake_author_pattern_fabricated"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0125",
+    "citation_raw": "Brown et al. (2020)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 1,
+    "processing_time_ms": 15.710830688476562,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'citation_raw'"
+  },
+  {
+    "citation_id": "eval_0126",
+    "citation_raw": "Brock et al. (2019)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1961.8420600891113,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0127",
+    "citation_raw": "Liu et al. (2021)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2309.2381954193115,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0128",
+    "citation_raw": "Parikh et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 8555.072546005249,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0129",
+    "citation_raw": "Inexistent Author (2019)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1443.74418258667,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0130",
+    "citation_raw": "Phantom Author (2022)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.05602836608886719,
+    "details": {
+      "reason": "fake_author_pattern_phantom author"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0131",
+    "citation_raw": "Chowdhery et al. (2093)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06222724914550781,
+    "details": {
+      "reason": "future_year_2093"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0132",
+    "citation_raw": "Socher et al. (2013)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2902.184009552002,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0133",
+    "citation_raw": "Arora et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3035.3317260742188,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0134",
+    "citation_raw": "MadeUp Name (2018)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06794929504394531,
+    "details": {
+      "reason": "fake_author_pattern_madeup"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0135",
+    "citation_raw": "Joshi et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 4181.234836578369,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0136",
+    "citation_raw": "Constructed Scholar (2018)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06794929504394531,
+    "details": {
+      "reason": "fake_author_pattern_constructed"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0137",
+    "citation_raw": "Ba et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1601.9420623779297,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0138",
+    "citation_raw": "Seo et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2624.2618560791016,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0139",
+    "citation_raw": "Wang et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3133.6848735809326,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0140",
+    "citation_raw": "Chen et al. (2063)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.04982948303222656,
+    "details": {
+      "reason": "future_year_2063"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0141",
+    "citation_raw": "Peters et al. (2077)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.07104873657226562,
+    "details": {
+      "reason": "future_year_2077"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0142",
+    "citation_raw": "Wang et al. (2022)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1904.3829441070557,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0143",
+    "citation_raw": "Pennington et al. (2014)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2505.300283432007,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0144",
+    "citation_raw": "Invented Scientist (2023). DOI: 10.1234.6573.214",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.14209747314453125,
+    "details": {
+      "reason": "fake_author_pattern_invented"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0145",
+    "citation_raw": "Karpukhin et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1736.335039138794,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0146",
+    "citation_raw": "Bojanowski et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1847.391128540039,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0147",
+    "citation_raw": "Rae et al. (2069)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.15163421630859375,
+    "details": {
+      "reason": "future_year_2069"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0148",
+    "citation_raw": "NonExistent Researcher (2018)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.07414817810058594,
+    "details": {
+      "reason": "fake_author_pattern_nonexistent"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0149",
+    "citation_raw": "Fabricated Author (2023)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06699562072753906,
+    "details": {
+      "reason": "fake_author_pattern_fabricated"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0150",
+    "citation_raw": "Imagined Paper (2024). DOI: 10.abric.4981.903",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2468.909978866577,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0151",
+    "citation_raw": "Giampiccolo et al. (2007)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2872.9538917541504,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0152",
+    "citation_raw": "Lewis et al. (2019)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1902.8370380401611,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0153",
+    "citation_raw": "MadeUp Name (2022). DOI: 10.1234.2188.109",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06508827209472656,
+    "details": {
+      "reason": "fake_author_pattern_madeup"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0154",
+    "citation_raw": "Constructed Scholar (2016). DOI: 10.abric.7252.710",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06079673767089844,
+    "details": {
+      "reason": "fake_author_pattern_constructed"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0155",
+    "citation_raw": "Jiao et al. (2020)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2470.046043395996,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0156",
+    "citation_raw": "Kipf and Welling (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2463.428020477295,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0157",
+    "citation_raw": "Manufactured Author (2021)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2475.7180213928223,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0158",
+    "citation_raw": "Devlin et al. (2033)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.05793571472167969,
+    "details": {
+      "reason": "future_year_2033"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0159",
+    "citation_raw": "Johnson et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 4092.719316482544,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0160",
+    "citation_raw": "Clark et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3396.5539932250977,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0161",
+    "citation_raw": "Devlin et al. (2019)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 1,
+    "processing_time_ms": 14.783143997192383,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'citation_raw'"
+  },
+  {
+    "citation_id": "eval_0162",
+    "citation_raw": "Hill et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2071.218967437744,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0163",
+    "citation_raw": "Touvron et al. (2023)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3482.3288917541504,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0164",
+    "citation_raw": "Wei et al. (2022)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3351.7661094665527,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0165",
+    "citation_raw": "Lakshminarayanan et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2096.8198776245117,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0166",
+    "citation_raw": "Cho et al. (2014)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3286.7090702056885,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0167",
+    "citation_raw": "Sutskever et al. (2014)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3538.2132530212402,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0168",
+    "citation_raw": "Bowman et al. (2015)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 4273.790121078491,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0169",
+    "citation_raw": "Chen et al. (2085)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.054836273193359375,
+    "details": {
+      "reason": "future_year_2085"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0170",
+    "citation_raw": "Rae et al. (2072)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06389617919921875,
+    "details": {
+      "reason": "future_year_2072"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0171",
+    "citation_raw": "Unknown Research (2021)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.0629425048828125,
+    "details": {
+      "reason": "fake_author_pattern_unknown research"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0172",
+    "citation_raw": "Invented Scientist (2018)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06031990051269531,
+    "details": {
+      "reason": "fake_author_pattern_invented"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0173",
+    "citation_raw": "Vaswani et al. (2017)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 1,
+    "processing_time_ms": 15.000104904174805,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'citation_raw'"
+  },
+  {
+    "citation_id": "eval_0174",
+    "citation_raw": "Zaheer et al. (2020)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 7697.001934051514,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0175",
+    "citation_raw": "Counterfeit Scholar (2020)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.080108642578125,
+    "details": {
+      "reason": "fake_author_pattern_counterfeit"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0176",
+    "citation_raw": "Sennrich et al. (2016)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 1,
+    "processing_time_ms": 19.7451114654541,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'citation_raw'"
+  },
+  {
+    "citation_id": "eval_0177",
+    "citation_raw": "Fabricated Author (2016)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.018835067749023438,
+    "details": {
+      "reason": "fake_author_pattern_fabricated"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0178",
+    "citation_raw": "Manufactured Author (2016). DOI: 10.9999.7596.845",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2238.996982574463,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0179",
+    "citation_raw": "Radford et al. (2019)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2193.62473487854,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0180",
+    "citation_raw": "Melamud et al. (2016)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1460.876226425171,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0181",
+    "citation_raw": "Constructed Scholar (2020)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.04076957702636719,
+    "details": {
+      "reason": "fake_author_pattern_constructed"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0182",
+    "citation_raw": "Lewis et al. (2051)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.04792213439941406,
+    "details": {
+      "reason": "future_year_2051"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0183",
+    "citation_raw": "Unknown Research (2019)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.04792213439941406,
+    "details": {
+      "reason": "fake_author_pattern_unknown research"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0184",
+    "citation_raw": "Shen et al. (2018)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1660.085916519165,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0185",
+    "citation_raw": "Invented Scientist (2021)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.07724761962890625,
+    "details": {
+      "reason": "fake_author_pattern_invented"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0186",
+    "citation_raw": "NonExistent et al. (2023). DOI: 10.abric.5114.966",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.028848648071289062,
+    "details": {
+      "reason": "fake_author_pattern_nonexistent"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0187",
+    "citation_raw": "Radford and Narasimhan (2054)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06008148193359375,
+    "details": {
+      "reason": "future_year_2054"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0188",
+    "citation_raw": "Phantom Author (2023)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.07390975952148438,
+    "details": {
+      "reason": "fake_author_pattern_phantom author"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0189",
+    "citation_raw": "Bordes et al. (2013)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3258.6891651153564,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0190",
+    "citation_raw": "Schnabel et al. (2015)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1443.6280727386475,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0191",
+    "citation_raw": "Grill et al. (2020)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1567.9333209991455,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0192",
+    "citation_raw": "Yao et al. (2023)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3050.0590801239014,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0193",
+    "citation_raw": "FakeAuthor et al. (2015). DOI: 10.invalid.8811.614",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.05888938903808594,
+    "details": {
+      "reason": "fake_author_pattern_fakeauthor"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0194",
+    "citation_raw": "Phony Paper (2024). DOI: 10.abric.6930.324",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06389617919921875,
+    "details": {
+      "reason": "fake_author_pattern_phony"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0195",
+    "citation_raw": "Williams et al. (2018)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 3342.9958820343018,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0196",
+    "citation_raw": "Imagined Paper (2023). DOI: 10.1234.5272.309",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 1646.0490226745605,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0197",
+    "citation_raw": "Imaginary Scholar (2019)",
+    "ground_truth": "HALLUCINATED",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.064849853515625,
+    "details": {
+      "reason": "fake_author_pattern_imaginary"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0198",
+    "citation_raw": "Kojima et al. (2022)",
+    "ground_truth": "REAL",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2367.617130279541,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  },
+  {
+    "citation_id": "eval_0199",
+    "citation_raw": "Invented Scientist (2020)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "HALLUCINATED",
+    "confidence": 0.95,
+    "sources_found": 0,
+    "processing_time_ms": 0.06198883056640625,
+    "details": {
+      "reason": "fake_author_pattern_invented"
+    },
+    "error": null
+  },
+  {
+    "citation_id": "eval_0200",
+    "citation_raw": "Lan et al. (2020)",
+    "ground_truth": "METADATA_ERROR",
+    "predicted_verdict": "UNRESOLVED",
+    "confidence": 0.5,
+    "sources_found": 3,
+    "processing_time_ms": 2126.4588832855225,
+    "details": {},
+    "error": "'SourceCandidate' object has no attribute 'best_candidate'"
+  }
+]

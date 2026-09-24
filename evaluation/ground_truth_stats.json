@@ -1,0 +1,27 @@
+{
+  "total": 200,
+  "by_label": {
+    "REAL": 100,
+    "HALLUCINATED": 70,
+    "METADATA_ERROR": 30
+  },
+  "by_source": {
+    "ACL": 28,
+    "Famous": 72,
+    "Synthetic_fake_title": 8,
+    "Error_wrong_year": 8,
+    "Synthetic_future_year": 14,
+    "Synthetic_fake_author": 28,
+    "Error_wrong_title": 12,
+    "Synthetic_fake_venue": 6,
+    "Error_wrong_author": 10,
+    "Synthetic_fake_doi": 14
+  },
+  "hallucination_types": {
+    "fake_title": 8,
+    "future_year": 14,
+    "fake_author": 28,
+    "fake_venue": 6,
+    "fake_doi": 14
+  }
+}

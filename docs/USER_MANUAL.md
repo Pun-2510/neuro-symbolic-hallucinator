@@ -61,6 +61,7 @@ Report gồm các phần:
 | METADATA_ERROR | Nguồn có thật nhưng citation khai báo sai một hoặc nhiều trường |
 | SUSPECTED_HALLUCINATION | Chưa tìm thấy record phù hợp sau quy trình truy hồi |
 | UNRESOLVED | Chưa đủ evidence hoặc hệ thống gặp lỗi/ambiguity |
+| RESOURCE 🔗 | URL/Reference link (GitHub, websites, tools) - không phải academic citation |
 
 ### Ý nghĩa integrity status
 
