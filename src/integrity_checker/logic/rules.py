@@ -201,6 +201,10 @@ class SymbolicRules:
         }
 
         # Check raw text for known academic patterns
+        # IMPORTANT: Use word boundary matching to avoid false positives
+        # e.g., "Scholar" should NOT match "cho" from "choi"
+        import re
+
         raw_lower = (citation_raw or "").lower()
 
         # Known author patterns in raw text - EXTENDED for METADATA_ERROR detection
@@ -234,7 +238,9 @@ class SymbolicRules:
         ]
 
         for pattern in known_patterns:
-            if pattern in raw_lower:
+            # Use word boundary to ensure we match whole words only
+            # e.g., "cho" should NOT match inside "scholar" or "choi"
+            if re.search(r'\b' + re.escape(pattern) + r'\b', raw_lower):
                 return True
 
         # Check individual authors
@@ -346,8 +352,7 @@ class SymbolicRules:
 
         # --- Rule 5 (default): không có gì để quyết định ---
         if not source.candidates or not source.best_candidate():
-            # FIX v1.3: Check known author pattern FIRST
-            # If author looks academic, this is likely METADATA_ERROR, not HALLUCINATION
+            # Check known author pattern - if author looks academic, this is METADATA_ERROR
             if self._is_known_academic_author_pattern(
                 citation_authors=citation_authors,
                 citation_year=citation_year,
@@ -628,13 +633,18 @@ class SymbolicRules:
         # --- Rule 4b (NEW v1.3): METADATA_ERROR detection for known authors ---
         # If citation has known academic author + title mismatch + year mismatch
         # -> This is METADATA_ERROR, not HALLUCINATION or UNRESOLVED
+        # IMPORTANT: Only apply if we have VERIFIED sources (not just candidates)
         is_known_author = self._is_known_academic_author_pattern(
             citation_authors=citation_authors,
             citation_year=citation_year,
             citation_raw=citation_raw,
         )
 
-        if is_known_author and title_sim < self.title_sim_verified and sources_found > 0:
+        # Only apply this rule if we have actual successful sources
+        # (sources that returned quality candidates after filtering)
+        has_verified_sources = len(source.sources_succeeded) > 0
+
+        if is_known_author and title_sim < self.title_sim_verified and has_verified_sources:
             # Check if author might match the found paper
             # Heuristic: if title_sim is moderate (0.3-0.7), this is likely wrong title
             if 0.3 <= title_sim < self.title_sim_verified:
