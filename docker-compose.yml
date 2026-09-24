@@ -1,15 +1,16 @@
 # =====================================================================
 # docker-compose.yml — local dev: api + frontend + GROBID
 # GROBID: lfoppiano/grobid:0.8.0 (cần 2GB+ RAM)
+# GROBID chỉ expose internal, API kết nối qua Docker internal network
 # =====================================================================
 
 services:
   grobid:
     image: lfoppiano/grobid:0.8.0
     container_name: essay-check-grobid
-    ports:
-      - "8070:8070"
-      - "8071:8071"
+    expose:
+      - "8070"   # Internal only - API connects via Docker network
+      - "8071"
     environment:
       - JAVA_OPTS=-Xmx2g
     volumes:
@@ -27,6 +28,8 @@ services:
           memory: 3G
         reservations:
           memory: 2G
+    networks:
+      - internal
 
   api:
     build:
@@ -44,6 +47,10 @@ services:
     depends_on:
       grobid:
         condition: service_healthy
+    environment:
+      - GROBID_URL=http://grobid:8070  # Internal Docker network
+    networks:
+      - internal
 
   web:
     image: node:20-alpine
@@ -60,6 +67,11 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+
+networks:
+  internal:
+    driver: bridge
+    internal: false  # Allow external for dev, set to true for production
 
 volumes:
   grobid_data:

@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from integrity_checker.api.deps import require_admin
 from integrity_checker.config import get_settings
+from integrity_checker.db.models import User
 from integrity_checker.extraction import GROBID_STATUS, get_grobid_manager
+from integrity_checker.logging import get_logger
 from integrity_checker.models.api_schemas import GrobidHealthStatus, HealthResponse
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -46,13 +51,15 @@ def _get_grobid_health() -> GrobidHealthStatus:
             message=message,
         )
     except Exception as exc:
+        # Log internally, don't expose exception details to client
+        logger.warning("GROBID health check failed: %s", exc)
         return GrobidHealthStatus(
             available=False,
             status="error",
             container_running=False,
             parser_mode="regex",
             cache_enabled=grobid_config.cache_by_file_sha256,
-            message=f"Error checking GROBID: {str(exc)}",
+            message="GROBID health check failed",
         )
 
 
@@ -73,9 +80,9 @@ async def grobid_health() -> GrobidHealthStatus:
     return _get_grobid_health()
 
 
-@router.post("/health/grobid/start")
-async def grobid_start() -> dict:
-    """Start GROBID container."""
+@router.post("/health/grobid/start", dependencies=[Depends(require_admin)])
+async def grobid_start(admin: User = Depends(require_admin)) -> dict:
+    """Start GROBID container. Requires admin authentication."""
     try:
         manager = get_grobid_manager(auto_start=True)
         return {
@@ -84,16 +91,17 @@ async def grobid_start() -> dict:
             "message": "GROBID container started",
         }
     except Exception as exc:
+        logger.error("Failed to start GROBID container: %s", exc)
         return {
             "success": False,
             "status": "error",
-            "message": str(exc),
+            "message": "Failed to start GROBID container",
         }
 
 
-@router.post("/health/grobid/stop")
-async def grobid_stop() -> dict:
-    """Stop GROBID container."""
+@router.post("/health/grobid/stop", dependencies=[Depends(require_admin)])
+async def grobid_stop(admin: User = Depends(require_admin)) -> dict:
+    """Stop GROBID container. Requires admin authentication."""
     try:
         manager = get_grobid_manager()
         success = manager.stop()
@@ -103,8 +111,9 @@ async def grobid_stop() -> dict:
             "message": "GROBID container stopped" if success else "Failed to stop",
         }
     except Exception as exc:
+        logger.error("Failed to stop GROBID container: %s", exc)
         return {
             "success": False,
             "status": "error",
-            "message": str(exc),
+            "message": "Failed to stop GROBID container",
         }

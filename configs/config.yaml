@@ -37,7 +37,8 @@ extraction:
   # GROBID service (v1.2 — yêu cầu Docker Compose)
   grobid:
     enabled: true
-    url: "http://localhost:8070"   # grobid docker endpoint
+    # URL: http://localhost:8070 (local dev) or http://grobid:8070 (Docker internal)
+    url: "http://grobid:8070"
     timeout_seconds: 120
     cache_by_file_sha256: true
     consolidate_header: ["abstract", "body", "bibliography", "footnote", "appendix"]
