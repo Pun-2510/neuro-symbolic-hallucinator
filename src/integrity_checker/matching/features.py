@@ -65,8 +65,23 @@ class FeatureCalculator:
         semantic_sim = self.semantic.similarity(citation.title or citation.raw_text, best.title or "")
 
         # Author Jaccard -- upgraded to author_matcher (task #29)
+        # Fallback: if citation.authors is empty, try to extract from raw_text
+        cited_authors = list(citation.authors or [])
+        if not cited_authors and citation.raw_text:
+            # Try to extract first author from raw text like "(Peters et al., 2018)"
+            raw = citation.raw_text or ""
+            raw = re.sub(r'[\r\n]+', ' ', raw)  # Handle line breaks
+            match = re.search(
+                r"^[\(\s]*([A-ZÀ-ÖØ-Þ][a-zà-ÿ'-]+)",
+                raw,
+                flags=re.IGNORECASE,
+            )
+            if match:
+                extracted_author = match.group(1)
+                cited_authors = [extracted_author]
+
         author_sim = author_match_score(
-            list(citation.authors or []),
+            cited_authors,
             list(best.authors or []),
         )
 
