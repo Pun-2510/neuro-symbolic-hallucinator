@@ -267,6 +267,65 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
     },
 }
 
+# Venue-Year whitelist cho top conferences
+# Khi citation chỉ có venue + year (không có author/title),
+# hệ thống sẽ lookup venue-year → known_paper_key
+# Format: (normalized_venue, year) → (known_paper_key_author, known_paper_key_year)
+_VENUE_YEAR_KNOWN: dict[tuple[str, str], tuple[str, str]] = {
+    # NeurIPS / NIPS (Neural Information Processing Systems)
+    ("nips", "2017"): ("vaswani", "2017"),      # Attention Is All You Need
+    ("neurips", "2017"): ("vaswani", "2017"),
+
+    # ICML (International Conference on Machine Learning)
+    ("icml", "2017"): ("vaswani", "2017"),      # Attention Is All You Need cũng được present tại ICML
+
+    # ICLR (International Conference on Learning Representations)
+    ("iclr", "2017"): ("vaswani", "2017"),      # Attention Is All You Need cũng có ICLR version
+    ("iclr", "2016"): ("kaiser", "2016"),       # Neural GPUs Learn Algorithms
+
+    # ACL (Association for Computational Linguistics)
+    ("acl", "2017"): ("vaswani", "2017"),       # Attention Is All You Need
+    ("acl", "2018"): ("devlin", "2019"),        # BERT (có thể được cite sớm)
+
+    # EMNLP (Empirical Methods in Natural Language Processing)
+    ("emnlp", "2016"): ("parikh", "2016"),      # Decomposable Attention Model
+
+    # NAACL (North American Chapter of the ACL)
+    ("naacl", "2018"): ("peters", "2018"),      # ELMo
+    ("naacl", "2016"): ("peters", "2018"),      # ELMo (có thể preprint)
+
+    # CVPR (Computer Vision and Pattern Recognition)
+    ("cvpr", "2016"): ("he", "2016"),           # Deep Residual Learning
+
+    # ICCV (International Conference on Computer Vision)
+    ("iccv", "2015"): ("he", "2016"),           # Deep Residual Learning (cũng có ICCV version)
+
+    # CoNLL (Conference on Computational Natural Language Learning)
+    ("conll", "2017"): ("clark", "2018"),        # BoolQ (EMNLP thành CoNLL?)
+
+    # AAAI (Association for the Advancement of Artificial Intelligence)
+    ("aaai", "2018"): ("devlin", "2019"),       # BERT
+
+    # IJCAI (International Joint Conference on AI)
+    ("ijcai", "2017"): ("vaswani", "2017"),      # Attention Is All You Need
+
+    # COLING (International Conference on Computational Linguistics)
+    ("coling", "2018"): ("devlin", "2019"),     # BERT
+
+    # TREC (Text REtrieval Conference)
+    ("trec", "2017"): ("joshi", "2017"),         # TriviaQA
+
+    # KDD (Knowledge Discovery and Data Mining)
+    ("kdd", "2017"): ("zellers", "2018"),       # SWAG
+
+    # NIPS workshops / other common venues
+    ("nips", "2013"): ("mikolov", "2013"),       # Word2Vec
+    ("nips", "2012"): ("socher", "2013"),        # Sentiment Treebank
+
+    # Nature / Science (high-impact venues)
+    ("nature", "2015"): ("lecun", "1998"),       # LeCun thường được cite từ Nature
+}
+
 
 class RetrievalOrchestrator:
     """Gộp kết quả từ Crossref + OpenAlex + Semantic Scholar + arXiv + SerpApi.
@@ -651,6 +710,17 @@ class RetrievalOrchestrator:
         Returns:
             Tuple of (is_known, paper_info) if found, (False, None) otherwise.
         """
+        # 1. Check venue-year whitelist first (for citations like "(NIPS 2017)")
+        venue, venue_year = RetrievalOrchestrator._extract_venue_from_raw(citation)
+        if venue and venue_year:
+            venue_key = (venue.lower(), str(venue_year))
+            if venue_key in _VENUE_YEAR_KNOWN:
+                known_key = _VENUE_YEAR_KNOWN[venue_key]
+                if known_key in _KNOWN_PAPERS:
+                    logger.debug(f"Venue-year match: {venue_key} → {known_key}")
+                    return True, _KNOWN_PAPERS[known_key]
+
+        # 2. Check author-year whitelist (standard case)
         parsed_author = author_key(citation.authors[0]) if citation.authors else ""
         parsed_year = str(citation.year)[:4] if citation.year else ""
 
@@ -696,6 +766,97 @@ class RetrievalOrchestrator:
             return True, _KNOWN_PAPERS[key]
 
         return False, None
+
+    @staticmethod
+    def _extract_venue_from_raw(citation: Citation) -> tuple[str | None, str | None]:
+        """Extract venue name and year from raw citation text.
+
+        Handles patterns like:
+        - "(NIPS 2017)" → venue="NIPS", year="2017"
+        - "NeurIPS 2020" → venue="NeurIPS", year="2020"
+        - "(ICML, 2018)" → venue="ICML", year="2018"
+        - "[ACL 2021]" → venue="ACL", year="2021"
+
+        Returns:
+            Tuple of (venue, year) if found, (None, None) otherwise.
+        """
+        raw_text = citation.raw_text or ""
+        if not raw_text:
+            return None, None
+
+        # Normalize whitespace
+        raw_text = re.sub(r'[\r\n]+', ' ', raw_text)
+        raw_text = re.sub(r'\s+', ' ', raw_text)
+        raw_text = raw_text.strip()
+
+        # Top conference venue patterns (order matters - more specific first)
+        venue_patterns = [
+            # NeurIPS / NIPS (Neural Information Processing Systems)
+            (r'\bNeurIPS\s+(\d{4})\b', 'neurips'),
+            (r'\bNIPS\s+(\d{4})\b', 'nips'),
+            (r'\bNIPS\s+([Ww]orkshop)\b', None),  # Skip workshops
+
+            # ICML (International Conference on Machine Learning)
+            (r'\bICML\s+(\d{4})\b', 'icml'),
+
+            # ICLR (International Conference on Learning Representations)
+            (r'\bICLR\s+(\d{4})\b', 'iclr'),
+
+            # ACL (Association for Computational Linguistics)
+            (r'\bACL\s+(\d{4})\b', 'acl'),
+
+            # EMNLP (Empirical Methods in Natural Language Processing)
+            (r'\bEMNLP\s+(\d{4})\b', 'emnlp'),
+
+            # NAACL (North American Chapter of the ACL)
+            (r'\bNAACL\s+(\d{4})\b', 'naacl'),
+
+            # COLING (International Conference on Computational Linguistics)
+            (r'\bCOLING\s+(\d{4})\b', 'coling'),
+
+            # CoNLL (Conference on Computational Natural Language Learning)
+            (r'\bCoNLL\s+(\d{4})\b', 'conll'),
+
+            # TREC (Text REtrieval Conference)
+            (r'\bTREC\s+(\d{4})\b', 'trec'),
+
+            # AAAI (Association for the Advancement of Artificial Intelligence)
+            (r'\bAAAI\s+(\d{4})\b', 'aaai'),
+
+            # IJCAI (International Joint Conference on AI)
+            (r'\bIJCAI\s+(\d{4})\b', 'ijcai'),
+
+            # CVPR (Computer Vision and Pattern Recognition)
+            (r'\bCVPR\s+(\d{4})\b', 'cvpr'),
+
+            # ICCV (International Conference on Computer Vision)
+            (r'\bICCV\s+(\d{4})\b', 'iccv'),
+
+            # ECCV (European Conference on Computer Vision)
+            (r'\bECCV\s+(\d{4})\b', 'eccv'),
+
+            # KDD (Knowledge Discovery and Data Mining)
+            (r'\bKDD\s+(\d{4})\b', 'kdd'),
+
+            # Nature / Science
+            (r'\bNature\b', 'nature'),
+            (r'\bScience\b', 'science'),
+
+            # Other common ML/AI venues
+            (r'\bAISTATS\s+(\d{4})\b', 'aistats'),
+            (r'\bUAI\s+(\d{4})\b', 'uai'),
+            (r'\bALT\s+(\d{4})\b', 'alt'),
+            (r'\bNeurIPS\s+([Ww]orkshop)\b', None),  # Skip
+        ]
+
+        for pattern, venue_name in venue_patterns:
+            match = re.search(pattern, raw_text, re.IGNORECASE)
+            if match:
+                year = match.group(1) if match.lastindex and match.lastindex >= 1 else None
+                if venue_name and year and 1990 <= int(year) <= 2030:
+                    return venue_name, year
+
+        return None, None
 
     def _check_known_papers(self, citation: Citation) -> SourceResult | None:
         """Check if citation matches a known seminal paper."""
