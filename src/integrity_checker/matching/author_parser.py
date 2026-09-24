@@ -249,9 +249,10 @@ def parse_authors(raw: str) -> list[Author]:
         - 'Smith J., Jones A.'           (no comma)
         - 'Smith, J., Jones, A.'         (comma between authors, no &)
         - 'LeCun, Y., Bengio, Y., & Hinton, G.'  (3+ authors)
+        - 'Bowman, Angeli, Potts, et al.' (Vancouver with et al.)
 
     Strategy:
-        1. Chuẩn hoá separator chính (& / "and" / ;) → TOKEN_SEP.
+        1. Chuẩn hoá separator chính (& / "and" / "et al." / ;) → TOKEN_SEP.
         2. Với mỗi piece còn lại, nếu có nhiều dấu phẩy lẻ → có thể là
            multi-author với APA pattern "Last, I., Last, I." — cần cẩn trọng.
            Quy tắc: "Last, I." → author; nếu tiếp theo là "Last," (không có
@@ -262,6 +263,11 @@ def parse_authors(raw: str) -> list[Author]:
 
     # Chuẩn hoá separator → split-friendly
     text = raw
+
+    # Handle "et al." - replace with separator
+    text = re.sub(r",?\s*et\s+al\.?\s*$", ";", text, flags=re.IGNORECASE)
+
+    # Normalize other separators
     text = re.sub(r"\s+and\s+", " ; ", text, flags=re.IGNORECASE)
     text = text.replace("&", ";")
 
@@ -305,11 +311,21 @@ def _split_apa_authors(text: str) -> list[Author]:
 
     Strategy: tìm tất cả match của APA pattern liên tiếp trong text.
     Phần còn lại (nếu có) được ghép vào author cuối.
+
+    Also detects Vancouver style (multiple commas without "and"/"&") and parses directly.
     """
     # Clean trailing punctuation
     text = text.strip().rstrip(".,")
     if not text:
         return []
+
+    # Detect Vancouver style: multiple commas, no "and"/"&", likely separate names
+    # "Bowman, Angeli, Potts" -> three separate single-word last names
+    comma_count = text.count(",")
+    has_and_or_amp = bool(re.search(r"\s+and\s+|&", text, re.IGNORECASE))
+    if comma_count >= 2 and not has_and_or_amp:
+        # Likely Vancouver style with separate names - parse directly
+        return _parse_firstname_lastname_no_et_al(text)
 
     # Try APA pattern first: "LastName, I."
     matches = list(_APA_AUTHOR_RE.finditer(text))
@@ -329,16 +345,16 @@ def _split_apa_authors(text: str) -> list[Author]:
         return authors
 
     # No APA matches - try FirstName LastName format
-    return _parse_firstname_lastname_authors(text)
+    return _parse_firstname_lastname_no_et_al(text)
 
 
-def _parse_firstname_lastname_authors(text: str) -> list[Author]:
-    """Parse "FirstName LastName" format (not APA "LastName, I.").
+def _parse_firstname_lastname_no_et_al(text: str) -> list[Author]:
+    """Parse FirstName LastName without et al.
 
-    Input: "Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton"
-    Output: [Author("Ba"), Author("Kiros"), Author("Hinton")]
+    Handles:
+    - "FirstName LastName, FirstName LastName, and LastName" (multiple authors)
+    - "LastName, LastName, LastName" (Vancouver style - single-word last names)
     """
-    # Split by " and " first, then by ","
     normalized = text.replace(" and ", "|").replace("&", "|")
     parts = [p.strip() for p in normalized.split(",") if p.strip()]
 
@@ -348,11 +364,10 @@ def _parse_firstname_lastname_authors(text: str) -> list[Author]:
         if not part or len(part) < 2:
             continue
 
-        # Parse as FirstName LastName format
         tokens = part.split()
 
         if len(tokens) >= 2:
-            # Assume last word is last name, rest is first/middle names
+            # Two+ word name: FirstName LastName format
             last_name = tokens[-1].rstrip(".,|")
             first_names = " ".join(tokens[:-1]).rstrip(".,|")
 
@@ -366,13 +381,19 @@ def _parse_firstname_lastname_authors(text: str) -> list[Author]:
                     raw=part.replace("|", " and "),
                 )
                 authors.append(author)
+        else:
+            # Single word: just a last name (Vancouver style)
+            last_name = part.rstrip(".,|")
+            if last_name and len(last_name) >= 2:
+                author = Author(
+                    last_name=last_name.title(),
+                    initials=[],
+                    normalized=last_name.lower(),
+                    raw=last_name.title(),
+                )
+                authors.append(author)
 
-    if authors:
-        return authors
-
-    # Last resort
-    a = normalize_author(text)
-    return [a] if a.last_name else []
+    return authors
 
 
 # --- Internals ---

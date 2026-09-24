@@ -77,6 +77,19 @@ _VANCOUVER_ENTRY_RE = re.compile(
     re.VERBOSE,
 )
 
+# Vancouver variant: "Authors. Year. Title. Venue." (used by BERT paper)
+# Example: "Samuel R. Bowman et al. 2015. A large annotated corpus..."
+_VANCOUVER_YEAR_FIRST_RE = re.compile(
+    r"""
+    ^(?P<authors>.+?)\.\s*             # authors (ends with period)
+    \(?(?P<year>\d{4})\)?             # year (with optional parens)
+    [a-z]?\.\s+                         # period + space
+    (?P<title>.+?)\.\s+                 # title (ends with period)
+    (?P<venue>.+)$                      # venue
+    """,
+    re.VERBOSE,
+)
+
 # DOI regex (tách riêng vì có thể xuất hiện ở cuối nhiều style)
 _DOI_RE = re.compile(r"10\.\d{4,9}/[^\s\]\)\,;]+")
 _URL_RE = re.compile(r"https?://[^\s\]\)\,;]+")
@@ -662,11 +675,23 @@ class ReferenceListParser:
     def _parse_vancouver_entry(
         self, entry: str, order_index: int, page_num: int
     ) -> Citation | None:
-        m = _VANCOUVER_ENTRY_RE.search(entry)
-        if not m:
-            return None
+        # Try Vancouver year-first variant first (BERT paper format: "Authors. Year. Title.")
+        m_year_first = _VANCOUVER_YEAR_FIRST_RE.search(entry)
+        if m_year_first:
+            return self._parse_vancouver_year_first_match(m_year_first, entry, order_index, page_num)
 
-        # FIX: Extract numeric_index if entry starts with [N] prefix
+        # Try standard Vancouver second
+        m = _VANCOUVER_ENTRY_RE.search(entry)
+        if m:
+            return self._parse_vancouver_match(m, entry, order_index, page_num)
+
+        return None
+
+    def _parse_vancouver_match(
+        self, m: re.Match, entry: str, order_index: int, page_num: int
+    ) -> Citation:
+        """Parse a standard Vancouver match."""
+        # Extract numeric_index if entry starts with [N] prefix
         numeric_index = None
         idx_match = re.match(r"^\[\s*(\d+)\s*\]", entry)
         if idx_match:
@@ -679,7 +704,7 @@ class ReferenceListParser:
             page_num=page_num,
             matched_pattern="vancouver_reference_entry",
             order_index=order_index,
-            numeric_index=numeric_index,  # FIX: Set numeric_index for Vancouver entries with [N]
+            numeric_index=numeric_index,
         )
         citation.year = m.group("year")
         title = m.group("title").strip()
@@ -691,3 +716,29 @@ class ReferenceListParser:
         if doi_m:
             citation.doi = doi_m.group(0).rstrip(".")
         return citation
+
+    def _parse_vancouver_year_first_match(
+        self, m: re.Match, entry: str, order_index: int, page_num: int
+    ) -> Citation | None:
+        """Parse Vancouver format with year after authors: 'Authors. Year. Title. Venue.'"""
+        try:
+            citation = Citation(
+                raw_text=entry.strip(),
+                citation_type=CitationType.REFERENCE_LIST,
+                style=CitationStyle.VANCOUVER,
+                page_num=page_num,
+                matched_pattern="vancouver_year_first_entry",
+                order_index=order_index,
+            )
+            citation.year = m.group("year")
+            title = m.group("title").strip()
+            citation.title = title
+            citation.title_normalized = _normalize_title(title)
+            citation.venue = m.group("venue").strip()
+            citation.authors = parse_authors(m.group("authors"))
+            doi_m = _DOI_RE.search(entry)
+            if doi_m:
+                citation.doi = doi_m.group(0).rstrip(".")
+            return citation
+        except Exception:
+            return None
