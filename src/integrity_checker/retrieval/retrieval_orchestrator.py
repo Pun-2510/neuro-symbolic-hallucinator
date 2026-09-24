@@ -501,7 +501,13 @@ class RetrievalOrchestrator:
                 api_exhausted=True,
             )
 
-        # ===== 4. Log successful queries =====
+        # ===== 4. Quality filtering - remove garbage candidates =====
+        quality_candidates, quality_succeeded = self._filter_quality_candidates(
+            deduped, succeeded, citation
+        )
+        succeeded = quality_succeeded
+
+        # ===== 5. Log successful queries =====
         if self._local_db is not None:
             for src in succeeded:
                 self._local_db.log_query(
@@ -746,6 +752,95 @@ class RetrievalOrchestrator:
                 return m.group(1)
 
         return None
+
+    def _filter_quality_candidates(
+        self,
+        candidates: list[SourceCandidate],
+        succeeded: list[str],
+        citation: Citation,
+    ) -> tuple[list[SourceCandidate], list[str]]:
+        """Filter out low-quality candidates that are likely noise/garbage.
+
+        Quality issues that cause false positives:
+        - Title is just a year (e.g., "2020")
+        - Title is very short (< 5 chars)
+        - Empty authors list for a paper
+        - Suspicious DOIs (non-standard publishers)
+
+        Args:
+            candidates: List of candidates from all sources
+            succeeded: List of source names that found something
+            citation: Original citation for context
+
+        Returns:
+            (filtered_candidates, filtered_succeeded)
+        """
+        from integrity_checker.config import get_settings
+
+        filtered: list[SourceCandidate] = []
+        filtered_succeeded: list[str] = []
+
+        settings = get_settings()
+        min_title_length = getattr(settings.retrieval, "min_title_length", 10)
+        min_author_count = getattr(settings.retrieval, "min_author_count", 1)
+
+        # Suspicious DOI publishers (these return garbage)
+        suspicious_publishers = {
+            "10.1234",  # Test/fake publisher
+            "10.9999",  # Fake publisher
+            "10.0000",  # Fake publisher
+            "10.null",  # Invalid DOI pattern
+        }
+
+        for cand in candidates:
+            # Skip if not found
+            if not cand.found:
+                continue
+
+            # Check 1: Title is not just a year
+            if cand.title and len(cand.title.strip()) <= 4:
+                # Title is likely just a year like "2020"
+                logger.debug(f"Filtering out candidate with title='{cand.title}' (likely just a year)")
+                continue
+
+            # Check 2: Title is not too short
+            if cand.title and len(cand.title.strip()) < min_title_length:
+                logger.debug(f"Filtering out candidate with short title='{cand.title}'")
+                continue
+
+            # Check 3: Has at least one author
+            if not cand.authors or len(cand.authors) < min_author_count:
+                logger.debug(f"Filtering out candidate with no authors (title='{cand.title}')")
+                continue
+
+            # Check 4: DOI is not suspicious
+            if cand.doi:
+                doi_lower = cand.doi.lower()
+                for suspicious in suspicious_publishers:
+                    if doi_lower.startswith(suspicious):
+                        logger.debug(f"Filtering out candidate with suspicious DOI='{cand.doi}'")
+                        continue
+
+            # Check 5: Title looks like garbage (just numbers, special chars, etc.)
+            if cand.title:
+                title_stripped = re.sub(r'[\s\W_]', '', cand.title)
+                if len(title_stripped) < 3 or title_stripped.isdigit():
+                    logger.debug(f"Filtering out candidate with garbage title='{cand.title}'")
+                    continue
+
+            # Passed all checks - keep this candidate
+            filtered.append(cand)
+            # Only add to succeeded if this source was originally in succeeded list
+            if cand.source_name in succeeded:
+                filtered_succeeded.append(cand.source_name)
+
+        # If ALL candidates were filtered, log a warning
+        if not filtered and candidates:
+            logger.warning(
+                f"All {len(candidates)} candidates filtered as low quality for: {citation.raw_text[:50]}"
+            )
+
+        return filtered, filtered_succeeded
 
     @staticmethod
     def is_arxiv_doi(doi: str | None) -> bool:
