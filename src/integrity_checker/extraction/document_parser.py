@@ -29,6 +29,7 @@ from integrity_checker.extraction.grobid_parser import (
     call_grobid_fulltext,
     parse_tei,
 )
+from integrity_checker.extraction.grobid_service import get_grobid_manager
 from integrity_checker.extraction.mupdf_parser import MuPdfParser
 from integrity_checker.extraction.reference_parser import ReferenceListParser
 from integrity_checker.extraction.section_segmenter import (
@@ -39,6 +40,27 @@ from integrity_checker.extraction.section_segmenter import (
 from integrity_checker.models.citation import Citation
 
 logger = logging.getLogger(__name__)
+
+
+def _set_fallback_warning(
+    grobid_manager, grobid_status: str, warnings: list[str]
+) -> str:
+    """Set fallback warning and update grobid_status."""
+    if grobid_manager:
+        status = grobid_manager.check_health()
+        if status.value == "unhealthy":
+            grobid_status = "unhealthy"
+            warnings.append("GROBID unhealthy — container running but API not responding")
+        elif status.value == "stopped":
+            grobid_status = "stopped"
+            warnings.append("GROBID container stopped — fallback to regex")
+        else:
+            grobid_status = "unknown"
+            warnings.append(f"GROBID status: {status.value} — fallback to regex")
+    else:
+        grobid_status = "unavailable"
+        warnings.append("GROBID not available — fallback to regex")
+    return grobid_status
 
 
 @dataclass
@@ -55,6 +77,8 @@ class ParsedDocument:
             MVP nhưng vẫn track.
         grobid: GrobidOutput nếu GROBID available; None nếu fail/disabled.
         parser_warnings: list[str] các vấn đề phát hiện (fallback chain, v.v.).
+        parser_used: str — 'grobid', 'regex', 'hybrid' tùy parser nào được dùng.
+        grobid_status: str — 'available', 'unavailable', 'disabled', 'unknown'.
     """
 
     document: Document
@@ -64,6 +88,8 @@ class ParsedDocument:
     appendix_citations: list[Citation] = field(default_factory=list)
     grobid: Optional[GrobidOutput] = None
     parser_warnings: list[str] = field(default_factory=list)
+    parser_used: str = "unknown"
+    grobid_status: str = "unknown"
 
     @property
     def has_grobid(self) -> bool:
@@ -124,17 +150,21 @@ class DocumentParser:
 
     # ---------- Public API ----------
 
-    def parse(self, pdf_path: str) -> ParsedDocument:
+    def parse(self, pdf_path: str, use_service_manager: bool = True) -> ParsedDocument:
         """Parse PDF end-to-end → ParsedDocument.
 
         Args:
             pdf_path: absolute path tới PDF.
+            use_service_manager: Nếu True, sử dụng GrobidServiceManager để check
+                                 health và sử dụng cache.
 
         Returns:
             ParsedDocument với sections + citations + grobid (optional).
             Không raise — fail chain được ghi vào ``parser_warnings``.
         """
         warnings: list[str] = []
+        parser_used = "unknown"
+        grobid_status = "unknown"
 
         # 1. PyMuPDF (always)
         try:
@@ -149,24 +179,84 @@ class DocumentParser:
                 parser_used="mupdf_fallback_empty",
                 errors=[str(exc)],
             )
+            parser_used = "regex"  # Fallback to regex since PyMuPDF failed
 
         # 2. GROBID (optional)
         grobid_out: Optional[GrobidOutput] = None
+
+        # Try to use GrobidServiceManager for better integration
+        grobid_manager = None
+        if use_service_manager and self.config.extraction.grobid.enabled:
+            try:
+                grobid_manager = get_grobid_manager()
+            except Exception as exc:
+                logger.debug("GrobidServiceManager not available: %s", exc)
+
         if self.config.extraction.grobid.enabled:
             try:
-                grobid_out = self._load_grobid_tei(pdf_path)
+                # Check if GROBID is available (via service manager)
+                grobid_available = (
+                    grobid_manager and grobid_manager.check_health().value == "available"
+                )
+
+                if grobid_available:
+                    grobid_status = "available"
+                    parser_used = "grobid"
+
+                    # Try to get from cache first
+                    cached_tei = grobid_manager.get_from_cache(pdf_path)
+
+                    if cached_tei:
+                        logger.info("Using cached TEI XML for: %s", pdf_path)
+                        grobid_out = parse_tei(cached_tei)
+                    else:
+                        # Call GROBID via service manager
+                        grobid_out = self._load_grobid_tei(pdf_path, grobid_manager)
+
+                    # Save to cache if successful
+                    if grobid_out and grobid_out.is_available:
+                        tei_xml = grobid_out.raw_tei_xml
+                        if tei_xml:
+                            grobid_manager.save_to_cache(pdf_path, tei_xml)
+
+                else:
+                    # GROBID not available via service manager
+                    # Still try via injected grobid_post_fn (for tests/mock)
+                    if self._grobid_post_fn is not None:
+                        # Use injected mock/test function
+                        grobid_out = self._load_grobid_tei(pdf_path)
+                        if grobid_out and grobid_out.is_available:
+                            grobid_status = "available"
+                            parser_used = "grobid"
+                        else:
+                            grobid_status = _set_fallback_warning(grobid_manager, grobid_status, warnings)
+                            parser_used = "regex"
+                    else:
+                        grobid_status = _set_fallback_warning(grobid_manager, grobid_status, warnings)
+                        parser_used = "regex"
+
                 if grobid_out is None or not grobid_out.is_available:
-                    warnings.append("GROBID not available — fallback to regex")
+                    if not grobid_out:
+                        grobid_out = GrobidOutput(is_available=False, error_message="GROBID processing failed")
+                    elif not grobid_out.is_available:
+                        warnings.append(f"GROBID processing failed: {grobid_out.error_message or 'unknown error'}")
+
             except Exception as exc:  # noqa: BLE001
                 logger.warning("GROBID failed: %s", exc)
                 warnings.append(f"GROBID failed: {exc}")
                 grobid_out = None
+                parser_used = "regex"
+                grobid_status = "error"
         else:
             warnings.append("GROBID disabled in config")
+            parser_used = "regex"
+            grobid_status = "disabled"
 
         # 3. Merge
         parsed = self._merge(text_doc, grobid_out)
         parsed.parser_warnings = warnings
+        parsed.parser_used = parser_used
+        parsed.grobid_status = grobid_status
         return parsed
 
     # ---------- Step 1: PyMuPDF ----------
@@ -177,8 +267,16 @@ class DocumentParser:
 
     # ---------- Step 2: GROBID ----------
 
-    def _load_grobid_tei(self, pdf_path: str) -> Optional[GrobidOutput]:
+    def _load_grobid_tei(
+        self,
+        pdf_path: str,
+        grobid_manager=None,
+    ) -> Optional[GrobidOutput]:
         """Gọi GROBID → parse TEI XML → GrobidOutput.
+
+        Args:
+            pdf_path: Path to PDF file.
+            grobid_manager: Optional GrobidServiceManager for caching.
 
         Returns:
             GrobidOutput nếu thành công (``is_available=True``).
@@ -187,11 +285,16 @@ class DocumentParser:
         if not self.config.extraction.grobid.enabled:
             return None
 
-        tei_xml = call_grobid_fulltext(
-            pdf_path,
-            self.config.extraction.grobid,
-            http_post_fn=self._grobid_post_fn,
-        )
+        # Use grobid_manager if provided
+        if grobid_manager:
+            tei_xml = grobid_manager.process_pdf(pdf_path)
+        else:
+            tei_xml = call_grobid_fulltext(
+                pdf_path,
+                self.config.extraction.grobid,
+                http_post_fn=self._grobid_post_fn,
+            )
+
         if not tei_xml:
             return GrobidOutput(
                 is_available=False,

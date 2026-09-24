@@ -1117,12 +1117,47 @@ def main() -> None:
         action="store_true",
         help="Dùng legacy flow (PyMuPDF + regex) thay vì DocumentParser",
     )
+    parser.add_argument(
+        "--grobid-status",
+        action="store_true",
+        help="Hiển thị GROBID status trước khi xử lý",
+    )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Hiển thị chi tiết log (bao gồm parser warnings)",
+    )
     args = parser.parse_args()
 
     pdf_path = Path(args.pdf)
     if not pdf_path.exists():
         logger.error(f"File không tồn tại: {pdf_path}")
         raise SystemExit(1)
+
+    # Show GROBID status if requested
+    if args.grobid_status:
+        try:
+            from integrity_checker.extraction import get_grobid_manager, GROBID_STATUS
+
+            manager = get_grobid_manager()
+            status = manager.check_health()
+            print("\n" + "=" * 50)
+            print(" GROBID Status:")
+            print(f"  Container: {manager._container_name}")
+            print(f"  Status: {status.value}")
+            print(f"  URL: {manager.url}")
+            if manager.is_container_running():
+                print(f"  Container ID: {manager.stats.container_id or 'N/A'}")
+            print(f"  Parser mode: {'grobid' if manager.is_available else 'regex'}")
+            print(f"  Cache: {'enabled' if manager.config.cache_by_file_sha256 else 'disabled'}")
+            print("=" * 50 + "\n")
+        except Exception as exc:
+            print(f"\n⚠ GROBID status check failed: {exc}\n")
+
+    # Show verbose log level if requested
+    if args.verbose:
+        import logging as _logging
+        _logging.getLogger().setLevel(_logging.DEBUG)
 
     pipeline = IntegrityPipeline(
         use_document_parser=not args.no_document_parser
@@ -1165,6 +1200,17 @@ def main() -> None:
             f"  {marker} [{v.label.value:25s}] conf={v.confidence:.0%}{prov_str}{warn_indicator}  "
             f"raw={v.citation.raw_text[:80]}"
         )
+
+    # Show parser info if verbose
+    if args.verbose:
+        print("\n Parser Info:")
+        print(f"  Parser used: {getattr(report, 'parser_used', 'unknown')}")
+        print(f"  GROBID status: {getattr(report, 'grobid_status', 'unknown')}")
+        if hasattr(report, 'parser_warnings') and report.parser_warnings:
+            print("  Parser warnings:")
+            for w in report.parser_warnings:
+                print(f"    ⚠ {w}")
+
     print("\n ⚠ " + report.disclaimer)
     print()
 

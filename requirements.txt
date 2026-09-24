@@ -36,6 +36,9 @@ python-multipart>=0.0.9,<1.0
 bcrypt>=4.0,<5.0
 pyjwt>=2.0,<3.0
 
+# --- Docker (GROBID container management) ---
+docker>=7.0,<8.0
+
 # --- Database ---
 SQLAlchemy>=2.0,<3.0
 alembic>=1.13,<2.0  # dùng cho migrations tương lai (MVP dùng create_all)
