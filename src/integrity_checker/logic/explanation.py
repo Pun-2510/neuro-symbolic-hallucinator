@@ -130,6 +130,10 @@ class ExplanationGenerator:
             "Hệ thống chưa đủ bằng chứng để kết luận.",
             "Có thể thử lại sau khi nguồn được cập nhật hoặc cung cấp thêm DOI.",
         ],
+        ValidationLabel.RESOURCE: [
+            "Đây là URL/Reference link — không phải academic citation.",
+            "Không cần xác minh trên scholarly databases.",
+        ],
     }
 
     # --- Mapping Suggestions ---

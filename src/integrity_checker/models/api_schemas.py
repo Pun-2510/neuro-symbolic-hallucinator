@@ -80,3 +80,17 @@ class HealthResponse(BaseModel):
     status: str = "ok"
     version: str
     disclaimer: str
+    grobid: Optional["GrobidHealthStatus"] = None
+
+
+class GrobidHealthStatus(BaseModel):
+    """GROBID service health status."""
+
+    available: bool
+    status: str  # available, unavailable, starting, unknown
+    container_running: bool
+    container_id: Optional[str] = None
+    parser_mode: str  # grobid, regex, hybrid
+    cache_enabled: bool = True
+    stats: Optional[dict] = None
+    message: Optional[str] = None

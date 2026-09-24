@@ -427,8 +427,9 @@ class TestDocumentParserWithMockGrobid:
 
         parser = DocumentParser(config=settings, grobid_post_fn=mock_post)
 
+        # Use use_service_manager=False to bypass service manager (mock mode)
         with patch("builtins.open", side_effect=lambda p, m, *a, **kw: BytesIO(fake_pdf_content)):
-            result = parser.parse("/fake/essay.pdf")
+            result = parser.parse("/fake/essay.pdf", use_service_manager=False)
 
         assert result is not None
         assert result.has_grobid is True
@@ -476,8 +477,9 @@ class TestPipelineWithMockGrobid:
         mock_post = create_mock_post_fn(SAMPLE_TEI_ESSAY_01)
         parser = DocumentParser(config=settings, grobid_post_fn=mock_post)
 
+        # Use use_service_manager=False to bypass service manager (mock mode)
         with patch("builtins.open", side_effect=lambda p, m, *a, **kw: BytesIO(fake_pdf_content)):
-            result = parser.parse("/fake/path.pdf")
+            result = parser.parse("/fake/path.pdf", use_service_manager=False)
 
         # Convert GROBID bibliography to Citation
         citations = DocumentParser._grobid_to_citations(result.grobid)

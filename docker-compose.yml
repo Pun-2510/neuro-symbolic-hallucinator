@@ -1,9 +1,33 @@
 # =====================================================================
-# docker-compose.yml — local dev: api + frontend
-# GROBID không có ở MVP (chỉ PyMuPDF + pdfplumber).
+# docker-compose.yml — local dev: api + frontend + GROBID
+# GROBID: lfoppiano/grobid:0.8.0 (cần 2GB+ RAM)
 # =====================================================================
 
 services:
+  grobid:
+    image: lfoppiano/grobid:0.8.0
+    container_name: essay-check-grobid
+    ports:
+      - "8070:8070"
+      - "8071:8071"
+    environment:
+      - JAVA_OPTS=-Xmx2g
+    volumes:
+      - grobid_data:/opt/grobid
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8070/api/isalive"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+        reservations:
+          memory: 2G
+
   api:
     build:
       context: .
@@ -17,6 +41,9 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    depends_on:
+      grobid:
+        condition: service_healthy
 
   web:
     image: node:20-alpine
@@ -33,3 +60,6 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+
+volumes:
+  grobid_data:

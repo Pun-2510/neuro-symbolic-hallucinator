@@ -152,7 +152,8 @@ class TestGrobidOK:
         # Inject GROBID output directly (bypass actual call)
         parser._load_grobid_tei = lambda path: grobid_out  # type: ignore[assignment]
 
-        parsed = parser.parse(str(pdf))
+        # Use use_service_manager=False to bypass service manager (mock mode)
+        parsed = parser.parse(str(pdf), use_service_manager=False)
 
         # Verify sections
         assert isinstance(parsed, ParsedDocument)

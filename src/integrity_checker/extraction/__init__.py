@@ -27,6 +27,13 @@ from integrity_checker.extraction.grobid_parser import (
     call_grobid_fulltext,
     parse_tei,
 )
+from integrity_checker.extraction.grobid_service import (
+    GROBID_STATUS,
+    GrobidServiceManager,
+    GrobidStats,
+    get_grobid_manager,
+    reset_grobid_manager,
+)
 from integrity_checker.extraction.regex_patterns import CitationPattern, get_all_patterns
 from integrity_checker.extraction.section_segmenter import (
     DocumentSection,
