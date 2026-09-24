@@ -574,20 +574,35 @@ class ReferenceListParser:
                 y_end = year_m.end()
                 remaining = remaining[:year_m.start()].strip()
 
-            # The title is what remains after stripping authors
-            # Authors typically end with a comma followed by a capitalized word (title)
-            author_end = re.search(
-                r",\s*(?=[A-Z][a-z])", remaining
-            )
-            if author_end:
-                candidate = remaining[author_end.end():].strip()
-                if candidate and len(candidate) > 10:
-                    title_raw = candidate.rstrip(".,").strip()
-            elif "," in remaining:
-                # Last comma before end is likely the author-title boundary
-                parts = remaining.rsplit(",", 1)
-                if len(parts) >= 2 and len(parts[1].strip()) > 10:
-                    title_raw = parts[1].strip().rstrip(".,").strip()
+            # STRATEGY 1: For entries like "[N] Authors. Title." (title after period)
+            # Look for period followed by space and capitalized word (title)
+            if not title_raw:
+                period_title_m = re.search(r"\.\s+(?=[A-Z][a-z])", remaining)
+                if period_title_m:
+                    # Title is after the period
+                    candidate = remaining[period_title_m.end():].strip()
+                    if candidate and len(candidate) > 5:
+                        title_raw = candidate.rstrip(".,").strip()
+                        # Authors are everything before the period
+                        authors_candidate = remaining[:period_title_m.start()].strip().rstrip(".")
+                        if authors_candidate and authors_candidate != remaining:
+                            authors_part = authors_candidate
+
+            # STRATEGY 2: Authors end with comma followed by capitalized word (less reliable)
+            # Only use this if Strategy 1 didn't work
+            if not title_raw:
+                author_end = re.search(
+                    r",\s*(?=[A-Z][a-z])", remaining
+                )
+                if author_end:
+                    candidate = remaining[author_end.end():].strip()
+                    if candidate and len(candidate) > 10:
+                        title_raw = candidate.rstrip(".,").strip()
+                elif "," in remaining:
+                    # Last comma before end is likely the author-title boundary
+                    parts = remaining.rsplit(",", 1)
+                    if len(parts) >= 2 and len(parts[1].strip()) > 10:
+                        title_raw = parts[1].strip().rstrip(".,").strip()
 
             if remaining and len(remaining) > 10 and not title_raw:
                 title_raw = remaining.rstrip(".,").strip()

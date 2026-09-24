@@ -130,6 +130,7 @@ def _split_on_comma(raw: str) -> tuple[list[str], list[str]] | None:
     if "," not in raw:
         return None
     last_str, first_str = raw.split(",", 1)
+    # Preserve the order and case of tokens for last name
     last_tokens = last_str.split()
     first_tokens = first_str.split()
     return last_tokens, first_tokens
@@ -305,23 +306,73 @@ def _split_apa_authors(text: str) -> list[Author]:
     Strategy: tìm tất cả match của APA pattern liên tiếp trong text.
     Phần còn lại (nếu có) được ghép vào author cuối.
     """
+    # Clean trailing punctuation
+    text = text.strip().rstrip(".,")
+    if not text:
+        return []
+
+    # Try APA pattern first: "LastName, I."
     matches = list(_APA_AUTHOR_RE.finditer(text))
-    if not matches:
-        a = normalize_author(text)
-        return [a] if a.last_name else []
+
+    if matches:
+        authors = []
+        for i, m in enumerate(matches):
+            piece = m.group("author").strip()
+            # Nếu là match cuối và còn text thừa → ghép vào
+            if i == len(matches) - 1 and m.end() < len(text):
+                remainder = text[m.end():].strip(" ,;.")
+                if remainder:
+                    piece = piece + " " + remainder
+            a = normalize_author(piece)
+            if a.last_name:
+                authors.append(a)
+        return authors
+
+    # No APA matches - try FirstName LastName format
+    return _parse_firstname_lastname_authors(text)
+
+
+def _parse_firstname_lastname_authors(text: str) -> list[Author]:
+    """Parse "FirstName LastName" format (not APA "LastName, I.").
+
+    Input: "Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton"
+    Output: [Author("Ba"), Author("Kiros"), Author("Hinton")]
+    """
+    # Split by " and " first, then by ","
+    normalized = text.replace(" and ", "|").replace("&", "|")
+    parts = [p.strip() for p in normalized.split(",") if p.strip()]
 
     authors = []
-    for i, m in enumerate(matches):
-        piece = m.group("author").strip()
-        # Nếu là match cuối và còn text thừa → ghép vào
-        if i == len(matches) - 1 and m.end() < len(text):
-            remainder = text[m.end():].strip(" ,;.")
-            if remainder:
-                piece = piece + " " + remainder
-        a = normalize_author(piece)
-        if a.last_name:
-            authors.append(a)
-    return authors
+    for part in parts:
+        part = part.strip()
+        if not part or len(part) < 2:
+            continue
+
+        # Parse as FirstName LastName format
+        tokens = part.split()
+
+        if len(tokens) >= 2:
+            # Assume last word is last name, rest is first/middle names
+            last_name = tokens[-1].rstrip(".,|")
+            first_names = " ".join(tokens[:-1]).rstrip(".,|")
+
+            if last_name and len(last_name) >= 2:
+                initials = [t[0] + "." for t in first_names.split() if t and t[0].isupper()]
+
+                author = Author(
+                    last_name=last_name.title(),
+                    initials=initials if initials else [],
+                    normalized=f"{last_name.lower()}|{first_names.lower()[:1] if first_names else ''}",
+                    raw=part.replace("|", " and "),
+                )
+                authors.append(author)
+
+    if authors:
+        return authors
+
+    # Last resort
+    a = normalize_author(text)
+    return [a] if a.last_name else []
 
 
 # --- Internals ---
