@@ -354,6 +354,7 @@ def _parse_firstname_lastname_no_et_al(text: str) -> list[Author]:
     Handles:
     - "FirstName LastName, FirstName LastName, and LastName" (multiple authors)
     - "LastName, LastName, LastName" (Vancouver style - single-word last names)
+    - "Smith J" (Vancouver: LastName Initial)
     """
     normalized = text.replace(" and ", "|").replace("&", "|")
     parts = [p.strip() for p in normalized.split(",") if p.strip()]
@@ -367,17 +368,23 @@ def _parse_firstname_lastname_no_et_al(text: str) -> list[Author]:
         tokens = part.split()
 
         if len(tokens) >= 2:
-            # Two+ word name: FirstName LastName format
-            last_name = tokens[-1].rstrip(".,|")
-            first_names = " ".join(tokens[:-1]).rstrip(".,|")
-
-            if last_name and len(last_name) >= 2:
+            # Check if last token is a single letter (likely initial)
+            # "Smith J" -> last_name=Smith, initial=J
+            if len(tokens[-1]) == 1 and tokens[-1].isalpha():
+                # Format: "LastName Initial"
+                last_name = " ".join(tokens[:-1]).rstrip(".,|")
+                initials = [tokens[-1].rstrip(".").upper()]
+            else:
+                # Format: "FirstName LastName" or "FirstName Middle LastName"
+                last_name = tokens[-1].rstrip(".,|")
+                first_names = " ".join(tokens[:-1]).rstrip(".,|")
                 initials = [t[0] + "." for t in first_names.split() if t and t[0].isupper()]
 
+            if last_name and len(last_name) >= 2:
                 author = Author(
-                    last_name=last_name.title(),
+                    last_name=last_name.lower(),  # Consistent lowercase
                     initials=initials if initials else [],
-                    normalized=f"{last_name.lower()}|{first_names.lower()[:1] if first_names else ''}",
+                    normalized=f"{last_name.lower()}|{''.join(initials).lower()}" if initials else last_name.lower(),
                     raw=part.replace("|", " and "),
                 )
                 authors.append(author)
@@ -386,10 +393,10 @@ def _parse_firstname_lastname_no_et_al(text: str) -> list[Author]:
             last_name = part.rstrip(".,|")
             if last_name and len(last_name) >= 2:
                 author = Author(
-                    last_name=last_name.title(),
+                    last_name=last_name.lower(),  # Lowercase for single-word names
                     initials=[],
                     normalized=last_name.lower(),
-                    raw=last_name.title(),
+                    raw=last_name,
                 )
                 authors.append(author)
 
