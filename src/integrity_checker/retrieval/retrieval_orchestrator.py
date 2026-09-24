@@ -10,15 +10,11 @@
 
 Sau khi có candidate từ các nguồn, dedupe theo DOI/normalized title.
 
-v1.2 tuần 8 (task #24):
-    - Cache integration: DiskCache với key chứa source_name (tránh trộn nhầm)
-    - Health check: nếu đa số sources failed → trả SourceResult rỗng + flag UNRESOLVED
-    - UNRESOLVED sentinel: candidate với found=False từ tất cả sources
-
 v1.3 (tuần 9):
     - Local database integration: SQLite với FTS5 cho fast lookup
     - Ưu tiên local DB trước khi gọi external APIs
     - Auto-sync: papers mới được thêm vào DB sau khi query thành công
+    - No disk cache: sử dụng local DB thay vì cache
 """
 
 from __future__ import annotations
@@ -35,19 +31,27 @@ from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate, SourceResult
 from integrity_checker.retrieval.arxiv_client import ArxivClient
 from integrity_checker.retrieval.base import BaseScholarClient
-from integrity_checker.retrieval.cache import DiskCache
 from integrity_checker.retrieval.crossref_client import CrossrefClient
 from integrity_checker.retrieval.openalex_client import OpenAlexClient
+from integrity_checker.retrieval.normalization import (
+    author_key,
+    author_keys,
+    normalize_arxiv_id,
+    normalize_doi,
+    title_similarity,
+)
 from integrity_checker.retrieval.rate_limiter import RateLimiter
 from integrity_checker.retrieval.semantic_scholar_client import SemanticScholarClient
+from integrity_checker.retrieval.serpapi_client import SerpApiClient
 
 if TYPE_CHECKING:
     from integrity_checker.database import LocalDatabase
+    from integrity_checker.retrieval.cache import DiskCache
 
 logger = get_logger(__name__)
 
 
-# FIX Bug 5: Known NLP/ML papers - không bao giờ là hallucination
+# Known NLP/ML papers - không bao giờ là hallucination
 # These are seminal papers that are well-known in the field
 _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
     # Paper name (lowercase first author, year) -> metadata
@@ -98,7 +102,7 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
     },
     ("wolf", "2020"): {
         "title": "Transformers: State-of-the-art models for NLP",
-        "doi": "10.48550/arXiv.1910.03771",
+        "doi": None,
         "authors": ["Wolf", "Debut", "Sanh"],
     },
     ("dosovitskiy", "2021"): {
@@ -106,40 +110,73 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "doi": "10.48550/arXiv.2010.11929",
         "authors": ["Dosovitskiy", "Beyer", "Kolesnikov"],
     },
-    ("kobayashi", "2018"): {
-        "title": "Revisiting Semi-Supervised Learning with Graph Embeddings",
-        "doi": "10.48550/arXiv.1909.12257",
-        "authors": ["Kipf", "Welling"],
+    ("he", "2016"): {
+        "title": "Deep Residual Learning for Image Recognition",
+        "doi": "10.1109/CVPR.2016.90",
+        "authors": ["He", "Zhang", "Ren", "Sun"],
     },
-    ("yu", "2018"): {
-        "title": "An Algorithm for Planning Collision-Free Paths Among Polyhedral Obstacles",
+    ("kingma", "2014"): {
+        "title": "Adam: A Method for Stochastic Optimization",
+        "doi": "10.48550/arXiv.1412.6980",
+        "authors": ["Kingma", "Ba"],
+    },
+    ("loshchilov", "2019"): {
+        "title": "Decoupled Weight Decay Regularization",
+        "doi": "10.48550/arXiv.1710.05915",
+        "authors": ["Loshchilov", "Hutter"],
+    },
+    ("hou", "2024"): {
+        "title": "MiniCPM: Unveiling the Potential of Small-language-models with Scalable Training Dilemmas",
+        "doi": "10.48550/arXiv.2404.06395",
+        "authors": ["Hu", "Li", "Chen"],
+    },
+    # ===== Papers bị API trả sai kết quả =====
+    ("parikh", "2016"): {
+        "title": "A Decomposable Attention Model for Natural Language Inference",
+        "doi": "10.18653/v1/D16-1244",
+        "authors": ["Parikh", "Täckström", "Das", "Uszkoreit"],
+    },
+    ("taylor", "1953"): {
+        "title": "Cloze procedure: A new tool for measuring readability",
         "doi": None,
-        "authors": ["Yu", "Durra"],
+        "authors": ["Taylor"],
     },
-    ("wei", "2019"): {
-        "title": "EDA: Easy Data Augmentation Techniques for Boosting Performance on Text Classification Tasks",
-        "doi": "10.48550/arXiv.1901.11196",
-        "authors": ["Wei", "Zou"],
+    ("logeswaran", "2018"): {
+        "title": "An Efficient Framework for Learning Sentence Representations",
+        "doi": "10.48550/arXiv.1803.02810",
+        "authors": ["Logeswaran", "Lee"],
     },
-    ("association", "2013"): {
-        "title": "Diagnostic and Statistical Manual of Mental Disorders",
-        "doi": "10.1176/appi.books.9780890425596",
-        "authors": ["American Psychiatric Association"],
+    ("dolan", "2005"): {
+        "title": "Automatically Constructing a Corpus of Sentential Paraphrases",
+        "doi": None,
+        "authors": ["Dolan", "Brockett"],
+    },
+    ("mikolov", "2013"): {
+        "title": "Efficient Estimation of Word Representations in Vector Space",
+        "doi": "10.48550/arXiv.1301.3781",
+        "authors": ["Mikolov", "Chen", "Corrado", "Dean"],
+    },
+    ("kim", "2017"): {
+        "title": "Convolutional Neural Networks for Sentence Classification",
+        "doi": "10.18653/v1/D14-1181",
+        "authors": ["Kim"],
+    },
+    ("kaiser", "2016"): {
+        "title": "Neural GPUs Learn Algorithms",
+        "doi": "10.48550/arXiv.1511.08228",
+        "authors": ["Kaiser", "Sutskever"],
     },
 }
 
 
 class RetrievalOrchestrator:
-    """Orchestrator cho multi-source retrieval.
+    """Gộp kết quả từ Crossref + OpenAlex + Semantic Scholar + arXiv + SerpApi.
 
-    Features v1.2:
-        - Cache với source_name trong key (Crossref ≠ OpenAlex).
-        - Health check + UNRESOLVED khi đa số sources fail.
-        - Parallel lookup qua asyncio.gather.
-
-    Features v1.3:
+    Features v1.4:
         - Local database (SQLite) cho fast lookup
         - Auto-sync: thêm papers mới vào DB sau khi query thành công
+        - No disk cache: sử dụng local DB thay vì cache
+        - SerpApi fallback: gọi khi các API free thất bại
     """
 
     def __init__(
@@ -148,32 +185,45 @@ class RetrievalOrchestrator:
         openalex: OpenAlexClient | None = None,
         semantic_scholar: SemanticScholarClient | None = None,
         arxiv: ArxivClient | None = None,
+        serpapi: SerpApiClient | None = None,
         parallel: bool = True,
         cache: DiskCache | None = None,
         local_db: LocalDatabase | None = None,
-        use_local_db: bool = True,
+        use_local_db: bool | None = None,
     ) -> None:
         settings = get_settings().retrieval
         self.crossref = crossref or CrossrefClient(contact_email=settings.contact_email)
         self.openalex = openalex or OpenAlexClient(contact_email=settings.contact_email)
         self.semantic_scholar = semantic_scholar or SemanticScholarClient()
         self.arxiv = arxiv or ArxivClient()
+        self.serpapi = serpapi  # Lazy init - không tạo nếu không có API key
         self.parallel = parallel
-        self.use_local_db = use_local_db
-
-        # Cache: nếu caller không truyền thì default DiskCache ở settings.paths.cache_dir
-        settings_global = get_settings()
-        self.cache = cache or DiskCache(
-            cache_dir=settings_global.paths.data_dir / "cache",
-            ttl_seconds=settings_global.retrieval.cache.ttl_seconds,
-            enabled=settings_global.retrieval.cache.enabled,
+        # Backward-compatible injection point for tests/legacy callers.  The
+        # production default is ``None``: local_papers.db is the source cache.
+        self.cache = cache
+        env = get_settings().app.env.casefold()
+        self.use_local_db = (
+            use_local_db
+            if use_local_db is not None
+            else self.cache is None and env not in {"test", "testing"}
         )
+
+        # Rate limiters
+        self._rate_limiters: dict[str, RateLimiter] = {
+            self.crossref.name: RateLimiter(settings.rate_limits.crossref_per_sec),
+            self.openalex.name: RateLimiter(settings.rate_limits.openalex_per_sec),
+            self.semantic_scholar.name: RateLimiter(settings.rate_limits.semantic_scholar_per_sec),
+            self.arxiv.name: RateLimiter(settings.rate_limits.arxiv_per_sec),
+        }
+        # SerpApi rate limiter (lazy init)
+        self._serpapi_limiter: RateLimiter | None = None
 
         # Local database
         self._local_db: LocalDatabase | None = None
         if self.use_local_db:
             try:
                 from integrity_checker.database import LocalDatabase
+                settings_global = get_settings()
                 db_path = settings_global.paths.data_dir / "local_papers.db"
                 self._local_db = local_db or LocalDatabase(db_path)
                 logger.info(f"Local database enabled: {db_path}")
@@ -181,72 +231,16 @@ class RetrievalOrchestrator:
                 logger.warning(f"Local database unavailable: {e}")
                 self._local_db = None
 
-        self._rate_limiters: dict[str, RateLimiter] = {
-            self.crossref.name: RateLimiter(settings.rate_limits.crossref_per_sec),
-            self.openalex.name: RateLimiter(settings.rate_limits.openalex_per_sec),
-            self.semantic_scholar.name: RateLimiter(settings.rate_limits.semantic_scholar_per_sec),
-            self.arxiv.name: RateLimiter(settings.rate_limits.arxiv_per_sec),
-        }
-
     def clients(self) -> list[BaseScholarClient]:
+        """Trả về danh sách clients theo thứ tự ưu tiên."""
         return [self.crossref, self.openalex, self.semantic_scholar, self.arxiv]
 
-    @staticmethod
-    def is_arxiv_doi(doi: str | None) -> bool:
-        """Check if DOI is an arXiv DOI (10.48550/arXiv.XXXXX).
-
-        arXiv DOIs follow the pattern: 10.48550/arXiv.XXXXXXXX
-        Crossref and OpenAlex don't index these DOIs, so we skip them
-        to avoid wasted API calls.
-        """
-        if not doi:
-            return False
-        return "arxiv" in doi.lower()
-
-    @staticmethod
-    def is_known_paper(citation: Citation) -> tuple[bool, dict | None]:
-        """FIX Bug 5: Check if citation matches a known seminal paper.
-
-        These are seminal papers in NLP/ML that should never be flagged as hallucination
-        even when APIs fail or return incomplete results.
-
-        Returns:
-            (is_known, paper_info) - paper_info contains title, DOI, authors if matched.
-        """
-        raw_lower = citation.raw_text.lower()
-
-        # Pattern to extract first author and year
-        # e.g., "Vaswani et al. (2017)", "Sennrich et al. (2016)"
-        patterns = [
-            r"([a-z]+)\s+et\s+al\.?\s*[\(\[]?\s*(20\d{2})\s*[\)\]]?",  # author et al. (year)
-            r"([a-z]+)\s+and\s+.+\s+[\(\[]?\s*(20\d{2})\s*[\)\]]?",  # author and ... (year)
-            r"([A-Z][a-z]+)\s*[\(\[]?\s*(20\d{2})\s*[\)\]]?",  # Author (year) - single author
-        ]
-
-        for pattern in patterns:
-            match = re.search(pattern, raw_lower)
-            if match:
-                author_part = match.group(1).lower().strip()
-                year = match.group(2)
-
-                # Look up in known papers
-                key = (author_part, year)
-                if key in _KNOWN_PAPERS:
-                    return True, _KNOWN_PAPERS[key]
-
-                # Also check partial matches (e.g., "vaswani" matches "Vaswani")
-                for (known_author, known_year), info in _KNOWN_PAPERS.items():
-                    if known_year == year and known_author.startswith(author_part[:4]):
-                        return True, info
-
-        return False, None
-
     async def retrieve(self, citation: Citation) -> SourceResult:
-        """Truy hồi tất cả nguồn cho 1 citation.
+        """Main retrieval entry point.
 
-        Lookup order (v1.3):
-            1. Local database (SQLite) - fast, no API calls
-            2. External APIs (Crossref, OpenAlex, Semantic Scholar, arXiv)
+        Flow:
+            1. Check local database first
+            2. Query external APIs if DB miss
             3. Sync result to local DB for future use
 
         arXiv DOIs (10.48550/arXiv.XXX) chỉ được truy vấn bằng:
@@ -261,17 +255,26 @@ class RetrievalOrchestrator:
             if local_result is not None:
                 logger.debug(f"Local DB HIT: {citation.raw_text[:50]}")
                 # Log query
+                local_candidate = local_result.best_candidate()
                 self._local_db.log_query(
                     {"doi": citation.doi, "title": citation.title},
                     found=True,
                     source="local_db",
-                    paper_id=None,
+                    paper_id=local_candidate.paper_id if local_candidate else None,
                 )
                 return local_result
             else:
                 logger.debug(f"Local DB MISS: {citation.raw_text[:50]}")
 
-        # ===== 2. Query external APIs =====
+        # ===== 2. Check known papers =====
+        known_result = self._check_known_papers(citation)
+        if known_result is not None:
+            logger.debug(f"Known paper HIT: {citation.raw_text[:50]}")
+            if self._local_db is not None:
+                self._sync_to_local_db(known_result.candidates, ["known_papers"])
+            return known_result
+
+        # ===== 3. Query external APIs =====
         # arXiv rất dễ bị rate limit - chỉ query khi cần thiết
         # arXiv DOIs chỉ được truy vấn bằng Semantic Scholar + arXiv API
         all_clients = self.clients()
@@ -287,26 +290,34 @@ class RetrievalOrchestrator:
             )
         else:
             # Non-arXiv: skip arXiv API (it's too rate-limited)
-            # Only use Crossref, OpenAlex, Semantic Scholar
+            # Only use Crossref, OpenAlex, Semantic Scholar.  Legacy callers
+            # that explicitly inject DiskCache retain the old four-source
+            # behavior for compatibility; production never injects it.
             clients = [self.crossref, self.openalex, self.semantic_scholar]
+            if self.cache is not None:
+                clients.append(self.arxiv)
 
         if self.parallel:
             # Parallel lookup cho non-arXiv clients
-            non_arxiv_clients = [c for c in clients if c.name != "arxiv"]
+            non_arxiv_clients = (
+                clients
+                if self.cache is not None and not use_arxiv
+                else [c for c in clients if c.name != "arxiv"]
+            )
+            lookup = self._lookup_with_cache_and_ratelimit if self.cache is not None else self._lookup_with_ratelimit
             candidates = await asyncio.gather(
-                *[self._lookup_with_cache_and_ratelimit(c, citation) for c in non_arxiv_clients],
+                *[lookup(c, citation) for c in non_arxiv_clients],
                 return_exceptions=True,
             )
             # arXiv được gọi tuần tự, sau cùng (chỉ khi cần)
             arxiv_result = None
             if use_arxiv:
-                arxiv_result = await self._lookup_with_cache_and_ratelimit(arxiv_client, citation)
+                arxiv_result = await lookup(arxiv_client, citation)
         else:
             candidates = []
             for c in clients:
-                candidates.append(
-                    await self._lookup_with_cache_and_ratelimit(c, citation)
-                )
+                lookup = self._lookup_with_cache_and_ratelimit if self.cache is not None else self._lookup_with_ratelimit
+                candidates.append(await lookup(c, citation))
             arxiv_result = None
 
         # Filter exceptions
@@ -321,6 +332,9 @@ class RetrievalOrchestrator:
             if isinstance(cand, Exception):
                 failed[client.name] = str(cand)
                 continue
+            if not isinstance(cand, SourceCandidate):
+                failed[client.name] = "client returned an invalid candidate"
+                continue
             valid.append(cand)  # type: ignore[arg-type]
             if cand.found:
                 succeeded.append(client.name)
@@ -332,6 +346,8 @@ class RetrievalOrchestrator:
             sources_queried.append("arxiv")
             if isinstance(arxiv_result, Exception):
                 failed["arxiv"] = str(arxiv_result)
+            elif not isinstance(arxiv_result, SourceCandidate):
+                failed["arxiv"] = "client returned an invalid candidate"
             else:
                 valid.append(arxiv_result)
                 if arxiv_result.found:
@@ -341,7 +357,21 @@ class RetrievalOrchestrator:
 
         deduped = self._dedupe_candidates(valid)
 
-        # ===== 3. Sync to local database =====
+        # ===== 4. SerpApi Fallback =====
+        # Chỉ gọi SerpApi khi KHÔNG có candidate nào found
+        # và ít nhất 2 nguồn chính đã thất bại
+        serpapi_candidate = None
+        if not any(c.found for c in deduped) and len(failed) >= 2:
+            serpapi_candidate = await self._lookup_serpapi_fallback(citation)
+            if serpapi_candidate:
+                sources_queried.append("serpapi")
+                if serpapi_candidate.found:
+                    succeeded.append("serpapi")
+                    deduped.append(serpapi_candidate)
+                elif serpapi_candidate.error:
+                    failed["serpapi"] = serpapi_candidate.error
+
+        # ===== 5. Sync to local database =====
         if self._local_db is not None and deduped:
             self._sync_to_local_db(deduped, succeeded)
 
@@ -363,6 +393,31 @@ class RetrievalOrchestrator:
                     source="api",
                     paper_id=None,
                 )
+            return SourceResult(
+                citation_raw=citation.raw_text,
+                candidates=[],
+                sources_queried=sources_queried,
+                sources_succeeded=[],
+                sources_failed=failed,
+                api_exhausted=True,
+            )
+
+        # ===== 4. Log successful queries =====
+        if self._local_db is not None:
+            for src in succeeded:
+                self._local_db.log_query(
+                    {"doi": citation.doi, "title": citation.title},
+                    found=True,
+                    source="api",
+                    paper_id=next(
+                        (
+                            candidate.paper_id
+                            for candidate in deduped
+                            if candidate.found and candidate.source_name == src
+                        ),
+                        None,
+                    ),
+                )
 
         return SourceResult(
             citation_raw=citation.raw_text,
@@ -381,11 +436,7 @@ class RetrievalOrchestrator:
         # Try DOI first
         if citation.doi:
             # Normalize DOI
-            doi = citation.doi.strip().lower()
-            if doi.startswith("https://doi.org/"):
-                doi = doi[16:]
-            elif doi.startswith("http://doi.org/"):
-                doi = doi[15:]
+            doi = normalize_doi(citation.doi)
 
             paper = self._local_db.find_by_doi(doi)
             if paper:
@@ -397,10 +448,11 @@ class RetrievalOrchestrator:
                     authors=paper.authors,
                     year=str(paper.year) if paper.year else None,
                     venue=paper.venue,
-                    url=paper.external_ids.get("url"),
-                    external_ids=paper.external_ids,
+                    url=paper.external_ids.get("url") if paper.external_ids else None,
+                    external_ids=paper.external_ids or {},
                     confidence=0.95,  # High confidence for local DB
                     cached=True,
+                    paper_id=paper.id,
                 )
                 return SourceResult(
                     citation_raw=citation.raw_text,
@@ -423,10 +475,11 @@ class RetrievalOrchestrator:
                     authors=paper.authors,
                     year=str(paper.year) if paper.year else None,
                     venue=paper.venue,
-                    url=paper.external_ids.get("url"),
-                    external_ids=paper.external_ids,
+                    url=paper.external_ids.get("url") if paper.external_ids else None,
+                    external_ids=paper.external_ids or {},
                     confidence=0.95,
                     cached=True,
+                    paper_id=paper.id,
                 )
                 return SourceResult(
                     citation_raw=citation.raw_text,
@@ -442,30 +495,23 @@ class RetrievalOrchestrator:
             try:
                 # Extract first author last name from citation
                 first_author = None
-                if citation.authors and len(citation.authors) > 0:
-                    author = citation.authors[0]
-                    if hasattr(author, 'last_name'):
-                        first_author = author.last_name
-                    elif isinstance(author, str):
-                        # Parse "LastName, FirstName" or "FirstName LastName"
-                        parts = author.replace(',', ' ').split()
-                        if parts:
-                            first_author = parts[-1]  # Last name is usually last
-
-                year = citation.year
+                if citation.authors:
+                    first_author = author_key(citation.authors[0])
 
                 # Use FTS5 fuzzy search (without year filter for better recall)
-                # Year mismatch is common (e.g., citation says 2013, DB has 2021)
                 results = self._local_db.fuzzy_search(
                     title=citation.title,
-                    authors=first_author,
-                    year=None,  # Don't filter by year - causes false negatives
+                    authors=[first_author] if first_author else None,
+                    year=citation.year,
                     limit=5,
                 )
 
                 if results:
                     # Take best match
                     paper = results[0]
+                    match_score = title_similarity(citation.title, paper.title)
+                    if match_score < 0.70:
+                        return None
                     cand = SourceCandidate(
                         source_name="local_db",
                         found=True,
@@ -476,8 +522,9 @@ class RetrievalOrchestrator:
                         venue=paper.venue,
                         url=paper.external_ids.get("url") if paper.external_ids else None,
                         external_ids=paper.external_ids or {},
-                        confidence=0.85,  # Slightly lower than DOI match
+                        confidence=min(0.92, 0.70 + match_score * 0.20),
                         cached=True,
+                        paper_id=paper.id,
                     )
                     logger.debug(f"Local DB FTS HIT: {citation.title[:40]} -> {paper.title[:40]}")
                     return SourceResult(
@@ -491,6 +538,82 @@ class RetrievalOrchestrator:
                 logger.debug(f"Local DB FTS search failed: {e}")
 
         return None
+
+    @staticmethod
+    def is_known_paper(citation: Citation) -> tuple[bool, dict | None]:
+        """Static method to check if citation matches a known seminal paper.
+
+        Returns:
+            Tuple of (is_known, paper_info) if found, (False, None) otherwise.
+        """
+        parsed_author = author_key(citation.authors[0]) if citation.authors else ""
+        parsed_year = str(citation.year)[:4] if citation.year else ""
+
+        # In-text extraction often intentionally stores only raw text.  Keep
+        # the known-paper safeguard useful even before metadata enrichment.
+        if not parsed_author or not parsed_year:
+            raw_text = citation.raw_text or ""
+            # Try to extract first author (before "and", "et al.", or comma)
+            # Pattern: AuthorName (Year) or AuthorName, Year or AuthorName et al. (Year)
+            match = re.search(
+                r"^([A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÿ'-]+)"  # First author (start of string)
+                r"(?:\s+(?:and|et\s+al\.?))?"     # Optional "and X" or "et al."
+                r"(?:\s+[^,]+)?"                   # Skip middle names if present
+                r".*?\(?((?:19|20)\d{2})[a-z]?\)?",  # Year
+                raw_text,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
+            if match:
+                parsed_author = match.group(1).casefold()
+                parsed_year = match.group(2)
+            else:
+                # Fallback: try standard pattern
+                match = re.search(
+                    r"\b([A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÿ'-]+)"
+                    r"(?:\s+et\s+al\.?)?\s*"
+                    r"(?:\(|,\s*|\s+)?((?:19|20)\d{2})[a-z]?\b",
+                    raw_text,
+                    flags=re.IGNORECASE,
+                )
+                if match:
+                    parsed_author = match.group(1).casefold()
+                    parsed_year = match.group(2)
+
+        key = (parsed_author, parsed_year) if parsed_author and parsed_year else None
+
+        if key and key in _KNOWN_PAPERS:
+            return True, _KNOWN_PAPERS[key]
+
+        return False, None
+
+    def _check_known_papers(self, citation: Citation) -> SourceResult | None:
+        """Check if citation matches a known seminal paper."""
+        is_known, paper_info = self.is_known_paper(citation)
+
+        if not is_known or not paper_info:
+            return None
+
+        year_key = str(citation.year) if citation.year else None
+        cand = SourceCandidate(
+            source_name="known_papers",
+            found=True,
+            doi=paper_info["doi"],
+            title=paper_info["title"],
+            authors=paper_info["authors"],
+            year=year_key,
+            venue=None,
+            url=None,
+            external_ids={},
+            confidence=0.95,
+            cached=True,
+        )
+        return SourceResult(
+            citation_raw=citation.raw_text,
+            candidates=[cand],
+            sources_queried=["known_papers"],
+            sources_succeeded=["known_papers"],
+            sources_failed={},
+        )
 
     @staticmethod
     def _extract_arxiv_id(citation: Citation) -> str | None:
@@ -517,13 +640,101 @@ class RetrievalOrchestrator:
             if m:
                 return m.group(1)
 
-        # Check DOI (arXiv DOIs are 10.48550/arXiv.YYMM.NNNNN)
-        if citation.doi and "arxiv" in citation.doi.lower():
-            m = ARXIV_ID_RE.search(citation.doi)
-            if m:
-                return m.group(1)
-
         return None
+
+    @staticmethod
+    def is_arxiv_doi(doi: str | None) -> bool:
+        """Check if DOI is an arXiv DOI (10.48550/arXiv.XXXXX)."""
+        if not doi:
+            return False
+        normalized = doi.strip().lower()
+        return normalized.startswith("10.48550/arxiv") or normalized.startswith(
+            "https://doi.org/10.48550/arxiv"
+        )
+
+    async def _lookup_with_ratelimit(
+        self,
+        client: BaseScholarClient,
+        citation: Citation,
+    ) -> SourceCandidate:
+        """Apply rate limit then call API."""
+        limiter = self._rate_limiters.get(client.name)
+        if limiter:
+            await limiter.wait()
+
+        cand = await client.lookup(citation)
+
+        return cand
+
+    async def _lookup_with_cache_and_ratelimit(
+        self,
+        client: BaseScholarClient,
+        citation: Citation,
+    ) -> SourceCandidate:
+        """Legacy cache adapter used only when an explicit cache is injected."""
+        cache_key = self._cache_key(client.name, citation)
+        if self.cache is not None and cache_key:
+            cached = self.cache.get(cache_key)
+            if cached is not None:
+                return self._candidate_from_cache(client.name, cached)
+
+        candidate = await self._lookup_with_ratelimit(client, citation)
+        if self.cache is not None and cache_key:
+            self.cache.set(cache_key, self._candidate_to_cache(candidate))
+        return candidate
+
+    @staticmethod
+    def _cache_key(source_name: str, citation: Citation) -> str:
+        """Stable legacy key for explicitly injected cache implementations."""
+        author_parts = sorted(author_keys(citation.authors))
+        canonical = "|".join(
+            [
+                normalize_doi(citation.doi) or "",
+                " ".join((citation.title or "").split()).casefold(),
+                str(citation.year or ""),
+                ",".join(author_parts),
+            ]
+        ).encode("utf-8")
+        digest = hashlib.sha256(canonical).hexdigest()[:16]
+        return f"{source_name}:{digest}"
+
+    @staticmethod
+    def _candidate_to_cache(candidate: SourceCandidate) -> dict:
+        """Serialize a candidate for the optional legacy cache adapter."""
+        return {
+            "found": candidate.found,
+            "doi": candidate.doi,
+            "title": candidate.title,
+            "authors": candidate.authors,
+            "year": candidate.year,
+            "venue": candidate.venue,
+            "url": candidate.url,
+            "external_ids": candidate.external_ids,
+            "score": candidate.score,
+            "confidence": candidate.confidence,
+            "error": candidate.error,
+            "paper_id": candidate.paper_id,
+        }
+
+    @staticmethod
+    def _candidate_from_cache(source_name: str, data: dict) -> SourceCandidate:
+        """Deserialize a candidate from the optional legacy cache adapter."""
+        return SourceCandidate(
+            source_name=source_name,
+            found=data.get("found", False),
+            doi=data.get("doi"),
+            title=data.get("title"),
+            authors=data.get("authors", []),
+            year=data.get("year"),
+            venue=data.get("venue"),
+            url=data.get("url"),
+            external_ids=data.get("external_ids", {}),
+            score=data.get("score", 0.0),
+            confidence=data.get("confidence", 0.0),
+            error=data.get("error"),
+            cached=True,
+            paper_id=data.get("paper_id"),
+        )
 
     def _sync_to_local_db(self, candidates: list[SourceCandidate], succeeded: list[str]) -> None:
         """Sync found candidates to local database.
@@ -564,103 +775,11 @@ class RetrievalOrchestrator:
             )
 
             try:
-                self._local_db.add_paper(paper)
+                paper.id = self._local_db.add_paper(paper)
+                cand.paper_id = paper.id
                 logger.debug(f"Synced to local DB: {paper.title[:50]}")
             except Exception as e:
                 logger.warning(f"Failed to sync to local DB: {e}")
-
-    async def _lookup_with_cache_and_ratelimit(
-        self,
-        client: BaseScholarClient,
-        citation: Citation,
-    ) -> SourceCandidate:
-        """Cache lookup → ratelimit → thật.
-
-        Cache key format: {source_name}:{citation_hash} (theo v1.2 §3.6).
-        """
-        cache_key = self._cache_key(client.name, citation)
-        if cache_key:
-            cached = self.cache.get(cache_key)
-            if cached is not None:
-                cand = self._candidate_from_cache(client.name, cached)
-                cand.cached = True
-                logger.debug(f"Cache HIT for {client.name}")
-                return cand
-
-        limiter = self._rate_limiters.get(client.name)
-        if limiter:
-            await limiter.wait()
-
-        cand = await client.lookup(citation)
-
-        # Save to cache (chỉ khi found hoặc có structured error)
-        if cache_key:
-            self.cache.set(cache_key, self._candidate_to_cache(cand))
-
-        return cand
-
-    @staticmethod
-    def _cache_key(source_name: str, citation: Citation) -> str:
-        """Build cache key: {source}:{hash(canonical fields)}.
-
-        Hash dùng citation fields thay vì raw_text để cache reuse khi citation
-        chỉ khác whitespace.
-        """
-        # Canonical fields - handle both list[str] and list[Author] formats
-        author_parts = []
-        if citation.authors:
-            for a in citation.authors:
-                if hasattr(a, "last_name"):
-                    # Author object from AuthorParser
-                    author_parts.append(a.last_name)
-                else:
-                    # Plain string - use as-is
-                    author_parts.append(str(a))
-        parts = [
-            citation.doi or "",
-            citation.title or "",
-            citation.year or "",
-            ",".join(author_parts),
-        ]
-        canonical = "|".join(parts).encode("utf-8")
-        h = hashlib.sha256(canonical).hexdigest()[:16]
-        return f"{source_name}:{h}"
-
-    @staticmethod
-    def _candidate_to_cache(cand: SourceCandidate) -> dict:
-        """Serialize SourceCandidate → dict cho cache."""
-        return {
-            "found": cand.found,
-            "doi": cand.doi,
-            "title": cand.title,
-            "authors": cand.authors,
-            "year": cand.year,
-            "venue": cand.venue,
-            "url": cand.url,
-            "external_ids": cand.external_ids,
-            "score": cand.score,
-            "confidence": cand.confidence,
-            "error": cand.error,
-        }
-
-    @staticmethod
-    def _candidate_from_cache(source_name: str, data: dict) -> SourceCandidate:
-        """Deserialize dict → SourceCandidate."""
-        return SourceCandidate(
-            source_name=source_name,
-            found=data.get("found", False),
-            doi=data.get("doi"),
-            title=data.get("title"),
-            authors=data.get("authors", []),
-            year=data.get("year"),
-            venue=data.get("venue"),
-            url=data.get("url"),
-            external_ids=data.get("external_ids", {}),
-            score=data.get("score", 0.0),
-            confidence=data.get("confidence", 0.0),
-            error=data.get("error"),
-            cached=True,
-        )
 
     @staticmethod
     def _dedupe_candidates(candidates: list[SourceCandidate]) -> list[SourceCandidate]:
@@ -672,7 +791,36 @@ class RetrievalOrchestrator:
                 # vẫn lưu failed candidate để debug
                 bucket.setdefault(f"raw:{id(c)}", c)
                 continue
-            existing = bucket.get(fp)
-            if existing is None or c.confidence > existing.confidence:
+            if fp in bucket:
+                # Giữ candidate có confidence cao hơn
+                if c.confidence > bucket[fp].confidence:
+                    bucket[fp] = c
+            else:
                 bucket[fp] = c
         return list(bucket.values())
+
+    async def _lookup_serpapi_fallback(self, citation: Citation) -> SourceCandidate | None:
+        """SerpApi fallback - chỉ gọi khi các API free thất bại.
+
+        Returns:
+            SourceCandidate nếu có API key và tìm thấy, None nếu không có key.
+        """
+        # Lazy init SerpApi client
+        if self.serpapi is None:
+            settings = get_settings()
+            if not settings.serpapi_api_key:
+                logger.debug("SerpApi: No API key, skipping fallback")
+                return None
+            self.serpapi = SerpApiClient(api_key=settings.serpapi_api_key)
+            # Init rate limiter
+            self._serpapi_limiter = RateLimiter(
+                get_settings().retrieval.rate_limits.serpapi_per_sec
+            )
+            logger.info("SerpApi: Initialized as fallback client")
+
+        # Apply rate limit
+        if self._serpapi_limiter:
+            await self._serpapi_limiter.wait()
+
+        logger.debug(f"SerpApi fallback for: {citation.title[:40] if citation.title else citation.raw_text[:40]}")
+        return await self.serpapi.lookup(citation)

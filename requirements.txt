@@ -26,6 +26,8 @@ rapidfuzz>=3.6,<4.0
 # --- Scholarly API clients ---
 arxiv>=2.0,<3.0
 # Crossref, OpenAlex, Semantic Scholar: gọi qua httpx (không cần SDK riêng)
+# SerpApi Google Scholar: fallback khi các API free thất bại
+google-search-results>=2.1,<3.0
 
 # --- Backend ---
 fastapi>=0.110,<1.0

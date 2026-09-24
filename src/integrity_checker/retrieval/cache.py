@@ -1,4 +1,9 @@
-"""Disk-based JSON cache cho API responses."""
+"""Deprecated compatibility cache.
+
+The production retrieval path now uses ``data/local_papers.db`` and does not
+instantiate this class.  It remains intentionally small so older integrations
+and tests that inject a cache object continue to work while migrating.
+"""
 
 from __future__ import annotations
 
@@ -9,37 +14,44 @@ from typing import Any
 
 
 class DiskCache:
-    """Cache file JSON theo key, có TTL.
+    """TTL JSON cache compatible with the pre-v1.3 injection API."""
 
-    Dùng để giảm tải API khi rerun pipeline.
-    """
-
-    def __init__(self, cache_dir: Path, ttl_seconds: int = 86400, enabled: bool = True) -> None:
+    def __init__(
+        self,
+        cache_dir: Path,
+        ttl_seconds: int = 86400,
+        enabled: bool = True,
+    ) -> None:
         self.cache_dir = Path(cache_dir)
         self.ttl_seconds = ttl_seconds
         self.enabled = enabled
-        if self.enabled:
+        if enabled:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def _key_to_path(self, key: str) -> Path:
-        safe = "".join(c if c.isalnum() else "_" for c in key)[:120]
+        safe = "".join(char if char.isalnum() else "_" for char in key)[:120]
         return self.cache_dir / f"{safe}.json"
 
-    def get(self, key: str) -> dict | None:
+    def get(self, key: str) -> dict[str, Any] | None:
         if not self.enabled:
             return None
         path = self._key_to_path(key)
-        if not path.exists():
+        if not path.is_file() or time.time() - path.stat().st_mtime > self.ttl_seconds:
             return None
-        if time.time() - path.stat().st_mtime > self.ttl_seconds:
-            return None  # expired
         try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
             return None
+        return value if isinstance(value, dict) else None
 
-    def set(self, key: str, value: dict) -> None:
+    def set(self, key: str, value: dict[str, Any]) -> None:
         if not self.enabled:
             return
         path = self._key_to_path(key)
-        path.write_text(json.dumps(value, ensure_ascii=False, default=str), encoding="utf-8")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = path.with_suffix(".tmp")
+        temp_path.write_text(
+            json.dumps(value, ensure_ascii=False, default=str),
+            encoding="utf-8",
+        )
+        temp_path.replace(path)

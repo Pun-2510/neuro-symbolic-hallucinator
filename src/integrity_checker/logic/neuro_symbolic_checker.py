@@ -75,7 +75,7 @@ class NeuroSymbolicChecker:
         citation_context: Optional[str] = None,
         # NEW v1.3: Provenance tracking
         api_exhausted: bool = False,
-        used_cache: bool = False,
+        used_local_db: bool = False,
     ) -> CitationVerdict:
         """Trả CitationVerdict đầy đủ (label + confidence + reasoning + features).
 
@@ -89,6 +89,23 @@ class NeuroSymbolicChecker:
         FIX Bug 5: If citation matches a known seminal paper, return VERIFIED
         with high confidence even when all APIs fail.
         """
+        # FIX v1.4: Check for URL/resource citations - classify as RESOURCE
+        import re
+        raw_text = citation.raw_text or ""
+        url_pattern = re.compile(r'^(https?://|www\.)[^\s]+$', re.IGNORECASE)
+        if url_pattern.match(raw_text.strip()):
+            # This is a URL citation - classify as RESOURCE (not an academic citation)
+            return CitationVerdict(
+                citation=citation,
+                label=ValidationLabel.RESOURCE,
+                confidence=0.95,
+                matched_source=source,
+                features=None,
+                reasoning=f"URL/Reference link detected: {raw_text[:60]}... (not an academic citation)",
+                triggered_rules=["R-URL-RESOURCE"],
+                mismatched_fields=[],
+            )
+
         # FIX Bug 5: Check for known seminal papers first
         is_known, paper_info = RetrievalOrchestrator.is_known_paper(citation)
         if is_known and paper_info:
@@ -111,6 +128,7 @@ class NeuroSymbolicChecker:
                 sources_queried=["known_papers"] + source.sources_queried,
                 sources_succeeded=["known_papers"] + source.sources_succeeded,
                 sources_failed=source.sources_failed,
+                api_exhausted=source.api_exhausted,
             )
             # Recalculate features with known paper (pass context if available)
             features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
@@ -139,7 +157,11 @@ class NeuroSymbolicChecker:
             citation_url=citation.url,
             # NEW v1.3: Provenance tracking
             api_exhausted=api_exhausted,
-            used_cache=used_cache,
+            used_local_db=used_local_db,
+            # NEW v1.3: Citation info for METADATA_ERROR detection
+            citation_authors=citation.authors,
+            citation_year=citation.year,
+            citation_raw=citation.raw_text,
         )
 
         # Enhance reasoning với content alignment info (Neural layer feedback)

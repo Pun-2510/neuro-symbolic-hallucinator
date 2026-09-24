@@ -1,0 +1,302 @@
+[
+  {
+    "citation_id": "eval_0001",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5546902120113373,
+    "raw": "Karpukhin et al. (2020)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Spiritual consumption: culture and the market"
+  },
+  {
+    "citation_id": "eval_0007",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "OpenAI et al. (2030)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Online Online Open Access Open Access book Culture"
+  },
+  {
+    "citation_id": "eval_0015",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5200781617313623,
+    "raw": "Loshchilov and Hutter (2032)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Surrogate-Assisted Evolutionary Algorithms"
+  },
+  {
+    "citation_id": "eval_0027",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5317546464502811,
+    "raw": "Yao et al. (2032)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Atomic-Level Tailoring Lithium-Intercalation Hosts"
+  },
+  {
+    "citation_id": "eval_0029",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "Inexistent Author (2014)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "The inexistent"
+  },
+  {
+    "citation_id": "eval_0031",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5136362761259079,
+    "raw": "Mikolov et al. (2027)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Advances in phonotactic language recognition"
+  },
+  {
+    "citation_id": "eval_0044",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "Constructed Scholar (2016)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Hybrid constructed wetlands"
+  },
+  {
+    "citation_id": "eval_0048",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "FakeAuthor et al. (2018)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Fake News, Fake Wars, Fake Worlds"
+  },
+  {
+    "citation_id": "eval_0052",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5326757952570915,
+    "raw": "Wang et al. (2017)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "The Construction of Medical Multimedia Database"
+  },
+  {
+    "citation_id": "eval_0059",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5512969791889191,
+    "raw": "Finn et al. (2026)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Modular Approaches to CO2 Capture Technologies"
+  },
+  {
+    "citation_id": "eval_0061",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "confidence": 0.9,
+    "raw": "He et al. (2016)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Deep Residual Learning for Image Recognition"
+  },
+  {
+    "citation_id": "eval_0063",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "Bogus Research (2015)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Hocus Bogus"
+  },
+  {
+    "citation_id": "eval_0068",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5560701414942741,
+    "raw": "Manufactured Author (2017)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Front Matter"
+  },
+  {
+    "citation_id": "eval_0072",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "Imagined Paper (2013)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Imagined Civilizations"
+  },
+  {
+    "citation_id": "eval_0076",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5066998973488808,
+    "raw": "Zhang et al. (2031)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Online Acoustic Emission Sensing of Rechargeable B"
+  },
+  {
+    "citation_id": "eval_0079",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5982147604227066,
+    "raw": "Guu et al. (2035)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "GFGF"
+  },
+  {
+    "citation_id": "eval_0082",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "Mou et al. (2016)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": null
+  },
+  {
+    "citation_id": "eval_0083",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5537390038371086,
+    "raw": "Radford et al. (2030)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Super-Rich and Us, Episode 1"
+  },
+  {
+    "citation_id": "eval_0089",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "Sutskever et al. (2014)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "POÉTICA, ÉTICA E ESTÉTICA EM ODE TSU DER TOYB, DE "
+  },
+  {
+    "citation_id": "eval_0091",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.4868697114288807,
+    "raw": "Phony Paper (2017)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "假行僧"
+  },
+  {
+    "citation_id": "eval_0119",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5713681131601334,
+    "raw": "Liu et al. (2019)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Deuteride Materials"
+  },
+  {
+    "citation_id": "eval_0126",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5524401366710663,
+    "raw": "Brock et al. (2019)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Walter Hawkesworth’s Labyrinthus"
+  },
+  {
+    "citation_id": "eval_0132",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "Socher et al. (2013)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Socher, Johann"
+  },
+  {
+    "citation_id": "eval_0148",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5281514190137386,
+    "raw": "NonExistent Researcher (2018)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Colaboradores do número especial (inverno, 2018)"
+  },
+  {
+    "citation_id": "eval_0158",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "Devlin et al. (2033)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Devlin, Baron (Life Peer), (Patrick Arthur Devlin)"
+  },
+  {
+    "citation_id": "eval_0180",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5677191391587257,
+    "raw": "Melamud et al. (2016)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Reply"
+  },
+  {
+    "citation_id": "eval_0181",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "Constructed Scholar (2020)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": null
+  },
+  {
+    "citation_id": "eval_0191",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.5474151894450188,
+    "raw": "Grill et al. (2020)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "Vision and Perception"
+  },
+  {
+    "citation_id": "eval_0199",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "Invented Scientist (2020)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "not even invented"
+  },
+  {
+    "citation_id": "eval_0200",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "confidence": 0.6,
+    "raw": "Lan et al. (2020)",
+    "sources_found": 1,
+    "api_exhausted": false,
+    "best_title": "LAN LAN VIRTUOSE. EXPERIENCEIN COMPARATIVE ANALYSI"
+  }
+]

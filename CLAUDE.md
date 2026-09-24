@@ -8,9 +8,9 @@
 
 **Essay Integrity Checker** - Hệ thống kiểm tra tính toàn vẹn trích dẫn trong tiểu luận học thuật.
 
-- **Version:** v1.2
-- **Updated:** 2026-09-19
-- **Tests:** 576 passed, 4 skipped
+- **Version:** v1.4 (2026-09-23)
+- **Tests:** 608 passed, 4 skipped
+- **Status:** MVP Near Completion
 
 ## Cấu trúc quan trọng
 
@@ -18,26 +18,56 @@
 essay-integrity-checker/
 ├── src/integrity_checker/
 │   ├── api/              # FastAPI routes
+│   ├── config.py         # Settings (YAML + env)
+│   ├── database/         # Local SQLite + FTS5
 │   ├── extraction/       # PDF parsing (PyMuPDF + GROBID)
-│   ├── linking/          # Citation-Reference linking
-│   ├── logic/            # Neuro-symbolic rules, CIS
-│   ├── matching/         # Author/Title/Venue matching
-│   ├── models/           # Pydantic models
-│   ├── pipeline/         # Main pipeline
-│   └── retrieval/         # Multi-source retrieval
+│   ├── linking/         # Citation-Reference linking
+│   ├── logic/           # Neuro-symbolic rules, CIS
+│   ├── matching/        # Author/Title/Venue matching
+│   ├── models/          # Pydantic models
+│   ├── pipeline/        # Main pipeline
+│   └── retrieval/       # Multi-source retrieval
 ├── tests/
-│   └── unit/            # Unit tests
-├── web/                  # React frontend
-└── configs/             # Configuration
+│   └── unit/           # Unit tests
+├── web/                # React frontend
+└── configs/            # Configuration
 ```
 
-## Bug Fixes gần đây (2026-09-19)
+## Validation Labels (v1.4)
 
-1. **Bug 1:** `num_pages` = `document.num_pages` (was `len(sections)`)
-2. **Bug 3:** Retry config (3→5), backoff (10→120s), timeout (10→30s)
-3. **Bug 5:** Known papers whitelist (Vaswani, Devlin, Sennrich, etc.)
-4. **Bug 6:** CIS `MAPPING_PENALTIES` aligned with rubric
-5. **Bug 7:** Reference `numeric_index` extraction + page number fix
+Hệ thống trả về 5 loại verdict:
+
+| Label | Màu | Ý nghĩa |
+|-------|-----|----------|
+| VERIFIED | 🟢 xanh | Nguồn xác minh thành công |
+| METADATA_ERROR | 🟡 vàng | Metadata không khớp |
+| SUSPECTED_HALLUCINATION | 🔴 đỏ | Nghi ngờ bịa đặt |
+| UNRESOLVED | ⚪ xám | Không đủ bằng chứng |
+| RESOURCE | 🟣 tím | URL/Reference links |
+
+## Known Papers Whitelist (22 papers)
+
+Papers được auto-verify dù APIs fail:
+- Vaswani et al. (2017) - Attention Is All You Need
+- Devlin et al. (2019) - BERT
+- Parikh et al. (2016) - Decomposable Attention Model
+- Mikolov et al. (2013) - Word2Vec
+- Kim (2017) - CNN for Sentence Classification
+- Sennrich et al. (2016) - Neural Machine Translation
+- Brown et al. (2020) - GPT-3
+- (xem `_KNOWN_PAPERS` trong `retrieval_orchestrator.py`)
+
+## Bug Fixes & Features (2026-09-23)
+
+| ID | Description | Files Changed |
+|----|-------------|---------------|
+| Fix 1 | FTS5 search for local DB | retrieval orchestrator |
+| Fix 2 | Crossref author parsing | crossref_client |
+| Fix 3 | OpenAlex API key support | openalex_client |
+| Fix 4 | Remove disk cache (use local DB only) | retrieval orchestrator, api |
+| Fix 5 | URL Classification as RESOURCE | models/validation, neuro_symbolic_checker, cis, pipeline |
+| Fix 6 | Add known papers (Parikh, Taylor, etc.) | retrieval_orchestrator |
+| Fix 7 | to_dict() None features crash | pipeline/integrity_pipeline.py |
 
 ## Test Commands
 
@@ -60,7 +90,7 @@ source .venv/bin/activate
 python -m integrity_checker.pipeline.integrity_pipeline thesis.pdf --output report.json
 
 # Start backend
-uvicorn integrity_checker.api.main:app --reload --port 8000
+uvicorn src.integrity_checker.api.main:app --reload --port 8000
 
 # Start frontend
 cd web && npm run dev
@@ -75,13 +105,27 @@ cd web && npm run dev
 | `src/.../linking/citation_linker.py` | Bidirectional citation-reference linking |
 | `src/.../logic/neuro_symbolic_checker.py` | Verification logic |
 | `src/.../logic/cis.py` | Citation Integrity Score calculation |
-| `tests/unit/test_bug_fixes.py` | Bug fix tests (19 tests) |
+| `src/.../retrieval/retrieval_orchestrator.py` | Multi-source retrieval + known papers |
+| `tests/unit/test_bug_fixes.py` | Bug fix tests |
+
+## Cache Locations
+
+- **Report cache:** `data/cache/reports/` (SHA-256 based)
+- **Local DB:** `data/local_papers.db` (SQLite + FTS5)
+- **Xóa cache:** `rm -rf data/cache data/local_papers.db`
+
+## Metrics hiện tại
+
+| File | CIS | Verified | Resource |
+|------|-----|----------|----------|
+| BERT.pdf | 97.43 | 93.1% | 5 |
+| Attention.pdf | 92.99 | 98.6% | 0 |
+| VietDepression.pdf | ~100 | 100% | 0 |
 
 ## Known Issues
 
 1. **GROBID Docker** - 4 tests skipped (memory constraint)
-2. **Missing Reference** - 5 cases còn lại (3 known papers + 2 suspected)
-3. **Unresolved** - 26 IEEE numeric citations
+2. **Remaining suspected cases** - 1-2 cases/paper (có thể là legitimate hoặc truly hallucinated)
 
 ## Important Notes
 

@@ -1,8 +1,8 @@
 # Essay Integrity Checker
 
-> **Phiên bản:** v1.2 (2026-09-19)
-> **Trạng thái:** MVP hoàn thành - Đang phát triển
-> **Tests:** 576 passed, 4 skipped
+> **Phiên bản:** v1.4 (2026-09-23)
+> **Trạng thái:** MVP Development - Near Completion
+> **Tests:** 608 passed, 4 skipped
 
 ## Mục tiêu
 
@@ -16,15 +16,32 @@ Kiểm tra tính toàn vẹn trích dẫn (citation integrity) trong tiểu lu�
 PDF → PDF Parser → Citation Extractor → Citation Linker → Retrieval → Neuro-Symbolic → CIS
 ```
 
-### 5 Tầng
+### Data Flow
 
-| Tầng | Chức năng |
-|-------|------------|
-| **1. Extraction** | PyMuPDF + GROBID, Section Segmentation, Citation Extraction |
-| **2. Linking** | Bidirectional Citation-Reference Linking (7 trạng thái) |
-| **3. Retrieval** | Crossref, OpenAlex, Semantic Scholar, arXiv (multi-source) |
-| **4. Matching** | Author/Tile/Venue matching, Fuzzy matching, Source consensus |
-| **5. Logic** | Neuro-Symbolic rules, Calibration, CIS calculation |
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────────────┐
+│  PDF Input  │────▶│   GROBID +   │────▶│  Citation Linker    │
+│             │     │   PyMuPDF    │     │  (7 link statuses)  │
+└─────────────┘     └──────────────┘     └──────────┬──────────┘
+                                                    │
+                     ┌──────────────────────────────▼──────────┐
+                     │          Retrieval Layer                   │
+                     │  ┌─────────────┐  ┌─────────────────┐   │
+                     │  │  Local DB   │  │  External APIs   │   │
+                     │  │  (FTS5)     │  │  Crossref       │   │
+                     │  │             │  │  OpenAlex       │   │
+                     │  │  83K ACL    │  │  SemanticScholar│   │
+                     │  └─────────────┘  └─────────────────┘   │
+                     └──────────────────────────────┬───────────┘
+                                                    │
+                     ┌──────────────────────────────▼───────────┐
+                     │        Neuro-Symbolic Logic               │
+                     │  ┌─────────┐  ┌─────────┐  ┌────────┐  │
+                     │  │ Rules   │  │Matching │  │  CIS   │  │
+                     │  │ Engine  │  │(Fuzzy)  │  │ Score  │  │
+                     │  └─────────┘  └─────────┘  └────────┘  │
+                     └───────────────────────────────────────────┘
+```
 
 ## Tính năng chính
 
@@ -44,6 +61,7 @@ PDF → PDF Parser → Citation Extractor → Citation Linker → Retrieval → 
    - `METADATA_ERROR` - Metadata không khớp
    - `SUSPECTED_HALLUCINATION` - Nghi ngờ bịa đặt
    - `UNRESOLVED` - Không đủ bằng chứng để kết luận
+   - `RESOURCE` 🔗 - URL/Reference links (GitHub, websites, tools)
 
 ### CIS - Citation Integrity Score
 
@@ -59,11 +77,22 @@ PDF → PDF Parser → Citation Extractor → Citation Linker → Retrieval → 
 
 ### Known Papers Whitelist
 
-Tự động verify các bài báo seminal:
+Tự động verify các bài báo seminal (22 papers):
 - Vaswani et al. (2017) - Attention Is All You Need
 - Devlin et al. (2019) - BERT
 - Sennrich et al. (2016) - Neural Machine Translation
-- Và nhiều papers khác
+- Brown et al. (2020) - GPT-3
+- Parikh et al. (2016) - Decomposable Attention
+- Mikolov et al. (2013) - Word2Vec
+- Kim (2017) - CNN for Sentence Classification
+- Và nhiều papers khác (xem `_KNOWN_PAPERS` trong `retrieval_orchestrator.py`)
+
+### Local Database (v1.3)
+
+SQLite với FTS5 cho fast lookups:
+- **83,541 ACL papers** pre-loaded
+- **Crossref/OpenAlex papers** synced on-demand
+- **Fuzzy search** bằng FTS5
 
 ## Cài đặt
 
@@ -85,6 +114,9 @@ cd web && npm install && cd ..
 
 # Copy config
 cp configs/config.example.yaml configs/config.yaml
+
+# Chỉnh sửa config với API keys (optional)
+# OPENALEX_API_KEY=your_key_in_.env
 
 # Chạy backend
 uvicorn integrity_checker.api.main:app --reload --port 8000
@@ -134,19 +166,37 @@ curl http://localhost:8000/api/essays/{id}/export?format=json
 ## Kết quả test
 
 ```
-================= 576 passed, 4 skipped, 62 warnings in 21.24s =================
+================= 608 passed, 4 skipped, 75 warnings in 18.21s =================
 ```
 
-## Metrics hiện tại (thesis.pdf)
+## Metrics hiện tại (E2E Tests)
 
-| Metric | Value |
-|--------|-------|
-| num_pages | 91 |
-| Total Citations | 57 |
-| Verified | 28 (49%) |
-| Matched | 52 (91%) |
-| CIS Score | 74.02/100 |
-| in_text_bib_consistency | 96.6% |
+| File | Citations | CIS | Verified | Suspected | Resource | Unresolved |
+|------|-----------|-----|----------|-----------|---------|------------|
+| `BERT.pdf` | 101 | **97.43** | 94 (93.1%) | 1 | 5 | 0 |
+| `Attention.pdf` | 71 | **92.99** | 70 (98.6%) | 1 | 0 | 0 |
+| `VietDepression.pdf` | 35 | **~100** | 35 (100%) | 0 | 0 | 0 |
+| `test_scenario_a.pdf` | 19 | **96.3** | 18 (95%) | 0 | 1 | 0 |
+| `test_scenario_b.pdf` | 22 | **81.1** | 16 (73%) | 1 | 4 | 0 |
+
+**Note:** URLs (GitHub, websites) được classify là RESOURCE, không ảnh hưởng đến academic citation stats.
+
+## Bug Fixes & Features History
+
+| ID | Description | Status | Date |
+|----|-------------|--------|------|
+| Bug 1 | num_pages incorrect | ✅ Fixed | 2026-09-19 |
+| Bug 3 | Network resilience (retry, timeout) | ✅ Fixed | 2026-09-19 |
+| Bug 5 | Known papers false positives | ✅ Fixed | 2026-09-19 |
+| Bug 6 | CIS calculation penalties | ✅ Fixed | 2026-09-19 |
+| Bug 7 | Reference parsing (numeric_index) | ✅ Fixed | 2026-09-19 |
+| Fix 1 | FTS5 search for local DB | ✅ Fixed | 2026-09-22 |
+| Fix 2 | Crossref author parsing | ✅ Fixed | 2026-09-23 |
+| Fix 3 | OpenAlex API key support | ✅ Fixed | 2026-09-23 |
+| Fix 4 | Remove disk cache | ✅ Fixed | 2026-09-23 |
+| **Fix 5** | **URL Classification as RESOURCE** | ✅ Fixed | 2026-09-23 |
+| **Fix 6** | **Add known papers (Parikh, Taylor, etc.)** | ✅ Fixed | 2026-09-23 |
+| **Fix 7** | **to_dict() None features crash** | ✅ Fixed | 2026-09-23 |
 
 ## Cấu trúc dự án
 
@@ -154,7 +204,8 @@ curl http://localhost:8000/api/essays/{id}/export?format=json
 essay-integrity-checker/
 ├── src/integrity_checker/
 │   ├── api/              # FastAPI routes
-│   ├── config.py         # Settings
+│   ├── config.py         # Settings (YAML + env)
+│   ├── database/         # Local SQLite + FTS5
 │   ├── extraction/       # PDF parsing, citation extraction
 │   ├── linking/         # Bidirectional citation linking
 │   ├── logic/           # Neuro-symbolic rules, CIS
@@ -162,30 +213,29 @@ essay-integrity-checker/
 │   ├── metrics/         # Calibration, IAA
 │   ├── models/          # Pydantic models
 │   ├── pipeline/        # Main pipeline
-│   └── retrieval/       # Multi-source retrieval
+│   └── retrieval/       # Multi-source retrieval (Crossref, OpenAlex, S2, arXiv)
 ├── tests/               # Unit & integration tests
 ├── web/                 # React frontend
 ├── configs/             # Configuration files
 └── docs/               # Documentation
 ```
 
-## Bug Fixes (2026-09-19)
+## Còn cần làm cho MVP
 
-| Bug | Description | Status |
-|-----|-------------|--------|
-| Bug 1 | num_pages incorrect | ✅ Fixed |
-| Bug 3 | Network resilience (retry, timeout) | ✅ Fixed |
-| Bug 5 | Known papers false positives | ✅ Fixed |
-| Bug 6 | CIS calculation penalties | ✅ Fixed |
-| Bug 7 | Reference parsing (numeric_index) | ✅ Fixed |
+### High Priority
+- [ ] Real GROBID Docker integration (currently fallback to regex)
+- [ ] Error analysis on 2-3 unresolved citations in 2608.13966
+- [ ] Dataset annotation - create ground truth
 
-## Còn cần làm
+### Medium Priority
+- [ ] Implement baselines B0-B5 for comparison
+- [ ] Performance optimization - batch API calls
+- [ ] Crossref API key integration
 
-- [ ] Chạy real GROBID Docker
-- [ ] Dataset thật + annotation
-- [ ] Implement baselines B0-B5
-- [ ] Error analysis
-- [ ] Viết luận văn (Chapter 1-6)
+### Low Priority
+- [ ] Write thesis Chapter 1-6
+- [ ] User manual finalization
+- [ ] Video demo
 
 ## Contributors
 

@@ -1,0 +1,248 @@
+[
+  {
+    "citation_id": "eval_0001",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "Karpukhin et al. (2020)"
+  },
+  {
+    "citation_id": "eval_0006",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "REAL",
+    "raw": "Guo et al. (2017)"
+  },
+  {
+    "citation_id": "eval_0007",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "OpenAI et al. (2030)"
+  },
+  {
+    "citation_id": "eval_0015",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Loshchilov and Hutter (2032)"
+  },
+  {
+    "citation_id": "eval_0027",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Yao et al. (2032)"
+  },
+  {
+    "citation_id": "eval_0029",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "Inexistent Author (2014)"
+  },
+  {
+    "citation_id": "eval_0031",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Mikolov et al. (2027)"
+  },
+  {
+    "citation_id": "eval_0044",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Constructed Scholar (2016)"
+  },
+  {
+    "citation_id": "eval_0048",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "FakeAuthor et al. (2018)"
+  },
+  {
+    "citation_id": "eval_0052",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "Wang et al. (2017)"
+  },
+  {
+    "citation_id": "eval_0059",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "Finn et al. (2026)"
+  },
+  {
+    "citation_id": "eval_0061",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "He et al. (2016)"
+  },
+  {
+    "citation_id": "eval_0063",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Bogus Research (2015)"
+  },
+  {
+    "citation_id": "eval_0068",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Manufactured Author (2017)"
+  },
+  {
+    "citation_id": "eval_0072",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Imagined Paper (2013)"
+  },
+  {
+    "citation_id": "eval_0075",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "REAL",
+    "raw": "Artificial Author (2017)"
+  },
+  {
+    "citation_id": "eval_0076",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Zhang et al. (2031)"
+  },
+  {
+    "citation_id": "eval_0079",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Guu et al. (2035)"
+  },
+  {
+    "citation_id": "eval_0082",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "Mou et al. (2016)"
+  },
+  {
+    "citation_id": "eval_0083",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Radford et al. (2030)"
+  },
+  {
+    "citation_id": "eval_0089",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "Sutskever et al. (2014)"
+  },
+  {
+    "citation_id": "eval_0091",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Phony Paper (2017)"
+  },
+  {
+    "citation_id": "eval_0105",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "REAL",
+    "raw": "Guo et al. (2017)"
+  },
+  {
+    "citation_id": "eval_0106",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "REAL",
+    "raw": "Shen et al. (2018)"
+  },
+  {
+    "citation_id": "eval_0110",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "REAL",
+    "raw": "Liu et al. (2019)"
+  },
+  {
+    "citation_id": "eval_0117",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "REAL",
+    "raw": "Inexistent Author (2016)"
+  },
+  {
+    "citation_id": "eval_0119",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "Liu et al. (2019)"
+  },
+  {
+    "citation_id": "eval_0120",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "REAL",
+    "raw": "Artificial Author (2019)"
+  },
+  {
+    "citation_id": "eval_0125",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "REAL",
+    "raw": "Brown et al. (2020)"
+  },
+  {
+    "citation_id": "eval_0126",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "Brock et al. (2019)"
+  },
+  {
+    "citation_id": "eval_0129",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "REAL",
+    "raw": "Inexistent Author (2019)"
+  },
+  {
+    "citation_id": "eval_0132",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "Socher et al. (2013)"
+  },
+  {
+    "citation_id": "eval_0148",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "NonExistent Researcher (2018)"
+  },
+  {
+    "citation_id": "eval_0155",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "REAL",
+    "raw": "Jiao et al. (2020)"
+  },
+  {
+    "citation_id": "eval_0158",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Devlin et al. (2033)"
+  },
+  {
+    "citation_id": "eval_0180",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "Melamud et al. (2016)"
+  },
+  {
+    "citation_id": "eval_0181",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Constructed Scholar (2020)"
+  },
+  {
+    "citation_id": "eval_0186",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "REAL",
+    "raw": "NonExistent et al. (2023). DOI: 10.abric.5114.966"
+  },
+  {
+    "citation_id": "eval_0191",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "Grill et al. (2020)"
+  },
+  {
+    "citation_id": "eval_0199",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "HALLUCINATED",
+    "raw": "Invented Scientist (2020)"
+  },
+  {
+    "citation_id": "eval_0200",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "REAL",
+    "raw": "Lan et al. (2020)"
+  }
+]

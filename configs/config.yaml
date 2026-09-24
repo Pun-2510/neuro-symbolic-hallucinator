@@ -90,10 +90,6 @@ retrieval:
     arxiv: true
   per_source_top_k: 5
   parallel: true
-  cache:
-    enabled: true
-    ttl_seconds: 86400   # 24h
-    include_source_in_key: true   # MỚI v1.2 — tránh trộn nhầm giữa các nguồn
   retry:                 # FIX Bug 3: Increased for better resilience
     enabled: true
     max_attempts: 5       # FIX: Increased from 3 to 5
