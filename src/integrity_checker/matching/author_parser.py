@@ -293,13 +293,28 @@ def _safe_parse(piece: str) -> Author | None:
 # Pattern APA: "LastName, I." hoặc "LastName, I. K."
 # Tên có thể có particle (van der Berg, de la Cruz) → group tên phức tạp.
 # Cho phép leading particle(s) lowercase trước Capital last word.
+#
+# IMPORTANT: Restrict particles to KNOWN particles only to prevent "ohn" being
+# matched as a particle before "Blitzer". Only particles like "van", "de", "von", etc.
+#
+# Compound particles (van der, de la) need to be matched together.
+# Use ordered alternation: longest first ("van der", "de la", etc.) then individual.
+_PARTICLES_GROUP = (
+    r"(?:van\s+der|ten\s+ter|de\s+la|der\s+den|zu\s+zur|le\s+la)?"  # compound particles first
+    r"(?:van|de|der|den|von|zu|zur|af|le|la|du|di|da|el|al|ten|ter)?"  # then single particles
+)
+
 _APA_AUTHOR_RE = re.compile(
-    r"""
+    rf"""
     (?P<author>
-        (?:[a-zà-ỹ]+\s+)*           # optional leading particle(s): "van der " / "de la "
-        [A-ZÀ-Ý][\wÀ-Ỹ\-\']+        # last name capital word
+        { _PARTICLES_GROUP }\s*  # optional particles
+        [A-ZÀ-Ý][A-Za-zà-ỹ\-\']+   # last name MUST start with uppercase
         ,\s*
         (?:[A-ZÀ-Ý]\.?\s*)+         # initials (1+)
+    |
+        [A-ZÀ-Ý][A-Za-zà-ỹ\-\']+   # last name start with uppercase
+        ,\s*
+        (?:[A-ZÀ-Ý]\.?\s*)+         # initials (1+) - MUST have at least one letter
     )
     """,
     re.VERBOSE,
@@ -332,16 +347,46 @@ def _split_apa_authors(text: str) -> list[Author]:
 
     if matches:
         authors = []
+        # For each match, also process any text AFTER it that looks like "FirstName LastName"
+        # e.g., "John Blitzer, Ryan McDonald, and Fernando Pereira"
+        # Matches: "Blitzer, R.", but "Ryan McDonald" and "Fernando Pereira" need to be caught
+
         for i, m in enumerate(matches):
+            # Process the APA match
             piece = m.group("author").strip()
-            # Nếu là match cuối và còn text thừa → ghép vào
-            if i == len(matches) - 1 and m.end() < len(text):
-                remainder = text[m.end():].strip(" ,;.")
-                if remainder:
-                    piece = piece + " " + remainder
             a = normalize_author(piece)
             if a.last_name:
                 authors.append(a)
+
+            # Extract text AFTER this match
+            if i < len(matches) - 1:
+                # Text between this match and next match
+                after_text = text[m.end():matches[i+1].start()]
+            else:
+                # Text after last match (to end of string)
+                after_text = text[m.end():]
+
+            # Process after_text to find "FirstName LastName" pieces
+            if after_text:
+                # Replace "and" with semicolon and split
+                after_text = re.sub(r'\s+and\s+', ' ; ', after_text, flags=re.IGNORECASE)
+                after_text = after_text.replace("&", " ; ")
+                for piece in after_text.split(";"):
+                    piece = piece.strip().rstrip(",").strip()
+                    if piece and len(piece) >= 2:
+                        tokens = piece.split()
+                        if len(tokens) >= 2:
+                            # Take last token as last_name (FirstName LastName format)
+                            last_name = tokens[-1].rstrip(".,;|")
+                            if last_name and len(last_name) >= 2:
+                                a = Author(
+                                    last_name=last_name.lower(),
+                                    initials=[],
+                                    normalized=last_name.lower(),
+                                    raw=piece,
+                                )
+                                authors.append(a)
+
         return authors
 
     # No APA matches - try FirstName LastName format
@@ -355,50 +400,63 @@ def _parse_firstname_lastname_no_et_al(text: str) -> list[Author]:
     - "FirstName LastName, FirstName LastName, and LastName" (multiple authors)
     - "LastName, LastName, LastName" (Vancouver style - single-word last names)
     - "Smith J" (Vancouver: LastName Initial)
+    - "Bowman, Angeli, Potts, and Manning" (Vancouver with "and" before last author)
+
+    IMPORTANT: Handle "and" BEFORE comma split for correct parsing of
+    "John Blitzer, Ryan McDonald, and Fernando Pereira"
     """
-    normalized = text.replace(" and ", "|").replace("&", "|")
-    parts = [p.strip() for p in normalized.split(",") if p.strip()]
+    # Replace " and " with semicolon separator FIRST, before splitting by comma
+    # This handles "John Blitzer, Ryan McDonald, and Fernando Pereira" correctly
+    # where "and Fernando Pereira" needs to be separated from "Ryan McDonald,"
+    normalized = text.replace(" and ", " ; ").replace("&", " ; ")
+
+    # Split by semicolon (our "and" replacement) and comma
+    # Each semicolon-separated piece may contain comma-separated author groups
+    semicolon_parts = [s.strip() for s in normalized.split(";") if s.strip()]
 
     authors = []
-    for part in parts:
-        part = part.strip()
-        if not part or len(part) < 2:
-            continue
+    for sem_part in semicolon_parts:
+        # Split each semicolon part by comma
+        comma_parts = [p.strip() for p in sem_part.split(",") if p.strip()]
 
-        tokens = part.split()
+        for part in comma_parts:
+            if not part or len(part) < 2:
+                continue
 
-        if len(tokens) >= 2:
-            # Check if last token is a single letter (likely initial)
-            # "Smith J" -> last_name=Smith, initial=J
-            if len(tokens[-1]) == 1 and tokens[-1].isalpha():
-                # Format: "LastName Initial"
-                last_name = " ".join(tokens[:-1]).rstrip(".,|")
-                initials = [tokens[-1].rstrip(".").upper()]
+            tokens = part.split()
+
+            if len(tokens) >= 2:
+                # Check if last token is a single letter (likely initial)
+                # "Smith J" -> last_name=Smith, initial=J
+                if len(tokens[-1]) == 1 and tokens[-1].isalpha():
+                    # Format: "LastName Initial"
+                    last_name = " ".join(tokens[:-1]).rstrip(".,;|")
+                    initials = [tokens[-1].rstrip(".").upper()]
+                else:
+                    # Format: "FirstName LastName" or "FirstName Middle LastName"
+                    last_name = tokens[-1].rstrip(".,;|")
+                    first_names = " ".join(tokens[:-1]).rstrip(".,;|")
+                    initials = [t[0] + "." for t in first_names.split() if t and t[0].isupper()]
+
+                if last_name and len(last_name) >= 2:
+                    author = Author(
+                        last_name=last_name.lower(),  # Consistent lowercase
+                        initials=initials if initials else [],
+                        normalized=f"{last_name.lower()}|{''.join(initials).lower()}" if initials else last_name.lower(),
+                        raw=part,
+                    )
+                    authors.append(author)
             else:
-                # Format: "FirstName LastName" or "FirstName Middle LastName"
-                last_name = tokens[-1].rstrip(".,|")
-                first_names = " ".join(tokens[:-1]).rstrip(".,|")
-                initials = [t[0] + "." for t in first_names.split() if t and t[0].isupper()]
-
-            if last_name and len(last_name) >= 2:
-                author = Author(
-                    last_name=last_name.lower(),  # Consistent lowercase
-                    initials=initials if initials else [],
-                    normalized=f"{last_name.lower()}|{''.join(initials).lower()}" if initials else last_name.lower(),
-                    raw=part.replace("|", " and "),
-                )
-                authors.append(author)
-        else:
-            # Single word: just a last name (Vancouver style)
-            last_name = part.rstrip(".,|")
-            if last_name and len(last_name) >= 2:
-                author = Author(
-                    last_name=last_name.lower(),  # Lowercase for single-word names
-                    initials=[],
-                    normalized=last_name.lower(),
-                    raw=last_name,
-                )
-                authors.append(author)
+                # Single word: just a last name (Vancouver style)
+                last_name = part.rstrip(".,;|")
+                if last_name and len(last_name) >= 2:
+                    author = Author(
+                        last_name=last_name.lower(),  # Lowercase for single-word names
+                        initials=[],
+                        normalized=last_name.lower(),
+                        raw=last_name,
+                    )
+                    authors.append(author)
 
     return authors
 
