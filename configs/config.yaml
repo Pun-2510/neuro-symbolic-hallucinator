@@ -38,7 +38,7 @@ extraction:
   grobid:
     enabled: true
     # URL: http://localhost:8070 (local dev) or http://grobid:8070 (Docker internal)
-    url: "http://grobid:8070"
+    url: "http://localhost:8070"
     timeout_seconds: 120
     cache_by_file_sha256: true
     consolidate_header: ["abstract", "body", "bibliography", "footnote", "appendix"]

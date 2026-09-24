@@ -146,32 +146,52 @@ class GrobidServiceManager:
         Returns:
             GROBID_STATUS enum value.
         """
-        # Check Docker container status first
+        # Check Docker container status first (if Docker SDK available)
         container_status = self._check_container_status()
+
         if container_status == "running":
             # Container running, check API health
-            try:
-                response = requests.get(
-                    f"{self.url}/api/isalive",
-                    timeout=5,
-                )
-                if response.status_code == 200:
-                    self._status = GROBID_STATUS.AVAILABLE
-                else:
-                    self._status = GROBID_STATUS.UNHEALTHY
-            except requests.exceptions.ConnectionError:
-                self._status = GROBID_STATUS.UNHEALTHY
-            except requests.exceptions.Timeout:
-                self._status = GROBID_STATUS.UNHEALTHY
-            except Exception as exc:
-                logger.warning("GROBID health check failed: %s", exc)
-                self._status = GROBID_STATUS.UNHEALTHY
+            return self._check_http_health()
+
         elif container_status == "exited":
             self._status = GROBID_STATUS.STOPPED
+
         elif container_status == "not_found":
-            self._status = GROBID_STATUS.UNKNOWN
+            # Container not found via Docker SDK - try HTTP check anyway
+            # (GROBID might be running without Docker SDK being able to detect it)
+            logger.debug("Docker SDK cannot detect container, trying HTTP check")
+            return self._check_http_health()
+
         else:
-            self._status = GROBID_STATUS.UNKNOWN
+            # Docker SDK unavailable - try HTTP check directly
+            # This allows GROBID to work even without Docker SDK
+            logger.debug("Docker SDK unavailable, trying HTTP check")
+            return self._check_http_health()
+
+        return self._status
+
+    def _check_http_health(self) -> GROBID_STATUS:
+        """Check GROBID health via HTTP /api/isalive endpoint.
+
+        Returns:
+            GROBID_STATUS enum value.
+        """
+        try:
+            response = requests.get(
+                f"{self.url}/api/isalive",
+                timeout=5,
+            )
+            if response.status_code == 200:
+                self._status = GROBID_STATUS.AVAILABLE
+            else:
+                self._status = GROBID_STATUS.UNHEALTHY
+        except requests.exceptions.ConnectionError:
+            self._status = GROBID_STATUS.UNHEALTHY
+        except requests.exceptions.Timeout:
+            self._status = GROBID_STATUS.UNHEALTHY
+        except Exception as exc:
+            logger.warning("GROBID health check failed: %s", exc)
+            self._status = GROBID_STATUS.UNHEALTHY
 
         return self._status
 
