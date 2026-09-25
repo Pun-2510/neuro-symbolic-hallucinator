@@ -1,4 +1,4 @@
-"""Unit tests cho 4 retrieval HTTP clients (Crossref, OpenAlex, S2, arXiv).
+"""Unit tests cho 4 retrieval HTTP clients (Crossref, OpenAlex, S2, CoreAPI).
 
 Mock HTTP responses via httpx.MockTransport để tránh gọi API thật.
 Reference: v1.2 §3.6 — tuần 8.
@@ -14,7 +14,7 @@ import pytest
 
 from integrity_checker.matching.author_parser import Author
 from integrity_checker.models.citation import Citation
-from integrity_checker.retrieval.arxiv_client import ArxivClient
+from integrity_checker.retrieval.coreapi_client import CoreAPIClient
 from integrity_checker.retrieval.crossref_client import CrossrefClient
 from integrity_checker.retrieval.openalex_client import OpenAlexClient
 from integrity_checker.retrieval.semantic_scholar_client import SemanticScholarClient
@@ -296,38 +296,96 @@ class TestSemanticScholarClient:
 
 
 # ============================================================
-# arXiv tests (sync SDK wrapped async)
+# CoreAPI tests
 # ============================================================
 
-class TestArxivClient:
-    """Test ArxivClient với mocked arxiv SDK."""
+class TestCoreAPIClient:
+    """Test CoreAPIClient với mocked HTTP."""
 
     @pytest.fixture
     def client(self):
-        return ArxivClient()
+        return CoreAPIClient(api_key="test-key", contact_email="test@example.com")
 
-    def test_extract_arxiv_id(self, client):
-        """arXiv ID extraction regex."""
-        assert client._extract_arxiv_id(_make_citation(
-            url="https://arxiv.org/abs/2106.12345"
-        )) == "2106.12345"
-        assert client._extract_arxiv_id(_make_citation(
-            raw_text="See arxiv:2106.12345 for details"
-        )) == "2106.12345"
-        assert client._extract_arxiv_id(_make_citation()) is None
+    @pytest.mark.asyncio
+    async def test_lookup_by_doi_success(self, client):
+        """DOI exact lookup trả về candidate với confidence=1.0."""
+        def handler(request: httpx.Request) -> httpx.Response:
+            url_str = str(request.url)
+            assert "/works/search" in url_str
+            # doi: gets URL-encoded as doi%3A in the query string
+            assert "doi%3A" in url_str or "doi:" in url_str
+            return httpx.Response(
+                200,
+                json={
+                    "total": 1,
+                    "results": [
+                        {
+                            "title": "Attention Is All You Need",
+                            "doi": "10.48550/arXiv.1706.03762",
+                            "authors": [{"name": "Vaswani"}],
+                            "year": 2017,
+                            "venue": "NeurIPS",
+                            "downloadUrl": "https://arxiv.org/abs/1706.03762",
+                        }
+                    ],
+                },
+            )
 
-    def test_result_to_candidate_strips_version(self, client):
-        """_result_to_candidate strips version suffix từ arxiv_id."""
-        d = {
-            "title": "Test",
-            "authors": ["Alice"],
-            "year": "2021",
-            "doi": None,
-            "url": "http://arxiv.org/abs/2106.12345v2",
-            "arxiv_id": "2106.12345v2",
-        }
-        cand = client._result_to_candidate(d)
-        assert cand.external_ids.get("arxiv") == "2106.12345"
+        with _patch_httpx(handler):
+            cit = _make_citation(doi="10.48550/arXiv.1706.03762")
+            result = await client.lookup(cit)
+
+        assert result.found is True
+        assert result.confidence == 1.0
+        assert result.title == "Attention Is All You Need"
+
+    @pytest.mark.asyncio
+    async def test_lookup_by_title(self, client):
+        """Title search fallback."""
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "total": 1,
+                    "results": [
+                        {
+                            "title": "BERT: Pre-training of Deep Bidirectional Transformers",
+                            "doi": "10.48550/arXiv.1810.04805",
+                            "authors": [{"name": "Devlin"}],
+                            "year": 2018,
+                        }
+                    ],
+                },
+            )
+
+        with _patch_httpx(handler):
+            cit = _make_citation(title="BERT Pre-training")
+            result = await client.lookup(cit)
+
+        assert result.found is True
+        assert result.confidence == 0.7  # Search match
+
+    def test_normalize_doi(self, client):
+        """_normalize_doi handles various DOI formats."""
+        assert client._normalize_doi("10.1234/ABC") == "10.1234/abc"
+        assert client._normalize_doi("doi:10.1234/abc") == "10.1234/abc"
+        assert client._normalize_doi("https://doi.org/10.1234/abc") == "10.1234/abc"
+
+    @pytest.mark.asyncio
+    async def test_no_results(self, client):
+        """No results returns found=False."""
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={"total": 0, "results": []},
+            )
+
+        with _patch_httpx(handler):
+            cit = _make_citation(title="Nonexistent Paper Title XYZ123")
+            result = await client.lookup(cit)
+
+        assert result.found is False
+        assert "no results" in result.error
 
 
 # ============================================================

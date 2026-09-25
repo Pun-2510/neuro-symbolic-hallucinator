@@ -52,13 +52,13 @@ async def test_api_result_is_synced_then_reused_from_local_db(tmp_path) -> None:
             "semantic_scholar",
             SourceCandidate(source_name="semantic_scholar", found=False, error="not found"),
         ),
-        _client("arxiv", SourceCandidate(source_name="arxiv", found=False, error="not used")),
+        _client("coreapi", SourceCandidate(source_name="coreapi", found=False, error="not used")),
     ]
     first = RetrievalOrchestrator(
         crossref=first_clients[0],
         openalex=first_clients[1],
         semantic_scholar=first_clients[2],
-        arxiv=first_clients[3],
+        coreapi=first_clients[3],
         local_db=db,
         use_local_db=True,
         parallel=True,
@@ -69,12 +69,12 @@ async def test_api_result_is_synced_then_reused_from_local_db(tmp_path) -> None:
     assert db.find_by_doi("https://doi.org/10.5555/new-api-paper") is not None
     assert first_clients[0].lookup.await_count == 1
 
-    second_clients = [_client(name) for name in ("crossref", "openalex", "semantic_scholar", "arxiv")]
+    second_clients = [_client(name) for name in ("crossref", "openalex", "semantic_scholar", "coreapi")]
     second = RetrievalOrchestrator(
         crossref=second_clients[0],
         openalex=second_clients[1],
         semantic_scholar=second_clients[2],
-        arxiv=second_clients[3],
+        coreapi=second_clients[3],
         local_db=db,
         use_local_db=True,
         parallel=True,
@@ -106,12 +106,12 @@ async def test_existing_doi_in_local_db_skips_all_external_clients(tmp_path) -> 
         )
     )
 
-    clients = [_client(name) for name in ("crossref", "openalex", "semantic_scholar", "arxiv")]
+    clients = [_client(name) for name in ("crossref", "openalex", "semantic_scholar", "coreapi")]
     orchestrator = RetrievalOrchestrator(
         crossref=clients[0],
         openalex=clients[1],
         semantic_scholar=clients[2],
-        arxiv=clients[3],
+        coreapi=clients[3],
         local_db=db,
         use_local_db=True,
         parallel=True,

@@ -7,18 +7,18 @@ from integrity_checker.models.source import SourceCandidate, SourceResult
 from integrity_checker.models.validation import MatchFeatures, ValidationLabel
 
 
-def test_no_candidate_no_api_success_returns_suspected() -> None:
-    """Không có candidate, API OK → SUSPECTED_HALLUCINATION."""
+def test_no_candidate_no_api_success_returns_unresolved() -> None:
+    """Không có candidate, API OK → UNRESOLVED (not enough evidence)."""
     rules = SymbolicRules()
     source = SourceResult(
         citation_raw="test",
         candidates=[],
-        sources_queried=["crossref"],
+        sources_queried=["crossref", "openalex", "semantic_scholar", "coreapi"],
         sources_succeeded=[],
         sources_failed={},
     )
     outcome = rules.apply(MatchFeatures(), source)
-    assert outcome.label == ValidationLabel.SUSPECTED_HALLUCINATION
+    assert outcome.label == ValidationLabel.UNRESOLVED
     assert "R-NO-CANDIDATE" in outcome.triggered_rules
 
 
