@@ -77,7 +77,6 @@ class RealSystemEvaluator:
             from integrity_checker.retrieval.semantic_scholar_client import (
                 SemanticScholarClient,
             )
-            from integrity_checker.retrieval.arxiv_client import ArxivClient
             from integrity_checker.models.citation import Citation
             from integrity_checker.models.source import SourceCandidate
             from integrity_checker.logic.neuro_symbolic_checker import (
@@ -100,15 +99,19 @@ class RealSystemEvaluator:
             print("     - SemanticScholarClient...")
             semantic_scholar = SemanticScholarClient()
 
-            print("     - ArxivClient...")
-            arxiv = ArxivClient()
+            # Create orchestrator without ArxivClient (not available)
+            orchestrator = RetrievalOrchestrator(
+                crossref=crossref,
+                openalex=openalex,
+                semantic_scholar=semantic_scholar,
+                parallel=True,
+            )
 
             print("     - RetrievalOrchestrator...")
             self._orchestrator = RetrievalOrchestrator(
                 crossref=crossref,
                 openalex=openalex,
                 semantic_scholar=semantic_scholar,
-                arxiv=arxiv,
                 parallel=True,
             )
 
@@ -389,7 +392,7 @@ async def main_async(args):
     print(f"              REAL   HALLU  METAERR")
     print(f"   Actual REAL   {metrics['cm']['tn']:4d}   {metrics['cm']['fp']:4d}   {metrics['cm'].get('fp_meta', 0):5d}")
     print(f"   Actual HALLU  {metrics['cm']['fn']:4d}   {metrics['cm']['tp']:4d}   {metrics['cm'].get('fn_meta', 0):5d}")
-    print(f"   Actual METAERR {metrics['cm'].get('fn_meta', 0):3d}   {metrics['cm'].get('tp_meta', 0):4d}   {metrics['cm'].get('tn_meta', 0):4d}")
+    print(f"   Actual METAERR {metrics['cm'].get('fn_meta', 0):3d}   {metrics['cm'].get('fp_meta', 0):4d}   {metrics['cm'].get('tp_meta', 0):4d}")
 
     # Step 5: Save Results
     print("\n💾 Step 5: Saving Results...")
@@ -449,6 +452,7 @@ def compute_metrics(dataset: list[dict], predictions: list[CitationPrediction]) 
     pred_map = {p.citation_id: p.predicted_verdict for p in predictions}
 
     fake_labels = {"HALLUCINATED", "FABRICATED"}
+    meta_labels = {"METADATA_ERROR"}
 
     for cid, gt in gt_map.items():
         pred = pred_map.get(cid, "UNRESOLVED")
@@ -466,6 +470,19 @@ def compute_metrics(dataset: list[dict], predictions: list[CitationPrediction]) 
         else:
             tn += 1
 
+        # METADATA_ERROR metrics
+        is_meta = gt in meta_labels
+        pred_meta = pred in meta_labels
+
+        if is_meta and pred_meta:
+            tp_meta += 1
+        elif not is_meta and pred_meta:
+            fp_meta += 1
+        elif is_meta and not pred_meta:
+            fn_meta += 1
+        else:
+            tn_meta += 1
+
     # Metrics
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0
@@ -473,17 +490,27 @@ def compute_metrics(dataset: list[dict], predictions: list[CitationPrediction]) 
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
     accuracy = (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) > 0 else 0
 
+    # METADATA_ERROR metrics
+    precision_meta = tp_meta / (tp_meta + fp_meta) if (tp_meta + fp_meta) > 0 else 0
+    recall_meta = tp_meta / (tp_meta + fn_meta) if (tp_meta + fn_meta) > 0 else 0
+    f1_meta = 2 * precision_meta * recall_meta / (precision_meta + recall_meta) if (precision_meta + recall_meta) > 0 else 0
+
     return {
         "total": len(predictions),
         "tp": tp, "fp": fp, "fn": fn, "tn": tn,
+        "tp_meta": tp_meta, "fp_meta": fp_meta, "fn_meta": fn_meta, "tn_meta": tn_meta,
         "precision": round(precision, 4),
         "recall": round(recall, 4),
         "specificity": round(specificity, 4),
         "f1": round(f1, 4),
         "f1_hallucination": round(f1, 4),
+        "precision_meta": round(precision_meta, 4),
+        "recall_meta": round(recall_meta, 4),
+        "f1_meta": round(f1_meta, 4),
         "accuracy": round(accuracy, 4),
         "cm": {
             "tp": tp, "fp": fp, "fn": fn, "tn": tn,
+            "tp_meta": tp_meta, "fp_meta": fp_meta, "fn_meta": fn_meta, "tn_meta": tn_meta,
         },
     }
 
