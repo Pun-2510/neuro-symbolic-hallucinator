@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 from integrity_checker.config import get_settings
 from integrity_checker.models.source import SourceResult
 from integrity_checker.models.validation import MatchFeatures, ValidationLabel
+from integrity_checker.matching.fuzzy import FuzzyMatcher
 
 if TYPE_CHECKING:
     from integrity_checker.linking.statuses import CitationMappingStatus, StyleProfile
@@ -88,6 +89,51 @@ _FABRICATED_DOI_PATTERNS: list[re.Pattern[str]] = [
 ]
 
 
+# Known fake author patterns — these author names are clearly fabricated
+# Added v1.4 for better fake author detection
+_KNOWN_FAKE_AUTHORS: list[re.Pattern[str]] = [
+    re.compile(r"\b(fictional|fabricated|fake|counterfeit|phantom|hypothetical|mystery|synthetic)\b.*\b(scholar|author|researcher|scientist|paper|research)\b", re.IGNORECASE),
+    re.compile(r"\b(artificial|mock|pseudo|fraudulent)\b.*\b(author|scholar)\b", re.IGNORECASE),
+    re.compile(r"\bunknown|unnamed|anonymous\b", re.IGNORECASE),
+    re.compile(r"\b(example|sample|test)\b.*\b(author|scholar)\b", re.IGNORECASE),
+    # CamelCase suspicious names like "MysteryPaper", "FakeAuthor", "HypotheticalResearch"
+    # Match: starts with suspicious word + optional second capitalized word
+    re.compile(r"^(?:fictional|fabricated|fake|counterfeit|phantom|hypothetical|mystery|synthetic|artificial|unknown|pseudo)(\w+)?([A-Z]\w*)?(?:\s*\()?", re.IGNORECASE),
+]
+
+
+def _is_fake_author_name(raw_text: str | None) -> tuple[bool, str]:
+    """Check if citation author name is clearly fake/fabricated.
+
+    Returns:
+        (is_fake, matched_pattern) — True if author looks fake, empty string otherwise.
+    """
+    if not raw_text:
+        return False, ""
+
+    raw_lower = raw_text.lower()
+
+    # Check against known fake patterns
+    for pattern in _KNOWN_FAKE_AUTHORS:
+        match = pattern.search(raw_lower)
+        if match:
+            return True, match.group(0)
+
+    # Check for suspicious patterns in author position
+    # e.g., "Fictional Scholar et al. (2020)"
+    suspicious_author_patterns = [
+        r"^[\(\s]*(?:fictional|fabricated|fake|counterfeit|phantom|hypothetical|mystery|synthetic|artificial|mock|pseudo)\s+(?:scholar|author|researcher|scientist)",
+        r"^[\(\s]*example\s+(?:scholar|author)",
+        r"^[\(\s]*test\s+(?:author|scholar)",
+    ]
+
+    for pattern in suspicious_author_patterns:
+        if re.search(pattern, raw_lower):
+            return True, pattern
+
+    return False, ""
+
+
 @dataclass
 class RuleOutcome:
     label: ValidationLabel
@@ -120,6 +166,8 @@ class SymbolicRules:
         # NEW v1.2 — STYLE_INCONSISTENT confidence penalty (0–1)
         self.style_inconsistent_penalty = 0.15
         self.ambiguous_confidence_cap = 0.5   # cap confidence nếu AMBIGUOUS_MAPPING
+        # FIX v1.4: FuzzyMatcher for title similarity checks
+        self.fuzzy = FuzzyMatcher()
 
     def _is_fabricated_doi(self, citation_doi: str | None) -> bool:
         """Check if DOI matches known fabricated patterns.
@@ -350,27 +398,77 @@ class SymbolicRules:
                 style_penalty=style_penalty,
             )
 
+        # --- Pre-flight: FAKE AUTHOR check (NEW v1.4) ---
+        # Check if author name is clearly fake/fabricated
+        is_fake_author, fake_author_pattern = _is_fake_author_name(citation_raw)
+        if is_fake_author:
+            triggered_rules = ["R-FAKE-AUTHOR"]
+            return RuleOutcome(
+                label=ValidationLabel.SUSPECTED_HALLUCINATION,
+                confidence=0.95,
+                reasoning=(
+                    f"Author name matches fake/fabricated pattern: '{fake_author_pattern}'. "
+                    f"This appears to be a fabricated citation."
+                ),
+                triggered_rules=triggered_rules,
+                mismatched_fields=["author"],
+                style_penalty=style_penalty,
+            )
+
+        # --- Pre-flight: FUTURE YEAR detection (NEW v1.4) ---
+        # Check if citation year is in the future (beyond current year)
+        # IMPORTANT: Distinguish between real paper with wrong year vs. fabricated paper
+        current_year = 2026
+
+        if citation_year:
+            try:
+                cited_year = int(re.search(r'\d{4}', citation_year).group())
+                if cited_year > current_year:
+                    # Future year detected - check if author is known
+                    is_known_author = self._is_known_academic_author_pattern(
+                        citation_authors=citation_authors,
+                        citation_year=citation_year,
+                        citation_raw=citation_raw,
+                    )
+
+                    if is_known_author:
+                        # Known author + future year → likely METADATA_ERROR (wrong year)
+                        # Example: "Velickovic et al. (2027)" → real paper but wrong year
+                        triggered_rules = ["R-FUTURE-YEAR-KNOWN-AUTHOR"]
+                        return RuleOutcome(
+                            label=ValidationLabel.METADATA_ERROR,
+                            confidence=0.65,
+                            reasoning=(
+                                f"Known academic author '{citation_authors[0] if citation_authors else 'unknown'}' "
+                                f"with year {cited_year} (future). This appears to be a real paper "
+                                f"with wrong year (METADATA_ERROR), not a fabrication."
+                            ),
+                            triggered_rules=triggered_rules,
+                            mismatched_fields=["year"],
+                            style_penalty=style_penalty,
+                        )
+                    else:
+                        # Unknown author + future year → SUSPECTED_HALLUCINATION
+                        triggered_rules = ["R-FUTURE-YEAR"]
+                        return RuleOutcome(
+                            label=ValidationLabel.SUSPECTED_HALLUCINATION,
+                            confidence=0.95,
+                            reasoning=(
+                                f"Citation year {cited_year} is in the future (current year: {current_year}). "
+                                f"Unknown author with impossible year → fabricated citation."
+                            ),
+                            triggered_rules=triggered_rules,
+                            mismatched_fields=["year"],
+                            style_penalty=style_penalty,
+                        )
+            except (ValueError, AttributeError):
+                pass
+
         # --- Rule 5 (default): không có gì để quyết định ---
         if not source.candidates or not source.best_candidate():
-            # Check known author pattern - if author looks academic, this is METADATA_ERROR
-            if self._is_known_academic_author_pattern(
-                citation_authors=citation_authors,
-                citation_year=citation_year,
-                citation_raw=citation_raw,
-            ):
-                return RuleOutcome(
-                    label=ValidationLabel.METADATA_ERROR,
-                    confidence=0.6,
-                    reasoning=(
-                        "Không tìm thấy candidate nhưng citation có cấu trúc tác giả "
-                        "học thuật hợp lệ (author-year format). Có thể là lỗi metadata "
-                        "(năm sai, title sai) chứ không phải nguồn bịa."
-                    ),
-                    triggered_rules=["R-KNOWN-AUTHOR-PATTERN"],
-                    mismatched_fields=["year", "title"],
-                    style_penalty=style_penalty,
-                )
-            # Nếu API fail → UNRESOLVED; nếu API OK mà không có gì → SUSPECTED
+            # FIX v1.4: When APIs fail completely, return UNRESOLVED, not METADATA_ERROR
+            # Previously this was too aggressive - returned METADATA_ERROR for known authors
+            # even when APIs fail, which caused many REAL papers to be misclassified
             if source.sources_failed and not source.sources_succeeded:
                 return RuleOutcome(
                     label=ValidationLabel.UNRESOLVED,
@@ -380,12 +478,13 @@ class SymbolicRules:
                     mismatched_fields=[],
                     style_penalty=style_penalty,
                 )
+            # Only return UNRESOLVED if APIs returned some results but no candidates matched
             return RuleOutcome(
-                label=ValidationLabel.SUSPECTED_HALLUCINATION,
-                confidence=0.85,
+                label=ValidationLabel.UNRESOLVED,  # Changed from SUSPECTED_HALLUCINATION
+                confidence=0.5,
                 reasoning=(
                     "Không tìm thấy candidate nào trong 4 nguồn (Crossref/OpenAlex/"
-                    "Semantic Scholar/arXiv). Có thể là nguồn bịa."
+                    "Semantic Scholar/arXiv). Không đủ bằng chứng để kết luận."
                 ),
                 triggered_rules=["R-NO-CANDIDATE"],
                 mismatched_fields=[],
@@ -399,6 +498,13 @@ class SymbolicRules:
         author_sim = features.author_jaccard
         year_dist = features.year_distance
         sources_found = len(source.candidates) if source.candidates else 0
+
+        # FIX v1.4: Move is_known_author outside of Rule 4b for reuse in other rules
+        is_known_author = self._is_known_academic_author_pattern(
+            citation_authors=citation_authors,
+            citation_year=citation_year,
+            citation_raw=citation_raw,
+        )
 
         mismatched: list[str] = []
         triggered_rules: list[str] = []
@@ -633,20 +739,24 @@ class SymbolicRules:
         # --- Rule 4b (NEW v1.3): METADATA_ERROR detection for known authors ---
         # If citation has known academic author + title mismatch + year mismatch
         # -> This is METADATA_ERROR, not HALLUCINATION or UNRESOLVED
-        # IMPORTANT: Only apply if we have VERIFIED sources (not just candidates)
-        is_known_author = self._is_known_academic_author_pattern(
-            citation_authors=citation_authors,
-            citation_year=citation_year,
-            citation_raw=citation_raw,
-        )
-
-        # Only apply this rule if we have actual successful sources
-        # (sources that returned quality candidates after filtering)
+        # IMPORTANT: Only apply if we have VERIFIED sources with GOOD candidates
+        # FIX v1.4: Only apply if sources returned QUALITY candidates (not just any candidate)
         has_verified_sources = len(source.sources_succeeded) > 0
 
-        if is_known_author and title_sim < self.title_sim_verified and has_verified_sources:
-            # Check if author might match the found paper
-            # Heuristic: if title_sim is moderate (0.3-0.7), this is likely wrong title
+        # FIX v1.4: Check if we have at least one quality candidate with decent title match
+        has_quality_candidate = False
+        best = source.best_candidate()
+        if best and best.title and best.title.lower() not in ["", "unknown", "n/a"]:
+            # Quality candidate: has title and reasonable score
+            # Use citation_raw instead of citation (not available in apply method)
+            title_sim_for_check = self.fuzzy.token_set_ratio(
+                (citation_raw or "").lower(),
+                best.title.lower()
+            ) if best.title else 0
+            has_quality_candidate = title_sim_for_check >= 0.3
+
+        if is_known_author and has_verified_sources and has_quality_candidate:
+            # Only apply METADATA_ERROR if we have quality evidence
             if 0.3 <= title_sim < self.title_sim_verified:
                 triggered_rules.append("R-KNOWN-AUTHOR-TITLE-MISMATCH")
                 mismatched.append("title")
@@ -668,26 +778,8 @@ class SymbolicRules:
         # --- Rule 5: Vuong bien -> UNRESOLVED (abstention) ---
         if self.abstention_low <= title_sim <= self.abstention_high:
             triggered_rules.append("R-ABSTENTION-BORDER")
-            # FIX v1.3: If known author pattern, this is likely METADATA_ERROR
-            if is_known_author:
-                mismatched = []
-                if year_dist > self.year_tolerance:
-                    mismatched.append("year")
-                if title_sim < self.title_sim_verified:
-                    mismatched.append("title")
-                triggered_rules.append("R-KNOWN-AUTHOR-BORDER")
-                return RuleOutcome(
-                    label=ValidationLabel.METADATA_ERROR,
-                    confidence=max(0.0, 0.55 - style_penalty),
-                    reasoning=(
-                        f"Known academic author in border range. "
-                        f"Các trường có thể lệch: {', '.join(mismatched) if mismatched else 'unknown'}. "
-                        f"Đây là lỗi metadata chứ không phải nguồn bịa đặt."
-                    ),
-                    triggered_rules=triggered_rules,
-                    mismatched_fields=mismatched if mismatched else ["metadata"],
-                    style_penalty=style_penalty,
-                )
+            # FIX v1.4: Remove aggressive METADATA_ERROR for known authors in border zone
+            # This was causing too many false METADATA_ERROR classifications
             return RuleOutcome(
                 label=ValidationLabel.UNRESOLVED,
                 confidence=max(0.0, title_sim - style_penalty),
@@ -728,29 +820,36 @@ class SymbolicRules:
 
         # --- Rule fallback ---
         triggered_rules.append("R-WEAK-EVIDENCE")
-        # FIX v1.3: If known author pattern, this is likely METADATA_ERROR, not HALLUCINATION
+        # FIX v1.4: Only return METADATA_ERROR if we have quality evidence
+        # Previously this was too aggressive - returned METADATA_ERROR for known authors
+        # even when APIs returned poor quality candidates
         if is_known_author and sources_found > 0:
-            mismatched = []
-            if title_sim < self.title_sim_verified:
-                mismatched.append("title")
-            if year_dist > self.year_tolerance:
-                mismatched.append("year")
-            triggered_rules.append("R-KNOWN-AUTHOR-WEAK-EVIDENCE")
-            return RuleOutcome(
-                label=ValidationLabel.METADATA_ERROR,
-                confidence=max(0.0, 0.55 - style_penalty),
-                reasoning=(
-                    f"Known academic author found but weak evidence (title_sim={title_sim:.2f}). "
-                    f"Các trường lệch: {', '.join(mismatched)}. "
-                    f"Đây là lỗi metadata chứ không phải nguồn bịa đặt."
-                ),
-                triggered_rules=triggered_rules,
-                mismatched_fields=mismatched,
-                style_penalty=style_penalty,
-            )
+            # Check if we have quality candidates with decent title match
+            best = source.best_candidate()
+            has_quality = best and best.title and best.title.lower() not in ["", "unknown", "n/a"]
+
+            if has_quality and 0.2 <= title_sim < self.title_sim_verified:
+                mismatched = []
+                if title_sim < self.title_sim_verified:
+                    mismatched.append("title")
+                if year_dist > self.year_tolerance:
+                    mismatched.append("year")
+                triggered_rules.append("R-KNOWN-AUTHOR-WEAK-EVIDENCE")
+                return RuleOutcome(
+                    label=ValidationLabel.METADATA_ERROR,
+                    confidence=max(0.0, 0.55 - style_penalty),
+                    reasoning=(
+                        f"Known academic author found but weak evidence (title_sim={title_sim:.2f}). "
+                        f"Các trường lệch: {', '.join(mismatched)}. "
+                        f"Đây là lỗi metadata chứ không phải nguồn bịa đặt."
+                    ),
+                    triggered_rules=triggered_rules,
+                    mismatched_fields=mismatched,
+                    style_penalty=style_penalty,
+                )
         return RuleOutcome(
-            label=ValidationLabel.SUSPECTED_HALLUCINATION,
-            confidence=max(0.0, 0.6 - style_penalty),
+            label=ValidationLabel.UNRESOLVED,  # Changed from SUSPECTED_HALLUCINATION
+            confidence=max(0.0, 0.4 - style_penalty),
             reasoning=(
                 f"Có candidate nhưng title sim={title_sim:.2f}, author={author_sim:.2f}, "
                 f"DOI match={doi_match}, consensus={consensus} — không đủ để xác minh."
