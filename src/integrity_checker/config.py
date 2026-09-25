@@ -169,13 +169,13 @@ class SourceToggleConfig(BaseModel):
     openalex: bool = True
     semantic_scholar: bool = True
     serpapi: bool = True  # Fallback khi các API free thất bại
-    arxiv: bool = True
+    coreapi: bool = False  # CORE API (disable by default - free tier very limited)
 
 
 class RateLimitsConfig(BaseModel):
-    # arXiv: very conservative (1 req per 3 seconds max)
-    # arXiv enforces 1 request per 3 seconds per IP
-    arxiv_per_sec: float = 0.33  # ~1 req per 3 seconds
+    # CoreAPI: 5 req/10s = 0.5 req/s (free tier)
+    # Batch endpoint allows more requests per call
+    coreapi_per_sec: float = 0.5
     # OpenAlex: high with API key (50 req/s)
     openalex_per_sec: float = 50.0
     # Semantic Scholar: very conservative (1 req/s with API key, less without)
@@ -296,7 +296,7 @@ class DisclaimerConfig(BaseModel):
         "Hệ thống này chỉ hỗ trợ giảng viên rà soát tính toàn vẹn trích dẫn "
         "trong tiểu luận. Hai lớp kết quả (đối chiếu in-text ↔ reference entry "
         "và độ tin cậy nguồn) đều là gợi ý dựa trên bằng chứng từ các cơ sở dữ "
-        "liệu học thuật công khai (Crossref, OpenAlex, Semantic Scholar, arXiv) "
+        "liệu học thuật công khai (Crossref, OpenAlex, Semantic Scholar, CORE) "
         "và quy luật Neuro-Symbolic có thể giải thích. Kết luận "
         "`SUSPECTED_HALLUCINATION` chỉ là suspect — không đồng nghĩa nguồn bị "
         "bịa. Giảng viên là người ra quyết định cuối cùng. Hệ thống KHÔNG tự động "
@@ -318,6 +318,7 @@ _DEFAULT_OUT_OF_SCOPE: list[str] = [
     "Sách / ISBN (mở rộng)",
     "Highlight trực tiếp lên PDF (mở rộng)",
     "Google Scholar / SerpAPI (bị loại)",
+    "arXiv direct API (sử dụng CORE API thay thế)",
 ]
 
 
@@ -345,6 +346,7 @@ class Settings(BaseSettings):
     contact_email: str = "iannwendii@gmail.com"
     s2_api_key: str = ""
     serpapi_api_key: str = ""  # SerpApi API key (SERPAPI_API_KEY)
+    coreapi_api_key: str = ""  # CORE API key (COREAPI_API_KEY)
     config_file: Path | None = None
 
     model_config = SettingsConfigDict(

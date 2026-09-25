@@ -8,8 +8,8 @@
 
 **Essay Integrity Checker** - Hệ thống kiểm tra tính toàn vẹn trích dẫn trong tiểu luận học thuật.
 
-- **Version:** v1.4 (2026-09-23)
-- **Tests:** 608 passed, 4 skipped
+- **Version:** v1.5 (2026-09-24)
+- **Tests:** 619 passed, 4 skipped
 - **Status:** MVP Near Completion
 
 ## Cấu trúc quan trọng
@@ -45,7 +45,15 @@ Hệ thống trả về 5 loại verdict:
 | UNRESOLVED | ⚪ xám | Không đủ bằng chứng |
 | RESOURCE | 🟣 tím | URL/Reference links |
 
-## Known Papers Whitelist (22 papers)
+## Retrieval Sources
+
+Hệ thống sử dụng 4 nguồn truy hồi:
+- **Crossref** - Journal articles
+- **OpenAlex** - Wide coverage (OpenAlex API key)
+- **Semantic Scholar** - Supplement (S2 API key)
+- **CORE API** - Open access papers, preprints (CORE API key)
+
+## Known Papers Whitelist
 
 Papers được auto-verify dù APIs fail:
 - Vaswani et al. (2017) - Attention Is All You Need
@@ -57,7 +65,7 @@ Papers được auto-verify dù APIs fail:
 - Brown et al. (2020) - GPT-3
 - (xem `_KNOWN_PAPERS` trong `retrieval_orchestrator.py`)
 
-## Bug Fixes & Features (2026-09-23)
+## Bug Fixes & Features (2026-09-24)
 
 | ID | Description | Files Changed |
 |----|-------------|---------------|
@@ -68,6 +76,7 @@ Papers được auto-verify dù APIs fail:
 | Fix 5 | URL Classification as RESOURCE | models/validation, neuro_symbolic_checker, cis, pipeline |
 | Fix 6 | Add known papers (Parikh, Taylor, etc.) | retrieval_orchestrator |
 | Fix 7 | to_dict() None features crash | pipeline/integrity_pipeline.py |
+| Fix 8 | Replace arXiv với CORE API | coreapi_client, retrieval_orchestrator, config, tests |
 
 ## Test Commands
 

@@ -94,12 +94,12 @@ def mock_semantic_scholar_success():
 
 
 @pytest.fixture
-def mock_arxiv_success():
-    """Mock ArxivClient returns success."""
+def mock_coreapi_success():
+    """Mock CoreAPIClient returns success."""
     client = AsyncMock()
-    client.name = "arxiv"
+    client.name = "coreapi"
     client.lookup.return_value = SourceCandidate(
-        source_name="arxiv",
+        source_name="coreapi",
         found=True,
         title="Deep Learning for Vision",
         authors=["Smith, J."],
@@ -134,7 +134,7 @@ class TestRetrievalOrchestratorHappyPath:
         mock_crossref_success,
         mock_openalex_success,
         mock_semantic_scholar_success,
-        mock_arxiv_success,
+        mock_coreapi_success,
         mock_cache,
     ):
         """All 4 sources return found=True results."""
@@ -142,7 +142,7 @@ class TestRetrievalOrchestratorHappyPath:
             crossref=mock_crossref_success,
             openalex=mock_openalex_success,
             semantic_scholar=mock_semantic_scholar_success,
-            arxiv=mock_arxiv_success,
+            coreapi=mock_coreapi_success,
             parallel=True,
             cache=mock_cache,
         )
@@ -161,7 +161,7 @@ class TestRetrievalOrchestratorHappyPath:
         mock_crossref_success.lookup.assert_called_once()
         mock_openalex_success.lookup.assert_called_once()
         mock_semantic_scholar_success.lookup.assert_called_once()
-        mock_arxiv_success.lookup.assert_called_once()
+        mock_coreapi_success.lookup.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_dedupe_by_doi(
@@ -177,17 +177,17 @@ class TestRetrievalOrchestratorHappyPath:
         mock_s2.lookup.return_value = SourceCandidate(
             source_name="semantic_scholar", found=True, doi="10.1109/CVPR.2020.00123", confidence=0.75
         )
-        mock_arxiv = AsyncMock()
-        mock_arxiv.name = "arxiv"
-        mock_arxiv.lookup.return_value = SourceCandidate(
-            source_name="arxiv", found=True, doi="10.1109/CVPR.2020.00123", confidence=0.70
+        mock_coreapi = AsyncMock()
+        mock_coreapi.name = "coreapi"
+        mock_coreapi.lookup.return_value = SourceCandidate(
+            source_name="coreapi", found=True, doi="10.1109/CVPR.2020.00123", confidence=0.70
         )
 
         orchestrator = RetrievalOrchestrator(
             crossref=mock_crossref_success,
             openalex=mock_openalex_success,
             semantic_scholar=mock_s2,
-            arxiv=mock_arxiv,
+            coreapi=mock_coreapi,
             parallel=True,
             cache=mock_cache,
         )
@@ -207,7 +207,7 @@ class TestRetrievalOrchestratorHappyPath:
         mock_crossref_success,
         mock_openalex_success,
         mock_semantic_scholar_success,
-        mock_arxiv_success,
+        mock_coreapi_success,
         mock_cache,
     ):
         """Verify parallel=True calls all sources concurrently."""
@@ -215,7 +215,7 @@ class TestRetrievalOrchestratorHappyPath:
             crossref=mock_crossref_success,
             openalex=mock_openalex_success,
             semantic_scholar=mock_semantic_scholar_success,
-            arxiv=mock_arxiv_success,
+            coreapi=mock_coreapi_success,
             parallel=True,
             cache=mock_cache,
         )
@@ -257,17 +257,17 @@ class TestRetrievalOrchestratorPartialFailure:
             source_name="semantic_scholar", found=False, error="Connection failed"
         )
 
-        mock_arxiv_fail = AsyncMock()
-        mock_arxiv_fail.name = "arxiv"
-        mock_arxiv_fail.lookup.return_value = SourceCandidate(
-            source_name="arxiv", found=False, error="Not found"
+        mock_coreapi_fail = AsyncMock()
+        mock_coreapi_fail.name = "coreapi"
+        mock_coreapi_fail.lookup.return_value = SourceCandidate(
+            source_name="coreapi", found=False, error="Not found"
         )
 
         orchestrator = RetrievalOrchestrator(
             crossref=mock_crossref_success,
             openalex=mock_openalex_fail,
             semantic_scholar=mock_s2_fail,
-            arxiv=mock_arxiv_fail,
+            coreapi=mock_coreapi_fail,
             parallel=True,
             cache=mock_cache,
         )
@@ -279,7 +279,7 @@ class TestRetrievalOrchestratorPartialFailure:
         assert "crossref" in result.sources_succeeded
         assert "openalex" in result.sources_failed
         assert "semantic_scholar" in result.sources_failed
-        assert "arxiv" in result.sources_failed
+        assert "coreapi" in result.sources_failed
 
     @pytest.mark.asyncio
     async def test_majority_failure_triggers_warning(
@@ -290,7 +290,7 @@ class TestRetrievalOrchestratorPartialFailure:
         """3+ sources fail -> should log UNRESOLVED warning."""
         # Create 4 failing clients
         mock_clients = []
-        for name in ["crossref", "openalex", "semantic_scholar", "arxiv"]:
+        for name in ["crossref", "openalex", "semantic_scholar", "coreapi"]:
             mock_client = AsyncMock()
             mock_client.name = name
             mock_client.lookup.return_value = SourceCandidate(
@@ -302,7 +302,7 @@ class TestRetrievalOrchestratorPartialFailure:
             crossref=mock_clients[0],
             openalex=mock_clients[1],
             semantic_scholar=mock_clients[2],
-            arxiv=mock_clients[3],
+            coreapi=mock_clients[3],
             parallel=True,
             cache=mock_cache,
         )
@@ -361,17 +361,17 @@ class TestRetrievalOrchestratorCache:
         mock_s2_fail.lookup.return_value = SourceCandidate(
             source_name="semantic_scholar", found=False, error="Not cached"
         )
-        mock_arxiv_fail = AsyncMock()
-        mock_arxiv_fail.name = "arxiv"
-        mock_arxiv_fail.lookup.return_value = SourceCandidate(
-            source_name="arxiv", found=False, error="Not cached"
+        mock_coreapi_fail = AsyncMock()
+        mock_coreapi_fail.name = "coreapi"
+        mock_coreapi_fail.lookup.return_value = SourceCandidate(
+            source_name="coreapi", found=False, error="Not cached"
         )
 
         orchestrator = RetrievalOrchestrator(
             crossref=mock_crossref_success,
             openalex=mock_openalex_fail,
             semantic_scholar=mock_s2_fail,
-            arxiv=mock_arxiv_fail,
+            coreapi=mock_coreapi_fail,
             parallel=True,
             cache=mock_cache,
         )
@@ -412,17 +412,17 @@ class TestRetrievalOrchestratorCache:
         mock_s2_fail.lookup.return_value = SourceCandidate(
             source_name="semantic_scholar", found=False, error="Failed"
         )
-        mock_arxiv_fail = AsyncMock()
-        mock_arxiv_fail.name = "arxiv"
-        mock_arxiv_fail.lookup.return_value = SourceCandidate(
-            source_name="arxiv", found=False, error="Failed"
+        mock_coreapi_fail = AsyncMock()
+        mock_coreapi_fail.name = "coreapi"
+        mock_coreapi_fail.lookup.return_value = SourceCandidate(
+            source_name="coreapi", found=False, error="Failed"
         )
 
         orchestrator = RetrievalOrchestrator(
             crossref=mock_crossref_success,
             openalex=mock_openalex_fail,
             semantic_scholar=mock_s2_fail,
-            arxiv=mock_arxiv_fail,
+            coreapi=mock_coreapi_fail,
             parallel=True,
             cache=mock_cache,
         )
@@ -450,7 +450,7 @@ class TestRetrievalOrchestratorCache:
             crossref=mock_crossref_success,
             openalex=mock_openalex_success,
             semantic_scholar=AsyncMock(),
-            arxiv=AsyncMock(),
+            coreapi=AsyncMock(),
             parallel=True,
             cache=mock_cache,
         )
@@ -486,7 +486,7 @@ class TestRetrievalOrchestratorRateLimit:
             crossref=mock_crossref_success,
             openalex=AsyncMock(),
             semantic_scholar=AsyncMock(),
-            arxiv=AsyncMock(),
+            coreapi=AsyncMock(),
             parallel=True,
             cache=mock_cache,
         )
@@ -572,7 +572,7 @@ class TestRetrievalOrchestratorSerialization:
         """Candidates with same DOI should be deduped, keeping highest confidence."""
         c1 = SourceCandidate(source_name="crossref", found=True, doi="10.1234/test", confidence=0.90)
         c2 = SourceCandidate(source_name="openalex", found=True, doi="10.1234/test", confidence=0.85)
-        c3 = SourceCandidate(source_name="arxiv", found=True, title="Different Title", confidence=0.80)
+        c3 = SourceCandidate(source_name="coreapi", found=True, title="Different Title", confidence=0.80)
 
         deduped = RetrievalOrchestrator._dedupe_candidates([c1, c2, c3])
 
@@ -598,7 +598,7 @@ class TestRetrievalOrchestratorSequential:
         mock_crossref_success,
         mock_openalex_success,
         mock_semantic_scholar_success,
-        mock_arxiv_success,
+        mock_coreapi_success,
         mock_cache,
     ):
         """Verify sequential=True processes sources one by one."""
@@ -606,7 +606,7 @@ class TestRetrievalOrchestratorSequential:
             crossref=mock_crossref_success,
             openalex=mock_openalex_success,
             semantic_scholar=mock_semantic_scholar_success,
-            arxiv=mock_arxiv_success,
+            coreapi=mock_coreapi_success,
             parallel=False,  # Sequential
             cache=mock_cache,
         )
@@ -664,7 +664,7 @@ class TestArxivDoiRouting:
         arxiv_doi_citation,
         mock_cache,
     ):
-        """arXiv DOI citation should only query S2 and arXiv, not Crossref/OpenAlex.
+        """arXiv DOI citation should only query S2 and CoreAPI, not Crossref/OpenAlex.
 
         Note: Vaswani 2017 is in known_papers, so it returns early.
         Use a different citation to test the routing logic.
@@ -697,25 +697,25 @@ class TestArxivDoiRouting:
             source_name="semantic_scholar", found=True, doi="10.48550/arXiv.2005.14165", confidence=0.95
         )
 
-        mock_arxiv = AsyncMock()
-        mock_arxiv.name = "arxiv"
-        mock_arxiv.lookup.return_value = SourceCandidate(
-            source_name="arxiv", found=True, title="Language Models are Few-Shot Learners", confidence=0.90
+        mock_coreapi = AsyncMock()
+        mock_coreapi.name = "coreapi"
+        mock_coreapi.lookup.return_value = SourceCandidate(
+            source_name="coreapi", found=True, title="Language Models are Few-Shot Learners", confidence=0.90
         )
 
         orchestrator = RetrievalOrchestrator(
             crossref=mock_crossref,
             openalex=mock_openalex,
             semantic_scholar=mock_s2,
-            arxiv=mock_arxiv,
+            coreapi=mock_coreapi,
             parallel=True,
             cache=mock_cache,
         )
 
         result = await orchestrator.retrieve(other_arxiv_citation)
 
-        # Only S2 and arXiv should be queried (crossref/openalex skipped for arXiv DOIs)
-        assert set(result.sources_queried) == {"semantic_scholar", "arxiv"}
+        # Only S2 and CoreAPI should be queried (crossref/openalex skipped for arXiv DOIs)
+        assert set(result.sources_queried) == {"semantic_scholar", "coreapi"}
         assert "crossref" not in result.sources_queried
         assert "openalex" not in result.sources_queried
 
@@ -723,9 +723,9 @@ class TestArxivDoiRouting:
         mock_crossref.lookup.assert_not_called()
         mock_openalex.lookup.assert_not_called()
 
-        # Verify S2 and arXiv were called
+        # Verify S2 and CoreAPI were called
         mock_s2.lookup.assert_called_once()
-        mock_arxiv.lookup.assert_called_once()
+        mock_coreapi.lookup.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_regular_doi_queries_all_sources(
@@ -752,17 +752,17 @@ class TestArxivDoiRouting:
             source_name="semantic_scholar", found=True, confidence=0.80
         )
 
-        mock_arxiv = AsyncMock()
-        mock_arxiv.name = "arxiv"
-        mock_arxiv.lookup.return_value = SourceCandidate(
-            source_name="arxiv", found=False, error="Not arXiv"
+        mock_coreapi = AsyncMock()
+        mock_coreapi.name = "coreapi"
+        mock_coreapi.lookup.return_value = SourceCandidate(
+            source_name="coreapi", found=False, error="Not arXiv"
         )
 
         orchestrator = RetrievalOrchestrator(
             crossref=mock_crossref,
             openalex=mock_openalex,
             semantic_scholar=mock_s2,
-            arxiv=mock_arxiv,
+            coreapi=mock_coreapi,
             parallel=True,
             cache=mock_cache,
         )
@@ -771,7 +771,7 @@ class TestArxivDoiRouting:
 
         # All 4 sources should be queried
         assert len(result.sources_queried) == 4
-        assert set(result.sources_queried) == {"crossref", "openalex", "semantic_scholar", "arxiv"}
+        assert set(result.sources_queried) == {"crossref", "openalex", "semantic_scholar", "coreapi"}
 
     @pytest.mark.asyncio
     async def test_arxiv_doi_health_check_with_2_sources(
@@ -797,17 +797,17 @@ class TestArxivDoiRouting:
             source_name="semantic_scholar", found=False, error="Connection failed"
         )
 
-        mock_arxiv = AsyncMock()
-        mock_arxiv.name = "arxiv"
-        mock_arxiv.lookup.return_value = SourceCandidate(
-            source_name="arxiv", found=False, error="Connection failed"
+        mock_coreapi = AsyncMock()
+        mock_coreapi.name = "coreapi"
+        mock_coreapi.lookup.return_value = SourceCandidate(
+            source_name="coreapi", found=False, error="Connection failed"
         )
 
         orchestrator = RetrievalOrchestrator(
             crossref=AsyncMock(),
             openalex=AsyncMock(),
             semantic_scholar=mock_s2,
-            arxiv=mock_arxiv,
+            coreapi=mock_coreapi,
             parallel=True,
             cache=mock_cache,
         )
