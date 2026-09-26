@@ -254,20 +254,34 @@ export function EssayPage() {
         </div>
       )}
 
-      {/* Quick Links - Issues & Logic Trace */}
+      {/* Quick Links - Section 7: Report navigation */}
       <div className="flex gap-3 flex-wrap">
         <Link
           to={`/verification/report/${id}/issues`}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
         >
           <AlertCircle className="h-4 w-4" />
-          View Issues
+          Issues
+        </Link>
+        <Link
+          to={`/verification/report/${id}/document`}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
+        >
+          <FileSearch className="h-4 w-4" />
+          Document
+        </Link>
+        <Link
+          to={`/verification/report/${id}/consistency`}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
+        >
+          <Link2 className="h-4 w-4" />
+          Consistency
         </Link>
         <Link
           to={`/verification/report/${id}/trace`}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
         >
-          <ChevronRight className="h-4 w-4" />
+          <GitBranch className="h-4 w-4" />
           Logic Trace
         </Link>
       </div>
