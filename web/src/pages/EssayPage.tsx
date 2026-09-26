@@ -35,10 +35,16 @@ export function EssayPage() {
 
   useEffect(() => {
     if (!id) return;
+    // Validate essay ID - security: prevent NaN or invalid IDs
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId) || numericId <= 0) {
+      setError('Invalid essay ID');
+      return;
+    }
     api
-      .getEssay(Number(id))
+      .getEssay(numericId)
       .then(setReport)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed'));
+      .catch(() => setError('Failed to load report. Please try again.'));
   }, [id]);
 
   async function handleOverride(verdict: Verdict, req: Parameters<typeof api.overrideVerdict>[1]) {

@@ -343,10 +343,16 @@ export function IssuesPage() {
 
   useEffect(() => {
     if (!id) return;
+    // Validate essay ID - security: prevent NaN or invalid IDs
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId) || numericId <= 0) {
+      setError('Invalid essay ID');
+      return;
+    }
     api
-      .getEssay(Number(id))
+      .getEssay(numericId)
       .then(setReport)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed'));
+      .catch(() => setError('Failed to load report. Please try again.'));
   }, [id]);
 
   // Filter and group verdicts by severity
@@ -388,7 +394,8 @@ export function IssuesPage() {
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium text-red-700 dark:text-red-300">Error: {error}</p>
+            <p className="font-medium text-red-700 dark:text-red-300">Error loading issues</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{error}</p>
             <Link to="/history" className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
               ← Back to Reports
             </Link>
