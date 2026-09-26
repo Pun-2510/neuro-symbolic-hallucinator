@@ -296,10 +296,16 @@ export function DocumentInspectorPage() {
 
   useEffect(() => {
     if (!id) return;
+    // SECURITY: Validate essay ID - prevent NaN or invalid IDs
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId) || numericId <= 0) {
+      setError('Invalid essay ID');
+      return;
+    }
     api
-      .getEssay(Number(id))
+      .getEssay(numericId)
       .then(setReport)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed'));
+      .catch(() => setError('Failed to load document. Please try again.'));
   }, [id]);
 
   // Build inline citations
