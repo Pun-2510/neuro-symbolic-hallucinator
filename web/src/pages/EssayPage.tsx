@@ -14,7 +14,10 @@ import {
   ChevronRight,
   Clock,
   Quote,
-  AlertCircle
+  AlertCircle,
+  GitBranch,
+  FileSearch,
+  Link2
 } from 'lucide-react';
 
 /* ============================================================

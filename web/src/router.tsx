@@ -11,6 +11,8 @@ import { HistoryPage } from './pages/HistoryPage';
 import { EssayPage } from './pages/EssayPage';
 import { IssuesPage } from './pages/IssuesPage';
 import { LogicTracePage } from './pages/LogicTracePage';
+import { DocumentInspectorPage } from './pages/DocumentInspectorPage';
+import { OrphanDetectionPage } from './pages/OrphanDetectionPage';
 
 /* ============================================================
    SourceLogic — Router Configuration
@@ -79,6 +81,14 @@ export const router = createBrowserRouter([
       {
         path: '/verification/report/:id/trace',
         element: <LogicTracePage />,
+      },
+      {
+        path: '/verification/report/:id/document',
+        element: <DocumentInspectorPage />,
+      },
+      {
+        path: '/verification/report/:id/consistency',
+        element: <OrphanDetectionPage />,
       },
       {
         path: '/essay/:id',

@@ -1,72 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ============================================================
-   ESSAY INTEGRITY CHECKER — Design System v2.0
-   Modern Academic Research Tool (2026)
+   SourceLogic — Academic Source Verification Workspace
+   Design System v2.0 (Based on UX/UI Concept Specification)
    ============================================================ */
 
 @layer base {
   :root {
-    /* Core Palette — Slate + Academic Blue */
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    /* Core Palette — SourceLogic Design System (UX/UI Concept) */
+    --bg: 210 20% 98%;                  /* #F8FAFC */
+    --text: 222 47% 11%;                /* #0F172A */
+    --surface: 0 0% 100%;               /* #FFFFFF */
+    --muted: 215 16% 47%;               /* #64748B */
 
-    /* Primary — Deep Academic Blue */
-    --primary: 221 83% 53%;
+    /* Primary — Indigo #4F46E5 */
+    --primary: 244 63 94;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 221 83% 47%;
+    --primary-hover: 244 63 84;
+    --primary-light: 244 63 94 / 0.1;
 
     /* Secondary — Warm Gray */
     --secondary: 220 14% 96%;
     --secondary-foreground: 222 47% 11%;
 
     /* Muted — Subtle Gray */
-    --muted: 220 14% 94%;
-    --muted-foreground: 220 9% 46%;
+    --muted-bg: 214 32% 91%;
+    --muted-fg: 215 16% 47%;
 
     /* Accent — Soft Blue */
     --accent: 214 97% 95%;
-    --accent-foreground: 221 83% 53%;
+    --accent-foreground: 244 63 94;
 
-    /* Semantic Colors */
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    /* Semantic Colors — SourceLogic Verified Palette (UX/UI Concept) */
+    --verified: 160 84% 39%;            /* #10B981 - Green */
+    --verified-light: 160 84% 39% / 0.12;
+    --warning: 38 92% 50%;              /* #F59E0B - Amber */
+    --warning-light: 38 92% 50% / 0.12;
+    --mismatch: 24 96% 54%;              /* #F97316 - Orange */
+    --mismatch-light: 24 96% 54% / 0.12;
+    --danger: 0 72% 51%;                /* #EF4444 - Red */
+    --danger-light: 0 72% 51% / 0.12;
+    --unknown: 215 16% 47%;             /* #94A3B8 - Slate */
 
     /* Border & Input */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 221 83% 53%;
+    --border: 214 22% 88%;              /* #E2E8F0 */
+    --input: 214 22% 88%;
+    --ring: 244 63 94;
 
     /* Card */
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
 
-    /* Verdict Status Colors — 2026 Palette */
-    --verdict-verified: 142 71% 45%;
-    --verdict-metadata-error: 38 92% 50%;
-    --verdict-suspected: 0 72% 51%;
-    --verdict-unresolved: 220 9% 46%;
+    /* Verdict Status Colors — SourceLogic UX/UI Concept */
+    --verdict-verified: 160 84% 39%;         /* #10B981 - Green */
+    --verdict-likely-verified: 142 71% 45%;  /* #22c55e - Light Green */
+    --verdict-metadata-error: 38 92% 50%;    /* #F59E0B - Amber */
+    --verdict-source-mismatch: 24 96% 54%;   /* #F97316 - Orange */
+    --verdict-hallucinated: 0 72% 51%;       /* #EF4444 - Red */
+    --verdict-unverifiable: 215 16% 47%;     /* #94A3B8 - Slate */
 
     /* Mapping Status Colors */
-    --mapping-matched: 142 71% 45%;
+    --mapping-matched: 160 84% 39%;
     --mapping-missing: 0 72% 51%;
     --mapping-uncited: 38 92% 50%;
-    --mapping-mismatch: 24 95% 53%;
+    --mapping-mismatch: 24 96% 54%;
     --mapping-duplicate: 270 70% 55%;
     --mapping-ambiguous: 262 83% 58%;
     --mapping-style: 199 89% 48%;
-    --mapping-unresolved: 220 9% 46%;
+    --mapping-unresolved: 215 16% 47%;
 
     /* Radius */
-    --radius: 0.625rem;
+    --radius: 0.75rem;
 
-    /* Shadows — Layered depth */
+    /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.03);
     --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
@@ -89,191 +99,710 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.65;
+  }
+
+  /* Typography - Source Serif 4 for headlines */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Source Serif 4', Georgia, serif;
+    line-height: 1.2;
+  }
+
+  /* Document content */
+  .document-content {
+    font-family: 'Source Serif 4', Georgia, serif;
   }
 
   /* Selection */
   ::selection {
-    @apply bg-primary/20 text-foreground;
+    background: hsl(244 63 94 / 0.3);
   }
 }
 
 @layer components {
-  /* Verdict Badges — Clean pill style */
+  /* ============================================================
+     VERDICT BADGES — SourceLogic Design System
+     SourceLogic uses rounded-full badges with semantic colors
+     ============================================================ */
+
   .verdict-badge {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-all duration-200;
+    @apply inline-flex items-center rounded-full font-semibold transition-all duration-200;
   }
 
   .verdict-badge-verified {
-    background: hsl(var(--verdict-verified) / 0.12);
-    color: hsl(var(--verdict-verified));
-    border: 1px solid hsl(var(--verdict-verified) / 0.2);
+    @apply bg-emerald-50 text-emerald-700 border border-emerald-200;
+  }
+  .dark .verdict-badge-verified {
+    @apply bg-emerald-950 text-emerald-300 border-emerald-800;
+  }
+
+  .verdict-badge-likely-verified {
+    @apply bg-green-50 text-green-700 border border-green-200;
+  }
+  .dark .verdict-badge-likely-verified {
+    @apply bg-green-950 text-green-300 border-green-800;
   }
 
   .verdict-badge-metadata-error {
-    background: hsl(var(--verdict-metadata-error) / 0.12);
-    color: hsl(var(--verdict-metadata-error));
-    border: 1px solid hsl(var(--verdict-metadata-error) / 0.2);
+    @apply bg-amber-50 text-amber-700 border border-amber-200;
+  }
+  .dark .verdict-badge-metadata-error {
+    @apply bg-amber-950 text-amber-300 border-amber-800;
   }
 
-  .verdict-badge-suspected {
-    background: hsl(var(--verdict-suspected) / 0.12);
-    color: hsl(var(--verdict-suspected));
-    border: 1px solid hsl(var(--verdict-suspected) / 0.2);
+  .verdict-badge-source-mismatch {
+    @apply bg-orange-50 text-orange-700 border border-orange-200;
+  }
+  .dark .verdict-badge-source-mismatch {
+    @apply bg-orange-950 text-orange-300 border-orange-800;
   }
 
-  .verdict-badge-unresolved {
-    background: hsl(var(--verdict-unresolved) / 0.12);
-    color: hsl(var(--verdict-unresolved));
-    border: 1px solid hsl(var(--verdict-unresolved) / 0.2);
+  .verdict-badge-hallucinated {
+    @apply bg-red-50 text-red-700 border border-red-200;
+  }
+  .dark .verdict-badge-hallucinated {
+    @apply bg-red-950 text-red-300 border-red-800;
   }
 
-  /* Mapping Status Badges */
+  .verdict-badge-unverifiable {
+    @apply bg-slate-100 text-slate-600 border border-slate-200;
+  }
+  .dark .verdict-badge-unverifiable {
+    @apply bg-slate-800 text-slate-300 border-slate-700;
+  }
+
+  /* ============================================================
+     MAPPING STATUS BADGES — SourceLogic Design System
+     Uses rounded-md for differentiation from verdict badges
+     ============================================================ */
+
   .mapping-badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium transition-all duration-200;
+    @apply inline-flex items-center rounded-md font-medium transition-all duration-200;
   }
 
   .mapping-badge-matched {
-    background: hsl(var(--mapping-matched) / 0.12);
-    color: hsl(var(--mapping-matched));
+    @apply bg-emerald-50 text-emerald-700;
+  }
+  .dark .mapping-badge-matched {
+    @apply bg-emerald-950 text-emerald-300;
   }
 
   .mapping-badge-missing {
-    background: hsl(var(--mapping-missing) / 0.12);
-    color: hsl(var(--mapping-missing));
+    @apply bg-red-50 text-red-700;
+  }
+  .dark .mapping-badge-missing {
+    @apply bg-red-950 text-red-300;
   }
 
   .mapping-badge-uncited {
-    background: hsl(var(--mapping-uncited) / 0.12);
-    color: hsl(var(--mapping-uncited));
+    @apply bg-amber-50 text-amber-700;
+  }
+  .dark .mapping-badge-uncited {
+    @apply bg-amber-950 text-amber-300;
   }
 
   .mapping-badge-mismatch {
-    background: hsl(var(--mapping-mismatch) / 0.12);
-    color: hsl(var(--mapping-mismatch));
+    @apply bg-orange-50 text-orange-700;
+  }
+  .dark .mapping-badge-mismatch {
+    @apply bg-orange-950 text-orange-300;
   }
 
   .mapping-badge-duplicate {
-    background: hsl(var(--mapping-duplicate) / 0.12);
-    color: hsl(var(--mapping-duplicate));
+    @apply bg-violet-50 text-violet-700;
+  }
+  .dark .mapping-badge-duplicate {
+    @apply bg-violet-950 text-violet-300;
   }
 
   .mapping-badge-ambiguous {
-    background: hsl(var(--mapping-ambiguous) / 0.12);
-    color: hsl(var(--mapping-ambiguous));
+    @apply bg-purple-50 text-purple-700;
+  }
+  .dark .mapping-badge-ambiguous {
+    @apply bg-purple-950 text-purple-300;
   }
 
   .mapping-badge-style {
-    background: hsl(var(--mapping-style) / 0.12);
-    color: hsl(var(--mapping-style));
+    @apply bg-sky-50 text-sky-700;
+  }
+  .dark .mapping-badge-style {
+    @apply bg-sky-950 text-sky-300;
   }
 
   .mapping-badge-unresolved {
-    background: hsl(var(--mapping-unresolved) / 0.12);
-    color: hsl(var(--mapping-unresolved));
+    @apply bg-slate-100 text-slate-600;
+  }
+  .dark .mapping-badge-unresolved {
+    @apply bg-slate-800 text-slate-300;
   }
 
-  /* Card — Elevated with subtle shadow */
+  /* ============================================================
+     CARDS — SourceLogic Design System
+     Clean white cards with subtle borders and shadows
+     ============================================================ */
+
+  .card {
+    @apply bg-card rounded-2xl border border-slate-200 dark:border-slate-700 p-6;
+    box-shadow: var(--shadow-sm);
+  }
+
   .card-elevated {
-    @apply bg-card rounded-xl border border-border/50 shadow-sm transition-shadow duration-200;
+    @apply bg-card rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-200;
   }
 
-  .card-elevated:hover {
+  .card-interactive {
+    @apply bg-card rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-200 cursor-pointer;
+  }
+
+  .card-interactive:hover {
     @apply shadow-md;
+    border-color: hsl(var(--primary) / 0.3);
   }
 
-  /* Button States */
+  .card-highlight {
+    @apply bg-primary/5 border-primary/20;
+  }
+
+  /* ============================================================
+     BUTTONS — SourceLogic Design System
+     Rounded corners, clear hierarchy
+     ============================================================ */
+
   .btn-primary {
-    @apply bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold;
+    @apply bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white;
+    @apply transition-all duration-200 shadow-sm;
+  }
+
+  .btn-primary:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
   }
 
   .btn-secondary {
-    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 active:scale-[0.98] transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold;
+    @apply bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700;
+    @apply text-slate-900 dark:text-slate-100 active:scale-[0.98] transition-all duration-200;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold;
+    @apply bg-transparent text-indigo-600 dark:text-indigo-400;
+    @apply border-2 border-indigo-600 dark:border-indigo-400;
+    @apply hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 active:scale-[0.98] transition-all duration-200;
   }
 
   .btn-ghost {
-    @apply hover:bg-accent text-foreground active:scale-[0.98] transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg font-medium;
+    @apply text-slate-600 dark:text-slate-400;
+    @apply hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100;
+    @apply active:scale-[0.98] transition-all duration-200;
   }
 
-  /* Input Focus Ring */
-  .input-focus {
-    @apply focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg font-medium;
+    @apply bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white;
+    @apply transition-all duration-200;
   }
 
-  /* Drawer Overlay */
+  .btn-sm {
+    @apply px-3 py-1.5 text-sm;
+  }
+
+  .btn-lg {
+    @apply px-8 py-4 text-lg;
+  }
+
+  /* ============================================================
+     INPUTS — SourceLogic Design System
+     Clean, accessible form inputs
+     ============================================================ */
+
+  .input {
+    @apply w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700;
+    @apply bg-white dark:bg-slate-900 text-foreground;
+    @apply focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500;
+    @apply transition-all duration-200;
+  }
+
+  .input-label {
+    @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5;
+  }
+
+  .input-helper {
+    @apply text-xs text-slate-500 dark:text-slate-400 mt-1;
+  }
+
+  /* ============================================================
+     NAVIGATION — SourceLogic Design System
+     Clean sidebar navigation
+     ============================================================ */
+
+  .nav-link {
+    @apply px-4 py-2 rounded-lg text-sm font-medium;
+    @apply text-slate-600 dark:text-slate-400;
+    @apply hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800;
+    @apply transition-all duration-200;
+  }
+
+  .nav-link-active {
+    @apply text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950;
+  }
+
+  .nav-vertical {
+    @apply flex flex-col gap-1;
+  }
+
+  /* ============================================================
+     TABS — SourceLogic Design System
+     Underline-based tabs for content switching
+     ============================================================ */
+
+  .tab {
+    @apply px-4 py-2 text-sm font-medium;
+    @apply text-slate-500 dark:text-slate-400;
+    @apply border-b-2 border-transparent;
+    @apply hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600;
+    @apply transition-all duration-200;
+  }
+
+  .tab-active {
+    @apply text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400;
+  }
+
+  /* ============================================================
+     DOCUMENT INSPECTOR — Inline Status
+     SourceLogic: Underline-based status indicators
+     ============================================================ */
+
+  .citation-verified {
+    border-bottom: 2px solid rgba(16, 185, 129, 0.6);
+    padding-bottom: 1px;
+  }
+
+  .citation-likely-verified {
+    border-bottom: 2px solid rgba(34, 197, 94, 0.6);
+    padding-bottom: 1px;
+  }
+
+  .citation-metadata-error {
+    border-bottom: 2px solid rgba(245, 158, 11, 0.6);
+    padding-bottom: 1px;
+  }
+
+  .citation-source-mismatch {
+    border-bottom: 2px solid rgba(249, 115, 22, 0.6);
+    padding-bottom: 1px;
+  }
+
+  .citation-hallucinated {
+    border-bottom: 2px solid rgba(239, 68, 68, 0.6);
+    padding-bottom: 1px;
+  }
+
+  .citation-unverifiable {
+    border-bottom: 2px solid rgba(148, 163, 184, 0.5);
+    padding-bottom: 1px;
+  }
+
+  /* ============================================================
+     PIPELINE STEPS — SourceLogic Design System
+     Visual pipeline for verification process
+     ============================================================ */
+
+  .pipeline-step {
+    @apply flex items-center gap-3 text-sm;
+  }
+
+  .pipeline-step-completed {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+
+  .pipeline-step-active {
+    @apply text-indigo-600 dark:text-indigo-400 font-semibold;
+  }
+
+  .pipeline-step-pending {
+    @apply text-slate-400 dark:text-slate-500;
+  }
+
+  .pipeline-connector {
+    @apply w-px h-6 bg-slate-200 dark:bg-slate-700 ml-1.5;
+  }
+
+  /* ============================================================
+     LOGIC TRACE — SourceLogic Design System
+     Explainable reasoning trace
+     ============================================================ */
+
+  .logic-trace-step {
+    @apply border-l-2 border-slate-200 dark:border-slate-700 pl-4 py-3;
+  }
+
+  .logic-trace-step-active {
+    @apply border-indigo-500 bg-indigo-50 dark:bg-indigo-950;
+  }
+
+  .logic-trace-step-success {
+    @apply border-emerald-500 bg-emerald-50 dark:bg-emerald-950;
+  }
+
+  .logic-trace-step-warning {
+    @apply border-amber-500 bg-amber-50 dark:bg-amber-950;
+  }
+
+  .logic-trace-step-error {
+    @apply border-red-500 bg-red-50 dark:bg-red-950;
+  }
+
+  /* ============================================================
+     METADATA COMPARISON — SourceLogic Design System
+     Side-by-side comparison for reference inspector
+     ============================================================ */
+
+  .metadata-row {
+    @apply flex items-center py-2.5 border-b border-slate-100 dark:border-slate-800;
+  }
+
+  .metadata-label {
+    @apply text-sm text-slate-500 dark:text-slate-400 w-36 shrink-0;
+  }
+
+  .metadata-value {
+    @apply text-sm text-slate-900 dark:text-slate-100 flex-1;
+  }
+
+  .metadata-diff {
+    @apply relative;
+  }
+
+  .metadata-diff-arrow {
+    @apply text-slate-400 mx-2;
+  }
+
+  .metadata-match {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+
+  .metadata-mismatch {
+    @apply text-red-600 dark:text-red-400;
+  }
+
+  /* ============================================================
+     EVIDENCE GRAPH — SourceLogic Design System
+     Visual evidence chain for verification
+     ============================================================ */
+
+  .graph-node {
+    @apply rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900;
+    @apply p-4 transition-all duration-200;
+  }
+
+  .graph-node:hover {
+    @apply shadow-md border-indigo-300 dark:border-indigo-700;
+  }
+
+  .graph-node-root {
+    @apply bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700;
+  }
+
+  .graph-connector {
+    @apply border-l-2 border-slate-200 dark:border-slate-700 h-8 ml-4;
+  }
+
+  /* ============================================================
+     UPLOAD DROPZONE — SourceLogic Design System
+     Large, inviting dropzone for document upload
+     ============================================================ */
+
+  .dropzone {
+    @apply border-2 border-dashed border-slate-300 dark:border-slate-600;
+    @apply rounded-2xl p-16 text-center transition-all duration-200;
+    @apply hover:border-indigo-400 dark:hover:border-indigo-500;
+    @apply hover:bg-indigo-50/50 dark:hover:bg-indigo-950/50;
+  }
+
+  .dropzone-active {
+    @apply border-indigo-500 bg-indigo-100 dark:bg-indigo-900 scale-[1.02];
+  }
+
+  .dropzone-disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  /* ============================================================
+     METRICS & STATS — SourceLogic Design System
+     Clear stats display for verification results
+     ============================================================ */
+
+  .stat-card {
+    @apply rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5;
+  }
+
+  .stat-value {
+    @apply text-3xl font-bold text-slate-900 dark:text-slate-100;
+  }
+
+  .stat-label {
+    @apply text-sm text-slate-500 dark:text-slate-400 mt-1;
+  }
+
+  /* ============================================================
+     SKELETON LOADING — SourceLogic Design System
+     Smooth loading placeholders
+     ============================================================ */
+
+  .skeleton {
+    @apply bg-slate-200 dark:bg-slate-700 rounded animate-pulse;
+  }
+
+  .skeleton-text {
+    @apply h-4 rounded;
+  }
+
+  .skeleton-title {
+    @apply h-6 rounded;
+  }
+
+  .skeleton-avatar {
+    @apply w-10 h-10 rounded-full;
+  }
+
+  /* ============================================================
+     FILTER CHIPS — SourceLogic Design System
+     Toggleable filter chips
+     ============================================================ */
+
+  .filter-chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg;
+    @apply text-xs font-medium border border-slate-200 dark:border-slate-700;
+    @apply text-slate-600 dark:text-slate-400;
+    @apply hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50;
+    @apply transition-all duration-200;
+  }
+
+  .filter-chip-active {
+    @apply border-indigo-500 bg-indigo-50 dark:bg-indigo-950;
+    @apply text-indigo-700 dark:text-indigo-300 font-semibold;
+  }
+
+  /* ============================================================
+     DRAWER — SourceLogic Design System
+     Slide-in panel for detail views
+     ============================================================ */
+
   .drawer-overlay {
     @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50;
     animation: fadeIn var(--transition-base) ease-out;
   }
 
   .drawer-content {
-    animation: slideUp var(--transition-slow) cubic-bezier(0.16, 1, 0.3, 1);
+    @apply fixed right-0 top-0 h-full w-full max-w-lg;
+    @apply bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700;
+    @apply shadow-xl;
+    animation: slideInRight var(--transition-slow) cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* Table Row Hover */
-  .table-row-hover {
-    @apply hover:bg-muted/50 transition-colors duration-150;
+  /* ============================================================
+     PROGRESS — SourceLogic Design System
+     Verification coverage progress
+     ============================================================ */
+
+  .progress-bar {
+    @apply h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden;
   }
 
-  /* Override Indicator */
-  .override-indicator {
-    @apply border-amber-300 bg-amber-50/50;
-  }
-
-  /* Domain Exception Indicator */
-  .domain-exception-indicator {
-    @apply border-dashed border-amber-300;
-  }
-
-  /* Confidence Bar */
-  .confidence-bar {
-    @apply h-1.5 rounded-full bg-muted overflow-hidden;
-  }
-
-  .confidence-bar-fill {
+  .progress-fill {
     @apply h-full rounded-full transition-all duration-500 ease-out;
   }
 
-  /* Filter Chip */
-  .filter-chip {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all duration-200;
-    @apply hover:border-primary/30 hover:bg-accent/50;
+  .progress-verified {
+    @apply bg-gradient-to-r from-emerald-500 to-emerald-400;
   }
 
-  .filter-chip-active {
-    @apply border-primary bg-primary/10 text-primary font-semibold;
+  .progress-warning {
+    @apply bg-gradient-to-r from-amber-500 to-amber-400;
   }
 
-  .filter-chip-count {
-    @apply text-muted-foreground/70;
+  .progress-error {
+    @apply bg-gradient-to-r from-red-500 to-red-400;
+  }
+
+  /* ============================================================
+     TAGS & BADGES — SourceLogic Design System
+     Small contextual labels
+     ============================================================ */
+
+  .tag {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded;
+    @apply text-xs font-medium;
+    @apply bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400;
+  }
+
+  .tag-primary {
+    @apply bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300;
+  }
+
+  .tag-success {
+    @apply bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300;
+  }
+
+  .tag-warning {
+    @apply bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300;
+  }
+
+  .tag-error {
+    @apply bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300;
+  }
+
+  /* ============================================================
+     SOURCE RETRIEVAL — SourceLogic Design System
+     Database source badges
+     ============================================================ */
+
+  .retrieval-source {
+    @apply flex items-center gap-3 p-3 rounded-xl;
+    @apply border border-slate-200 dark:border-slate-700;
+    @apply hover:border-indigo-300 dark:hover:border-indigo-600;
+    @apply transition-all duration-200;
+  }
+
+  .retrieval-source-matched {
+    @apply bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800;
+  }
+
+  .retrieval-source-no-result {
+    @apply bg-slate-50 dark:bg-slate-800/50;
+  }
+
+  /* ============================================================
+     ORPHAN DETECTION — SourceLogic Design System
+     Warning cards for orphan citations/references
+     ============================================================ */
+
+  .orphan-card {
+    @apply p-4 rounded-xl border-2 border-dashed;
+    @apply border-amber-200 dark:border-amber-800;
+    @apply bg-amber-50/50 dark:bg-amber-950/50;
+  }
+
+  /* ============================================================
+     SOURCE DATABASE BADGES — SourceLogic Design System
+     Color-coded source identifiers
+     ============================================================ */
+
+  .source-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold uppercase;
+  }
+
+  .source-badge-crossref {
+    @apply bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200;
+  }
+
+  .source-badge-openalex {
+    @apply bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200;
+  }
+
+  .source-badge-semantic-scholar {
+    @apply bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200;
+  }
+
+  .source-badge-core {
+    @apply bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200;
+  }
+
+  /* ============================================================
+     HEADER — SourceLogic Design System
+     Page header with breadcrumb style
+     ============================================================ */
+
+  .page-header {
+    @apply bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700;
+    @apply rounded-t-2xl;
+  }
+
+  .section-header {
+    @apply flex items-center justify-between mb-4;
+  }
+
+  .section-title {
+    @apply font-display text-lg font-semibold text-slate-900 dark:text-slate-100;
   }
 }
 
 @layer utilities {
-  /* Text gradient */
+  /* Typography */
+  .font-display {
+    font-family: 'Source Serif 4', Georgia, serif;
+  }
+
+  .font-body {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .text-display {
+    @apply text-5xl md:text-6xl font-bold tracking-tight;
+  }
+
+  .text-headline {
+    @apply text-3xl md:text-4xl font-semibold tracking-tight;
+  }
+
+  .text-title {
+    @apply text-xl md:text-2xl font-semibold;
+  }
+
+  /* Gradient text */
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-indigo-400;
   }
 
-  /* Glass effect */
-  .glass {
-    @apply backdrop-blur-md bg-background/80;
-  }
-
-  /* Focus visible */
+  /* Focus states */
   .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2;
   }
 
-  /* Stagger animation delays */
+  /* Animation delays */
   .animation-delay-100 { animation-delay: 100ms; }
   .animation-delay-200 { animation-delay: 200ms; }
   .animation-delay-300 { animation-delay: 300ms; }
   .animation-delay-400 { animation-delay: 400ms; }
   .animation-delay-500 { animation-delay: 500ms; }
+
+  /* Container */
+  .container-page {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* No scrollbar */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* SourceLogic brand colors */
+  .bg-sourcelogic {
+    @apply bg-indigo-600;
+  }
+
+  .text-sourcelogic {
+    @apply text-indigo-600 dark:text-indigo-400;
+  }
+
+  .border-sourcelogic {
+    @apply border-indigo-600 dark:border-indigo-400;
+  }
 }
 
-/* Keyframe Animations */
+/* ============================================================
+   KEYFRAME ANIMATIONS — SourceLogic Design System
+   ============================================================ */
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -289,6 +818,11 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
 @keyframes scaleIn {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
@@ -299,34 +833,52 @@
   50% { opacity: 0.7; }
 }
 
-/* Custom scrollbar */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   CUSTOM SCROLLBAR — SourceLogic Design System
+   Subtle, professional scrollbars
+   ============================================================ */
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-muted/50;
+  @apply bg-slate-100 dark:bg-slate-800/50;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-border rounded-full;
+  @apply bg-slate-300 dark:bg-slate-600 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/30;
+  @apply bg-slate-400 dark:bg-slate-500;
 }
 
-/* Print styles */
+/* ============================================================
+   PRINT STYLES — SourceLogic Design System
+   ============================================================ */
+
 @media print {
   .no-print { display: none !important; }
+  body { @apply bg-white text-black; }
+  .card-elevated { @apply shadow-none border; }
+}
 
-  body {
-    @apply bg-white text-black;
-  }
+/* ============================================================
+   REDUCED MOTION — SourceLogic Design System
+   Accessibility-friendly animations
+   ============================================================ */
 
-  .card-elevated {
-    @apply shadow-none border;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

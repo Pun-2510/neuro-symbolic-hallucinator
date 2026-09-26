@@ -1,154 +1,101 @@
-import type { CitationMappingStatus } from '@/api/client';
-import { cn } from '@/lib/utils';
-import { CheckCircle2, XCircle, AlertTriangle, ArrowLeftRight, Copy, HelpCircle, Minus, FileWarning } from 'lucide-react';
+import { Link, Unlink, AlertTriangle, CheckCircle, XCircle, HelpCircle } from 'lucide-react';
 
-const STATUS_CONFIG: Record<
-  CitationMappingStatus,
-  {
-    text: string;
-    bgClass: string;
-    textClass: string;
-    borderClass: string;
-    icon: React.ReactNode;
-    shortText: string;
-    tooltip: string;  // NEW: explanation tooltip
-  }
-> = {
+// Mapping status types based on UX/UI concept
+export type MappingStatus =
+  | 'matched'
+  | 'missing_reference'
+  | 'uncited_reference'
+  | 'in_text_mismatch'
+  | 'duplicate_reference'
+  | 'ambiguous_mapping'
+  | 'style_inconsistent'
+  | 'unresolved';
+
+interface Props {
+  status: MappingStatus | string;
+  showIcon?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+}
+
+// Mapping status configuration based on SourceLogic design system
+const config: Record<string, { label: string; className: string; Icon: typeof Link }> = {
   matched: {
-    text: 'Matched',
-    shortText: 'Match',
-    bgClass: 'bg-emerald-50',
-    textClass: 'text-emerald-700',
-    borderClass: 'border-emerald-200',
-    icon: <CheckCircle2 className="h-3 w-3" />,
-    tooltip: 'In-text citation đã link đến reference entry ✓',
+    label: 'Linked',
+    className: 'mapping-badge-matched',
+    Icon: CheckCircle
   },
   missing_reference: {
-    text: 'Missing Reference',
-    shortText: 'Missing',
-    bgClass: 'bg-red-50',
-    textClass: 'text-red-700',
-    borderClass: 'border-red-200',
-    icon: <XCircle className="h-3 w-3" />,
-    tooltip: 'In-text citation không tìm thấy reference entry tương ứng ⚠',
+    label: 'No Reference',
+    className: 'mapping-badge-missing',
+    Icon: Unlink
   },
   uncited_reference: {
-    text: 'Uncited Reference',
-    shortText: 'Uncited',
-    bgClass: 'bg-amber-50',
-    textClass: 'text-amber-700',
-    borderClass: 'border-amber-200',
-    icon: <FileWarning className="h-3 w-3" />,
-    tooltip: 'Reference entry không có in-text citation nào trỏ đến',
+    label: 'Not Cited',
+    className: 'mapping-badge-uncited',
+    Icon: AlertTriangle
   },
   in_text_mismatch: {
-    text: 'In-Text Mismatch',
-    shortText: 'Mismatch',
-    bgClass: 'bg-orange-50',
-    textClass: 'text-orange-700',
-    borderClass: 'border-orange-200',
-    icon: <ArrowLeftRight className="h-3 w-3" />,
-    tooltip: 'Citation đã link nhưng thông tin không khớp (tên/tác giả/năm)',
+    label: 'Mismatch',
+    className: 'mapping-badge-mismatch',
+    Icon: XCircle
   },
   duplicate_reference: {
-    text: 'Duplicate Reference',
-    shortText: 'Duplicate',
-    bgClass: 'bg-purple-50',
-    textClass: 'text-purple-700',
-    borderClass: 'border-purple-200',
-    icon: <Copy className="h-3 w-3" />,
-    tooltip: 'Có 2 reference entries giống nhau',
+    label: 'Duplicate',
+    className: 'mapping-badge-duplicate',
+    Icon: AlertTriangle
   },
   ambiguous_mapping: {
-    text: 'Ambiguous Mapping',
-    shortText: 'Ambiguous',
-    bgClass: 'bg-violet-50',
-    textClass: 'text-violet-700',
-    borderClass: 'border-violet-200',
-    icon: <HelpCircle className="h-3 w-3" />,
-    tooltip: 'Nhiều reference candidates phù hợp, không chắc chắn',
+    label: 'Ambiguous',
+    className: 'mapping-badge-ambiguous',
+    Icon: HelpCircle
   },
   style_inconsistent: {
-    text: 'Style Inconsistent',
-    shortText: 'Style',
-    bgClass: 'bg-sky-50',
-    textClass: 'text-sky-700',
-    borderClass: 'border-sky-200',
-    icon: <AlertTriangle className="h-3 w-3" />,
-    tooltip: 'Citation style không nhất quán (APA vs IEEE)',
+    label: 'Style Issue',
+    className: 'mapping-badge-style',
+    Icon: AlertTriangle
   },
   unresolved: {
-    text: 'Unresolved',
-    shortText: 'Unresolved',
-    bgClass: 'bg-gray-50',
-    textClass: 'text-gray-600',
-    borderClass: 'border-gray-200',
-    icon: <Minus className="h-3 w-3" />,
-    tooltip: 'Chưa xác định được trạng thái link',
+    label: 'Unresolved',
+    className: 'mapping-badge-unresolved',
+    Icon: Unlink
   },
+  // Legacy mappings
+  MATCHED: { label: 'Linked', className: 'mapping-badge-matched', Icon: CheckCircle },
+  MISSING: { label: 'No Reference', className: 'mapping-badge-missing', Icon: Unlink },
+  UNCITED: { label: 'Not Cited', className: 'mapping-badge-uncited', Icon: AlertTriangle },
+  MISMATCH: { label: 'Mismatch', className: 'mapping-badge-mismatch', Icon: XCircle },
+  UNRESOLVED: { label: 'Unresolved', className: 'mapping-badge-unresolved', Icon: Unlink },
 };
 
-export function MappingStatusBadge({
-  status,
-  className,
-  compact = false,
-}: {
-  status: CitationMappingStatus;
-  className?: string;
-  compact?: boolean;
-}) {
-  const config = STATUS_CONFIG[status];
+const sizeClasses = {
+  sm: 'text-[10px] px-2 py-0.5 gap-1',
+  md: 'text-xs px-2.5 py-1 gap-1.5',
+  lg: 'text-sm px-3 py-1.5 gap-2',
+};
+
+export function MappingStatusBadge({ status, showIcon = true, size = 'md' }: Props) {
+  const entry = config[status] || config.unresolved;
+  const { label, className, Icon } = entry;
 
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-md text-xs font-medium border transition-all duration-200',
-        config.bgClass,
-        config.textClass,
-        config.borderClass,
-        className
-      )}
-      title={config.tooltip}
-      role="status"
-      aria-label={config.text}
-    >
-      <span className="flex-shrink-0">{config.icon}</span>
-      {!compact && <span>{config.text}</span>}
+    <span className={`mapping-badge ${className} ${sizeClasses[size]}`}>
+      {showIcon && <Icon className="h-3 w-3" />}
+      {label}
     </span>
   );
 }
 
-export function MappingStatusBadgePill({
-  status,
-  className,
-}: {
-  status: CitationMappingStatus;
-  className?: string;
-}) {
-  const config = STATUS_CONFIG[status];
+// Compact version for inline use
+export function MappingStatusBadgeCompact({ status }: { status: MappingStatus | string }) {
+  const entry = config[status] || config.unresolved;
+  const { className, Icon } = entry;
 
   return (
     <span
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-all duration-200',
-        config.bgClass,
-        config.textClass,
-        className
-      )}
-      title={config.tooltip}
-      role="status"
-      aria-label={config.text}
+      className={`mapping-badge ${className} w-6 h-6 flex items-center justify-center`}
+      title={entry.label}
     >
-      <span className="flex-shrink-0">{config.icon}</span>
-      <span>{config.shortText}</span>
+      <Icon className="h-3 w-3" />
     </span>
   );
-}
-
-export function getMappingStatusColor(status: CitationMappingStatus): string {
-  return STATUS_CONFIG[status].textClass;
-}
-
-export function getMappingStatusBg(status: CitationMappingStatus): string {
-  return STATUS_CONFIG[status].bgClass;
 }

@@ -1,256 +1,190 @@
-import { useState } from 'react';
-import { UploadDropzone } from '@/components/UploadDropzone';
-import { api, type UploadResponse, type AnalysisReport } from '@/api/client';
-import { CISScoreCard } from '@/components/CISScoreCard';
-import { StyleProfileCard } from '@/components/StyleProfileCard';
-import { CitationGraphView } from '@/components/CitationGraphView';
-import { VerdictTable } from '@/components/VerdictTable';
-import { CitationDetailDrawer } from '@/components/CitationDetailDrawer';
-import { OverrideControls } from '@/components/OverrideControls';
-import { Loader2, FileBarChart, Download, X } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Upload, FileText, X, Loader2 } from 'lucide-react';
+import { api } from '../api/client';
 
-type DisplayMode = 'table' | 'graph';
+/* ============================================================
+   SourceLogic — Upload Page Component
+   Based on UX/UI Concept Section 5: New Verification
+   Academic Source Verification Workspace
+
+   Mental Model: "Debugger cho citation"
+   - Document = source code
+   - Citation = reference call
+   - Bibliography = dependency registry
+   - Neuro-symbolic checker = linter/static analyzer
+   ============================================================ */
+
+const ACCEPTED_EXTENSIONS = ['.pdf'];
+const ACCEPTED_MIME = { 'application/pdf': ['.pdf'] };
 
 export function UploadPage() {
+  const [dragActive, setDragActive] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [uploadResult, setUploadResult] = useState<UploadResponse | null>(null);
-  const [report, setReport] = useState<AnalysisReport | null>(null);
-  const [loadingReport, setLoadingReport] = useState(false);
-  const [selected, setSelected] = useState<AnalysisReport['verdicts'][number] | null>(null);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('graph');
+  const navigate = useNavigate();
 
-  async function handleFile(file: File) {
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true);
+    else if (e.type === 'dragleave') setDragActive(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const droppedFile = e.dataTransfer.files[0];
+      // Validate file extension — PDF only
+      const ext = droppedFile.name.substring(droppedFile.name.lastIndexOf('.')).toLowerCase();
+      if (!ACCEPTED_EXTENSIONS.includes(ext)) {
+        setError('Only PDF files are supported. Please upload a .pdf document.');
+        return;
+      }
+      setError(null);
+      setFile(droppedFile);
+    }
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const picked = e.target.files[0];
+      const ext = picked.name.substring(picked.name.lastIndexOf('.')).toLowerCase();
+      if (!ACCEPTED_EXTENSIONS.includes(ext)) {
+        setError('Only PDF files are supported. Please upload a .pdf document.');
+        return;
+      }
+      setError(null);
+      setFile(picked);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!file) return;
     setUploading(true);
     setError(null);
-    setUploadProgress('Đang upload và phân tích PDF...');
     try {
-      const result = await api.uploadEssay(file);
-      setUploadResult(result);
-      setUploadProgress('Đang tải báo cáo chi tiết...');
-      setLoadingReport(true);
-      // Auto-load full report (không navigate, hiển thị ngay tại trang)
-      const fullReport = await api.getEssay(result.essay_id);
-      setReport(fullReport);
+      const response = await api.uploadEssay(file);
+      // Navigate to processing page with essay_id for async polling
+      navigate(`/verification/processing/${response.essay_id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed');
-    } finally {
+      setError(e instanceof Error ? e.message : 'Upload failed. Please try again.');
       setUploading(false);
-      setLoadingReport(false);
-      setUploadProgress('');
     }
-  }
+  };
 
-  function handleReset() {
-    setUploadResult(null);
-    setReport(null);
-    setSelected(null);
-    setError(null);
-  }
-
-  async function handleOverride(verdict: AnalysisReport['verdicts'][number], req: Parameters<typeof api.overrideVerdict>[1]) {
-    if (!report) return;
-    const updated = await api.overrideVerdict(report.essay_id, req);
-    setReport((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        verdicts: prev.verdicts.map((v) =>
-          v.citation_id === updated.citation_id ? updated : v
-        ),
-      };
-    });
-    setSelected(updated);
-  }
-
-  // If we have a report, show results inline
-  if (report) {
-    return (
-      <div className="space-y-6">
-        {/* Success header with reset button */}
-        <div className="card-elevated p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-green-100 text-green-600">
-                <FileBarChart className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-foreground">
-                  ✓ Phân tích hoàn tất: {report.filename}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {report.num_pages} trang · {report.num_citations} citation · Essay ID: {report.essay_id}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <a
-                href={api.downloadReport(report.essay_id, 'json')}
-                className="px-3 py-1.5 text-sm border border-border rounded-xl hover:bg-muted transition-colors flex items-center gap-1"
-                download
-              >
-                <Download className="h-3.5 w-3.5" />
-                JSON
-              </a>
-              <a
-                href={api.downloadReport(report.essay_id, 'csv')}
-                className="px-3 py-1.5 text-sm border border-border rounded-xl hover:bg-muted transition-colors flex items-center gap-1"
-                download
-              >
-                <Download className="h-3.5 w-3.5" />
-                CSV
-              </a>
-              <a
-                href={api.downloadReport(report.essay_id, 'pdf')}
-                className="px-3 py-1.5 text-sm border border-primary rounded-xl hover:bg-primary/5 transition-colors flex items-center gap-1"
-                download
-              >
-                <Download className="h-3.5 w-3.5" />
-                PDF
-              </a>
-              <button
-                onClick={handleReset}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                title="Upload essay khác"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* CIS Score */}
-        <CISScoreCard cis={report.cis} />
-
-        {/* Style Profile (v1.2 new) */}
-        {report.style_profile && (
-          <StyleProfileCard profile={report.style_profile} />
-        )}
-
-        {/* Linking Summary (v1.2 new) */}
-        {report.linking_summary && (
-          <div className="rounded-lg border border-border/50 p-4 bg-card">
-            <h3 className="text-sm font-bold mb-3">Citation Mapping Summary</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              {Object.entries(report.linking_summary).map(([k, v]) => (
-                <div
-                  key={k}
-                  className="flex items-center justify-between p-2 bg-muted rounded-lg"
-                >
-                  <span className="capitalize text-muted-foreground">
-                    {k.replace(/_/g, ' ')}
-                  </span>
-                  <span className="font-bold">{v}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* View mode toggle */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-foreground">Citations</h2>
-          <div className="flex gap-1 bg-muted rounded-lg p-1">
-            {(['graph', 'table'] as DisplayMode[]).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setDisplayMode(mode)}
-                className={`px-3 py-1 text-xs rounded-md transition-colors capitalize ${
-                  displayMode === mode
-                    ? 'bg-background shadow-sm font-medium'
-                    : 'hover:bg-background/50'
-                }`}
-              >
-                {mode === 'graph' ? 'Graph' : 'Table'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Citation view */}
-        {displayMode === 'graph' ? (
-          <CitationGraphView
-            verdicts={report.verdicts}
-            linkingSummary={report.linking_summary}
-            onSelect={setSelected}
-            onOverride={handleOverride}
-          />
-        ) : (
-          <VerdictTable
-            verdicts={report.verdicts}
-            onSelect={setSelected}
-            onOverride={handleOverride}
-          />
-        )}
-
-        {/* Detail drawer */}
-        {selected && (
-          <CitationDetailDrawer
-            verdict={selected}
-            onClose={() => setSelected(null)}
-            onOverride={(req) => handleOverride(selected, req)}
-          />
-        )}
-      </div>
-    );
-  }
-
-  // Default: Upload form
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Upload Essay PDF</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Hệ thống sẽ trích xuất citations, tra cứu qua 4 nguồn (Crossref,
-          OpenAlex, Semantic Scholar, arXiv), gán nhãn 4 loại, và tính Citation
-          Integrity Score.
+    <div className="max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white mb-2">
+          New Verification
+        </h1>
+        <p className="text-slate-600 dark:text-slate-400">
+          Upload your document to begin citation and reference verification.
         </p>
       </div>
 
-      <UploadDropzone onFile={handleFile} disabled={uploading} />
+      {/* Dropzone - UX/UI Concept Section 5 */}
+      <div
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+        className={`
+          relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-200 cursor-pointer
+          ${dragActive
+            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 scale-[1.02]'
+            : file
+              ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30'
+              : 'border-slate-300 dark:border-slate-600 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+          }
+        `}
+      >
+        <input
+          type="file"
+          accept={Object.values(ACCEPTED_MIME).flat().join(',')}
+          onChange={handleChange}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
 
-      {uploading && (
-        <div className="card-elevated p-4 flex items-center gap-3">
-          <Loader2 className="h-5 w-5 text-primary animate-spin" />
-          <p className="text-sm text-foreground">{uploadProgress}</p>
-        </div>
-      )}
+        {file ? (
+          /* File selected state */
+          <div className="flex items-center justify-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+              <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="text-left">
+              <p className="font-semibold text-slate-900 dark:text-white">{file.name}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {(file.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setFile(null);
+                setError(null);
+              }}
+              className="ml-auto p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+            </button>
+          </div>
+        ) : (
+          /* Dropzone default state */
+          <>
+            <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center mx-auto mb-4">
+              <Upload className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <p className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+              Drop your document here
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              PDF only
+            </p>
+            <span className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
+              or browse file
+            </span>
+          </>
+        )}
+      </div>
 
+      {/* Error message */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-          <strong>Lỗi:</strong> {error}
+        <div className="mt-4 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
+          {error}
         </div>
       )}
 
-      <div className="card-elevated p-5 text-sm">
-        <h3 className="font-semibold mb-3 text-foreground">4 nhãn citation:</h3>
-        <ul className="space-y-2 text-muted-foreground">
-          <li className="flex items-start gap-2">
-            <span className="verdict-badge bg-verdict_verified shrink-0 mt-0.5">✓</span>
-            <span>
-              <strong className="text-foreground">Verified</strong> — nguồn có thật, metadata khớp
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="verdict-badge bg-verdict_metadata_error shrink-0 mt-0.5">△</span>
-            <span>
-              <strong className="text-foreground">Metadata error</strong> — nguồn có thật nhưng 1+ trường sai
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="verdict-badge bg-verdict_suspected shrink-0 mt-0.5">✗</span>
-            <span>
-              <strong className="text-foreground">Suspected hallucination</strong> — không tìm thấy ở 4 nguồn
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="verdict-badge bg-verdict_unresolved shrink-0 mt-0.5">?</span>
-            <span>
-              <strong className="text-foreground">Unresolved</strong> — chưa đủ bằng chứng
-            </span>
-          </li>
-        </ul>
+      {/* Submit Button */}
+      <div className="mt-10 flex justify-end">
+        <button
+          onClick={handleUpload}
+          disabled={!file || uploading}
+          className={`
+            inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all
+            ${!file || uploading
+              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+              : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow-md'
+            }
+          `}
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              Start Verification
+              <Upload className="h-5 w-5" />
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
