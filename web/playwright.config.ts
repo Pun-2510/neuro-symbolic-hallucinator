@@ -2,59 +2,24 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Playwright Configuration for Essay Integrity Checker E2E Tests
- * @see https://playwright.dev/docs/test-configuration
+ * Uses REAL backend - no mocking
+ * 
+ * IMPORTANT: Start backend (port 8000) and frontend (port 5173) BEFORE running tests.
  */
+
 export default defineConfig({
   testDir: './tests/e2e',
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-
+  workers: 1,
+  reporter: 'list',
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:5173',
+    baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
-
-  /* Configure projects for major browsers */
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    // Firefox and Webkit tests disabled - browsers not installed
-    // Uncomment and run `npx playwright install` to enable
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
-
-    /* Test against mobile viewports */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-  ],
-
-  /* Run local dev server before starting the tests */
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
-
-  /* Output directory for test artifacts */
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   outputDir: 'test-results/',
 });
