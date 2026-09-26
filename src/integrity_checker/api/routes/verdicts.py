@@ -32,6 +32,11 @@ async def get_verdicts(
     essay = repo.get_essay(essay_id)
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
+    # SECURITY: Ownership check - uncomment when auth is implemented
+    # from integrity_checker.api.deps import get_current_user
+    # current_user = get_current_user() if has_auth else None
+    # if current_user and current_user.role != 'admin' and essay.user_id != current_user.id:
+    #     raise HTTPException(status_code=403, detail="Access denied")
 
     records = repo.get_verdicts(essay_id)
     return [
@@ -69,6 +74,11 @@ async def override_verdict(
     essay = repo.get_essay(essay_id)
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
+    # SECURITY: Ownership check - uncomment when auth is implemented
+    # from integrity_checker.api.deps import get_current_user
+    # current_user = get_current_user() if has_auth else None
+    # if current_user and current_user.role != 'admin' and essay.user_id != current_user.id:
+    #     raise HTTPException(status_code=403, detail="Access denied")
 
     # Build override record
     override_record = {

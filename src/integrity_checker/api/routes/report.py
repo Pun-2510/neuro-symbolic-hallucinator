@@ -35,12 +35,18 @@ async def get_report(
     essay_id: int,
     format: str = "json",
     db: Session = Depends(get_db),
+    # SECURITY: Add authentication dependency when available
 ) -> StreamingResponse:
     """Export report theo format: json | csv | pdf."""
     repo = Repository(db)
     essay = repo.get_essay(essay_id)
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
+    # SECURITY: Ownership check - uncomment when auth is implemented
+    # from integrity_checker.api.deps import get_current_user
+    # current_user = get_current_user() if has_auth else None
+    # if current_user and current_user.role != 'admin' and essay.user_id != current_user.id:
+    #     raise HTTPException(status_code=403, detail="Access denied")
     verdicts = repo.get_verdicts(essay_id)
 
     if format == "csv":
