@@ -7,8 +7,7 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
-  Link2,
-  LinkOff,
+  Link2Off,
   FileText,
   Quote,
   AlertTriangle,
@@ -81,7 +80,7 @@ function OrphanCitationCard({
     <div className="border border-red-200 dark:border-red-800 rounded-xl p-4 bg-red-50/50 dark:bg-red-950/30 hover:bg-red-100/50 dark:hover:bg-red-950/50 transition-colors">
       <div className="flex items-start gap-3">
         <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/50">
-          <LinkOff className="h-4 w-4 text-red-600 dark:text-red-400" />
+          <Link2Off className="h-4 w-4 text-red-600 dark:text-red-400" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -89,7 +88,7 @@ function OrphanCitationCard({
               #{index + 1}
             </span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-xs font-medium">
-              <LinkOff className="h-3 w-3" />
+              <Link2Off className="h-3 w-3" />
               No Reference
             </span>
           </div>
@@ -126,7 +125,7 @@ function UncitedReferenceCard({
               #{index + 1}
             </span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-xs font-medium">
-              <LinkOff className="h-3 w-3" />
+              <Link2Off className="h-3 w-3" />
               Uncited
             </span>
           </div>
@@ -292,7 +291,7 @@ export function OrphanDetectionPage() {
         />
         <SectionHeader
           title="Citations Without Reference"
-          icon={<LinkOff className="h-6 w-6" />}
+          icon={<Link2Off className="h-6 w-6" />}
           count={stats.orphanCount}
           color="red"
           description="In-text citations without bibliography entry"
@@ -346,7 +345,7 @@ export function OrphanDetectionPage() {
             stats.citationsWithoutReference.length > 0 && (
               <div>
                 <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
-                  <LinkOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  <Link2Off className="h-5 w-5 text-red-600 dark:text-red-400" />
                   Citations Without Reference
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
@@ -459,7 +458,7 @@ export function OrphanDetectionPage() {
             </div>
           </div>
           <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-900 rounded-xl border border-red-200 dark:border-red-800">
-            <LinkOff className="h-5 w-5 text-red-600 dark:text-red-400" />
+            <Link2Off className="h-5 w-5 text-red-600 dark:text-red-400" />
             <div>
               <p className="text-xl font-bold text-red-600 dark:text-red-400">
                 {stats.orphanCount}
