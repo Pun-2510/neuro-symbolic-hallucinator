@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { EssayPage } from './pages/EssayPage';
 import { IssuesPage } from './pages/IssuesPage';
+import { LogicTracePage } from './pages/LogicTracePage';
 
 /* ============================================================
    SourceLogic — Router Configuration
@@ -74,6 +75,10 @@ export const router = createBrowserRouter([
       {
         path: '/verification/report/:id/issues',
         element: <IssuesPage />,
+      },
+      {
+        path: '/verification/report/:id/trace',
+        element: <LogicTracePage />,
       },
       {
         path: '/essay/:id',
