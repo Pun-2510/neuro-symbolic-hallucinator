@@ -251,15 +251,23 @@ export function EssayPage() {
         </div>
       )}
 
-      {/* Style Profile */}
-      {report.style_profile && (
-        <div className="card p-5">
-          <h3 className="font-display text-sm font-semibold mb-3 text-slate-900 dark:text-slate-100">
-            Citation Style
-          </h3>
-          <span className="tag tag-primary">{report.style_profile.style}</span>
-        </div>
-      )}
+      {/* Quick Links - Issues & Logic Trace */}
+      <div className="flex gap-3 flex-wrap">
+        <Link
+          to={`/verification/report/${id}/issues`}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
+        >
+          <AlertCircle className="h-4 w-4" />
+          View Issues
+        </Link>
+        <Link
+          to={`/verification/report/${id}/trace`}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
+        >
+          <ChevronRight className="h-4 w-4" />
+          Logic Trace
+        </Link>
+      </div>
 
       {/* Section 8: Tab Navigation - Citations & References */}
       <div className="border-b border-slate-200 dark:border-slate-700">
