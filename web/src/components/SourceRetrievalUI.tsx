@@ -254,22 +254,27 @@ function CandidateList({
                         </div>
                       )}
                     </div>
-                    {item.url && (
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={cn(
-                          'flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors',
-                          config.bgColor,
-                          'hover:bg-opacity-80'
-                        )}
-                        title="Open in browser"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        <span className={config.color}>Open</span>
-                      </a>
-                    )}
+                    {item.url && (() => {
+                      // SECURITY: Validate URL scheme before rendering to prevent XSS
+                      const isSafeUrl = item.url.startsWith('http://') || item.url.startsWith('https://');
+                      if (!isSafeUrl) return null;
+                      return (
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            'flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors',
+                            config.bgColor,
+                            'hover:bg-opacity-80'
+                          )}
+                          title="Open in browser"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          <span className={config.color}>Open</span>
+                        </a>
+                      );
+                    })()}
                   </div>
                   {item.checked_at && (
                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
