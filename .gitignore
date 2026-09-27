@@ -77,7 +77,7 @@ test-results/
 # Web build / test output — generated, không commit
 web/test-results/
 web/playwright-report/
-web/tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # Bộ đề tham chiếu (20 PDF) — dữ liệu nội bộ, không commit
 20-theses/
