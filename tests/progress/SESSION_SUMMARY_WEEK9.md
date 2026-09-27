@@ -7,9 +7,15 @@ Hoàn thiện MVP, tích hợp Local Database với FTS5, remove disk cache.
 ## ✅ Đã hoàn thành
 
 ### 1. Local Database với FTS5
-- Thêm `data/local_papers.db` với 83,541 ACL papers
+- Thêm `data/local_papers.db` với các bài ACL (con số "83,541" ghi ban đầu là
+  output của importer bị bug — chỉ đọc `<volume>` đầu tiên của mỗi file XML,
+  xem `DATA_AUDIT_HANDOFF.md` §2.4)
 - FTS5 search cho fast fuzzy lookups
 - Auto-sync papers từ API vào DB
+
+> **Cập nhật 2026-09-27:** đã sửa bug importer và import lại đủ ACL XML →
+> **127,103 ACL papers** (tổng 128,037). Chạy lại bằng:
+> `python scripts/import_acl_xml.py && python scripts/clean_local_db.py --apply`
 
 ### 2. Remove Disk Cache System
 - Deleted `src/integrity_checker/retrieval/cache.py`

@@ -45,6 +45,16 @@ data/cache/*.json
 data/cache/*.sqlite
 data/app.db
 data/app.*.db
+# Generated paper knowledge base + its WAL sidecars (rebuild via
+# `python scripts/import_acl_xml.py && python scripts/clean_local_db.py --apply`).
+data/local_papers.db
+data/local_papers.db-shm
+data/local_papers.db-wal
+data/*.bak
+data/*.truncated.bak
+# ACL Anthology BibTeX is a 73 MB download — regenerate with
+# `python -c "from scripts.import_acl_anthology import download_acl_anthology; download_acl_anthology(__import__('pathlib').Path('data/acl_anthology.bib'))"`
+data/acl_anthology.bib
 logs/
 
 # Reports
@@ -54,9 +64,28 @@ reports/
 # Spec / reference docx — không commit (tham chiếu nội bộ, có ở ../docs)
 /final*.docx
 /*.docx
+# Stray PDFs at repo root (thesis/essay samples live under data/, which is
+# already ignored). Keeps the 20 MB upload samples out of the repo.
+/*.pdf
 
 # OS
 .DS_Store
 Thumbs.db
 data/raw/pdf/
 test-results/
+
+# Web build / test output — generated, không commit
+web/test-results/
+web/playwright-report/
+web/tsconfig.tsbuildinfo
+
+# Bộ đề tham chiếu (20 PDF) — dữ liệu nội bộ, không commit
+20-theses/
+
+# Kilo Code agent state (worktrees/state, không phải config)
+.kilo/worktrees/
+.kilo/agent-manager.json
+
+# Bản nháp/duplicate của agent, không commit
+.claude-plan-fix.md
+essay-integrity-checker/run_ground_truth_evaluation.py

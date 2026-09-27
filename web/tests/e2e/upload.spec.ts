@@ -1,40 +1,32 @@
 import { test, expect } from '@playwright/test';
+import { setupAuthenticatedPage, waitForAuth } from './helpers';
 
 /**
  * E2E Tests for Document Upload Flow
- * Uses REAL backend - no mocking
+ * Uses authenticated mock for reliable testing
  */
 test.describe('Upload', () => {
 
-  // Login before each test
+  // Set up authenticated session before each test
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login');
-    await page.waitForLoadState('networkidle');
-    await page.getByLabel(/username/i).fill('admin');
-    await page.getByLabel(/password/i).fill('admin123');
-    await page.getByRole('button', { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
+    setupAuthenticatedPage(page);
+    await page.goto('/upload');
+    await waitForAuth(page);
   });
 
   test('should navigate to upload page', async ({ page }) => {
-    await page.goto('/upload');
-
     // Check upload page content
     const heading = page.getByRole('heading').first();
     await expect(heading).toBeVisible();
   });
 
   test('should have file input visible', async ({ page }) => {
-    await page.goto('/upload');
-
     // Check for file input
     const fileInput = page.locator('input[type="file"]');
     await expect(fileInput).toBeAttached();
   });
 
   test('should accept PDF files', async ({ page }) => {
-    await page.goto('/upload');
-
     // Check file input accepts PDF
     const fileInput = page.locator('input[type="file"]');
     const acceptAttr = await fileInput.getAttribute('accept').catch(() => null);
@@ -44,11 +36,15 @@ test.describe('Upload', () => {
   });
 
   test('should navigate back to dashboard from upload', async ({ page }) => {
-    await page.goto('/upload');
-
     // Click dashboard in sidebar
     await page.getByRole('link', { name: /dashboard/i }).first().click();
 
     await expect(page).toHaveURL(/\/dashboard/);
+  });
+
+  test('should show drag and drop area', async ({ page }) => {
+    // Check for drag and drop area or upload section
+    const uploadArea = page.locator('[class*="border-dashed"], .upload-area, input[type="file"]');
+    await expect(uploadArea.first()).toBeVisible();
   });
 });

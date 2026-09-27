@@ -1,4 +1,4 @@
-import { CheckCircle, AlertTriangle, AlertCircle, XCircle, HelpCircle } from 'lucide-react';
+import { CheckCircle, AlertTriangle, AlertCircle, XCircle, HelpCircle, Link2 } from 'lucide-react';
 
 /* ============================================================
    SourceLogic — Verdict Badge Component
@@ -14,7 +14,8 @@ export type VerdictType =
   | 'HALLUCINATED'
   | 'SUSPECTED_HALLUCINATION'
   | 'UNVERIFIABLE'
-  | 'UNRESOLVED';
+  | 'UNRESOLVED'
+  | 'RESOURCE';
 
 interface VerdictBadgeProps {
   verdict: VerdictType | string;
@@ -105,6 +106,14 @@ const verdictConfig: Record<string, {
     borderClass: 'border-slate-200 dark:border-slate-700',
     iconColor: 'text-slate-600 dark:text-slate-400',
   },
+  RESOURCE: {
+    icon: <Link2 className="h-3.5 w-3.5" />,
+    label: 'URL Resource',
+    description: 'URL or reference link, excluded from academic citation scoring',
+    bgClass: 'bg-violet-50 dark:bg-violet-950',
+    borderClass: 'border-violet-200 dark:border-violet-800',
+    iconColor: 'text-violet-600 dark:text-violet-400',
+  },
   // Legacy lowercase mappings (from API)
   verified: {
     icon: <CheckCircle className="h-3.5 w-3.5" />,
@@ -153,6 +162,14 @@ const verdictConfig: Record<string, {
     bgClass: 'bg-slate-100 dark:bg-slate-800',
     borderClass: 'border-slate-200 dark:border-slate-700',
     iconColor: 'text-slate-600 dark:text-slate-400',
+  },
+  resource: {
+    icon: <Link2 className="h-3.5 w-3.5" />,
+    label: 'URL Resource',
+    description: 'URL or reference link, excluded from academic citation scoring',
+    bgClass: 'bg-violet-50 dark:bg-violet-950',
+    borderClass: 'border-violet-200 dark:border-violet-800',
+    iconColor: 'text-violet-600 dark:text-violet-400',
   },
 };
 

@@ -68,7 +68,8 @@ export function UploadPage() {
     setError(null);
     try {
       const response = await api.uploadEssay(file);
-      // Navigate to processing page with essay_id for async polling
+      // Navigate to processing screen immediately — POST now returns instantly
+      // and the background task handles the real analysis
       navigate(`/verification/processing/${response.essay_id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed. Please try again.');
@@ -77,9 +78,9 @@ export function UploadPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto min-h-[calc(100vh-12rem)] flex flex-col justify-center py-8">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 text-center">
         <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white mb-2">
           New Verification
         </h1>
@@ -161,7 +162,7 @@ export function UploadPage() {
       )}
 
       {/* Submit Button */}
-      <div className="mt-10 flex justify-end">
+      <div className="mt-10 flex justify-center">
         <button
           onClick={handleUpload}
           disabled={!file || uploading}

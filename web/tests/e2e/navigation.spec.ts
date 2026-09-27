@@ -1,19 +1,17 @@
 import { test, expect } from '@playwright/test';
+import { setupAuthenticatedPage, waitForAuth } from './helpers';
 
 /**
  * E2E Tests for Navigation Flow
- * Uses REAL backend - no mocking
+ * Uses authenticated mock for reliable testing
  */
 test.describe('Navigation', () => {
 
-  // Login before each test
+  // Set up authenticated session before each test
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login');
-    await page.waitForLoadState('networkidle');
-    await page.getByLabel(/username/i).fill('admin');
-    await page.getByLabel(/password/i).fill('admin123');
-    await page.getByRole('button', { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
+    setupAuthenticatedPage(page);
+    await page.goto('/dashboard');
+    await waitForAuth(page);
   });
 
   test('should navigate from Dashboard to Upload', async ({ page }) => {
@@ -24,6 +22,14 @@ test.describe('Navigation', () => {
   test('should navigate from Dashboard to History via sidebar', async ({ page }) => {
     await page.getByRole('link', { name: /history/i }).click();
     await expect(page).toHaveURL(/\/history/);
+  });
+
+  test('should navigate back to Dashboard when clicking the SourceLogic logo', async ({ page }) => {
+    await page.getByRole('link', { name: /new check/i }).first().click();
+    await expect(page).toHaveURL(/\/upload/);
+
+    await page.getByRole('link', { name: /go to dashboard/i }).click();
+    await expect(page).toHaveURL(/\/dashboard/);
   });
 
   test('should keep sidebar open on page navigation', async ({ page }) => {
@@ -44,7 +50,10 @@ test.describe('Navigation', () => {
 
   test('should show loading state on protected route access', async ({ page }) => {
     // Clear auth state
-    await page.evaluate(() => localStorage.removeItem('token'));
+    page.addInitScript(() => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    });
 
     // Access protected route
     await page.goto('/dashboard');

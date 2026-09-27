@@ -10,6 +10,7 @@ import { MappingStatusBadge } from './MappingStatusBadge';
 import { VerdictBadge } from './VerdictBadge';
 import { OverrideControls } from './OverrideControls';
 import { cn } from '@/lib/utils';
+import { getFieldDisplayName, getRuleDisplayName, getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
 import {
   ChevronUp,
   ChevronDown,
@@ -28,6 +29,7 @@ import {
   Hash,
   ListChecks,
   Target,
+  Link2,
 } from 'lucide-react';
 
 /* ============================================================
@@ -89,6 +91,13 @@ const VERDICT_CONFIG: Record<ValidationLabel, { icon: typeof CheckCircle2; color
     borderColor: 'border-slate-300 dark:border-slate-600',
     label: 'UNRESOLVED',
   },
+  resource: {
+    icon: Link2,
+    color: 'text-violet-600 dark:text-violet-400',
+    bgColor: 'bg-violet-50 dark:bg-violet-950',
+    borderColor: 'border-violet-300 dark:border-violet-700',
+    label: 'URL RESOURCE',
+  },
 };
 
 const SOURCE_CONFIG: Record<string, { color: string; bgColor: string; label: string }> = {
@@ -97,6 +106,8 @@ const SOURCE_CONFIG: Record<string, { color: string; bgColor: string; label: str
   s2: { color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-50 dark:bg-purple-950', label: 'Semantic Scholar' },
   arxiv: { color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-50 dark:bg-orange-950', label: 'arXiv' },
   core: { color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-50 dark:bg-green-950', label: 'CORE' },
+  local_db: { color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-50 dark:bg-indigo-950', label: 'Local Database' },
+  known_papers: { color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-50 dark:bg-cyan-950', label: 'Known Papers' },
 };
 
 function SourceIcon({ source }: { source: string }) {
@@ -259,15 +270,9 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
 
   // Group matched sources by database
   const sourcesByDatabase = useMemo(() => {
-    const grouped: Record<string, CandidateInfo[]> = {
-      crossref: [],
-      openalex: [],
-      s2: [],
-      core: [],
-      arxiv: [],
-    };
+    const grouped: Record<string, CandidateInfo[]> = {};
 
-    for (const source of verdict.matched_sources) {
+    for (const source of verdict.matched_sources ?? []) {
       const dbKey = source.source.toLowerCase();
       if (grouped[dbKey]) {
         grouped[dbKey].push({
@@ -276,20 +281,46 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
           fields: source.matched_fields,
           url: source.url,
         });
+      } else {
+        grouped[dbKey] = [{
+          source: dbKey,
+          matched: source.matched_fields.length > 0,
+          fields: source.matched_fields,
+          url: source.url,
+        }];
       }
     }
 
     return grouped;
   }, [verdict.matched_sources]);
 
-  // Check if any database found candidates
-  const databasesWithResults = Object.entries(sourcesByDatabase).filter(
-    ([, candidates]) => candidates.length > 0
-  );
+  const externalDbKeys = ['crossref', 'openalex', 's2', 'arxiv', 'core'];
 
-  const databasesWithoutResults = Object.entries(sourcesByDatabase).filter(
-    ([, candidates]) => candidates.length === 0
-  );
+  // Only external APIs that produced a matched_sources entry were queried.
+  // Local DB / known papers are internal cache paths, not external APIs.
+  const queriedExternalDbs = externalDbKeys.filter((key) => sourcesByDatabase[key]);
+
+  // Sources must be rendered in retrieval-flow order: internal cache paths
+  // first (Local DB is checked before any API), then external APIs.
+  const sourceFlowOrder = ['local_db', 'known_papers', 'crossref', 'openalex', 's2', 'arxiv', 'core'];
+  const databasesWithResults = Object.entries(sourcesByDatabase)
+    .filter(([, candidates]) => candidates.length > 0)
+    .sort(([a], [b]) => {
+      const ai = sourceFlowOrder.indexOf(a);
+      const bi = sourceFlowOrder.indexOf(b);
+      return (ai === -1 ? sourceFlowOrder.length : ai) - (bi === -1 ? sourceFlowOrder.length : bi);
+    });
+
+  // Sources that were queried but returned no candidates cannot be distinguished
+  // from un-queried APIs using matched_sources alone; when we have no matched
+  // entries at all, fall back to showing the standard external databases.
+  const databasesWithoutResults = Object.keys(sourcesByDatabase).length === 0
+    ? externalDbKeys.map((db) => [db, []] as [string, CandidateInfo[]])
+    : [];
+
+  // A local-only hit means every matched source came from an internal cache
+  // path (local DB / known papers), so no external API was ever queried.
+  const isLocalOnly = databasesWithResults.length > 0 && queriedExternalDbs.length === 0;
 
   // Build graph structure
   const graphData: GraphNode = {
@@ -304,7 +335,9 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
         label: 'Academic Databases',
         type: 'source',
         status: (databasesWithResults.length > 0 ? 'success' : 'no_match') as GraphNode['status'],
-        detail: `${databasesWithResults.length} sources queried`,
+        detail: isLocalOnly
+          ? 'Local database cache hit — no external APIs queried'
+          : `${databasesWithResults.length} sources queried`,
         children: [
           // Sources with results
           ...databasesWithResults.flatMap(([db, candidates]) => {
@@ -314,9 +347,9 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
               label: config.label,
               type: 'candidate' as const,
               status: (c.matched ? 'success' : 'no_match') as GraphNode['status'],
-              detail: c.matched
-                ? `Matched: ${c.fields?.join(', ') || 'fields'}`
-                : 'No match found',
+               detail: c.matched
+                 ? `The ${(c.fields || []).map(getFieldDisplayName).join(', ') || 'available details'} match the citation.`
+                 : 'No match found',
               matchedSource: { source: db, matched_fields: c.fields || [], checked_at: '' },
               children: c.matched && c.url ? [{
                 id: `${db}-${idx}-link`,
@@ -353,23 +386,23 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
         label: 'Verification Rules',
         type: 'rules',
         status: (verdict.triggered_rules.length > 0 ? 'warning' : 'success') as GraphNode['status'],
-        detail: verdict.triggered_rules.length > 0
-          ? verdict.triggered_rules.join(', ')
-          : 'No rules triggered',
+         detail: verdict.triggered_rules.length > 0
+           ? verdict.triggered_rules.map(getRuleDisplayName).join('. ')
+           : 'No additional warnings were raised.',
         children: verdict.triggered_rules.length > 0 ? [
           {
             id: 'rules-list',
             label: `${verdict.triggered_rules.length} rules triggered`,
             type: 'rules' as const,
             status: 'warning' as GraphNode['status'],
-            detail: verdict.reasoning,
+            detail: getVerdictExplanation(verdict),
           },
           ...verdict.mismatched_fields.map((field, idx) => ({
             id: `mismatch-${idx}`,
-            label: `${field} mismatch`,
+               label: `${getFieldDisplayName(field).replace(/^the /, '')} needs review`,
             type: 'rules' as const,
             status: 'error' as GraphNode['status'],
-            detail: 'Field does not match retrieved source',
+               detail: 'This detail differs from the publication record we found.',
           })),
         ] : undefined,
       },
@@ -381,7 +414,7 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
           : verdict.label === 'metadata_error' ? 'warning'
           : verdict.label === 'suspected_hallucination' ? 'error'
           : 'neutral') as GraphNode['status'],
-        detail: verdict.reasoning,
+        detail: getVerdictExplanation(verdict),
       },
     ],
   };
@@ -427,7 +460,7 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
           </span>
         </div>
         <p className="text-sm text-slate-700 dark:text-slate-300">
-          {verdict.reasoning}
+          {getVerdictExplanation(verdict)}
         </p>
         {verdict.triggered_rules.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
@@ -782,7 +815,7 @@ export function CitationGraphView({
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     {viewMode !== 'integrity' && (
-                      <VerdictBadge verdict={v.label} size="sm" />
+                      <VerdictBadge verdict={isUrlResource(v) ? 'resource' : v.label} size="sm" />
                     )}
                     {viewMode === 'combined' && (
                       <span className="text-xs text-slate-500 dark:text-slate-400">

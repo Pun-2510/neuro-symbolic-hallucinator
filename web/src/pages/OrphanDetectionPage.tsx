@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api, type AnalysisReport, type Verdict } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
+import { isUrlResource } from '@/lib/verdictExplanation';
 import { MappingStatusBadge } from '@/components/MappingStatusBadge';
 import {
   ArrowLeft,
@@ -96,7 +97,7 @@ function OrphanCitationCard({
             {citation.citation_raw}
           </p>
           <div className="flex items-center gap-2 mt-2">
-            <VerdictBadge verdict={citation.label} size="sm" />
+            <VerdictBadge verdict={isUrlResource(citation) ? 'resource' : citation.label} size="sm" />
             <MappingStatusBadge status={citation.mapping_status as any} size="sm" />
           </div>
         </div>
@@ -213,10 +214,53 @@ export function OrphanDetectionPage() {
 
   useEffect(() => {
     if (!id) return;
-    api
-      .getEssay(Number(id))
-      .then(setReport)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed'));
+    // SECURITY: Validate essay ID
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId) || numericId <= 0) {
+      setError('Invalid essay ID');
+      return;
+    }
+
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    const tryFetch = async () => {
+      try {
+        const data = await api.getEssay(numericId);
+        if (cancelled) return;
+        if (data) {
+          setReport(data);
+          setError(null);
+          if (pollTimer) clearInterval(pollTimer);
+        } else {
+          const status = await api.getEssayStatus(numericId);
+          if (cancelled) return;
+          if (status.status === 'failed') {
+            setError(status.error ?? 'Pipeline failed.');
+            if (pollTimer) clearInterval(pollTimer);
+            return;
+          }
+          if (status.status === 'completed') {
+            const retry = await api.getEssay(numericId);
+            if (retry) {
+              setReport(retry);
+              setError(null);
+              if (pollTimer) clearInterval(pollTimer);
+              return;
+            }
+          }
+          if (!pollTimer) pollTimer = setInterval(tryFetch, 2000);
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed');
+      }
+    };
+
+    tryFetch();
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearInterval(pollTimer);
+    };
   }, [id]);
 
   // Calculate orphan stats

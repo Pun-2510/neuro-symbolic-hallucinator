@@ -315,7 +315,10 @@ class SectionSegmenter:
     @staticmethod
     def _page_has_bibliography_header(page: Page) -> bool:
         """True nếu page có dòng khớp bibliography header (English / Vietnamese / Chinese)."""
-        for line in page.text.splitlines()[:5]:  # chỉ check 5 dòng đầu
+        # Scan only the first lines, but leave enough room for page furniture:
+        # many PDFs put a running header + page number (plus blank lines) above
+        # the "References" heading, pushing it past the 5th line.
+        for line in page.text.splitlines()[:15]:
             if _BIBLIOGRAPHY_HEADERS.match(line):
                 return True
         return False
@@ -323,7 +326,7 @@ class SectionSegmenter:
     @staticmethod
     def _page_has_appendix_header(page: Page) -> bool:
         """True nếu page có dòng khớp appendix header."""
-        for line in page.text.splitlines()[:5]:
+        for line in page.text.splitlines()[:15]:
             if _APPENDIX_HEADERS.match(line):
                 return True
         return False

@@ -39,16 +39,21 @@ async def get_verdicts(
     #     raise HTTPException(status_code=403, detail="Access denied")
 
     records = repo.get_verdicts(essay_id)
+    citation_types = {c.raw_text: c.citation_type for c in repo.get_citations(essay_id)}
     return [
         VerdictSchema(
             citation_id=str(r.id),
             citation_raw=r.citation_raw,
+            citation_type=citation_types.get(r.citation_raw, "unknown"),
             label=r.label,
             confidence=r.confidence,
             reasoning=r.reasoning,
             triggered_rules=json.loads(r.triggered_rules or "[]"),
             mismatched_fields=json.loads(r.mismatched_fields or "[]"),
-            matched_sources=[],
+            # Read matched_sources from the features JSON blob persisted by add_verdicts.
+            # Pre-fix rows that lack this key default to [].
+            matched_sources=_load_matched_sources(r.features),
+            citation_link=_load_citation_link(r.features),
             mapping_status=r.mapping_status or "matched",
             mapping_confidence=r.mapping_confidence or 0.0,
             style_penalty=r.style_penalty,
@@ -57,6 +62,30 @@ async def get_verdicts(
         )
         for r in records
     ]
+
+
+def _load_matched_sources(features_json: str | None) -> list[dict]:
+    """Pull matched_sources list from the features JSON blob."""
+    if not features_json:
+        return []
+    try:
+        data = json.loads(features_json)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    matched = data.get("matched_sources") if isinstance(data, dict) else None
+    return matched if isinstance(matched, list) else []
+
+
+def _load_citation_link(features_json: str | None) -> dict | None:
+    """Pull the in-text to bibliography link persisted with the verdict."""
+    if not features_json:
+        return None
+    try:
+        data = json.loads(features_json)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    link = data.get("citation_link") if isinstance(data, dict) else None
+    return link if isinstance(link, dict) else None
 
 
 @router.post("/{essay_id}/verdicts/{verdict_id}/override")

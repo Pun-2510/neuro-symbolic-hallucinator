@@ -1,0 +1,72 @@
+{
+  "predictions": {
+    "eval_0001": "UNRESOLVED",
+    "eval_0002": "UNRESOLVED",
+    "eval_0003": "UNRESOLVED",
+    "eval_0004": "UNRESOLVED",
+    "eval_0005": "UNRESOLVED",
+    "eval_0006": "UNRESOLVED",
+    "eval_0007": "UNRESOLVED",
+    "eval_0008": "UNRESOLVED",
+    "eval_0009": "UNRESOLVED",
+    "eval_0010": "UNRESOLVED"
+  },
+  "confidences": {
+    "eval_0001": 0.0,
+    "eval_0002": 0.0,
+    "eval_0003": 0.0,
+    "eval_0004": 0.0,
+    "eval_0005": 0.0,
+    "eval_0006": 0.0,
+    "eval_0007": 0.0,
+    "eval_0008": 0.0,
+    "eval_0009": 0.0,
+    "eval_0010": 0.0
+  },
+  "metadata": {
+    "eval_0001": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "eval_0002": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "eval_0003": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "eval_0004": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "eval_0005": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "eval_0006": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "eval_0007": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "eval_0008": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "eval_0009": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "eval_0010": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    }
+  },
+  "ground_truth": {
+    "eval_0001": "REAL",
+    "eval_0002": "REAL",
+    "eval_0003": "REAL",
+    "eval_0004": "REAL",
+    "eval_0005": "HALLUCINATED",
+    "eval_0006": "METADATA_ERROR",
+    "eval_0007": "HALLUCINATED",
+    "eval_0008": "HALLUCINATED",
+    "eval_0009": "HALLUCINATED",
+    "eval_0010": "HALLUCINATED"
+  },
+  "mode": "synthetic",
+  "timestamp": "2026-09-24 21:03:01"
+}

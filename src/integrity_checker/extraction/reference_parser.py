@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections import Counter
 from typing import Iterable
 
 from integrity_checker.extraction.base import Document
@@ -44,7 +45,9 @@ logger = logging.getLogger(__name__)
 _APA_ENTRY_RE = re.compile(
     r"""
     ^(?P<authors>.+?)                # authors block (lazy)
-    \s*\(\s*(?P<year>\d{4})(?P<suffix>[a-z])?\s*\)
+    \s*\(\s*(?P<year>\d{4})(?P<suffix>[a-z])?
+    (?:\s*,\s*[^)]*)?                # optional month/day, e.g. "(2025, August)"
+    \s*\)
     \.?\s*
     (?P<title>[^\.]+?)               # title (up to first period — may include colons)
     \.\s*
@@ -107,6 +110,18 @@ _ESSAY_TITLE_RE = re.compile(
 # Long text without year — likely not a citation entry
 _LONG_TEXT_NO_YEAR_RE = re.compile(r"^[A-Za-z]{50,}")
 
+# A line that is only a bibliography header (used to drop it wherever it
+# lands once running headers/page numbers have been stripped).
+_BIB_HEADER_LINE_RE = re.compile(
+    r"^\s*(?:\d+\.?\s+)?(?:references?|bibliography|works?\s+cited"
+    r"|tài\s+liệu\s+tham\s+khảo|danh\s+mục\s+tài\s+liệu)\s*[:.]?\s*$",
+    re.IGNORECASE,
+)
+
+# URL/DOI terminator — most web-style APA entries end with one of these, which
+# makes them a reliable boundary between consecutive reference entries.
+_URL_BOUNDARY_RE = re.compile(r"(?:https?://|www\.|doi\.org/)\S+", re.IGNORECASE)
+
 
 def _is_essay_title_entry(entry: str) -> bool:
     """Check if a reference entry is actually an essay title or header, not a citation.
@@ -134,6 +149,27 @@ def _normalize_title(title: str) -> str:
     t = re.sub(r"[^\w\s]", " ", t)
     t = re.sub(r"\s+", " ", t)
     return t.strip()
+
+
+def _estimate_reference_confidence(citation: Citation) -> float:
+    """Heuristic parse-confidence (0–1) for a reference-list entry.
+
+    Reference-list parsers previously left ``confidence`` at the ``Citation``
+    default of 0.0.  That made every structured reference look like the least
+    trustworthy citation in the corpus (app DB average was 0.128).  Score the
+    entry by how much structured metadata the pattern actually recovered:
+    title, authors, year, then DOI/venue as smaller bonuses.
+    """
+    score = 0.0
+    if citation.title:
+        score += 0.4
+    if citation.year:
+        score += 0.3
+    if citation.authors:
+        score += 0.2
+    if citation.doi:
+        score += 0.1
+    return min(round(score, 2), 1.0)
 
 
 class ReferenceListParser:
@@ -194,6 +230,12 @@ class ReferenceListParser:
         )
         text = header_strip_re.sub("", text, count=1).strip()
 
+        if not text:
+            return []
+
+        # 1b. Drop page furniture (running headers + page numbers) so they do
+        # not get glued to the front of an entry that starts after a page break.
+        text = self._strip_running_headers(text)
         if not text:
             return []
 
@@ -288,55 +330,75 @@ class ReferenceListParser:
         return entries if len(entries) >= 2 else []
 
     def _split_by_year_boundary(self, text: str) -> list[str]:
-        """Tach entries bang DOI URL boundaries.
+        """Tach entries bang URL/DOI boundaries.
 
         Algorithm:
-            1. Merge wrapped author lines (lowercase continuation).
-            2. Tim DOI URL boundaries, split tai do.
-            3. Trim trailing DOI URLs, replace newlines with spaces.
-            4. Neu 2+ entries -> tra ve. Fallback -> year markers.
+            1. Rejoin hyphen-broken line wraps (PDF splits long URLs as
+               ".../how-to-develop-\\nhealthcare-...") WITHOUT inserting a
+               space, so the URL stays a single token.
+            2. Flatten remaining whitespace to single spaces.
+            3. Tim URL/DOI boundaries (http/https/www/doi.org), split tai do.
+            4. Neu 2+ entries -> tra ve. Fallback -> newline/year markers.
         """
-        # Step 1: Merge wrapped author lines
-        merged_lines: list[str] = []
-        current = ""
-        for line in text.splitlines():
-            stripped = line.strip()
-            if not stripped:
-                if current:
-                    merged_lines.append(current)
-                    current = ""
-            elif re.match(r"^[a-zà-ỳ]", stripped):
-                current = (current + " " + stripped).strip()
-            else:
-                if current:
-                    merged_lines.append(current)
-                current = stripped
-        if current:
-            merged_lines.append(current)
-        merged_text = "\n".join(merged_lines)
+        # Step 1+2: Rejoin hyphen-broken wraps, then flatten to a single line.
+        flat = re.sub(r"-\s*\n\s*", "-", text)
+        flat = re.sub(r"\s+", " ", flat).strip()
 
-        # Step 2: Tim DOI URL boundaries
-        doi_url_re = re.compile(r"(doi\.org/10\.[^\s\n]+)(\n)?", flags=re.IGNORECASE)
-        matches = list(doi_url_re.finditer(merged_text))
+        # Step 3: Split at every URL/DOI terminator.
+        matches = list(_URL_BOUNDARY_RE.finditer(flat))
         if len(matches) >= 1:
             entries: list[str] = []
             start = 0
             for m in matches:
                 end = m.end()
-                chunk = merged_text[start:end].strip()
+                chunk = flat[start:end].strip()
                 if len(chunk) > 20:
                     entries.append(chunk)
                 start = end
             # Last chunk (after last DOI URL)
-            last_chunk = merged_text[start:].strip()
+            last_chunk = flat[start:].strip()
             if len(last_chunk) > 20:
                 entries.append(last_chunk)
 
             if len(entries) >= 2:
                 return entries
 
-        # Step 3: Fallback - split on year markers
-        return self._split_by_year_fallback(merged_text)
+        # Step 4: Fallback - split on newline / year markers
+        return self._split_by_year_fallback(text)
+
+    @staticmethod
+    def _strip_running_headers(text: str) -> str:
+        """Remove page furniture from a bibliography section.
+
+        PDF page text repeats running headers (e.g. the essay title) and
+        standalone page numbers on every page. When the bibliography spans
+        several pages those lines end up glued to the front of the first entry
+        on each page, corrupting its author/year metadata. Drop:
+          - standalone page numbers ("43"),
+          - standalone bibliography headers ("References"),
+          - short lines that repeat at least twice (running headers).
+        """
+        lines = text.splitlines()
+        counts = Counter(line.strip() for line in lines if line.strip())
+        cleaned: list[str] = []
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                cleaned.append("")
+                continue
+            if re.fullmatch(r"\d{1,4}", stripped):
+                continue
+            if _BIB_HEADER_LINE_RE.match(stripped):
+                continue
+            if (
+                counts[stripped] >= 2
+                and len(stripped) < 80
+                and not re.search(r"(?:19|20)\d{2}", stripped)
+                and "http" not in stripped.lower()
+            ):
+                continue
+            cleaned.append(line)
+        return "\n".join(cleaned)
 
     def _split_by_year_fallback(self, text: str) -> list[str]:
         """Fallback: split reference list by newline boundaries.
@@ -463,6 +525,7 @@ class ReferenceListParser:
         doi_m = _DOI_RE.search(entry)
         if doi_m:
             citation.doi = doi_m.group(0).rstrip(".")
+        citation.confidence = _estimate_reference_confidence(citation)
         return citation
 
     def _parse_ieee_entry(
@@ -527,6 +590,7 @@ class ReferenceListParser:
         doi_m = _DOI_RE.search(entry)
         if doi_m:
             citation.doi = doi_m.group(0).rstrip(".")
+        citation.confidence = _estimate_reference_confidence(citation)
         return citation
 
     def _parse_fallback_entry(
@@ -715,6 +779,7 @@ class ReferenceListParser:
         doi_m = _DOI_RE.search(entry)
         if doi_m:
             citation.doi = doi_m.group(0).rstrip(".")
+        citation.confidence = _estimate_reference_confidence(citation)
         return citation
 
     def _parse_vancouver_year_first_match(
@@ -739,6 +804,7 @@ class ReferenceListParser:
             doi_m = _DOI_RE.search(entry)
             if doi_m:
                 citation.doi = doi_m.group(0).rstrip(".")
+            citation.confidence = _estimate_reference_confidence(citation)
             return citation
         except Exception:
             return None

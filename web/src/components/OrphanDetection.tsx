@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { AlertCircle, FileText, Link, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { AnalysisReport, Verdict, CitationMappingStatus } from '@/api/client';
 import { VerdictBadge } from './VerdictBadge';
+import { isUrlResource } from '@/lib/verdictExplanation';
 import { cn } from '@/lib/utils';
 
 /* ============================================================
@@ -60,7 +61,7 @@ function OrphanItem({
           {verdict.citation_raw}
         </p>
         <div className="flex items-center gap-2 mt-2">
-          <VerdictBadge verdict={verdict.label} size="sm" />
+          <VerdictBadge verdict={isUrlResource(verdict) ? 'resource' : verdict.label} size="sm" />
           <span className="text-xs text-slate-500 dark:text-slate-400">
             {verdict.mapping_status.replace(/_/g, ' ')}
           </span>

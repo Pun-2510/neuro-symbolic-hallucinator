@@ -1,0 +1,276 @@
+{
+  "predictions": {
+    "eval_0001": "REAL",
+    "eval_0002": "UNRESOLVED",
+    "eval_0003": "REAL",
+    "eval_0004": "REAL",
+    "eval_0005": "HALLUCINATED",
+    "eval_0006": "METADATA_ERROR",
+    "eval_0007": "METADATA_ERROR",
+    "eval_0008": "HALLUCINATED",
+    "eval_0009": "HALLUCINATED",
+    "eval_0010": "HALLUCINATED",
+    "eval_0011": "METADATA_ERROR",
+    "eval_0012": "METADATA_ERROR",
+    "eval_0013": "REAL",
+    "eval_0014": "UNRESOLVED",
+    "eval_0015": "HALLUCINATED",
+    "eval_0016": "UNRESOLVED",
+    "eval_0017": "HALLUCINATED",
+    "eval_0018": "UNRESOLVED",
+    "eval_0019": "REAL",
+    "eval_0020": "REAL"
+  },
+  "confidences": {
+    "eval_0001": 0.9,
+    "eval_0002": 0.4,
+    "eval_0003": 0.9,
+    "eval_0004": 0.9,
+    "eval_0005": 0.95,
+    "eval_0006": 0.65,
+    "eval_0007": 0.65,
+    "eval_0008": 0.95,
+    "eval_0009": 0.95,
+    "eval_0010": 0.95,
+    "eval_0011": 0.65,
+    "eval_0012": 0.75,
+    "eval_0013": 0.9,
+    "eval_0014": 0.4,
+    "eval_0015": 0.95,
+    "eval_0016": 0.4,
+    "eval_0017": 0.95,
+    "eval_0018": 0.4,
+    "eval_0019": 0.9,
+    "eval_0020": 0.9
+  },
+  "metadata": {
+    "eval_0001": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0002": {
+      "confidence": 0.4,
+      "triggered_rules": [
+        "R-WEAK-EVIDENCE"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0003": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0004": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0005": {
+      "confidence": 0.95,
+      "triggered_rules": [
+        "R-FAKE-AUTHOR"
+      ],
+      "mismatched_fields": [
+        "author"
+      ],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0006": {
+      "confidence": 0.65,
+      "triggered_rules": [
+        "R-FUTURE-YEAR-KNOWN-AUTHOR"
+      ],
+      "mismatched_fields": [
+        "year"
+      ],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0007": {
+      "confidence": 0.65,
+      "triggered_rules": [
+        "R-FUTURE-YEAR-KNOWN-AUTHOR"
+      ],
+      "mismatched_fields": [
+        "year"
+      ],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0008": {
+      "confidence": 0.95,
+      "triggered_rules": [
+        "R-FAKE-AUTHOR"
+      ],
+      "mismatched_fields": [
+        "author"
+      ],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0009": {
+      "confidence": 0.95,
+      "triggered_rules": [
+        "R-FAKE-AUTHOR"
+      ],
+      "mismatched_fields": [
+        "author"
+      ],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0010": {
+      "confidence": 0.95,
+      "triggered_rules": [
+        "R-FUTURE-YEAR"
+      ],
+      "mismatched_fields": [
+        "year"
+      ],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0011": {
+      "confidence": 0.65,
+      "triggered_rules": [
+        "R-FUTURE-YEAR-KNOWN-AUTHOR"
+      ],
+      "mismatched_fields": [
+        "year"
+      ],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0012": {
+      "confidence": 0.75,
+      "triggered_rules": [
+        "R-KNOWN-PAPER",
+        "R-TITLE-MISMATCH"
+      ],
+      "mismatched_fields": [
+        "title"
+      ],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0013": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0014": {
+      "confidence": 0.4,
+      "triggered_rules": [
+        "R-LOCAL_DB_ONLY",
+        "R-WEAK-EVIDENCE"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0015": {
+      "confidence": 0.95,
+      "triggered_rules": [
+        "R-FAKE-AUTHOR"
+      ],
+      "mismatched_fields": [
+        "author"
+      ],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0016": {
+      "confidence": 0.4,
+      "triggered_rules": [
+        "R-LOCAL_DB_ONLY",
+        "R-WEAK-EVIDENCE"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0017": {
+      "confidence": 0.95,
+      "triggered_rules": [
+        "R-FAKE-AUTHOR"
+      ],
+      "mismatched_fields": [
+        "author"
+      ],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0018": {
+      "confidence": 0.4,
+      "triggered_rules": [
+        "R-LOCAL_DB_ONLY",
+        "R-WEAK-EVIDENCE"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0019": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    },
+    "eval_0020": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": [],
+      "sources_failed": {}
+    }
+  },
+  "ground_truth": {
+    "eval_0001": "REAL",
+    "eval_0002": "REAL",
+    "eval_0003": "REAL",
+    "eval_0004": "REAL",
+    "eval_0005": "HALLUCINATED",
+    "eval_0006": "METADATA_ERROR",
+    "eval_0007": "HALLUCINATED",
+    "eval_0008": "HALLUCINATED",
+    "eval_0009": "HALLUCINATED",
+    "eval_0010": "HALLUCINATED",
+    "eval_0011": "METADATA_ERROR",
+    "eval_0012": "METADATA_ERROR",
+    "eval_0013": "HALLUCINATED",
+    "eval_0014": "METADATA_ERROR",
+    "eval_0015": "HALLUCINATED",
+    "eval_0016": "METADATA_ERROR",
+    "eval_0017": "HALLUCINATED",
+    "eval_0018": "REAL",
+    "eval_0019": "REAL",
+    "eval_0020": "REAL"
+  },
+  "mode": "actual_pipeline",
+  "timestamp": "2026-09-27 20:18:11"
+}

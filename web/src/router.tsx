@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, useParams } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AppLayout } from './components/AppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -27,6 +27,12 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/dashboard" replace />;
   }
   return <>{children}</>;
+}
+
+// Legacy essay redirect with proper parameter handling
+function LegacyEssayRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/verification/report/${id}`} replace />;
 }
 
 export const router = createBrowserRouter([
@@ -92,7 +98,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/essay/:id',
-        element: <Navigate to="/verification/report/:id" replace />,
+        element: <LegacyEssayRedirect />,
       },
       {
         path: '/history',

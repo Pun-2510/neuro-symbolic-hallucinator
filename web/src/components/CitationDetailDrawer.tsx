@@ -1,9 +1,10 @@
-import { X, ExternalLink, CheckCircle, AlertTriangle, XCircle, HelpCircle, Database, Quote, FileText, GitBranch, ArrowRight, Search, Shield, Network } from 'lucide-react';
+import { X, ExternalLink, CheckCircle, AlertTriangle, XCircle, HelpCircle, Database, Quote, FileText, GitBranch, ArrowRight, Search, Shield, Network, Link2 } from 'lucide-react';
 import type { Verdict, MatchedSource, ValidationLabel, OverrideRequest } from '@/api/client';
 import { VerdictBadge } from './VerdictBadge';
 import { MappingStatusBadge } from './MappingStatusBadge';
 import { EvidenceGraph } from './CitationGraphView';
 import { cn } from '@/lib/utils';
+import { getFieldDisplayName, getRuleDisplayName, getSourceDisplayName, getVerdictDisplayName, getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
 
 /* ============================================================
    SourceLogic — Citation Detail Drawer Component
@@ -15,6 +16,7 @@ const LABEL_ICONS: Record<ValidationLabel, React.ReactNode> = {
   metadata_error: <AlertTriangle className="h-4 w-4" />,
   suspected_hallucination: <XCircle className="h-4 w-4" />,
   unresolved: <HelpCircle className="h-4 w-4" />,
+  resource: <Link2 className="h-4 w-4" />,
 };
 
 /* ============================================================
@@ -36,7 +38,7 @@ function SourceBadge({ src }: { src: MatchedSource }) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className={cn('text-xs font-bold px-2 py-0.5 rounded uppercase', colors.bg, colors.text)}>
-            {src.source}
+            {getSourceDisplayName(src.source)}
           </span>
           {src.checked_at && (
             <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -66,7 +68,7 @@ function SourceBadge({ src }: { src: MatchedSource }) {
               key={field}
               className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded text-xs font-mono"
             >
-              {field}
+              {getFieldDisplayName(field).replace(/^the /, '')}
             </span>
           ))}
         </div>
@@ -121,6 +123,12 @@ export function CitationDetailDrawer({
   const triggeredRules = verdict.triggered_rules ?? [];
   const mismatchedFields = verdict.mismatched_fields ?? [];
   const matchedSources = verdict.matched_sources ?? [];
+
+  // A local-only hit means every matched source came from an internal cache
+  // path (local DB / known papers), so no external API was ever queried.
+  const isLocalOnly =
+    matchedSources.length > 0 &&
+    matchedSources.every((s) => ['local_db', 'known_papers'].includes((s.source || '').toLowerCase()));
 
   return (
     <div
@@ -179,7 +187,7 @@ export function CitationDetailDrawer({
             {/* Verification Status */}
             <div className="flex items-center gap-3">
               <span className="text-xs text-slate-500 dark:text-slate-400">Verification:</span>
-              <VerdictBadge verdict={verdict.label || 'UNVERIFIABLE'} size="md" />
+              <VerdictBadge verdict={isUrlResource(verdict) ? 'resource' : verdict.label || 'UNVERIFIABLE'} size="md" />
               {verdict.confidence !== undefined && (
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   {Math.round(verdict.confidence * 100)}% confidence
@@ -216,41 +224,43 @@ export function CitationDetailDrawer({
           )}
 
           {/* Reasoning */}
-          {verdict.reasoning && (
-            <div className="card p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <GitBranch className="h-4 w-4 text-slate-400" />
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Reasoning
-                </span>
-              </div>
-              <p className="text-sm text-slate-900 dark:text-slate-100 leading-relaxed">
-                {verdict.reasoning}
-              </p>
+          <div className="card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <GitBranch className="h-4 w-4 text-slate-400" />
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                What we found
+              </span>
             </div>
-          )}
+            <p className="text-sm text-slate-900 dark:text-slate-100 leading-relaxed">
+              {getVerdictExplanation(verdict)}
+            </p>
+          </div>
 
           {/* Logic Trace - Section 14 */}
           <div className="card p-4">
             <div className="flex items-center gap-2 mb-4">
               <Shield className="h-4 w-4 text-slate-400" />
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Verification Logic Trace
+                How we checked it
               </span>
             </div>
             <div className="space-y-2">
-              <LogicTraceStep step="Reference parsed from bibliography" isComplete />
-              <LogicTraceStep step="Academic search across 4 databases" isComplete />
-              <LogicTraceStep step="Semantic similarity comparison" isActive />
+              <LogicTraceStep step="Matched this citation to your bibliography" isComplete />
+              {isLocalOnly ? (
+                <LogicTraceStep step="Found a saved match in the local library" isComplete />
+              ) : (
+                <LogicTraceStep step="Searched academic sources for a matching publication" isComplete />
+              )}
+              <LogicTraceStep step="Compared the title, authors, year, and identifiers" isComplete />
               {triggeredRules.length > 0 && (
                 <LogicTraceStep
-                  step={`Rules triggered: ${triggeredRules.join(', ')}`}
+                  step={triggeredRules.map(getRuleDisplayName).join('. ')}
                   isComplete={verdict.label === 'verified'}
                   isError={verdict.label === 'suspected_hallucination'}
                 />
               )}
               <LogicTraceStep
-                step={`Final verdict: ${verdict.label || 'UNVERIFIABLE'}`}
+                step={`Result: ${getVerdictDisplayName(verdict.label)}`}
                 isComplete
               />
             </div>
@@ -337,7 +347,7 @@ export function CitationDetailDrawer({
                 </span>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                No matching sources were found across Crossref, OpenAlex, Semantic Scholar, or CORE databases.
+                We could not find a matching publication in the sources we checked.
               </p>
             </div>
           )}

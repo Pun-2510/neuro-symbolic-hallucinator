@@ -44,7 +44,7 @@ def parse_acl_xml(
     batch = []
     processed = 0
 
-    for xml_file in xml_files:
+    for file_index, xml_file in enumerate(xml_files, start=1):
         try:
             papers = _parse_xml_file(xml_file)
             for paper in papers:
@@ -57,14 +57,16 @@ def parse_acl_xml(
                     total_imported += imported
                     batch = []
 
-                    if processed % 5000 == 0:
-                        print(f"  Processed: {processed}, Imported: {total_imported}")
-
                     if limit and processed >= limit:
                         break
 
-            if processed % 1000 == 0:
-                print(f"  Processed: {processed}, Imported: {total_imported}")
+            # Report on every file boundary (the old check compared a running
+            # counter against a modulus, so it almost never printed).
+            if file_index % 200 == 0 or file_index == len(xml_files):
+                print(
+                    f"  Files: {file_index}/{len(xml_files)}, "
+                    f"Processed: {processed}, Imported: {total_imported}"
+                )
 
             if limit and processed >= limit:
                 break
@@ -97,40 +99,46 @@ def _parse_xml_file(xml_path: Path) -> list[Paper]:
     # Get collection/volume metadata
     collection_id = root.get('id', '')
 
-    # Find volume element
-    volume = root.find('.//volume') or root.find('volume')
-    if volume is None:
-        return papers
+    # ACL files may contain many <volume> elements (e.g. 2019.ws.xml has 103).
+    # Iterating over every volume is required: reading only the first one drops
+    # ~35% of the corpus.  Files without explicit <volume> wrappers fall back to
+    # top-level <paper> elements (or a single synthetic volume).
+    volumes = root.findall('.//volume')
+    if not volumes:
+        volumes = [root]
 
-    volume_id = volume.get('id', collection_id)
+    for volume in volumes:
+        # Extract per-volume meta info.  A volume's own <meta> wins; only fall
+        # back to the root-level meta when the volume does not define one.
+        meta = volume.find('meta')
+        if meta is None and root is not volume:
+            meta = root.find('.//meta')
 
-    # Extract meta info
-    meta = volume.find('meta') or root.find('.//meta')
-    year = None
-    booktitle = None
-    venue = None
+        year = None
+        booktitle = None
+        venue = None
 
-    if meta is not None:
-        year_elem = meta.find('year')
-        if year_elem is not None and year_elem.text:
-            try:
-                year = int(year_elem.text)
-            except ValueError:
-                pass
+        if meta is not None:
+            year_elem = meta.find('year')
+            if year_elem is not None and year_elem.text:
+                try:
+                    year = int(year_elem.text.strip())
+                except (ValueError, AttributeError):
+                    pass
 
-        booktitle_elem = meta.find('booktitle')
-        if booktitle_elem is not None:
-            booktitle = booktitle_elem.text
+            booktitle_elem = meta.find('booktitle')
+            if booktitle_elem is not None and booktitle_elem.text:
+                booktitle = booktitle_elem.text.strip()
 
-        venue_elem = meta.find('venue')
-        if venue_elem is not None:
-            venue = venue_elem.text
+            venue_elem = meta.find('venue')
+            if venue_elem is not None and venue_elem.text:
+                venue = venue_elem.text.strip()
 
-    # Parse each paper
-    for paper_elem in volume.findall('paper') or root.findall('.//paper'):
-        paper = _parse_paper(paper_elem, collection_id, year, venue, booktitle)
-        if paper:
-            papers.append(paper)
+        # Parse each paper in this volume (never re-scan the whole tree here).
+        for paper_elem in volume.findall('paper'):
+            paper = _parse_paper(paper_elem, collection_id, year, venue, booktitle)
+            if paper:
+                papers.append(paper)
 
     return papers
 
@@ -156,15 +164,20 @@ def _parse_paper(
     # Extract authors
     authors = []
     for author_elem in paper_elem.findall('author'):
-        first = ''.join(list(author_elem.itertext())) or ''
-        last = ''.join(list(author_elem.itertext())) or ''
+        # Read <first>/<last> separately.  The previous implementation called
+        # itertext() for both fields, which returned the full text of the
+        # author element twice, producing names like
+        # "WarrenWeaver WarrenWeaver" instead of "Warren Weaver".
+        first_elem = author_elem.find('first')
+        last_elem = author_elem.find('last')
+        first = ''.join(first_elem.itertext()).strip() if first_elem is not None else ''
+        last = ''.join(last_elem.itertext()).strip() if last_elem is not None else ''
 
-        # Handle both <author><first>X</first><last>Y</last></author>
-        # and <author full_name="X Y"/>
-        if first or last:
-            name = f"{first} {last}".strip()
+        if not first and not last:
+            # Fallback for <author full_name="X Y"/> style records.
+            name = (author_elem.get('full_name') or '').strip()
         else:
-            name = author_elem.get('full_name', '')
+            name = f"{first} {last}".strip()
 
         if name:
             authors.append(name)
@@ -176,6 +189,12 @@ def _parse_paper(
         doi = doi_elem.text.strip()
         if not doi:
             doi = None
+
+    # Extract abstract (ACL Anthology embeds it for most recent papers).
+    abstract = None
+    abstract_elem = paper_elem.find('abstract')
+    if abstract_elem is not None:
+        abstract = ''.join(list(abstract_elem.itertext())).strip() or None
 
     # Extract arXiv ID from URL
     arxiv_id = None
@@ -207,7 +226,7 @@ def _parse_paper(
         authors=authors,
         year=paper_year,
         venue=venue or booktitle,
-        abstract=None,
+        abstract=abstract,
         categories=['cs.CL', 'cs.AI', 'cs.LG'],
         source='acl',
     )

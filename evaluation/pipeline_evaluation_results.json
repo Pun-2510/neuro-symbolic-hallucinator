@@ -1,0 +1,83 @@
+{
+  "binary_metrics": {
+    "tp": 6,
+    "fp": 0,
+    "fn": 2,
+    "tn": 12,
+    "precision": 1.0,
+    "recall": 0.75,
+    "specificity": 1.0,
+    "f1": 0.8571,
+    "accuracy": 0.9,
+    "fpr": 0.0,
+    "fnr": 0.25
+  },
+  "confusion_matrix": [
+    [
+      5,
+      0,
+      0,
+      2
+    ],
+    [
+      1,
+      6,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      3,
+      2
+    ],
+    [
+      0,
+      0,
+      0,
+      0
+    ]
+  ],
+  "roc_auc": 0.901,
+  "pr_auc": 0.8854,
+  "per_class": {
+    "REAL": {
+      "precision": 0.8333,
+      "recall": 0.7143,
+      "f1": 0.7692,
+      "support": 7
+    },
+    "HALLUCINATED": {
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1": 0.8571,
+      "support": 8
+    },
+    "METADATA_ERROR": {
+      "precision": 0.75,
+      "recall": 0.6,
+      "f1": 0.6667,
+      "support": 5
+    },
+    "UNRESOLVED": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0
+    }
+  },
+  "calibration": {
+    "ece": 0.395,
+    "mce": 0.75,
+    "brier_score": 0.3123
+  },
+  "total_samples": 20,
+  "samples_by_label": {
+    "REAL": 7,
+    "HALLUCINATED": 8,
+    "METADATA_ERROR": 5
+  },
+  "ci_precision": "1.0000 [0.6097, 1.0000]",
+  "ci_recall": "0.7500 [0.4093, 0.9285]",
+  "cohen_kappa": 0.5862
+}

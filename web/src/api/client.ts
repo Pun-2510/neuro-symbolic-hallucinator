@@ -20,7 +20,8 @@ export type ValidationLabel =
   | 'verified'
   | 'metadata_error'
   | 'suspected_hallucination'
-  | 'unresolved';
+  | 'unresolved'
+  | 'resource';
 
 export type CitationMappingStatus =
   | 'matched'
@@ -90,6 +91,10 @@ export interface OverrideRecord {
 export interface Verdict {
   citation_id: string;
   citation_raw: string;
+  citation_type?: CitationType;
+  // NEW v1.5: surrounding sentence/paragraph context (from PDF extraction)
+  // Optional — older cached reports may not have this field populated.
+  context?: string;
   // Integrity layer (linking/)
   mapping_status: CitationMappingStatus;
   mapping_confidence: number;
@@ -102,6 +107,7 @@ export interface Verdict {
   reasoning: string;
   triggered_rules: string[];
   mismatched_fields: string[];
+  /** May be absent for older cached reports — callers should default to []. */
   matched_sources: MatchedSource[];
   // Override / audit
   is_overridden: boolean;
@@ -126,13 +132,33 @@ export interface AnalysisReport {
   filename: string;
   num_pages: number;
   num_citations: number;
+  num_references?: number;
   // v1.2 new fields
   style_profile: StyleProfile;
   linking_summary: MappingStatusSummary;
   // Existing
   verdicts: Verdict[];
+  references?: Citation[];
   cis: CIS;
   disclaimer: string;
+}
+
+// --- Progress snapshot (returned by GET /essays/{id}/status) ---
+
+export interface EssayStatus {
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  step: string;          // one of the 8 step keys
+  step_index: number;   // 0..7
+  total_steps: number;
+  message: string;
+  citations_found: number;
+  references_found: number;
+  linked: number;
+  /** Per-database status: 'ok' | 'partial' | 'failed:N' | 'pending' */
+  sources_queried: Record<string, string>;
+  elapsed_seconds: number;
+  finished_at: number | null;
+  error: string | null;
 }
 
 // --- Upload ---
@@ -158,6 +184,7 @@ export interface HealthResponse {
 // --- Citation (from extraction) ---
 
 export interface Citation {
+  id?: number;
   raw_text: string;
   citation_type: CitationType;
   style: string;
@@ -201,6 +228,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return resp.json();
 }
 
+/**
+ * Fetch the analysis report, tolerating HTTP 425 (pipeline still running).
+ * Returns null when the backend returns 425 so callers can detect "not ready yet".
+ */
+async function getReportOrNull(id: number): Promise<AnalysisReport | null> {
+  const token = localStorage.getItem('token');
+  const resp = await fetch(`${BASE_URL}/essays/${id}/report`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (resp.status === 425) {
+    return null;  // still processing
+  }
+  if (!resp.ok) {
+    throw new Error(`API ${resp.status}: ${await resp.text()}`);
+  }
+  return resp.json();
+}
+
 // --- Endpoints ---
 
 export const api = {
@@ -215,7 +260,18 @@ export const api = {
     });
   },
 
-  getEssay: (id: number) => request<AnalysisReport>(`/essays/${id}/report`),
+  /**
+   * Fetch the analysis report. Returns null if the pipeline is still running
+   * (HTTP 425) — callers should poll via getEssayStatus until this returns a
+   * non-null value, then navigate to the report page.
+   */
+  getEssay: (id: number) => getReportOrNull(id),
+
+  /**
+   * Real-time pipeline progress snapshot. Use this to drive the ProcessingScreen
+   * stepper and per-source status tiles while the analysis runs.
+   */
+  getEssayStatus: (id: number) => request<EssayStatus>(`/essays/${id}/status`),
 
   getVerdicts: (id: number) => request<Verdict[]>(`/essays/${id}/verdicts`),
 

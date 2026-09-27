@@ -19,6 +19,7 @@ from integrity_checker.db.models import (
 )
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.validation import CitationVerdict
+from integrity_checker.pipeline.integrity_pipeline import _serialize_matched_sources
 
 
 class Repository:
@@ -89,24 +90,44 @@ class Repository:
             VerdictRecord(
                 essay_id=essay_id,
                 citation_raw=v.citation.raw_text,
-                label=v.label.value,
+                label=v.label.value if hasattr(v.label, "value") else str(v.label),
                 confidence=v.confidence,
                 reasoning=v.reasoning,
                 triggered_rules=json.dumps(v.triggered_rules, ensure_ascii=False),
                 mismatched_fields=json.dumps(v.mismatched_fields, ensure_ascii=False),
                 features=json.dumps(
                     {
-                        "title_sim_fuzzy": v.features.title_sim_fuzzy,
-                        "title_sim_semantic": v.features.title_sim_semantic,
-                        "author_jaccard": v.features.author_jaccard,
-                        "year_distance": v.features.year_distance,
-                        "doi_exact_match": v.features.doi_exact_match,
-                        "source_consensus": v.features.source_consensus,
+                        "title_sim_fuzzy": getattr(v.features, "title_sim_fuzzy", 0.0) if v.features else 0.0,
+                        "title_sim_semantic": getattr(v.features, "title_sim_semantic", 0.0) if v.features else 0.0,
+                        "author_jaccard": getattr(v.features, "author_jaccard", 0.0) if v.features else 0.0,
+                        "year_distance": getattr(v.features, "year_distance", 0) if v.features else 0,
+                        "doi_exact_match": getattr(v.features, "doi_exact_match", False) if v.features else False,
+                        "source_consensus": getattr(v.features, "source_consensus", 0) if v.features else 0,
+                        "matched_sources": _serialize_matched_sources(getattr(v, "matched_source", None)),
+                        "citation_link": (
+                            {
+                                "occurrence_id": v.citation_link.occurrence_id,
+                                "reference_id": v.citation_link.reference_id,
+                                "status": getattr(
+                                    v.citation_link.status,
+                                    "value",
+                                    v.citation_link.status,
+                                ),
+                                "confidence": v.citation_link.confidence,
+                                "method": getattr(
+                                    v.citation_link.method,
+                                    "value",
+                                    v.citation_link.method,
+                                ),
+                            }
+                            if getattr(v, "citation_link", None) is not None
+                            else None
+                        ),
                     },
                     ensure_ascii=False,
                 ),
                 # v1.2 fields
-                mapping_status=v.mapping_status.value if v.mapping_status else "matched",
+                mapping_status=v.mapping_status.value if hasattr(v.mapping_status, "value") else (v.mapping_status or "matched"),
                 mapping_confidence=v.mapping_confidence,
                 style_penalty=getattr(v, "style_penalty", None),
                 domain_exception=getattr(v, "domain_exception", False),
@@ -121,6 +142,15 @@ class Repository:
         return list(
             self.session.query(VerdictRecord)
             .filter(VerdictRecord.essay_id == essay_id)
+            .all()
+        )
+
+    def get_citations(self, essay_id: int) -> list[CitationRecord]:
+        """Return extracted citations in insertion order."""
+        return list(
+            self.session.query(CitationRecord)
+            .filter(CitationRecord.essay_id == essay_id)
+            .order_by(CitationRecord.id)
             .all()
         )
 
@@ -218,6 +248,63 @@ class Repository:
             .order_by(EssayRecord.uploaded_at.desc())
             .all()
         )
+
+    # -- Essay dedupe --
+
+    @staticmethod
+    def _essay_quality(essay: EssayRecord, citation_counts: dict[int, int]) -> tuple[int, int, str]:
+        """Rank key for keeping the best copy of a duplicated upload.
+
+        Prefers essays that actually produced results (verdicts/citations),
+        then the most recent upload, then a stable id tie-breaker.
+        """
+        uploaded = essay.uploaded_at.isoformat() if essay.uploaded_at else ""
+        return (citation_counts.get(essay.id, 0), 1 if uploaded else 0, uploaded)
+
+    def get_all_essays_deduped(self) -> list[tuple[EssayRecord, list[int]]]:
+        """Group essays by filename, keeping the best copy.
+
+        Re-uploading the same PDF currently creates a new ``essays`` row every
+        time, which inflates statistics (e.g. ``TranThanhPhuoc_...pdf`` ×4).
+        This returns one entry per filename with the duplicate ids so callers
+        can hide/delete them.
+
+        Returns:
+            list of ``(canonical_essay, duplicate_ids)`` ordered by the
+            canonical essay's ``uploaded_at`` descending.
+        """
+        essays = list(
+            self.session.query(EssayRecord)
+            .order_by(EssayRecord.uploaded_at.desc())
+            .all()
+        )
+        if not essays:
+            return []
+
+        from sqlalchemy import func
+
+        counts = {
+            row[0]: row[1]
+            for row in self.session.query(
+                CitationRecord.essay_id, func.count(CitationRecord.id)
+            ).group_by(CitationRecord.essay_id).all()
+        }
+
+        groups: dict[str, list[EssayRecord]] = {}
+        for essay in essays:
+            groups.setdefault(essay.filename, []).append(essay)
+
+        result: list[tuple[EssayRecord, list[int]]] = []
+        for copies in groups.values():
+            best = max(copies, key=lambda e: self._essay_quality(e, counts))
+            duplicates = [e.id for e in copies if e.id != best.id]
+            result.append((best, duplicates))
+
+        result.sort(
+            key=lambda item: item[0].uploaded_at or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+        return result
 
     # -- Citation Cache --
 

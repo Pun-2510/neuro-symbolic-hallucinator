@@ -126,7 +126,7 @@
 ## TASKS CÒN LẠI
 
 ### High Priority
-- [ ] GROBID Docker (cần máy đủ RAM)
+- [x] GROBID Docker (cần máy đủ RAM)
 - [ ] Dataset annotation - ground truth
 - [ ] Baselines B0-B5
 

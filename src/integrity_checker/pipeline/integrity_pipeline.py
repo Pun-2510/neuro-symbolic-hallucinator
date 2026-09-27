@@ -22,7 +22,7 @@ import inspect
 import json
 import re
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +51,7 @@ from integrity_checker.logic.cis import CISCalculator
 from integrity_checker.logic.explanation import ExplanationGenerator
 from integrity_checker.logic.neuro_symbolic_checker import NeuroSymbolicChecker
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
+from integrity_checker.models.source import SourceCandidate, SourceResult
 from integrity_checker.models.validation import (
     CISComponents,
     CitationIntegrityScore,
@@ -62,6 +63,10 @@ from integrity_checker.retrieval import RetrievalOrchestrator
 from integrity_checker.retrieval.normalization import citation_key
 
 logger = get_logger(__name__)
+
+# Bump whenever extraction/linking output shape changes so previously cached
+# (and possibly wrong) reports are recomputed instead of served from disk.
+_REPORT_CACHE_VERSION = "report-v4"
 
 # Regex for normalizing "et al." citation formats for link lookup
 # Matches: "(Vaswani et al., 2017)", "(Vaswani et al. (2017))", "Vaswani et al. (2017)"
@@ -139,6 +144,7 @@ class AnalysisReport:
                         "api_exhausted": v.api_exhausted,
                         "used_local_db": v.used_local_db,
                     },
+                    "matched_sources": _serialize_matched_sources(v.matched_source),
                     "warnings": _get_verdict_warnings_from_verdict(v),
                     "suggestions": ExplanationGenerator.suggestions(v),
                 }
@@ -202,6 +208,10 @@ class AnalysisReport:
                 ),
                 used_local_db=bool(
                     (raw_verdict.get("provenance") or {}).get("used_local_db", False)
+                ),
+                # Rehydrate SourceResult so to_dict keeps emitting matched_sources
+                matched_source=_deserialize_matched_sources(
+                    raw_verdict.get("matched_sources")
                 ),
             )
             verdicts.append(verdict)
@@ -322,7 +332,7 @@ class IntegrityPipeline:
 
     def _report_cache_key(self, pdf_path: str) -> str | None:
         digest = self._pdf_sha256(pdf_path)
-        return f"report-v3-{digest}" if digest else None
+        return f"{_REPORT_CACHE_VERSION}-{digest}" if digest else None
 
     def _report_cache_path(self, cache_key: str) -> Path:
         return self._report_cache_dir / f"{cache_key}.json"
@@ -359,7 +369,12 @@ class IntegrityPipeline:
 
     # -- async entry (FastAPI) --
 
-    async def run_async(self, pdf_path: str, essay_id: int = 0) -> AnalysisReport:
+    async def run_async(
+        self,
+        pdf_path: str,
+        essay_id: int = 0,
+        progress_callback: Any | None = None,
+    ) -> AnalysisReport:
         """Full pipeline async.
 
         Flow v1.2:
@@ -371,8 +386,21 @@ class IntegrityPipeline:
             5. NeuroSymbolicChecker.check() → CitationVerdict
             6. CISCalculator.compute(verdicts) → CitationIntegrityScore
             7. AnalysisReport
+
+        ``progress_callback(step_key, step_index, partial_stats)`` is invoked at
+        each of the 8 step boundaries to drive the ProcessingScreen UI in real
+        time. ``partial_stats`` is an arbitrary dict the caller can use to update
+        counters and per-source states.
         """
         logger.info(f"Pipeline start: {pdf_path}")
+
+        def _emit(step_key: str, step_index: int, **stats: Any) -> None:
+            if progress_callback is None:
+                return
+            try:
+                progress_callback(step_key, step_index, stats)
+            except Exception as cb_err:  # pragma: no cover — never break pipeline
+                logger.debug(f"progress_callback ignored: {cb_err}")
 
         if (
             not Path(pdf_path).is_file()
@@ -391,11 +419,13 @@ class IntegrityPipeline:
                 cached_report.filename = Path(pdf_path).name
                 logger.info(
                     f"Report cache HIT: {Path(pdf_path).name} "
-                    f"(sha256={cache_key.removeprefix('report-v3-')[:12]}...)"
+                    f"(sha256={cache_key.removeprefix(_REPORT_CACHE_VERSION + '-')[:12]}...)"
                 )
+                _emit("done", 7, message="Loaded from cache")
                 return cached_report
 
         # 1. Parse PDF
+        _emit("parsing", 0, message="Parsing PDF...")
         num_pages = 0
         in_text_citations: list[Citation] = []
         ref_citations: list[Citation] = []
@@ -432,10 +462,32 @@ class IntegrityPipeline:
             )
 
         # 1b. Style profile detection (v1.2 — dùng cho linker + CIS format_consistency)
-        style_profile = self._detect_style(in_text_citations, ref_citations)
+        _emit(
+            "style_detection",
+            1,
+            message="Detecting citation style...",
+        )
+        # Web links are resources, not academic citations, so they must not
+        # influence the document style profile used by CIS.
+        academic_in_text = [
+            citation for citation in in_text_citations
+            if citation.citation_type != CitationType.URL
+        ]
+        academic_references = [
+            citation for citation in ref_citations
+            if citation.citation_type != CitationType.URL
+        ]
+        style_profile = self._detect_style(academic_in_text, academic_references)
         style_profile_dict = self._serialize_style_profile(style_profile)
 
         # 1c. Citation linking (in-text ↔ reference) — v1.2 §3.5
+        _emit(
+            "extracting",
+            2,
+            citations_found=len(in_text_citations) + len(ref_citations),
+            references_found=len(ref_citations),
+            message=f"Found {len(in_text_citations)} in-text + {len(ref_citations)} references",
+        )
         linking_result = self._run_linking(in_text_citations, ref_citations, style_profile)
         link_by_raw_text = self._build_link_lookup(linking_result.links)
 
@@ -450,6 +502,23 @@ class IntegrityPipeline:
             in_text_citations, ref_citations, []
         )
 
+        # Linking summary derived from already-resolved link objects — surface
+        # the matched count to the UI before retrieval starts (the full summary
+        # is rebuilt after the checker runs).
+        _initial_linked = sum(
+            1 for link in linking_result.links
+            if getattr(link, "status", None) is not None
+            and getattr(link.status, "value", link.status) == "matched"
+        )
+        _emit(
+            "linking",
+            3,
+            linked=_initial_linked,
+            citations_found=len(all_citations),
+            references_found=len(ref_citations),
+            message=f"Linked {_initial_linked} of {len(all_citations)} citations",
+        )
+
         # 2. Retrieve + check từng citation (PARALLEL cho tốc độ).  Keep one
         # verdict per extracted citation, but retrieve one canonical paper
         # only once when a bibliography entry and in-text occurrence refer to
@@ -461,6 +530,12 @@ class IntegrityPipeline:
             citation_keys.append(key)
             unique_citations.setdefault(key, citation)
 
+        _emit(
+            "retrieving",
+            4,
+            citations_found=len(all_citations),
+            message=f"Querying academic databases for {len(unique_citations)} unique papers...",
+        )
         unique_sources = await asyncio.gather(
             *(self.orchestrator.retrieve(c) for c in unique_citations.values()),
             return_exceptions=False,
@@ -472,6 +547,34 @@ class IntegrityPipeline:
                 f"Retrieval dedupe: {len(all_citations)} citations -> "
                 f"{len(unique_citations)} unique paper keys"
             )
+
+        # Surface per-data-source outcomes to the UI. Sources_queried is built
+        # from the union of all retrieved SourceResults — a source is "ok" if
+        # at least one citation got a hit, "failed" if every call failed,
+        # otherwise "pending".
+        _src_status: dict[str, str] = {}
+        _src_hits: dict[str, int] = {}
+        _src_fails: dict[str, int] = {}
+        for src in unique_sources:
+            for name in getattr(src, "sources_succeeded", []):
+                _src_hits[name] = _src_hits.get(name, 0) + 1
+            for name, err in getattr(src, "sources_failed", {}).items():
+                _src_fails[name] = _src_fails.get(name, 0) + 1
+        for name in set(list(_src_hits.keys()) + list(_src_fails.keys())):
+            if _src_hits.get(name, 0) > 0 and _src_fails.get(name, 0) == 0:
+                _src_status[name] = "ok"
+            elif _src_hits.get(name, 0) > 0 and _src_fails.get(name, 0) > 0:
+                _src_status[name] = "partial"
+            elif _src_fails.get(name, 0) > 0:
+                _src_status[name] = f"failed:{_src_fails[name]}"
+            else:
+                _src_status[name] = "pending"
+        _emit(
+            "comparing",
+            5,
+            sources_queried=_src_status,
+            message=f"Compared {_src_hits} source hits across {len(_src_status)} databases",
+        )
 
         verdicts: list[CitationVerdict] = []
         for citation, source in zip(all_citations, sources):
@@ -544,6 +647,11 @@ class IntegrityPipeline:
                     )
                     break
 
+            # NEW v1.5: Persist context onto Citation object so it serializes to
+            # the report JSON and reaches the frontend Document View.
+            # (Previously the local variable was only used inside the checker call.)
+            citation.context = citation_context
+
             # NEW v1.3: Provenance tracking - compute before calling checker
             api_exhausted = len(source.sources_succeeded) == 0 and len(source.sources_failed) > 0
             used_local_db = source.sources_succeeded == ["local_db"] if source.sources_succeeded else False
@@ -579,8 +687,17 @@ class IntegrityPipeline:
             logger.debug(
                 f"  [{verdict.label.value}] conf={verdict.confidence:.2f} "
                 f"mapping={verdict.mapping_status.value if verdict.mapping_status else 'NONE'} "
-                f"raw={citation.raw_text[:60]}"
-            )        # 3. Linking summary (counts per CitationMappingStatus) — cho Web UI dashboard
+                f"raw={citation.raw_text[:80]}"
+            )
+
+        _emit(
+            "checking",
+            6,
+            citations_found=len(verdicts),
+            message=f"Applied verification rules to {len(verdicts)} citations",
+        )
+
+        # 3. Linking summary (counts per CitationMappingStatus) — cho Web UI dashboard
         linking_summary = self._build_linking_summary(verdicts)
 
         # 4. CIS
@@ -588,6 +705,14 @@ class IntegrityPipeline:
             verdicts,
             linking_result=linking_result,
             style_profile=style_profile,
+        )
+
+        _emit(
+            "scoring",
+            7,
+            citations_found=len(all_citations),
+            linked=linking_summary.get("matched", 0),
+            message=f"CIS calculated: {cis.score:.1f}/100",
         )
 
         # 5. Build report
@@ -607,7 +732,12 @@ class IntegrityPipeline:
             f"Pipeline done: {report.num_citations} citations, CIS={cis.score:.1f}/100"
         )
         if cache_key and self._use_report_cache:
-            self._save_report_cache(cache_key, report)
+            try:
+                self._save_report_cache(cache_key, report)
+            except Exception as cache_err:  # noqa: BLE001
+                # Cache is best-effort — a serialization bug here must never
+                # break the pipeline. Log and move on.
+                logger.debug(f"Report cache save skipped: {cache_err}")
         return report
 
     @staticmethod
@@ -1091,6 +1221,83 @@ def _serialize_citation_link(link: Any) -> dict[str, Any]:
         "page": link.page,
         "section": link.section,
     }
+
+
+def _serialize_matched_sources(source: Any) -> list[dict[str, Any]]:
+    """SourceResult → list of MatchedSource-shaped dicts for the API.
+
+    Each dict carries the data the frontend EvidenceGraph needs:
+    source name, which fields were matched, the URL/DOI, and the
+    candidate's confidence.
+
+    Only successful (found=True) candidates are returned, plus a fallback
+    entry per source we queried so the UI can show the database even when
+    it returned no hits.
+    """
+    out: list[dict[str, Any]] = []
+    if source is None:
+        return out
+    candidates = getattr(source, "candidates", None) or []
+    for c in candidates:
+        if not getattr(c, "found", False):
+            continue
+        matched_fields: list[str] = []
+        if getattr(c, "doi", None):
+            matched_fields.append("doi")
+        if getattr(c, "title", None):
+            matched_fields.append("title")
+        if getattr(c, "authors", None):
+            matched_fields.append("authors")
+        if getattr(c, "year", None):
+            matched_fields.append("year")
+        if getattr(c, "venue", None):
+            matched_fields.append("venue")
+        out.append({
+            "source": getattr(c, "source_name", "unknown"),
+            "matched_fields": matched_fields,
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "url": getattr(c, "url", None),
+            "doi": getattr(c, "doi", None),
+            "title": getattr(c, "title", None),
+            "confidence": float(getattr(c, "confidence", 0.0) or 0.0),
+        })
+    return out
+
+
+def _deserialize_matched_sources(payload: Any) -> SourceResult | None:
+    """Rebuild a minimal SourceResult from a list of MatchedSource dicts.
+
+    Used when rehydrating cached reports so the API keeps returning
+    ``matched_sources`` instead of silently dropping them.
+    """
+    if not payload:
+        return None
+    candidates: list[SourceCandidate] = []
+    succeeded: list[str] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        name = (item.get("source") or "unknown").lower()
+        candidates.append(
+            SourceCandidate(
+                source_name=name,
+                found=True,
+                doi=item.get("doi"),
+                title=item.get("title"),
+                url=item.get("url"),
+                confidence=float(item.get("confidence", 0.0) or 0.0),
+            )
+        )
+        if name not in succeeded:
+            succeeded.append(name)
+    if not candidates:
+        return None
+    return SourceResult(
+        citation_raw="",
+        candidates=candidates,
+        sources_queried=list(succeeded),
+        sources_succeeded=list(succeeded),
+    )
 
 
 def main() -> None:

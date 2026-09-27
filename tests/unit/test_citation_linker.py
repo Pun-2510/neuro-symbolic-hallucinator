@@ -309,6 +309,40 @@ class TestEdgeCases:
         assert result.links[0].status == CitationMappingStatus.MISSING_REFERENCE
 
 
+class TestOrganizationAuthor:
+    """Web references cite a publisher as author; the name lives in title/venue."""
+
+    def test_org_name_in_title_matches(self):
+        bibs = [
+            cit("State of subscription apps 2025. (2025). RevenueCat. "
+                "https://www.revenuecat.com/state-of-subscription-apps-2025/",
+                CitationType.REFERENCE_LIST, year="2025", ref_id="ref-0"),
+        ]
+        body = [cit("(Revenuecat, 2025)")]
+        result = CitationLinker().link(body, bibs)
+        assert result.links[0].status == CitationMappingStatus.MATCHED
+
+    def test_concatenated_org_name_matches(self):
+        bibs = [
+            cit("Top 7 user behavior metrics for fitness apps. (2025). "
+                "Sport Fitness Apps. https://www.sportfitnessapps.com/x",
+                CitationType.REFERENCE_LIST, year="2025", ref_id="ref-0"),
+        ]
+        body = [cit("(Sportsfitnessapps, 2025)")]
+        result = CitationLinker().link(body, bibs)
+        assert result.links[0].status == CitationMappingStatus.MATCHED
+
+    def test_year_must_agree(self):
+        bibs = [
+            cit("State of subscription apps. (2024). RevenueCat. "
+                "https://www.revenuecat.com/x",
+                CitationType.REFERENCE_LIST, year="2024", ref_id="ref-0"),
+        ]
+        body = [cit("(Revenuecat, 2025)")]
+        result = CitationLinker().link(body, bibs)
+        assert result.links[0].status == CitationMappingStatus.MISSING_REFERENCE
+
+
 class TestLinkingResultFields:
     def test_status_counts(self):
         bibs = [

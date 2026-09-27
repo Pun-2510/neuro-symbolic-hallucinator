@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api, type AnalysisReport, type Verdict } from '@/api/client';
 import { CISScoreCard } from '@/components/CISScoreCard';
-import { VerdictBadge } from '@/components/VerdictBadge';
-import { CitationGraphView } from '@/components/CitationGraphView';
 import { VerdictTable } from '@/components/VerdictTable';
 import { CitationDetailDrawer } from '@/components/CitationDetailDrawer';
+import { isUrlResource } from '@/lib/verdictExplanation';
 import {
   FileText,
   Download,
@@ -25,7 +24,6 @@ import {
    Based on UX/UI Concept Section 7-8: Dashboard + Citations & References
    ============================================================ */
 
-type DisplayMode = 'table' | 'graph';
 type TabType = 'overview' | 'citations' | 'references';
 
 export function EssayPage() {
@@ -33,7 +31,6 @@ export function EssayPage() {
   const [report, setReport] = useState<AnalysisReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Verdict | null>(null);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('graph');
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   useEffect(() => {
@@ -44,10 +41,54 @@ export function EssayPage() {
       setError('Invalid essay ID');
       return;
     }
-    api
-      .getEssay(numericId)
-      .then(setReport)
-      .catch(() => setError('Failed to load report. Please try again.'));
+
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    const tryFetch = async () => {
+      try {
+        const data = await api.getEssay(numericId);
+        if (cancelled) return;
+        if (data) {
+          // Got the report
+          setReport(data);
+          setError(null);
+          if (pollTimer) clearInterval(pollTimer);
+        } else {
+          // 425 — pipeline still running. Poll status instead.
+          const status = await api.getEssayStatus(numericId);
+          if (cancelled) return;
+          if (status.status === 'failed') {
+            setError(status.error ?? 'Pipeline failed.');
+            if (pollTimer) clearInterval(pollTimer);
+            return;
+          }
+          if (status.status === 'completed') {
+            // Race condition — try once more
+            const retry = await api.getEssay(numericId);
+            if (retry) {
+              setReport(retry);
+              setError(null);
+              if (pollTimer) clearInterval(pollTimer);
+              return;
+            }
+          }
+          // Otherwise keep polling via status
+          if (!pollTimer) {
+            pollTimer = setInterval(tryFetch, 2000);
+          }
+        }
+      } catch (err) {
+        if (!cancelled) setError('Failed to load report. Please try again.');
+      }
+    };
+
+    tryFetch();
+
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearInterval(pollTimer);
+    };
   }, [id]);
 
   async function handleOverride(verdict: Verdict, req: Parameters<typeof api.overrideVerdict>[1]) {
@@ -90,18 +131,27 @@ export function EssayPage() {
   }
 
   // Calculate stats based on UX/UI Concept
+  const academicVerdicts = report.verdicts.filter((v) => !isUrlResource(v));
+  const references = report.references ?? [];
+  const inTextVerdicts = report.verdicts.filter(
+    (v) =>
+      v.citation_type === 'in_text' ||
+      v.citation_type === 'numeric' ||
+      (!v.citation_type && references.length === 0)
+  );
   const stats = {
-    total: report.verdicts.length,
-    verified: report.verdicts.filter((v) => v.label === 'verified').length,
-    metadataError: report.verdicts.filter((v) => v.label === 'metadata_error').length,
-    suspectedHallucination: report.verdicts.filter((v) => v.label === 'suspected_hallucination').length,
-    unverifiable: report.verdicts.filter((v) => v.label === 'unresolved').length,
+    total: academicVerdicts.length,
+    verified: academicVerdicts.filter((v) => v.label === 'verified').length,
+    metadataError: academicVerdicts.filter((v) => v.label === 'metadata_error').length,
+    suspectedHallucination: academicVerdicts.filter((v) => v.label === 'suspected_hallucination').length,
+    unverifiable: academicVerdicts.filter((v) => v.label === 'unresolved').length,
   };
 
-  const coverage = Math.round((stats.verified / stats.total) * 100);
+  const coverage = stats.total > 0 ? Math.round((stats.verified / stats.total) * 100) : 0;
 
   // Section 8: Citations & References data extraction
   const getCitationStatus = (v: Verdict) => {
+    if (v.label === 'resource') return 'URL Resource';
     if (v.label === 'verified') return 'Verified';
     if (v.label === 'metadata_error') return 'Metadata Issue';
     if (v.label === 'suspected_hallucination') return 'Hallucination';
@@ -118,6 +168,7 @@ export function EssayPage() {
   };
 
   const getReferenceStatus = (v: Verdict) => {
+    if (v.label === 'resource') return 'URL Resource';
     if (v.label === 'verified') return 'Verified';
     if (v.label === 'metadata_error') return 'Metadata Error';
     if (v.label === 'suspected_hallucination') return 'Likely Hallucinated';
@@ -242,17 +293,7 @@ export function EssayPage() {
       </div>
 
       {/* CIS Score */}
-      <CISScoreCard cis={report.cis.score} />
-
-      {/* Style Profile */}
-      {report.style_profile && (
-        <div className="card p-5">
-          <h3 className="font-display text-sm font-semibold mb-3 text-slate-900 dark:text-slate-100">
-            Citation Style
-          </h3>
-          <span className="tag tag-primary">{report.style_profile.style}</span>
-        </div>
-      )}
+      {academicVerdicts.length > 0 && <CISScoreCard cis={report.cis.score} />}
 
       {/* Quick Links - Section 7: Report navigation */}
       <div className="flex gap-3 flex-wrap">
@@ -302,12 +343,12 @@ export function EssayPage() {
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
               {tab === 'citations' && (
                 <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                  {report.verdicts.length}
+                  {inTextVerdicts.length}
                 </span>
               )}
               {tab === 'references' && (
                 <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                  {report.verdicts.length}
+                  {references.length}
                 </span>
               )}
               {activeTab === tab && (
@@ -326,7 +367,7 @@ export function EssayPage() {
               Citations
             </h2>
             <span className="text-sm text-slate-500 dark:text-slate-400">
-              {report.verdicts.length} detected
+              {inTextVerdicts.length} detected
             </span>
           </div>
 
@@ -349,7 +390,7 @@ export function EssayPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {report.verdicts.map((verdict, index) => (
+                 {inTextVerdicts.map((verdict, index) => (
                   <tr
                     key={verdict.citation_id}
                     className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
@@ -395,6 +436,10 @@ export function EssayPage() {
                           </svg>
                           Hallucination
                         </span>
+                      ) : verdict.label === 'resource' ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 dark:text-violet-400">
+                          URL Resource
+                        </span>
                       ) : verdict.mapping_status === 'missing_reference' ? (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -432,7 +477,7 @@ export function EssayPage() {
               References
             </h2>
             <span className="text-sm text-slate-500 dark:text-slate-400">
-              {report.verdicts.length} detected
+              {references.length} detected
             </span>
           </div>
 
@@ -455,13 +500,16 @@ export function EssayPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {report.verdicts.map((verdict, index) => {
-                  const authorDisplay = parseAuthorDisplay(verdict.citation_raw);
-                  const yearDisplay = parseYear(verdict.citation_raw);
+                 {references.map((reference, index) => {
+                   const authorDisplay = reference.authors?.join(', ') || parseAuthorDisplay(reference.raw_text);
+                   const yearDisplay = reference.year || parseYear(reference.raw_text);
+                   const matchingVerdict = report.verdicts.find(
+                     (v) => v.citation_raw === reference.raw_text
+                   );
 
                   return (
                     <tr
-                      key={verdict.citation_id}
+                       key={reference.id ?? `${reference.raw_text}-${index}`}
                       className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
                     >
                       <td className="px-4 py-3">
@@ -475,18 +523,18 @@ export function EssayPage() {
                             {authorDisplay}{yearDisplay && ` (${yearDisplay})`}
                           </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-                            {verdict.citation_raw.slice(0, 80)}
+                           {reference.raw_text.slice(0, 160)}
                           </p>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${getReferenceStatusColor(verdict)}`}>
-                          {getReferenceStatus(verdict)}
+                           <span className="inline-block px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                           Reference entry
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
-                          onClick={() => setSelected(verdict)}
+                           onClick={() => matchingVerdict && setSelected(matchingVerdict)}
                           className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm font-medium"
                         >
                           View
@@ -504,65 +552,17 @@ export function EssayPage() {
       {/* Overview Tab Content - Section 7 Dashboard */}
       {activeTab === 'overview' && (
         <>
-          {/* Linking Summary - Section 9 */}
-          {report.linking_summary && (
-            <div className="card p-5">
-              <h3 className="font-display text-sm font-semibold mb-4 text-slate-900 dark:text-slate-100">
-                Citation Mapping Summary
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {Object.entries(report.linking_summary).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl"
-                  >
-                    <span className="text-sm text-slate-600 dark:text-slate-400 capitalize">
-                      {key.replace(/_/g, ' ')}
-                    </span>
-                    <span className="font-bold text-slate-900 dark:text-slate-100">{value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* View Mode Toggle */}
-          <div className="flex items-center justify-between">
+          <div>
             <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
               Citation Verification Results
             </h2>
-            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
-              {(['graph', 'table'] as DisplayMode[]).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setDisplayMode(mode)}
-                  className={`px-4 py-2 text-sm rounded-lg transition-all font-medium ${
-                    displayMode === mode
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  {mode === 'graph' ? 'Graph' : 'Table'}
-                </button>
-              ))}
-            </div>
           </div>
 
-          {/* Citation View */}
-          {displayMode === 'graph' ? (
-            <CitationGraphView
-              verdicts={report.verdicts}
-              linkingSummary={report.linking_summary}
-              onSelect={setSelected}
-              onOverride={handleOverride}
-            />
-          ) : (
-            <VerdictTable
-              verdicts={report.verdicts}
-              onSelect={setSelected}
-              onOverride={handleOverride}
-            />
-          )}
+          <VerdictTable
+            verdicts={report.verdicts}
+            onSelect={setSelected}
+            onOverride={handleOverride}
+          />
         </>
       )}
 

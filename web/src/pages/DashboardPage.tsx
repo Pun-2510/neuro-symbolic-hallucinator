@@ -200,18 +200,20 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {statCards.map((card) => (
-          <div key={card.label} className={`card p-5 ${card.bg}`}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm text-slate-600 dark:text-slate-400">{card.label}</p>
-              <card.icon className={`h-5 w-5 ${card.color}`} />
+      {/* Stats Overview - Hidden per user request */}
+      {false && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {statCards.map((card) => (
+            <div key={card.label} className={`card p-5 ${card.bg}`}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm text-slate-600 dark:text-slate-400">{card.label}</p>
+                <card.icon className={`h-5 w-5 ${card.color}`} />
+              </div>
+              <p className={`text-2xl font-bold font-display ${card.color}`}>{card.value}</p>
             </div>
-            <p className={`text-2xl font-bold font-display ${card.color}`}>{card.value}</p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -375,13 +377,9 @@ export function DashboardPage() {
 
       {/* Stats Footer */}
       {essays.length > 0 && (
-        <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 pt-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="text-sm text-slate-500 dark:text-slate-400">
           <p>
             Showing {filteredEssays.length} of {essays.length} documents
-          </p>
-          <p className="flex items-center gap-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
-            Auto-refresh active
           </p>
         </div>
       )}

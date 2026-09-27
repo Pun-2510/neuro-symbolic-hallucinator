@@ -14,6 +14,7 @@ const LABEL_OPTIONS: { value: ValidationLabel; label: string; color: string }[] 
   { value: 'metadata_error', label: '△ Metadata Error', color: 'text-amber-700' },
   { value: 'suspected_hallucination', label: '✗ Suspected', color: 'text-red-700' },
   { value: 'unresolved', label: '— Unresolved', color: 'text-gray-600' },
+  { value: 'resource', label: '↗ URL Resource', color: 'text-violet-700' },
 ];
 
 const STATUS_OPTIONS: { value: CitationMappingStatus; label: string }[] = [

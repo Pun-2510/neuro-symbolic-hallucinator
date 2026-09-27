@@ -3,6 +3,7 @@ import { FileText, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, External
 import { api, type AnalysisReport, type Verdict, type ValidationLabel } from '@/api/client';
 import { VerdictBadge } from './VerdictBadge';
 import { cn } from '@/lib/utils';
+import { isUrlResource } from '@/lib/verdictExplanation';
 
 /* ============================================================
    SourceLogic — Document Inspector Component
@@ -23,6 +24,7 @@ const STATUS_COLORS: Record<ValidationLabel, { light: string; dark: string }> = 
   metadata_error: { light: 'bg-amber-500', dark: 'bg-amber-500' },
   suspected_hallucination: { light: 'bg-red-500', dark: 'bg-red-500' },
   unresolved: { light: 'bg-slate-400', dark: 'bg-slate-400' },
+  resource: { light: 'bg-violet-500', dark: 'bg-violet-500' },
 };
 
 export function DocumentInspector({
@@ -89,7 +91,8 @@ export function DocumentInspector({
   // Summary stats
   const statusCounts = report.verdicts.reduce(
     (acc, v) => {
-      acc[v.label] = (acc[v.label] || 0) + 1;
+       const label = isUrlResource(v) ? 'resource' : v.label;
+       acc[label] = (acc[label] || 0) + 1;
       return acc;
     },
     {} as Record<string, number>
@@ -211,7 +214,7 @@ export function DocumentInspector({
                       {verdict.citation_raw}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <VerdictBadge verdict={verdict.label} size="sm" />
+                      <VerdictBadge verdict={isUrlResource(verdict) ? 'resource' : verdict.label} size="sm" />
                       <span className="text-xs text-slate-400">
                         #{idx + 1}
                       </span>

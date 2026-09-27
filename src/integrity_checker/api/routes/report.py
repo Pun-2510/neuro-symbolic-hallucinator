@@ -6,10 +6,11 @@ import csv
 import io
 import json
 from datetime import datetime, timezone
+from html import escape
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -24,6 +25,7 @@ from reportlab.platypus import (
 from sqlalchemy.orm import Session
 
 from integrity_checker.api.deps import get_db
+from integrity_checker.api.progress import get_tracker
 from integrity_checker.config import get_settings
 from integrity_checker.db.repository import Repository
 
@@ -47,12 +49,23 @@ async def get_report(
     # current_user = get_current_user() if has_auth else None
     # if current_user and current_user.role != 'admin' and essay.user_id != current_user.id:
     #     raise HTTPException(status_code=403, detail="Access denied")
+
+    # If the pipeline is still running, return 425 so the frontend knows to keep polling.
+    tracker = get_tracker()
+    state = tracker.get(essay_id)
+    if state is not None and state.status == "processing":
+        return JSONResponse(
+            status_code=425,
+            content={"detail": "Analysis in progress", "retry_after": 3},
+            headers={"Retry-After": "3"},
+        )
+
     verdicts = repo.get_verdicts(essay_id)
 
     if format == "csv":
         return _csv_response(essay.filename, verdicts)
     if format == "json":
-        return _json_response(essay.filename, essay, verdicts)
+        return _json_response(essay.filename, essay, verdicts, repo.get_citations(essay_id))
     if format == "pdf":
         return _pdf_response(essay.filename, essay, verdicts)
     raise HTTPException(status_code=400, detail=f"Unsupported format: {format}")
@@ -92,8 +105,14 @@ def _csv_response(filename: str, verdicts: list) -> StreamingResponse:
     )
 
 
-def _json_response(filename: str, essay, verdicts: list) -> StreamingResponse:
+def _json_response(
+    filename: str,
+    essay,
+    verdicts: list,
+    citations: list | None = None,
+) -> StreamingResponse:
     settings = get_settings()
+    citations = citations or []
 
     # Build linking summary
     linking_summary = {
@@ -107,13 +126,22 @@ def _json_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         "unresolved": 0,
     }
     verdict_list = []
+    citation_types = {c.raw_text: c.citation_type for c in citations}
     for v in verdicts:
         status = v.mapping_status or "matched"
         linking_summary[status] = linking_summary.get(status, 0) + 1
 
+        # Reconstruct matched_sources from the features JSON blob (written there by
+        # repository.add_verdicts).  If absent (pre-fix rows), fall back to an
+        # empty list so the UI never receives undefined.
+        features_dict = json.loads(v.features or "{}")
+        matched_sources = features_dict.get("matched_sources", [])
+
         verdict_list.append({
             "citation_id": f"v{v.id}",
             "citation_raw": v.citation_raw,
+            "citation_type": citation_types.get(v.citation_raw, "unknown"),
+            "citation_link": features_dict.get("citation_link"),
             # Integrity layer
             "mapping_status": status,
             "mapping_confidence": v.mapping_confidence,
@@ -125,15 +153,22 @@ def _json_response(filename: str, essay, verdicts: list) -> StreamingResponse:
             "reasoning": v.reasoning,
             "triggered_rules": json.loads(v.triggered_rules or "[]"),
             "mismatched_fields": json.loads(v.mismatched_fields or "[]"),
-            "features": json.loads(v.features or "{}"),
+            "features": features_dict,
+            "matched_sources": matched_sources,
             # Override
             "is_overridden": bool(v.is_overridden),
             "override_note": v.override_note,
         })
 
     # Ưu tiên dùng CIS đầy đủ từ pipeline (lưu DB) — fallback về simple estimation
-    total = len(verdicts)
-    verified = sum(1 for v in verdicts if v.label == "verified")
+    in_text_count = sum(
+        1 for c in citations if c.citation_type in {"in_text", "numeric"}
+    )
+    reference_count = sum(1 for c in citations if c.citation_type == "reference_list")
+    total = in_text_count or len(verdicts)
+    academic_verdicts = [v for v in verdicts if v.label != "resource"]
+    academic_total = len(academic_verdicts)
+    verified = sum(1 for v in academic_verdicts if v.label == "verified")
 
     style_profile_dict = None
     cis_dict = None
@@ -150,19 +185,19 @@ def _json_response(filename: str, essay, verdicts: list) -> StreamingResponse:
 
     if cis_dict is None:
         # Fallback: simple estimation
-        cis_score = round((verified / total * 100) if total > 0 else 0, 1)
+        cis_score = round((verified / academic_total * 100) if academic_total > 0 else 0, 1)
         cis_dict = {
             "score": cis_score,
             "components": {
-                "verified_ratio": verified / total if total > 0 else 0,
+                "verified_ratio": verified / academic_total if academic_total > 0 else 0,
                 "metadata_accuracy": 0,
-                "in_text_bib_consistency": linking_summary["matched"] / total if total > 0 else 0,
+                "in_text_bib_consistency": linking_summary["matched"] / academic_total if academic_total > 0 else 0,
                 "format_consistency": 0,
                 "identifier_validity": 0,
             },
             "weights_used": {},
-            "num_citations": total,
-            "num_unresolved": sum(1 for v in verdicts if v.label == "unresolved"),
+            "num_citations": academic_total,
+            "num_unresolved": sum(1 for v in academic_verdicts if v.label == "unresolved"),
             "disclaimer": "",
         }
 
@@ -174,6 +209,7 @@ def _json_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         "filename": essay.filename,
         "num_pages": essay.num_pages,
         "num_citations": total,
+        "num_references": reference_count,
         "essay": {
             "id": essay.id,
             "filename": essay.filename,
@@ -183,6 +219,24 @@ def _json_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         "style_profile": style_profile_dict,
         "linking_summary": linking_summary,
         "verdicts": verdict_list,
+        "references": [
+            {
+                "id": c.id,
+                "raw_text": c.raw_text,
+                "citation_type": c.citation_type,
+                "style": c.style,
+                "authors": json.loads(c.authors or "[]"),
+                "year": c.year,
+                "title": c.title,
+                "venue": c.venue,
+                "doi": c.doi,
+                "url": c.url,
+                "page_num": c.page_num,
+                "confidence": c.confidence,
+            }
+            for c in citations
+            if c.citation_type == "reference_list"
+        ],
         "cis": cis_dict,
         "disclaimer": settings.disclaimer.long,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -199,7 +253,6 @@ def _json_response(filename: str, essay, verdicts: list) -> StreamingResponse:
 
 def _pdf_response(filename: str, essay, verdicts: list) -> StreamingResponse:
     """Generate PDF report with 2-layer analysis."""
-    settings = get_settings()
     buffer = io.BytesIO()
 
     doc = SimpleDocTemplate(
@@ -229,6 +282,20 @@ def _pdf_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         parent=styles['Normal'],
         fontSize=10,
         spaceAfter=6,
+    )
+    table_cell_style = ParagraphStyle(
+        'TableCell',
+        parent=styles['Normal'],
+        fontSize=8,
+        leading=9,
+        spaceAfter=0,
+        wordWrap='LTR',
+    )
+    table_header_style = ParagraphStyle(
+        'TableHeader',
+        parent=table_cell_style,
+        textColor=colors.whitesmoke,
+        fontName='Helvetica-Bold',
     )
 
     elements: list[Any] = []
@@ -289,24 +356,32 @@ def _pdf_response(filename: str, essay, verdicts: list) -> StreamingResponse:
     # Verdict details table
     elements.append(Paragraph("Citation Details", heading_style))
 
-    verdict_data = [["#", "Citation Raw", "Source Status", "Mapping Status", "Confidence"]]
+    verdict_data = [[
+        Paragraph("#", table_header_style),
+        Paragraph("Citation Raw", table_header_style),
+        Paragraph("Source Status", table_header_style),
+        Paragraph("Mapping Status", table_header_style),
+        Paragraph("Confidence", table_header_style),
+    ]]
 
-    for i, v in enumerate(verdicts[:50], 1):  # Limit to 50 citations per page
+    for i, v in enumerate(verdicts, 1):
         source_status = _format_label(v.label)
         mapping_status = _format_mapping_status(v.mapping_status or "matched")
         confidence = f"{v.confidence * 100:.0f}%"
 
-        # Truncate long citation text
-        raw_text = v.citation_raw[:50] + "..." if len(v.citation_raw) > 50 else v.citation_raw
         verdict_data.append([
-            str(i),
-            raw_text,
-            source_status,
-            mapping_status,
-            confidence,
+            Paragraph(str(i), table_cell_style),
+            Paragraph(escape(v.citation_raw), table_cell_style),
+            Paragraph(escape(source_status), table_cell_style),
+            Paragraph(escape(mapping_status), table_cell_style),
+            Paragraph(escape(confidence), table_cell_style),
         ])
 
-    verdict_table = Table(verdict_data, colWidths=[1 * cm, 6 * cm, 3 * cm, 3 * cm, 2 * cm])
+    verdict_table = Table(
+        verdict_data,
+        colWidths=[1 * cm, 6 * cm, 3 * cm, 3 * cm, 2 * cm],
+        repeatRows=1,
+    )
     verdict_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#374151')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -316,22 +391,11 @@ def _pdf_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         ('ALIGN', (1, 1), (1, -1), 'LEFT'),  # Left align citation text
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         # Color coding for source status
         ('BACKGROUND', (2, 1), (2, -1), colors.HexColor('#dcfce7')),  # Default green
     ]))
     elements.append(verdict_table)
-
-    if len(verdicts) > 50:
-        elements.append(Paragraph(
-            f"<i>Showing first 50 of {len(verdicts)} citations. See JSON/CSV export for full list.</i>",
-            body_style
-        ))
-
-    elements.append(Spacer(1, 1 * cm))
-
-    # Disclaimer
-    elements.append(Paragraph("Disclaimer", heading_style))
-    elements.append(Paragraph(settings.disclaimer.long, body_style))
 
     # Build PDF
     doc.build(elements)
@@ -353,6 +417,7 @@ def _format_label(label: str) -> str:
         "metadata_error": "Metadata Error",
         "suspected_hallucination": "Suspected",
         "unresolved": "Unresolved",
+        "resource": "URL Resource",
     }
     return labels.get(label, label.title())
 

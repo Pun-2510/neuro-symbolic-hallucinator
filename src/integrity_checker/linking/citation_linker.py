@@ -24,6 +24,7 @@ References:
 
 from __future__ import annotations
 
+import difflib
 import logging
 import re
 from typing import Optional
@@ -228,6 +229,15 @@ class CitationLinker:
                     method=MappingMethod.AUTHOR_YEAR,
                 )
 
+        # 3b. ORGANIZATION_AS_AUTHOR — web references often cite the publisher
+        # (e.g. "(RevenueCat, 2025)") while the entry stores that name as the
+        # title/venue rather than in the authors list. Match the in-text name
+        # against the whole entry text when the year agrees.
+        if author and year:
+            org = self._try_org_author(cit, occ_id, author, year, bib_citations)
+            if org is not None:
+                return org
+
         # 4. FUZZY — title similarity (if bib entries have title_normalized)
         best = self._try_fuzzy(cit, occ_id, bib_by_doi, bib_citations)
         if best is not None:
@@ -235,6 +245,63 @@ class CitationLinker:
 
         # No match
         return None
+
+    def _try_org_author(
+        self,
+        cit: Citation,
+        occ_id: str,
+        author: str,
+        year: str,
+        bib_citations: list[Citation],
+    ) -> Optional[CitationLink]:
+        """Match an organization in-text name against entry title/venue.
+
+        Only fires when the in-text name is a single token (organizations are
+        usually one word, e.g. "RevenueCat", "Forbes") and the entry year
+        agrees, to avoid matching ordinary surnames that merely appear in a
+        title.
+        """
+        token = author.strip().lower()
+        if not token or len(token) < 4 or " " in token:
+            return None
+
+        for bib_idx, bib in enumerate(bib_citations):
+            if (bib.year or "") != year:
+                continue
+            haystack = " ".join(
+                str(part or "")
+                for part in (bib.title, bib.venue, bib.raw_text)
+            ).lower()
+            if self._org_token_in_haystack(token, haystack):
+                return CitationLink(
+                    occurrence_id=occ_id,
+                    reference_id=bib.reference_id or f"ref-{bib_idx:04d}",
+                    status=CitationMappingStatus.MATCHED,
+                    confidence=self.fuzzy_confidence,
+                    method=MappingMethod.FUZZY,
+                )
+        return None
+
+    @staticmethod
+    def _org_token_in_haystack(token: str, haystack: str) -> bool:
+        """True if an organization name appears in an entry.
+
+        Handles exact words ("revenuecat") and slightly mangled concatenations
+        ("sportsfitnessapps" vs "sport fitness apps"). Each alphanumeric run of
+        the haystack is compared with a high similarity threshold so ordinary
+        surnames appearing in a title do not match.
+        """
+        if re.search(rf"\b{re.escape(token)}\b", haystack):
+            return True
+        compact_token = re.sub(r"[^a-z0-9]", "", token)
+        for word in re.split(r"[^a-z0-9]+", haystack):
+            if not word:
+                continue
+            if len(word) >= 4 and difflib.SequenceMatcher(
+                None, compact_token, word
+            ).ratio() >= 0.9:
+                return True
+        return False
 
     def _try_fuzzy(
         self,

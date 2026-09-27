@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { api, type AnalysisReport, type Verdict } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { MappingStatusBadge } from '@/components/MappingStatusBadge';
+import { getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
 import {
   ArrowLeft,
   Loader2,
@@ -14,6 +15,7 @@ import {
   BookOpen,
   CheckCircle,
   XCircle,
+  Link2,
 } from 'lucide-react';
 
 /* ============================================================
@@ -37,6 +39,42 @@ interface InlineCitation {
   mapping_status: string;
   page: number;
   line: string;
+  // NEW v1.5: surrounding sentence/paragraph context from the PDF
+  // (extracted by the pipeline). Optional — older reports may have null.
+  context?: string;
+}
+
+// Render a context string with the citation marker highlighted (<mark>).
+// Falls back to the raw citation if no match is found.
+function ContextWithHighlight({
+  context,
+  marker,
+}: {
+  context: string;
+  marker: string;
+}) {
+  if (!context) return null;
+  const lowerContext = context.toLowerCase();
+  const lowerMarker = marker.toLowerCase();
+  const idx = lowerContext.indexOf(lowerMarker);
+  if (idx === -1) {
+    // Marker not found verbatim — show the whole context as-is.
+    return <>{context}</>;
+  }
+  // Split the marker safely: for numeric markers like "[1]" the literal chars
+  // may differ from "[" "1" "]", so we use the original marker string.
+  const before = context.slice(0, idx);
+  const match = context.slice(idx, idx + marker.length);
+  const after = context.slice(idx + marker.length);
+  return (
+    <>
+      {before}
+      <mark className="bg-yellow-200 dark:bg-yellow-900/60 text-inherit rounded px-0.5">
+        {match}
+      </mark>
+      {after}
+    </>
+  );
 }
 
 // Build inline citations from verdict data
@@ -44,10 +82,11 @@ function buildInlineCitations(verdicts: Verdict[]): InlineCitation[] {
   return verdicts.map((v) => ({
     id: v.citation_id,
     raw: v.citation_raw,
-    label: v.label,
+    label: isUrlResource(v) ? 'resource' : v.label,
     mapping_status: v.mapping_status,
     page: 1, // Default page, would need from actual extraction
     line: v.citation_raw,
+    context: v.context,
   }));
 }
 
@@ -79,6 +118,13 @@ function getInlineStatusBadge(label: string): {
         text: 'text-red-700 dark:text-red-300',
         label: 'Suspected',
         icon: <XCircle className="h-3 w-3" />,
+      };
+    case 'resource':
+      return {
+        bg: 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300',
+        text: 'text-violet-700 dark:text-violet-300',
+        label: 'URL Resource',
+        icon: <Link2 className="h-3 w-3" />,
       };
     default:
       return {
@@ -191,16 +237,14 @@ function CitationPopup({
           {verdict && (
             <>
               {/* Reasoning */}
-              {verdict.reasoning && (
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                    Reasoning
-                  </label>
-                  <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
-                    {verdict.reasoning}
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  What we found
+                </label>
+                <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                  {getVerdictExplanation(verdict)}
+                </p>
+              </div>
 
               {/* Confidence */}
               <div>
@@ -302,10 +346,47 @@ export function DocumentInspectorPage() {
       setError('Invalid essay ID');
       return;
     }
-    api
-      .getEssay(numericId)
-      .then(setReport)
-      .catch(() => setError('Failed to load document. Please try again.'));
+
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    const tryFetch = async () => {
+      try {
+        const data = await api.getEssay(numericId);
+        if (cancelled) return;
+        if (data) {
+          setReport(data);
+          setError(null);
+          if (pollTimer) clearInterval(pollTimer);
+        } else {
+          const status = await api.getEssayStatus(numericId);
+          if (cancelled) return;
+          if (status.status === 'failed') {
+            setError(status.error ?? 'Pipeline failed.');
+            if (pollTimer) clearInterval(pollTimer);
+            return;
+          }
+          if (status.status === 'completed') {
+            const retry = await api.getEssay(numericId);
+            if (retry) {
+              setReport(retry);
+              setError(null);
+              if (pollTimer) clearInterval(pollTimer);
+              return;
+            }
+          }
+          if (!pollTimer) pollTimer = setInterval(tryFetch, 2000);
+        }
+      } catch {
+        if (!cancelled) setError('Failed to load document. Please try again.');
+      }
+    };
+
+    tryFetch();
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearInterval(pollTimer);
+    };
   }, [id]);
 
   // Build inline citations
@@ -482,16 +563,30 @@ export function DocumentInspectorPage() {
                     <span className="absolute -left-8 text-xs text-slate-400 dark:text-slate-500">
                       p{citation.page}
                     </span>
-                    {/* Citation with inline marker */}
+                    {/* Citation with surrounding sentence/paragraph context */}
                     <p className="pl-6">
-                      Recent studies in machine learning have explored various
-                      approaches to natural language processing{' '}
-                      <InlineCitationMarker
-                        citation={citation}
-                        onClick={() => setSelectedCitation(citation)}
-                      />{' '}
-                      demonstrating significant improvements in performance
-                      benchmarks.
+                      {citation.context ? (
+                        <>
+                          <ContextWithHighlight
+                            context={citation.context}
+                            marker={citation.raw}
+                          />{' '}
+                          <InlineCitationMarker
+                            citation={citation}
+                            onClick={() => setSelectedCitation(citation)}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-slate-500 dark:text-slate-400 italic">
+                            [No surrounding text extracted]
+                          </span>{' '}
+                          <InlineCitationMarker
+                            citation={citation}
+                            onClick={() => setSelectedCitation(citation)}
+                          />
+                        </>
+                      )}
                     </p>
                   </div>
                 ))

@@ -128,10 +128,130 @@ class Citation:
         return " ".join(parts)
 
     @classmethod
-    def from_raw(cls, raw: str) -> "Citation":
-        """Constructor tiện dụng — trích DOI/URL/year từ raw text."""
+    def from_raw(cls, raw: str, extract_title: bool = True) -> "Citation":
+        """Constructor tiện dụng — trích DOI/URL/year/title từ raw text.
+
+        Args:
+            raw: Raw citation text (có thể là short form như "Smith et al. (2020)"
+                 hoặc formatted như "Smith et al. (2020). Paper Title. Journal.")
+            extract_title: Nếu True, thử trích title từ formatted citation.
+                          Title thường nằm sau year và trước venue (.,;:).
+        """
+        import re
         c = cls(raw_text=raw.strip())
         c.doi = _DOI_RE.search(raw).group(0) if _DOI_RE.search(raw) else None
         c.url = _URL_RE.search(raw).group(0) if _URL_RE.search(raw) else None
         c.year = parse_year_safe(raw)
+
+        # NEW v1.5: Extract title from formatted citations
+        # Pattern: "Author et al. (Year). Title. Venue" hoặc "Author (Year). Title"
+        if extract_title:
+            title = cls._extract_title_from_citation(raw)
+            if title:
+                c.title = title
+
         return c
+
+    @staticmethod
+    def _extract_title_from_citation(text: str) -> Optional[str]:
+        """Trích title từ formatted citation.
+
+        Handles patterns:
+        - "Smith et al. (2020). Title Here. Venue."
+        - "Smith (2020). Title Here."
+        - "Smith et al. (2020): Title Here. Venue"
+
+        Returns None nếu không extract được.
+        """
+        import re
+
+        # Pattern: year followed by title (between period/colon and next period or venue indicator)
+        # Common patterns: "et al. (2020). Title." or "(2020). Title."
+        year_pattern = r'\((\d{4})\)|(\d{4})'
+
+        # Find position after year
+        match = re.search(year_pattern, text)
+        if not match:
+            return None
+
+        # Get position after year (after closing paren if exists)
+        year_end = match.end()
+        remaining = text[year_end:]
+
+        # Skip common separators: ". ", ": ", " - "
+        separator_match = re.match(r'[\.\:\-]+\s*', remaining)
+        if separator_match:
+            after_separator = remaining[separator_match.end():]
+        else:
+            after_separator = remaining.lstrip()
+
+        if not after_separator:
+            return None
+
+        # Title ends at:
+        # 1. Period followed by uppercase (venue) - "Title. Journal Name"
+        # 2. Period followed by lowercase (continuation) - "Title. more text"
+        # 3. End of string
+
+        # Strategy: Find the title (usually 3-30 words, starts with uppercase)
+        # Stop at venue indicators or long text
+
+        # Common venue patterns
+        venue_indicators = [
+            r'\.\s+[A-Z][a-z]+\s+(and|&)',  # "Journal and Conference"
+            r'\.\s+Proceedings',  # "Proceedings of..."
+            r'\.\s+arXiv',  # "arXiv preprint"
+            r'\.\s+https?://',  # URL follows
+            r'\.\s+\d+\s*[-–]\s*\d+$',  # Page numbers at end
+            r'\.\s*\(\d+\)$',  # Volume number
+        ]
+
+        # Try to find title end
+        title_end = len(after_separator)
+
+        # Common venue patterns (more comprehensive)
+        for pattern in venue_indicators:
+            m = re.search(pattern, after_separator, re.IGNORECASE)
+            if m:
+                # Title ends before this pattern
+                potential_end = m.start()
+                # Make sure we're not cutting too short (at least 3 words)
+                potential_title = after_separator[:potential_end].strip()
+                if len(potential_title.split()) >= 3:
+                    title_end = min(title_end, potential_end)
+                    break
+
+        # Additional venue detection: common abbreviation patterns at end
+        # e.g., "ICLR.", "NeurIPS.", "ACL.", "EMNLP.", "TACL."
+        venue_abbrevs = r'\.(ICLR|NeurIPS|ACL|EMNLP|NAACL|COLING|AAAI|IJCAI|CVPR|ICCV|ECCV|NaACL|CoNLL|CoNLL|LREC|KDD|WWW|SIGIR|CIKM|EMNLP|ACL|AAAI)\s*$'
+        m = re.search(venue_abbrevs, after_separator, re.IGNORECASE)
+        if m:
+            title_end = min(title_end, m.start() + 1)  # Keep period before venue
+
+        # Also check for arXiv pattern
+        arxiv_match = re.search(r'\. arXiv[:\.]', after_separator, re.IGNORECASE)
+        if arxiv_match:
+            title_end = min(title_end, arxiv_match.start())
+
+        candidate_title = after_separator[:title_end].strip().rstrip('.')
+
+        # Clean up: remove trailing punctuation and venue
+        candidate_title = re.sub(r'[\.\:]+$', '', candidate_title).strip()
+
+        # Remove venue at end if included
+        # Pattern: title ends with "ICLR", "NeurIPS", "EMNLP", etc.
+        candidate_title = re.sub(r'\s+(ICLR|NeurIPS|ACL|EMNLP|NAACL|AAAI|IJCAI|CVPR|ECCV|TACL|arxiv)\s*$', '', candidate_title, flags=re.IGNORECASE)
+        candidate_title = re.sub(r'\s+arXiv preprint$', '', candidate_title, flags=re.IGNORECASE)
+        candidate_title = candidate_title.rstrip('.,')
+
+        # Validate: title should be reasonable length (10-200 chars) and start with uppercase
+        if 10 <= len(candidate_title) <= 200 and candidate_title[0].isupper():
+            # Additional check: title shouldn't contain common non-title patterns
+            # like URLs, email addresses, or very long strings
+            if not re.search(r'https?://|@\w+\.\w+', candidate_title):
+                # Title should have at least 2 words
+                words = candidate_title.split()
+                if len(words) >= 2:
+                    return candidate_title
+
+        return None

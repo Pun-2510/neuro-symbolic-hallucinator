@@ -122,20 +122,45 @@ def download_acl_anthology(output_path: Path) -> Path:
     import urllib.request
 
     url = "https://aclanthology.org/anthology.bib"
+    # The full anthology is ~70 MB.  Stream it in chunks and validate the
+    # result, because an interrupted download silently produced a truncated
+    # file in the past (the last entry was missing its closing brace).
+    timeout = 300
+    chunk_size = 1 << 20
 
     print(f"Downloading ACL Anthology from {url}...")
     try:
-        with urllib.request.urlopen(url, timeout=60) as response:
-            content = response.read().decode('utf-8')
-
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(content)
+        total = 0
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            with open(output_path, 'wb') as f:
+                while True:
+                    chunk = response.read(chunk_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    total += len(chunk)
 
-        print(f"Downloaded {len(content)} bytes to {output_path}")
+        if total == 0:
+            raise IOError("downloaded 0 bytes")
+
+        # Sanity check: a complete BibTeX file must end with a closing brace.
+        with open(output_path, 'rb') as f:
+            f.seek(max(0, total - 64))
+            tail = f.read().decode('utf-8', errors='replace')
+        if not tail.rstrip().endswith('}'):
+            raise IOError(
+                "downloaded file looks truncated (does not end with '}'); "
+                "refusing to keep a partial anthology"
+            )
+
+        print(f"Downloaded {total} bytes to {output_path}")
         return output_path
     except Exception as e:
         print(f"Error downloading: {e}")
+        # Never leave a partial file behind in place of a good one.
+        if output_path.exists():
+            output_path.unlink()
         raise
 
 

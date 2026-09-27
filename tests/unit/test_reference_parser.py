@@ -124,6 +124,60 @@ class TestParseAPALike:
         assert cits[0].title == "Dutch study"
         assert cits[1].title == "Regular study"
 
+    def test_apa_with_month_name(self):
+        """Regression: APA entries with a month after the year used to fail."""
+        doc = _doc_with_section(
+            "Likhil, G. (2025, August). Fitness app market size. "
+            "Polaris Market Research. https://www.polarismarketresearch.com/x"
+        )
+        cits = ReferenceListParser().parse_reference_section(doc)
+        assert len(cits) == 1
+        assert cits[0].year == "2025"
+        assert cits[0].year_suffix is None
+        assert [a.last_name for a in cits[0].authors] == ["likhil"]
+
+    def test_apa_with_month_and_day(self):
+        """Regression: '(2022, March 28)' must still parse the year 2022."""
+        doc = _doc_with_section(
+            "Adigozel, O., & Wilson, K. (2022, March 28). Delivering on the "
+            "promise. BCG Global. https://www.bcg.com/x"
+        )
+        cits = ReferenceListParser().parse_reference_section(doc)
+        assert len(cits) == 1
+        assert cits[0].year == "2022"
+        assert [a.last_name for a in cits[0].authors] == ["adigozel", "wilson"]
+
+
+class TestSplitWebReferences:
+    """Regression: web APA entries end with a URL, not a doi.org link."""
+
+    def test_url_boundary_splits_entries(self):
+        doc = _doc_with_section(
+            "Likhil, G. (2025, August). Fitness market. Polaris. "
+            "https://www.polarismarketresearch.com/x "
+            "Looyestyn, J., & Maher, C. (2017). Does gamification work? "
+            "PLOS ONE. https://doi.org/10.1371/journal.pone.0173403"
+        )
+        cits = ReferenceListParser().parse_reference_section(doc)
+        assert len(cits) == 2
+        assert cits[0].year == "2025"
+        assert cits[1].year == "2017"
+
+    def test_running_headers_and_page_numbers_are_dropped(self):
+        doc = _doc_with_section(
+            "AI WELLNESS PLATFORM\n43\n"
+            "Likhil, G. (2025, August). Fitness market. Polaris. "
+            "https://www.polarismarketresearch.com/x\n"
+            "AI WELLNESS PLATFORM\n44\n"
+            "Wang, R., & Gillinov, M. (2017). Accuracy of monitors. "
+            "JAMA Cardiology. https://doi.org/10.1001/jamacardio.2016.3340"
+        )
+        cits = ReferenceListParser().parse_reference_section(doc)
+        assert len(cits) == 2
+        assert [a.last_name for a in cits[0].authors] == ["likhil"]
+        assert cits[0].year == "2025"
+        assert [a.last_name for a in cits[1].authors] == ["wang", "gillinov"]
+
 
 class TestParseIEEELike:
     def test_basic_ieee(self):

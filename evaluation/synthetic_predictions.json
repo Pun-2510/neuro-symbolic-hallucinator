@@ -1,0 +1,1165 @@
+{
+  "predictions": {
+    "eval_0001": "UNRESOLVED",
+    "eval_0002": "METADATA_ERROR",
+    "eval_0003": "METADATA_ERROR",
+    "eval_0004": "METADATA_ERROR",
+    "eval_0005": "HALLUCINATED",
+    "eval_0006": "HALLUCINATED",
+    "eval_0007": "HALLUCINATED",
+    "eval_0008": "HALLUCINATED",
+    "eval_0009": "UNRESOLVED",
+    "eval_0010": "HALLUCINATED",
+    "eval_0011": "HALLUCINATED",
+    "eval_0012": "METADATA_ERROR",
+    "eval_0013": "REAL",
+    "eval_0014": "METADATA_ERROR",
+    "eval_0015": "HALLUCINATED",
+    "eval_0016": "METADATA_ERROR",
+    "eval_0017": "HALLUCINATED",
+    "eval_0018": "METADATA_ERROR",
+    "eval_0019": "METADATA_ERROR",
+    "eval_0020": "REAL",
+    "eval_0021": "METADATA_ERROR",
+    "eval_0022": "UNRESOLVED",
+    "eval_0023": "HALLUCINATED",
+    "eval_0024": "UNRESOLVED",
+    "eval_0025": "UNRESOLVED",
+    "eval_0026": "HALLUCINATED",
+    "eval_0027": "METADATA_ERROR",
+    "eval_0028": "METADATA_ERROR",
+    "eval_0029": "METADATA_ERROR",
+    "eval_0030": "REAL",
+    "eval_0031": "UNRESOLVED",
+    "eval_0032": "UNRESOLVED",
+    "eval_0033": "UNRESOLVED",
+    "eval_0034": "METADATA_ERROR",
+    "eval_0035": "HALLUCINATED",
+    "eval_0036": "METADATA_ERROR",
+    "eval_0037": "HALLUCINATED",
+    "eval_0038": "METADATA_ERROR",
+    "eval_0039": "UNRESOLVED",
+    "eval_0040": "METADATA_ERROR",
+    "eval_0041": "METADATA_ERROR",
+    "eval_0042": "REAL",
+    "eval_0043": "HALLUCINATED",
+    "eval_0044": "METADATA_ERROR",
+    "eval_0045": "UNRESOLVED",
+    "eval_0046": "HALLUCINATED",
+    "eval_0047": "HALLUCINATED",
+    "eval_0048": "REAL",
+    "eval_0049": "METADATA_ERROR",
+    "eval_0050": "HALLUCINATED",
+    "eval_0051": "METADATA_ERROR",
+    "eval_0052": "METADATA_ERROR",
+    "eval_0053": "HALLUCINATED",
+    "eval_0054": "UNRESOLVED",
+    "eval_0055": "METADATA_ERROR",
+    "eval_0056": "REAL",
+    "eval_0057": "METADATA_ERROR",
+    "eval_0058": "METADATA_ERROR",
+    "eval_0059": "REAL",
+    "eval_0060": "HALLUCINATED",
+    "eval_0061": "METADATA_ERROR",
+    "eval_0062": "HALLUCINATED",
+    "eval_0063": "METADATA_ERROR",
+    "eval_0064": "UNRESOLVED",
+    "eval_0065": "METADATA_ERROR",
+    "eval_0066": "METADATA_ERROR",
+    "eval_0067": "UNRESOLVED",
+    "eval_0068": "UNRESOLVED",
+    "eval_0069": "UNRESOLVED",
+    "eval_0070": "HALLUCINATED",
+    "eval_0071": "HALLUCINATED",
+    "eval_0072": "HALLUCINATED",
+    "eval_0073": "METADATA_ERROR",
+    "eval_0074": "METADATA_ERROR",
+    "eval_0075": "REAL",
+    "eval_0076": "UNRESOLVED",
+    "eval_0077": "HALLUCINATED",
+    "eval_0078": "UNRESOLVED",
+    "eval_0079": "HALLUCINATED",
+    "eval_0080": "METADATA_ERROR",
+    "eval_0081": "METADATA_ERROR",
+    "eval_0082": "UNRESOLVED",
+    "eval_0083": "METADATA_ERROR",
+    "eval_0084": "UNRESOLVED",
+    "eval_0085": "UNRESOLVED",
+    "eval_0086": "HALLUCINATED",
+    "eval_0087": "UNRESOLVED",
+    "eval_0088": "METADATA_ERROR",
+    "eval_0089": "REAL",
+    "eval_0090": "REAL",
+    "eval_0091": "METADATA_ERROR",
+    "eval_0092": "HALLUCINATED",
+    "eval_0093": "HALLUCINATED",
+    "eval_0094": "REAL",
+    "eval_0095": "METADATA_ERROR",
+    "eval_0096": "REAL",
+    "eval_0097": "HALLUCINATED",
+    "eval_0098": "UNRESOLVED",
+    "eval_0099": "HALLUCINATED",
+    "eval_0100": "METADATA_ERROR"
+  },
+  "confidences": {
+    "eval_0001": 0.3,
+    "eval_0002": 0.6,
+    "eval_0003": 0.6,
+    "eval_0004": 0.6,
+    "eval_0005": 0.9,
+    "eval_0006": 0.9,
+    "eval_0007": 0.9,
+    "eval_0008": 0.9,
+    "eval_0009": 0.3,
+    "eval_0010": 0.9,
+    "eval_0011": 0.9,
+    "eval_0012": 0.6,
+    "eval_0013": 0.9,
+    "eval_0014": 0.6,
+    "eval_0015": 0.9,
+    "eval_0016": 0.6,
+    "eval_0017": 0.9,
+    "eval_0018": 0.6,
+    "eval_0019": 0.6,
+    "eval_0020": 0.9,
+    "eval_0021": 0.6,
+    "eval_0022": 0.3,
+    "eval_0023": 0.9,
+    "eval_0024": 0.3,
+    "eval_0025": 0.3,
+    "eval_0026": 0.9,
+    "eval_0027": 0.6,
+    "eval_0028": 0.6,
+    "eval_0029": 0.6,
+    "eval_0030": 0.9,
+    "eval_0031": 0.3,
+    "eval_0032": 0.3,
+    "eval_0033": 0.3,
+    "eval_0034": 0.6,
+    "eval_0035": 0.9,
+    "eval_0036": 0.6,
+    "eval_0037": 0.9,
+    "eval_0038": 0.6,
+    "eval_0039": 0.3,
+    "eval_0040": 0.6,
+    "eval_0041": 0.6,
+    "eval_0042": 0.9,
+    "eval_0043": 0.9,
+    "eval_0044": 0.6,
+    "eval_0045": 0.3,
+    "eval_0046": 0.9,
+    "eval_0047": 0.9,
+    "eval_0048": 0.9,
+    "eval_0049": 0.6,
+    "eval_0050": 0.9,
+    "eval_0051": 0.6,
+    "eval_0052": 0.6,
+    "eval_0053": 0.9,
+    "eval_0054": 0.3,
+    "eval_0055": 0.6,
+    "eval_0056": 0.9,
+    "eval_0057": 0.6,
+    "eval_0058": 0.6,
+    "eval_0059": 0.9,
+    "eval_0060": 0.9,
+    "eval_0061": 0.6,
+    "eval_0062": 0.9,
+    "eval_0063": 0.6,
+    "eval_0064": 0.3,
+    "eval_0065": 0.6,
+    "eval_0066": 0.6,
+    "eval_0067": 0.3,
+    "eval_0068": 0.3,
+    "eval_0069": 0.3,
+    "eval_0070": 0.9,
+    "eval_0071": 0.9,
+    "eval_0072": 0.9,
+    "eval_0073": 0.6,
+    "eval_0074": 0.6,
+    "eval_0075": 0.9,
+    "eval_0076": 0.3,
+    "eval_0077": 0.9,
+    "eval_0078": 0.3,
+    "eval_0079": 0.9,
+    "eval_0080": 0.6,
+    "eval_0081": 0.6,
+    "eval_0082": 0.3,
+    "eval_0083": 0.6,
+    "eval_0084": 0.3,
+    "eval_0085": 0.3,
+    "eval_0086": 0.9,
+    "eval_0087": 0.3,
+    "eval_0088": 0.6,
+    "eval_0089": 0.9,
+    "eval_0090": 0.9,
+    "eval_0091": 0.6,
+    "eval_0092": 0.9,
+    "eval_0093": 0.9,
+    "eval_0094": 0.9,
+    "eval_0095": 0.6,
+    "eval_0096": 0.9,
+    "eval_0097": 0.9,
+    "eval_0098": 0.3,
+    "eval_0099": 0.9,
+    "eval_0100": 0.6
+  },
+  "metadata": {
+    "eval_0001": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0002": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0003": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0004": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0005": {
+      "triggered_rules": [
+        "Fake pattern: \\bFictional\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0006": {
+      "triggered_rules": [
+        "Future year 2027"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0007": {
+      "triggered_rules": [
+        "Future year 2087"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0008": {
+      "triggered_rules": [
+        "Fake pattern: \\bCounterfeit\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0009": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0010": {
+      "triggered_rules": [
+        "Future year 2078"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0011": {
+      "triggered_rules": [
+        "Future year 2032"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0012": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0013": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0014": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0015": {
+      "triggered_rules": [
+        "Fake pattern: \\bPhantom\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0016": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0017": {
+      "triggered_rules": [
+        "Fake pattern: \\bFabricated\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0018": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0019": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0020": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0021": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0022": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0023": {
+      "triggered_rules": [
+        "Future year 2032"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0024": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0025": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0026": {
+      "triggered_rules": [
+        "Fake pattern: \\bHypothetical\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0027": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0028": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0029": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0030": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0031": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0032": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0033": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0034": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0035": {
+      "triggered_rules": [
+        "Fake pattern: \\bMysteryPaper\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0036": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0037": {
+      "triggered_rules": [
+        "Fake pattern: \\bCounterfeit\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0038": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0039": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0040": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0041": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0042": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0043": {
+      "triggered_rules": [
+        "Fake pattern: \\bSynthetic\\s+Scientist\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0044": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0045": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0046": {
+      "triggered_rules": [
+        "Fake pattern: \\bFictional\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0047": {
+      "triggered_rules": [
+        "Fake pattern: \\bSynthetic\\s+Scientist\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0048": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0049": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0050": {
+      "triggered_rules": [
+        "Future year 2031"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0051": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0052": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0053": {
+      "triggered_rules": [
+        "Future year 2066"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0054": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0055": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0056": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0057": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0058": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0059": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0060": {
+      "triggered_rules": [
+        "Future year 2059"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0061": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0062": {
+      "triggered_rules": [
+        "Fake pattern: \\bImaginary\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0063": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0064": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0065": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0066": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0067": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0068": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0069": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0070": {
+      "triggered_rules": [
+        "Fake pattern: \\bFictional\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0071": {
+      "triggered_rules": [
+        "Future year 2031"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0072": {
+      "triggered_rules": [
+        "Fake pattern: \\bSynthetic\\s+Scientist\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0073": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0074": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0075": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0076": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0077": {
+      "triggered_rules": [
+        "Future year 2032"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0078": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0079": {
+      "triggered_rules": [
+        "Future year 2076"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0080": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0081": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0082": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0083": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0084": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0085": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0086": {
+      "triggered_rules": [
+        "Fake pattern: \\bImagined\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0087": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0088": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0089": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0090": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0091": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0092": {
+      "triggered_rules": [
+        "Fake pattern: \\bInvented\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0093": {
+      "triggered_rules": [
+        "Fake pattern: \\bMysteryPaper\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0094": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0095": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0096": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0097": {
+      "triggered_rules": [
+        "Future year 2032"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0098": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0099": {
+      "triggered_rules": [
+        "Fake pattern: \\bCounterfeit\\b"
+      ],
+      "mode": "pattern"
+    },
+    "eval_0100": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    }
+  },
+  "ground_truth": {
+    "eval_0001": "REAL",
+    "eval_0002": "REAL",
+    "eval_0003": "REAL",
+    "eval_0004": "REAL",
+    "eval_0005": "HALLUCINATED",
+    "eval_0006": "METADATA_ERROR",
+    "eval_0007": "HALLUCINATED",
+    "eval_0008": "HALLUCINATED",
+    "eval_0009": "HALLUCINATED",
+    "eval_0010": "HALLUCINATED",
+    "eval_0011": "METADATA_ERROR",
+    "eval_0012": "METADATA_ERROR",
+    "eval_0013": "HALLUCINATED",
+    "eval_0014": "METADATA_ERROR",
+    "eval_0015": "HALLUCINATED",
+    "eval_0016": "METADATA_ERROR",
+    "eval_0017": "HALLUCINATED",
+    "eval_0018": "REAL",
+    "eval_0019": "REAL",
+    "eval_0020": "REAL",
+    "eval_0021": "REAL",
+    "eval_0022": "METADATA_ERROR",
+    "eval_0023": "METADATA_ERROR",
+    "eval_0024": "REAL",
+    "eval_0025": "REAL",
+    "eval_0026": "HALLUCINATED",
+    "eval_0027": "METADATA_ERROR",
+    "eval_0028": "METADATA_ERROR",
+    "eval_0029": "REAL",
+    "eval_0030": "REAL",
+    "eval_0031": "REAL",
+    "eval_0032": "REAL",
+    "eval_0033": "REAL",
+    "eval_0034": "METADATA_ERROR",
+    "eval_0035": "HALLUCINATED",
+    "eval_0036": "METADATA_ERROR",
+    "eval_0037": "HALLUCINATED",
+    "eval_0038": "REAL",
+    "eval_0039": "REAL",
+    "eval_0040": "REAL",
+    "eval_0041": "REAL",
+    "eval_0042": "REAL",
+    "eval_0043": "HALLUCINATED",
+    "eval_0044": "METADATA_ERROR",
+    "eval_0045": "REAL",
+    "eval_0046": "HALLUCINATED",
+    "eval_0047": "HALLUCINATED",
+    "eval_0048": "REAL",
+    "eval_0049": "REAL",
+    "eval_0050": "METADATA_ERROR",
+    "eval_0051": "REAL",
+    "eval_0052": "METADATA_ERROR",
+    "eval_0053": "HALLUCINATED",
+    "eval_0054": "REAL",
+    "eval_0055": "METADATA_ERROR",
+    "eval_0056": "METADATA_ERROR",
+    "eval_0057": "REAL",
+    "eval_0058": "REAL",
+    "eval_0059": "REAL",
+    "eval_0060": "HALLUCINATED",
+    "eval_0061": "REAL",
+    "eval_0062": "HALLUCINATED",
+    "eval_0063": "REAL",
+    "eval_0064": "REAL",
+    "eval_0065": "METADATA_ERROR",
+    "eval_0066": "REAL",
+    "eval_0067": "REAL",
+    "eval_0068": "REAL",
+    "eval_0069": "REAL",
+    "eval_0070": "HALLUCINATED",
+    "eval_0071": "METADATA_ERROR",
+    "eval_0072": "HALLUCINATED",
+    "eval_0073": "REAL",
+    "eval_0074": "HALLUCINATED",
+    "eval_0075": "REAL",
+    "eval_0076": "REAL",
+    "eval_0077": "METADATA_ERROR",
+    "eval_0078": "REAL",
+    "eval_0079": "HALLUCINATED",
+    "eval_0080": "METADATA_ERROR",
+    "eval_0081": "REAL",
+    "eval_0082": "REAL",
+    "eval_0083": "METADATA_ERROR",
+    "eval_0084": "REAL",
+    "eval_0085": "REAL",
+    "eval_0086": "HALLUCINATED",
+    "eval_0087": "REAL",
+    "eval_0088": "REAL",
+    "eval_0089": "REAL",
+    "eval_0090": "REAL",
+    "eval_0091": "REAL",
+    "eval_0092": "HALLUCINATED",
+    "eval_0093": "HALLUCINATED",
+    "eval_0094": "REAL",
+    "eval_0095": "METADATA_ERROR",
+    "eval_0096": "REAL",
+    "eval_0097": "METADATA_ERROR",
+    "eval_0098": "REAL",
+    "eval_0099": "HALLUCINATED",
+    "eval_0100": "REAL"
+  },
+  "mode": "Pattern-based (synthetic)",
+  "timestamp": "2026-09-24 21:25:00"
+}

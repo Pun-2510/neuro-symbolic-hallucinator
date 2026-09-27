@@ -1,0 +1,2521 @@
+{
+  "predictions": {
+    "eval_0001": "UNRESOLVED",
+    "eval_0002": "METADATA_ERROR",
+    "eval_0003": "METADATA_ERROR",
+    "eval_0004": "METADATA_ERROR",
+    "eval_0005": "METADATA_ERROR",
+    "eval_0006": "METADATA_ERROR",
+    "eval_0007": "METADATA_ERROR",
+    "eval_0008": "METADATA_ERROR",
+    "eval_0009": "UNRESOLVED",
+    "eval_0010": "METADATA_ERROR",
+    "eval_0011": "METADATA_ERROR",
+    "eval_0012": "METADATA_ERROR",
+    "eval_0013": "REAL",
+    "eval_0014": "METADATA_ERROR",
+    "eval_0015": "UNRESOLVED",
+    "eval_0016": "METADATA_ERROR",
+    "eval_0017": "UNRESOLVED",
+    "eval_0018": "METADATA_ERROR",
+    "eval_0019": "METADATA_ERROR",
+    "eval_0020": "REAL",
+    "eval_0021": "METADATA_ERROR",
+    "eval_0022": "UNRESOLVED",
+    "eval_0023": "METADATA_ERROR",
+    "eval_0024": "UNRESOLVED",
+    "eval_0025": "UNRESOLVED",
+    "eval_0026": "METADATA_ERROR",
+    "eval_0027": "METADATA_ERROR",
+    "eval_0028": "METADATA_ERROR",
+    "eval_0029": "METADATA_ERROR",
+    "eval_0030": "REAL",
+    "eval_0031": "UNRESOLVED",
+    "eval_0032": "UNRESOLVED",
+    "eval_0033": "UNRESOLVED",
+    "eval_0034": "METADATA_ERROR",
+    "eval_0035": "UNRESOLVED",
+    "eval_0036": "METADATA_ERROR",
+    "eval_0037": "METADATA_ERROR",
+    "eval_0038": "METADATA_ERROR",
+    "eval_0039": "UNRESOLVED",
+    "eval_0040": "METADATA_ERROR",
+    "eval_0041": "METADATA_ERROR",
+    "eval_0042": "REAL",
+    "eval_0043": "METADATA_ERROR",
+    "eval_0044": "METADATA_ERROR",
+    "eval_0045": "UNRESOLVED",
+    "eval_0046": "METADATA_ERROR",
+    "eval_0047": "METADATA_ERROR",
+    "eval_0048": "REAL",
+    "eval_0049": "METADATA_ERROR",
+    "eval_0050": "METADATA_ERROR",
+    "eval_0051": "METADATA_ERROR",
+    "eval_0052": "METADATA_ERROR",
+    "eval_0053": "METADATA_ERROR",
+    "eval_0054": "UNRESOLVED",
+    "eval_0055": "METADATA_ERROR",
+    "eval_0056": "REAL",
+    "eval_0057": "METADATA_ERROR",
+    "eval_0058": "METADATA_ERROR",
+    "eval_0059": "REAL",
+    "eval_0060": "METADATA_ERROR",
+    "eval_0061": "METADATA_ERROR",
+    "eval_0062": "METADATA_ERROR",
+    "eval_0063": "METADATA_ERROR",
+    "eval_0064": "UNRESOLVED",
+    "eval_0065": "METADATA_ERROR",
+    "eval_0066": "METADATA_ERROR",
+    "eval_0067": "UNRESOLVED",
+    "eval_0068": "UNRESOLVED",
+    "eval_0069": "UNRESOLVED",
+    "eval_0070": "METADATA_ERROR",
+    "eval_0071": "METADATA_ERROR",
+    "eval_0072": "METADATA_ERROR",
+    "eval_0073": "METADATA_ERROR",
+    "eval_0074": "METADATA_ERROR",
+    "eval_0075": "REAL",
+    "eval_0076": "UNRESOLVED",
+    "eval_0077": "METADATA_ERROR",
+    "eval_0078": "UNRESOLVED",
+    "eval_0079": "METADATA_ERROR",
+    "eval_0080": "METADATA_ERROR",
+    "eval_0081": "METADATA_ERROR",
+    "eval_0082": "UNRESOLVED",
+    "eval_0083": "METADATA_ERROR",
+    "eval_0084": "UNRESOLVED",
+    "eval_0085": "UNRESOLVED",
+    "eval_0086": "UNRESOLVED",
+    "eval_0087": "UNRESOLVED",
+    "eval_0088": "METADATA_ERROR",
+    "eval_0089": "REAL",
+    "eval_0090": "REAL",
+    "eval_0091": "METADATA_ERROR",
+    "eval_0092": "UNRESOLVED",
+    "eval_0093": "UNRESOLVED",
+    "eval_0094": "REAL",
+    "eval_0095": "METADATA_ERROR",
+    "eval_0096": "REAL",
+    "eval_0097": "METADATA_ERROR",
+    "eval_0098": "UNRESOLVED",
+    "eval_0099": "METADATA_ERROR",
+    "eval_0100": "METADATA_ERROR",
+    "eval_0101": "METADATA_ERROR",
+    "eval_0102": "REAL",
+    "eval_0103": "UNRESOLVED",
+    "eval_0104": "METADATA_ERROR",
+    "eval_0105": "REAL",
+    "eval_0106": "METADATA_ERROR",
+    "eval_0107": "UNRESOLVED",
+    "eval_0108": "UNRESOLVED",
+    "eval_0109": "UNRESOLVED",
+    "eval_0110": "UNRESOLVED",
+    "eval_0111": "METADATA_ERROR",
+    "eval_0112": "METADATA_ERROR",
+    "eval_0113": "METADATA_ERROR",
+    "eval_0114": "METADATA_ERROR",
+    "eval_0115": "UNRESOLVED",
+    "eval_0116": "METADATA_ERROR",
+    "eval_0117": "UNRESOLVED",
+    "eval_0118": "UNRESOLVED",
+    "eval_0119": "METADATA_ERROR",
+    "eval_0120": "REAL",
+    "eval_0121": "UNRESOLVED",
+    "eval_0122": "UNRESOLVED",
+    "eval_0123": "METADATA_ERROR",
+    "eval_0124": "UNRESOLVED",
+    "eval_0125": "UNRESOLVED",
+    "eval_0126": "UNRESOLVED",
+    "eval_0127": "REAL",
+    "eval_0128": "UNRESOLVED",
+    "eval_0129": "METADATA_ERROR",
+    "eval_0130": "REAL",
+    "eval_0131": "UNRESOLVED",
+    "eval_0132": "UNRESOLVED",
+    "eval_0133": "METADATA_ERROR",
+    "eval_0134": "METADATA_ERROR",
+    "eval_0135": "UNRESOLVED",
+    "eval_0136": "METADATA_ERROR",
+    "eval_0137": "METADATA_ERROR",
+    "eval_0138": "REAL",
+    "eval_0139": "REAL",
+    "eval_0140": "UNRESOLVED",
+    "eval_0141": "REAL",
+    "eval_0142": "METADATA_ERROR",
+    "eval_0143": "METADATA_ERROR",
+    "eval_0144": "UNRESOLVED",
+    "eval_0145": "METADATA_ERROR",
+    "eval_0146": "UNRESOLVED",
+    "eval_0147": "UNRESOLVED",
+    "eval_0148": "METADATA_ERROR",
+    "eval_0149": "UNRESOLVED",
+    "eval_0150": "METADATA_ERROR",
+    "eval_0151": "UNRESOLVED",
+    "eval_0152": "UNRESOLVED",
+    "eval_0153": "UNRESOLVED",
+    "eval_0154": "UNRESOLVED",
+    "eval_0155": "METADATA_ERROR",
+    "eval_0156": "UNRESOLVED",
+    "eval_0157": "METADATA_ERROR",
+    "eval_0158": "UNRESOLVED",
+    "eval_0159": "METADATA_ERROR",
+    "eval_0160": "UNRESOLVED",
+    "eval_0161": "METADATA_ERROR",
+    "eval_0162": "METADATA_ERROR",
+    "eval_0163": "METADATA_ERROR",
+    "eval_0164": "REAL",
+    "eval_0165": "REAL",
+    "eval_0166": "UNRESOLVED",
+    "eval_0167": "METADATA_ERROR",
+    "eval_0168": "UNRESOLVED",
+    "eval_0169": "METADATA_ERROR",
+    "eval_0170": "METADATA_ERROR",
+    "eval_0171": "UNRESOLVED",
+    "eval_0172": "METADATA_ERROR",
+    "eval_0173": "UNRESOLVED",
+    "eval_0174": "UNRESOLVED",
+    "eval_0175": "UNRESOLVED",
+    "eval_0176": "REAL",
+    "eval_0177": "METADATA_ERROR",
+    "eval_0178": "METADATA_ERROR",
+    "eval_0179": "REAL",
+    "eval_0180": "UNRESOLVED",
+    "eval_0181": "UNRESOLVED",
+    "eval_0182": "METADATA_ERROR",
+    "eval_0183": "METADATA_ERROR",
+    "eval_0184": "METADATA_ERROR",
+    "eval_0185": "METADATA_ERROR",
+    "eval_0186": "UNRESOLVED",
+    "eval_0187": "METADATA_ERROR",
+    "eval_0188": "UNRESOLVED",
+    "eval_0189": "UNRESOLVED",
+    "eval_0190": "METADATA_ERROR",
+    "eval_0191": "UNRESOLVED",
+    "eval_0192": "UNRESOLVED",
+    "eval_0193": "UNRESOLVED",
+    "eval_0194": "METADATA_ERROR",
+    "eval_0195": "METADATA_ERROR",
+    "eval_0196": "METADATA_ERROR",
+    "eval_0197": "UNRESOLVED",
+    "eval_0198": "METADATA_ERROR",
+    "eval_0199": "UNRESOLVED",
+    "eval_0200": "METADATA_ERROR"
+  },
+  "confidences": {
+    "eval_0001": 0.3,
+    "eval_0002": 0.6,
+    "eval_0003": 0.6,
+    "eval_0004": 0.6,
+    "eval_0005": 0.6,
+    "eval_0006": 0.6,
+    "eval_0007": 0.6,
+    "eval_0008": 0.6,
+    "eval_0009": 0.3,
+    "eval_0010": 0.6,
+    "eval_0011": 0.6,
+    "eval_0012": 0.6,
+    "eval_0013": 0.9,
+    "eval_0014": 0.6,
+    "eval_0015": 0.3,
+    "eval_0016": 0.6,
+    "eval_0017": 0.3,
+    "eval_0018": 0.6,
+    "eval_0019": 0.6,
+    "eval_0020": 0.9,
+    "eval_0021": 0.6,
+    "eval_0022": 0.3,
+    "eval_0023": 0.6,
+    "eval_0024": 0.3,
+    "eval_0025": 0.3,
+    "eval_0026": 0.6,
+    "eval_0027": 0.6,
+    "eval_0028": 0.6,
+    "eval_0029": 0.6,
+    "eval_0030": 0.9,
+    "eval_0031": 0.3,
+    "eval_0032": 0.3,
+    "eval_0033": 0.3,
+    "eval_0034": 0.6,
+    "eval_0035": 0.3,
+    "eval_0036": 0.6,
+    "eval_0037": 0.6,
+    "eval_0038": 0.6,
+    "eval_0039": 0.3,
+    "eval_0040": 0.6,
+    "eval_0041": 0.6,
+    "eval_0042": 0.9,
+    "eval_0043": 0.6,
+    "eval_0044": 0.6,
+    "eval_0045": 0.3,
+    "eval_0046": 0.6,
+    "eval_0047": 0.6,
+    "eval_0048": 0.9,
+    "eval_0049": 0.6,
+    "eval_0050": 0.6,
+    "eval_0051": 0.6,
+    "eval_0052": 0.6,
+    "eval_0053": 0.6,
+    "eval_0054": 0.3,
+    "eval_0055": 0.6,
+    "eval_0056": 0.9,
+    "eval_0057": 0.6,
+    "eval_0058": 0.6,
+    "eval_0059": 0.9,
+    "eval_0060": 0.6,
+    "eval_0061": 0.6,
+    "eval_0062": 0.6,
+    "eval_0063": 0.6,
+    "eval_0064": 0.3,
+    "eval_0065": 0.6,
+    "eval_0066": 0.6,
+    "eval_0067": 0.3,
+    "eval_0068": 0.3,
+    "eval_0069": 0.3,
+    "eval_0070": 0.6,
+    "eval_0071": 0.6,
+    "eval_0072": 0.6,
+    "eval_0073": 0.6,
+    "eval_0074": 0.6,
+    "eval_0075": 0.9,
+    "eval_0076": 0.3,
+    "eval_0077": 0.6,
+    "eval_0078": 0.3,
+    "eval_0079": 0.6,
+    "eval_0080": 0.6,
+    "eval_0081": 0.6,
+    "eval_0082": 0.3,
+    "eval_0083": 0.6,
+    "eval_0084": 0.3,
+    "eval_0085": 0.3,
+    "eval_0086": 0.3,
+    "eval_0087": 0.3,
+    "eval_0088": 0.6,
+    "eval_0089": 0.9,
+    "eval_0090": 0.9,
+    "eval_0091": 0.6,
+    "eval_0092": 0.3,
+    "eval_0093": 0.3,
+    "eval_0094": 0.9,
+    "eval_0095": 0.6,
+    "eval_0096": 0.9,
+    "eval_0097": 0.6,
+    "eval_0098": 0.3,
+    "eval_0099": 0.6,
+    "eval_0100": 0.6,
+    "eval_0101": 0.6,
+    "eval_0102": 0.9,
+    "eval_0103": 0.3,
+    "eval_0104": 0.6,
+    "eval_0105": 0.9,
+    "eval_0106": 0.6,
+    "eval_0107": 0.3,
+    "eval_0108": 0.3,
+    "eval_0109": 0.3,
+    "eval_0110": 0.3,
+    "eval_0111": 0.6,
+    "eval_0112": 0.6,
+    "eval_0113": 0.6,
+    "eval_0114": 0.6,
+    "eval_0115": 0.3,
+    "eval_0116": 0.6,
+    "eval_0117": 0.3,
+    "eval_0118": 0.3,
+    "eval_0119": 0.6,
+    "eval_0120": 0.9,
+    "eval_0121": 0.3,
+    "eval_0122": 0.3,
+    "eval_0123": 0.6,
+    "eval_0124": 0.3,
+    "eval_0125": 0.3,
+    "eval_0126": 0.3,
+    "eval_0127": 0.9,
+    "eval_0128": 0.3,
+    "eval_0129": 0.6,
+    "eval_0130": 0.9,
+    "eval_0131": 0.3,
+    "eval_0132": 0.3,
+    "eval_0133": 0.6,
+    "eval_0134": 0.6,
+    "eval_0135": 0.3,
+    "eval_0136": 0.6,
+    "eval_0137": 0.6,
+    "eval_0138": 0.9,
+    "eval_0139": 0.9,
+    "eval_0140": 0.3,
+    "eval_0141": 0.9,
+    "eval_0142": 0.6,
+    "eval_0143": 0.6,
+    "eval_0144": 0.3,
+    "eval_0145": 0.6,
+    "eval_0146": 0.3,
+    "eval_0147": 0.3,
+    "eval_0148": 0.6,
+    "eval_0149": 0.3,
+    "eval_0150": 0.6,
+    "eval_0151": 0.3,
+    "eval_0152": 0.3,
+    "eval_0153": 0.3,
+    "eval_0154": 0.3,
+    "eval_0155": 0.6,
+    "eval_0156": 0.3,
+    "eval_0157": 0.6,
+    "eval_0158": 0.3,
+    "eval_0159": 0.6,
+    "eval_0160": 0.3,
+    "eval_0161": 0.6,
+    "eval_0162": 0.6,
+    "eval_0163": 0.6,
+    "eval_0164": 0.9,
+    "eval_0165": 0.9,
+    "eval_0166": 0.3,
+    "eval_0167": 0.6,
+    "eval_0168": 0.3,
+    "eval_0169": 0.6,
+    "eval_0170": 0.6,
+    "eval_0171": 0.3,
+    "eval_0172": 0.6,
+    "eval_0173": 0.3,
+    "eval_0174": 0.3,
+    "eval_0175": 0.3,
+    "eval_0176": 0.9,
+    "eval_0177": 0.6,
+    "eval_0178": 0.6,
+    "eval_0179": 0.9,
+    "eval_0180": 0.3,
+    "eval_0181": 0.3,
+    "eval_0182": 0.6,
+    "eval_0183": 0.6,
+    "eval_0184": 0.6,
+    "eval_0185": 0.6,
+    "eval_0186": 0.3,
+    "eval_0187": 0.6,
+    "eval_0188": 0.3,
+    "eval_0189": 0.3,
+    "eval_0190": 0.6,
+    "eval_0191": 0.3,
+    "eval_0192": 0.3,
+    "eval_0193": 0.3,
+    "eval_0194": 0.6,
+    "eval_0195": 0.6,
+    "eval_0196": 0.6,
+    "eval_0197": 0.3,
+    "eval_0198": 0.6,
+    "eval_0199": 0.3,
+    "eval_0200": 0.6
+  },
+  "metadata": {
+    "eval_0001": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0002": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0003": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0004": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0005": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0006": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0007": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0008": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0009": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0010": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0011": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0012": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0013": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0014": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0015": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0016": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0017": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0018": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0019": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0020": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0021": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0022": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0023": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0024": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0025": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0026": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0027": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0028": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0029": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0030": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0031": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0032": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0033": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0034": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0035": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0036": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0037": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0038": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0039": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0040": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0041": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0042": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0043": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0044": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0045": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0046": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0047": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0048": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0049": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0050": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0051": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0052": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0053": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0054": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0055": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0056": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0057": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0058": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0059": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0060": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0061": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0062": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0063": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0064": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0065": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0066": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0067": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0068": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0069": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0070": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0071": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0072": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0073": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0074": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0075": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0076": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0077": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0078": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0079": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0080": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0081": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0082": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0083": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0084": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0085": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0086": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0087": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0088": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0089": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0090": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0091": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0092": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0093": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0094": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0095": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0096": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0097": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0098": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0099": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0100": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0101": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0102": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0103": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0104": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0105": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0106": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0107": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0108": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0109": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0110": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0111": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0112": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0113": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0114": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0115": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0116": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0117": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0118": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0119": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0120": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0121": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0122": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0123": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0124": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0125": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0126": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0127": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0128": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0129": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0130": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0131": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0132": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0133": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0134": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0135": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0136": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0137": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0138": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0139": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0140": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0141": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0142": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0143": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0144": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0145": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0146": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0147": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0148": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0149": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0150": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0151": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0152": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0153": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0154": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0155": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0156": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0157": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0158": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0159": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0160": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0161": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0162": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0163": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0164": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0165": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0166": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0167": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0168": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0169": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0170": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0171": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0172": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0173": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0174": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0175": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0176": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0177": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0178": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0179": {
+      "confidence": 0.9,
+      "triggered_rules": [
+        "R-KNOWN-PAPER"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0180": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0181": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0182": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0183": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0184": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0185": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0186": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0187": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0188": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0189": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0190": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0191": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0192": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0193": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0194": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0195": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0196": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0197": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0198": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    },
+    "eval_0199": {
+      "confidence": 0.3,
+      "triggered_rules": [
+        "R-FAIL-ALL"
+      ],
+      "mismatched_fields": [],
+      "sources_succeeded": []
+    },
+    "eval_0200": {
+      "confidence": 0.6,
+      "triggered_rules": [
+        "R-KNOWN-AUTHOR-PATTERN"
+      ],
+      "mismatched_fields": [
+        "year",
+        "title"
+      ],
+      "sources_succeeded": []
+    }
+  },
+  "ground_truth": {
+    "eval_0001": "REAL",
+    "eval_0002": "REAL",
+    "eval_0003": "REAL",
+    "eval_0004": "REAL",
+    "eval_0005": "HALLUCINATED",
+    "eval_0006": "METADATA_ERROR",
+    "eval_0007": "HALLUCINATED",
+    "eval_0008": "HALLUCINATED",
+    "eval_0009": "HALLUCINATED",
+    "eval_0010": "HALLUCINATED",
+    "eval_0011": "METADATA_ERROR",
+    "eval_0012": "METADATA_ERROR",
+    "eval_0013": "HALLUCINATED",
+    "eval_0014": "METADATA_ERROR",
+    "eval_0015": "HALLUCINATED",
+    "eval_0016": "METADATA_ERROR",
+    "eval_0017": "HALLUCINATED",
+    "eval_0018": "REAL",
+    "eval_0019": "REAL",
+    "eval_0020": "REAL",
+    "eval_0021": "REAL",
+    "eval_0022": "METADATA_ERROR",
+    "eval_0023": "METADATA_ERROR",
+    "eval_0024": "REAL",
+    "eval_0025": "REAL",
+    "eval_0026": "HALLUCINATED",
+    "eval_0027": "METADATA_ERROR",
+    "eval_0028": "METADATA_ERROR",
+    "eval_0029": "REAL",
+    "eval_0030": "REAL",
+    "eval_0031": "REAL",
+    "eval_0032": "REAL",
+    "eval_0033": "REAL",
+    "eval_0034": "METADATA_ERROR",
+    "eval_0035": "HALLUCINATED",
+    "eval_0036": "METADATA_ERROR",
+    "eval_0037": "HALLUCINATED",
+    "eval_0038": "REAL",
+    "eval_0039": "REAL",
+    "eval_0040": "REAL",
+    "eval_0041": "REAL",
+    "eval_0042": "REAL",
+    "eval_0043": "HALLUCINATED",
+    "eval_0044": "METADATA_ERROR",
+    "eval_0045": "REAL",
+    "eval_0046": "HALLUCINATED",
+    "eval_0047": "HALLUCINATED",
+    "eval_0048": "REAL",
+    "eval_0049": "REAL",
+    "eval_0050": "METADATA_ERROR",
+    "eval_0051": "REAL",
+    "eval_0052": "METADATA_ERROR",
+    "eval_0053": "HALLUCINATED",
+    "eval_0054": "REAL",
+    "eval_0055": "METADATA_ERROR",
+    "eval_0056": "METADATA_ERROR",
+    "eval_0057": "REAL",
+    "eval_0058": "REAL",
+    "eval_0059": "REAL",
+    "eval_0060": "HALLUCINATED",
+    "eval_0061": "REAL",
+    "eval_0062": "HALLUCINATED",
+    "eval_0063": "REAL",
+    "eval_0064": "REAL",
+    "eval_0065": "METADATA_ERROR",
+    "eval_0066": "REAL",
+    "eval_0067": "REAL",
+    "eval_0068": "REAL",
+    "eval_0069": "REAL",
+    "eval_0070": "HALLUCINATED",
+    "eval_0071": "METADATA_ERROR",
+    "eval_0072": "HALLUCINATED",
+    "eval_0073": "REAL",
+    "eval_0074": "HALLUCINATED",
+    "eval_0075": "REAL",
+    "eval_0076": "REAL",
+    "eval_0077": "METADATA_ERROR",
+    "eval_0078": "REAL",
+    "eval_0079": "HALLUCINATED",
+    "eval_0080": "METADATA_ERROR",
+    "eval_0081": "REAL",
+    "eval_0082": "REAL",
+    "eval_0083": "METADATA_ERROR",
+    "eval_0084": "REAL",
+    "eval_0085": "REAL",
+    "eval_0086": "HALLUCINATED",
+    "eval_0087": "REAL",
+    "eval_0088": "REAL",
+    "eval_0089": "REAL",
+    "eval_0090": "REAL",
+    "eval_0091": "REAL",
+    "eval_0092": "HALLUCINATED",
+    "eval_0093": "HALLUCINATED",
+    "eval_0094": "REAL",
+    "eval_0095": "METADATA_ERROR",
+    "eval_0096": "REAL",
+    "eval_0097": "METADATA_ERROR",
+    "eval_0098": "REAL",
+    "eval_0099": "HALLUCINATED",
+    "eval_0100": "REAL",
+    "eval_0101": "HALLUCINATED",
+    "eval_0102": "REAL",
+    "eval_0103": "REAL",
+    "eval_0104": "REAL",
+    "eval_0105": "REAL",
+    "eval_0106": "REAL",
+    "eval_0107": "HALLUCINATED",
+    "eval_0108": "REAL",
+    "eval_0109": "HALLUCINATED",
+    "eval_0110": "HALLUCINATED",
+    "eval_0111": "REAL",
+    "eval_0112": "REAL",
+    "eval_0113": "REAL",
+    "eval_0114": "METADATA_ERROR",
+    "eval_0115": "HALLUCINATED",
+    "eval_0116": "REAL",
+    "eval_0117": "REAL",
+    "eval_0118": "HALLUCINATED",
+    "eval_0119": "REAL",
+    "eval_0120": "REAL",
+    "eval_0121": "HALLUCINATED",
+    "eval_0122": "REAL",
+    "eval_0123": "HALLUCINATED",
+    "eval_0124": "HALLUCINATED",
+    "eval_0125": "HALLUCINATED",
+    "eval_0126": "REAL",
+    "eval_0127": "REAL",
+    "eval_0128": "HALLUCINATED",
+    "eval_0129": "HALLUCINATED",
+    "eval_0130": "REAL",
+    "eval_0131": "HALLUCINATED",
+    "eval_0132": "HALLUCINATED",
+    "eval_0133": "HALLUCINATED",
+    "eval_0134": "METADATA_ERROR",
+    "eval_0135": "REAL",
+    "eval_0136": "HALLUCINATED",
+    "eval_0137": "HALLUCINATED",
+    "eval_0138": "REAL",
+    "eval_0139": "METADATA_ERROR",
+    "eval_0140": "REAL",
+    "eval_0141": "REAL",
+    "eval_0142": "REAL",
+    "eval_0143": "HALLUCINATED",
+    "eval_0144": "HALLUCINATED",
+    "eval_0145": "REAL",
+    "eval_0146": "REAL",
+    "eval_0147": "HALLUCINATED",
+    "eval_0148": "REAL",
+    "eval_0149": "REAL",
+    "eval_0150": "HALLUCINATED",
+    "eval_0151": "HALLUCINATED",
+    "eval_0152": "HALLUCINATED",
+    "eval_0153": "HALLUCINATED",
+    "eval_0154": "REAL",
+    "eval_0155": "REAL",
+    "eval_0156": "HALLUCINATED",
+    "eval_0157": "HALLUCINATED",
+    "eval_0158": "HALLUCINATED",
+    "eval_0159": "REAL",
+    "eval_0160": "HALLUCINATED",
+    "eval_0161": "METADATA_ERROR",
+    "eval_0162": "REAL",
+    "eval_0163": "REAL",
+    "eval_0164": "REAL",
+    "eval_0165": "REAL",
+    "eval_0166": "REAL",
+    "eval_0167": "REAL",
+    "eval_0168": "REAL",
+    "eval_0169": "REAL",
+    "eval_0170": "REAL",
+    "eval_0171": "REAL",
+    "eval_0172": "HALLUCINATED",
+    "eval_0173": "HALLUCINATED",
+    "eval_0174": "HALLUCINATED",
+    "eval_0175": "HALLUCINATED",
+    "eval_0176": "REAL",
+    "eval_0177": "REAL",
+    "eval_0178": "HALLUCINATED",
+    "eval_0179": "REAL",
+    "eval_0180": "HALLUCINATED",
+    "eval_0181": "HALLUCINATED",
+    "eval_0182": "REAL",
+    "eval_0183": "METADATA_ERROR",
+    "eval_0184": "METADATA_ERROR",
+    "eval_0185": "HALLUCINATED",
+    "eval_0186": "HALLUCINATED",
+    "eval_0187": "REAL",
+    "eval_0188": "HALLUCINATED",
+    "eval_0189": "HALLUCINATED",
+    "eval_0190": "HALLUCINATED",
+    "eval_0191": "HALLUCINATED",
+    "eval_0192": "REAL",
+    "eval_0193": "REAL",
+    "eval_0194": "METADATA_ERROR",
+    "eval_0195": "REAL",
+    "eval_0196": "HALLUCINATED",
+    "eval_0197": "HALLUCINATED",
+    "eval_0198": "REAL",
+    "eval_0199": "HALLUCINATED",
+    "eval_0200": "HALLUCINATED"
+  },
+  "mode": "Full pipeline",
+  "timestamp": "2026-09-24 21:09:17"
+}

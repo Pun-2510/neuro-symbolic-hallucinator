@@ -90,9 +90,16 @@ Tự động verify các bài báo seminal (22 papers):
 ### Local Database (v1.3)
 
 SQLite với FTS5 cho fast lookups:
-- **83,541 ACL papers** pre-loaded
+- **127,103 ACL papers** pre-loaded (import từ `data/acl_data/data/xml/`)
 - **Crossref/OpenAlex papers** synced on-demand
 - **Fuzzy search** bằng FTS5
+
+> `data/local_papers.db` là file generated (không commit). Tái tạo bằng:
+> ```bash
+> python scripts/import_acl_xml.py            # import ACL XML (127k papers)
+> python scripts/clean_local_db.py --apply    # dedupe + dọn venue rác + rebuild FTS
+> python scripts/backfill_citation_confidence.py --apply  # (tuỳ chọn) tính lại confidence cho app.db cũ
+> ```
 
 ## Cài đặt
 

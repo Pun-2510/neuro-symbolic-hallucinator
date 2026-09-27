@@ -29,12 +29,14 @@ class VerdictSchema(BaseModel):
 
     citation_id: Optional[str] = None
     citation_raw: str
+    citation_type: str = "unknown"
     label: str                                  # ValidationLabel value
     confidence: float
     reasoning: str
     triggered_rules: list[str] = Field(default_factory=list)
     mismatched_fields: list[str] = Field(default_factory=list)
     matched_sources: list[dict] = Field(default_factory=list)
+    citation_link: Optional[dict] = None
     mapping_status: str = "matched"
     mapping_confidence: float = 0.0
     style_penalty: Optional[float] = None
@@ -61,6 +63,7 @@ class AnalysisReportSchema(BaseModel):
     num_pages: int
     num_citations: int
     verdicts: list[VerdictSchema]
+    references: list[CitationSchema] = Field(default_factory=list)
     cis: CISSchema
     disclaimer: str
 

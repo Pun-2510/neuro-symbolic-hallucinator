@@ -34,6 +34,33 @@ from .schemas import INIT_STATEMENTS
 DEFAULT_DB_PATH = Path("./data/local_papers.db")
 
 
+def _title_key(title: str | None) -> str:
+    """Case/punctuation-insensitive key for exact-ish title comparison.
+
+    Only used to look a row up in the curated ``known_papers`` table — it is
+    deliberately stricter than :func:`title_similarity`, which is tuned for
+    candidate ranking and treats containment as a near-match.
+    """
+    if not title:
+        return ""
+    text = title.casefold()
+    text = "".join(ch if (ch.isalnum() or ch.isspace()) else " " for ch in text)
+    return " ".join(text.split())
+
+
+def _known_papers_metadata() -> dict[tuple[str, str], dict]:
+    """Load the curated seminal-paper table lazily.
+
+    The table lives in ``retrieval.retrieval_orchestrator``, which imports
+    from the retrieval layer.  Importing it at module load time would create a
+    cycle once retrieval starts depending on the database package, so the
+    lookup is deferred until dedupe actually needs it.
+    """
+    from integrity_checker.retrieval.retrieval_orchestrator import _KNOWN_PAPERS
+
+    return _KNOWN_PAPERS
+
+
 class LocalDatabase:
     """Local SQLite database for paper metadata.
 
@@ -60,6 +87,11 @@ class LocalDatabase:
         with self._get_conn() as conn:
             for stmt in INIT_STATEMENTS:
                 conn.executescript(stmt)
+            # ``PRAGMA journal_mode`` returns a row, so it must be a query (not
+            # part of a script).  WAL keeps readers (API requests) from being
+            # blocked while the importer writes a large batch of papers.
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
             conn.commit()
 
     @contextmanager
@@ -81,7 +113,14 @@ class LocalDatabase:
             paper: Paper object to add
 
         Returns:
-            Paper ID if successful, None if failed
+            Canonical paper row ID if successful, None if failed.
+
+        Note:
+            ``ON CONFLICT(doi) DO UPDATE`` keeps the *existing* row id in
+            SQLite, so ``cursor.lastrowid`` is not reliable for conflict
+            updates.  We resolve the row id explicitly so that provenance
+            (``query_log.paper_id``, ``candidate.paper_id``) always points at
+            the row that actually holds the metadata.
         """
         paper.doi = normalize_doi(paper.doi)
         paper.arxiv_id = normalize_arxiv_id(paper.arxiv_id)
@@ -93,6 +132,10 @@ class LocalDatabase:
             existing = self._find_existing_metadata_paper(paper)
             if existing is not None:
                 return existing.id
+            if paper.arxiv_id:
+                existing = self.find_by_arxiv_id(paper.arxiv_id)
+                if existing is not None:
+                    return existing.id
 
         with self._get_conn() as conn:
             cursor = conn.execute(
@@ -101,15 +144,29 @@ class LocalDatabase:
                                    abstract, categories, external_ids, source, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(doi) DO UPDATE SET
-                    title = excluded.title,
-                    authors = excluded.authors,
-                    year = excluded.year,
-                    venue = excluded.venue,
-                    abstract = excluded.abstract,
-                    categories = excluded.categories,
-                    external_ids = excluded.external_ids,
-                    source = excluded.source,
-                    created_at = excluded.created_at
+                    title = CASE
+                        WHEN excluded.title IS NULL OR TRIM(excluded.title) = ''
+                            THEN papers.title ELSE excluded.title END,
+                    authors = CASE
+                        WHEN excluded.authors IN ('[]', '') OR excluded.authors IS NULL
+                            THEN papers.authors ELSE excluded.authors END,
+                    year = COALESCE(excluded.year, papers.year),
+                    venue = COALESCE(NULLIF(excluded.venue, ''), papers.venue),
+                    abstract = COALESCE(NULLIF(excluded.abstract, ''), papers.abstract),
+                    categories = CASE
+                        WHEN excluded.categories IN ('[]', '') OR excluded.categories IS NULL
+                            THEN papers.categories ELSE excluded.categories END,
+                    external_ids = CASE
+                        WHEN excluded.external_ids IN ('{}', '') OR excluded.external_ids IS NULL
+                            THEN papers.external_ids ELSE excluded.external_ids END,
+                    source = CASE
+                        WHEN excluded.source IN ('local_db', 'known_papers')
+                             AND papers.source NOT IN ('local_db', 'known_papers')
+                            THEN papers.source
+                        WHEN papers.source = 'acl' AND excluded.source <> 'acl'
+                            THEN papers.source
+                        ELSE excluded.source END,
+                    created_at = papers.created_at
                 """,
                 (
                     paper.doi,
@@ -126,17 +183,25 @@ class LocalDatabase:
                 ),
             )
             conn.commit()
-            if cursor.lastrowid:
-                return cursor.lastrowid
 
-            # ``ON CONFLICT(doi) DO UPDATE`` can return a zero/ambiguous
-            # lastrowid.  Resolve the actual row id for query provenance.
+            # Resolve the actual row id for query provenance.  A conflict
+            # update keeps the original row id, so re-read it rather than
+            # trusting ``cursor.lastrowid``.
             if paper.doi:
                 row = conn.execute(
                     "SELECT id FROM papers WHERE doi = ? COLLATE NOCASE",
                     (paper.doi,),
                 ).fetchone()
                 return int(row["id"]) if row else None
+            if paper.arxiv_id:
+                row = conn.execute(
+                    "SELECT id FROM papers WHERE arxiv_id = ? COLLATE NOCASE",
+                    (paper.arxiv_id,),
+                ).fetchone()
+                if row:
+                    return int(row["id"])
+            if cursor.lastrowid:
+                return cursor.lastrowid
             return None
 
     def _find_existing_metadata_paper(self, paper: Paper) -> Paper | None:
@@ -481,14 +546,28 @@ class LocalDatabase:
                                    abstract, categories, external_ids, source, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(doi) DO UPDATE SET
-                    title = excluded.title,
-                    authors = excluded.authors,
-                    year = excluded.year,
-                    venue = excluded.venue,
-                    abstract = excluded.abstract,
-                    categories = excluded.categories,
-                    external_ids = excluded.external_ids,
-                    source = excluded.source
+                    title = CASE
+                        WHEN excluded.title IS NULL OR TRIM(excluded.title) = ''
+                            THEN papers.title ELSE excluded.title END,
+                    authors = CASE
+                        WHEN excluded.authors IN ('[]', '') OR excluded.authors IS NULL
+                            THEN papers.authors ELSE excluded.authors END,
+                    year = COALESCE(excluded.year, papers.year),
+                    venue = COALESCE(NULLIF(excluded.venue, ''), papers.venue),
+                    abstract = COALESCE(NULLIF(excluded.abstract, ''), papers.abstract),
+                    categories = CASE
+                        WHEN excluded.categories IN ('[]', '') OR excluded.categories IS NULL
+                            THEN papers.categories ELSE excluded.categories END,
+                    external_ids = CASE
+                        WHEN excluded.external_ids IN ('{}', '') OR excluded.external_ids IS NULL
+                            THEN papers.external_ids ELSE excluded.external_ids END,
+                    source = CASE
+                        WHEN excluded.source IN ('local_db', 'known_papers')
+                             AND papers.source NOT IN ('local_db', 'known_papers')
+                            THEN papers.source
+                        WHEN papers.source = 'acl' AND excluded.source <> 'acl'
+                            THEN papers.source
+                        ELSE excluded.source END
                 """,
                 data,
             )
@@ -524,3 +603,182 @@ class LocalDatabase:
             conn.execute("DELETE FROM query_log")
             conn.commit()
             return count
+
+    # ==================== Maintenance ====================
+
+    def dedupe(self) -> dict[str, int]:
+        """Remove duplicate/empty rows and rebuild the FTS index.
+
+        Crossref/OpenAlex sync can insert several rows for the same work when
+        the DOI is missing or differs only by URL prefix.  This routine:
+
+        1. Deletes rows without a usable title.
+        2. Removes DOI duplicates, preferring the row referenced by
+           ``query_log.paper_id`` and the smallest ``id`` otherwise.
+        3. Removes remaining ``(normalized title, year)`` duplicates.
+        4. Folds ``known_papers`` seed rows onto the live row that carries the
+           curated DOI (title-only matches are never folded).
+        5. Rebuilds the FTS5 index so the search table matches ``papers``.
+
+        Returns:
+            Counts keyed by ``removed_empty_title``, ``removed_doi_duplicates``,
+            ``removed_title_duplicates``, ``removed_known_paper_duplicates``
+            and ``total_removed``.
+        """
+        removed_empty = 0
+        removed_doi = 0
+        removed_title = 0
+        removed_known_papers = 0
+
+        with self._get_conn() as conn:
+            # 1. Drop rows with no usable title.
+            cursor = conn.execute(
+                "DELETE FROM papers WHERE title IS NULL OR TRIM(title) = ''"
+            )
+            removed_empty = cursor.rowcount or 0
+
+            # 2. DOI duplicates.  Keep the row that is referenced by the query
+            #    log (has provenance) and, as a tie-breaker, the lowest id.
+            dup_dois = conn.execute(
+                """
+                SELECT doi
+                FROM papers
+                WHERE doi IS NOT NULL AND TRIM(doi) <> ''
+                GROUP BY lower(doi)
+                HAVING COUNT(*) > 1
+                """
+            ).fetchall()
+            for row in dup_dois:
+                doi = row["doi"]
+                candidates = conn.execute(
+                    """
+                    SELECT p.id,
+                           (SELECT COUNT(*) FROM query_log q
+                            WHERE q.paper_id = p.id) AS refs
+                    FROM papers p
+                    WHERE lower(p.doi) = lower(?)
+                    ORDER BY refs DESC, p.id ASC
+                    """,
+                    (doi,),
+                ).fetchall()
+                keep_id = candidates[0]["id"]
+                drop_ids = [c["id"] for c in candidates[1:]]
+                if not drop_ids:
+                    continue
+                placeholders = ",".join("?" for _ in drop_ids)
+                # Re-point provenance to the surviving row before deleting.
+                conn.execute(
+                    f"UPDATE query_log SET paper_id = ? WHERE paper_id IN ({placeholders})",
+                    (keep_id, *drop_ids),
+                )
+                cursor = conn.execute(
+                    f"DELETE FROM papers WHERE id IN ({placeholders})",
+                    tuple(drop_ids),
+                )
+                removed_doi += cursor.rowcount or 0
+
+            # 3. Remaining (title, year) duplicates without a DOI.
+            dup_titles = conn.execute(
+                """
+                SELECT lower(TRIM(title)) AS norm_title, COALESCE(year, -1) AS y
+                FROM papers
+                GROUP BY norm_title, y
+                HAVING COUNT(*) > 1
+                """
+            ).fetchall()
+            for row in dup_titles:
+                candidates = conn.execute(
+                    """
+                    SELECT p.id,
+                           (SELECT COUNT(*) FROM query_log q
+                            WHERE q.paper_id = p.id) AS refs
+                    FROM papers p
+                    WHERE lower(TRIM(p.title)) = ?
+                      AND COALESCE(p.year, -1) = ?
+                    ORDER BY refs DESC, p.id ASC
+                    """,
+                    (row["norm_title"], row["y"]),
+                ).fetchall()
+                keep_id = candidates[0]["id"]
+                drop_ids = [c["id"] for c in candidates[1:]]
+                if not drop_ids:
+                    continue
+                placeholders = ",".join("?" for _ in drop_ids)
+                conn.execute(
+                    f"UPDATE query_log SET paper_id = ? WHERE paper_id IN ({placeholders})",
+                    (keep_id, *drop_ids),
+                )
+                cursor = conn.execute(
+                    f"DELETE FROM papers WHERE id IN ({placeholders})",
+                    tuple(drop_ids),
+                )
+                removed_title += cursor.rowcount or 0
+
+            # 4. Fold curated ``known_papers`` rows onto the canonical live
+            #     row, matched by the *curated DOI* only (never by title).
+            #
+            #     The curated table is authoritative: its DOI lives in code
+            #     (``_KNOWN_PAPERS``), not in the ``papers.doi`` column, so
+            #     comparing the DB column alone would leave the seed rows
+            #     looking like distinct papers forever.  We resolve the DOI
+            #     from the curated entry and collapse the seed row onto the
+            #     live row that carries it.
+            #
+            #     A title-based fallback is deliberately NOT used.  A title
+            #     match cannot prove two rows are the same work here: the ACL
+            #     corpus republishes the same title across years/venues (e.g.
+            #     "Adam" the 2015 ICLR paper vs. an unrelated 2014 EMNLP
+            #     "A Fast and Accurate Dependency Parser" row that shares the
+            #     title of the known-paper entry but has a different DOI).
+            #     Only a shared DOI is strong enough evidence, so entries
+            #     whose curated DOI is absent from the DB are left untouched.
+            curated_titles = {
+                _title_key(info["title"]): info
+                for info in _known_papers_metadata().values()
+            }
+
+            known_rows = conn.execute(
+                "SELECT id, title, doi, year FROM papers WHERE source = 'known_papers'"
+            ).fetchall()
+            for known in known_rows:
+                info = curated_titles.get(_title_key(known["title"]))
+                if not info or not info.get("doi"):
+                    continue
+                curated_doi = normalize_doi(info["doi"])
+                if not curated_doi:
+                    continue
+
+                target = conn.execute(
+                    "SELECT id FROM papers "
+                    "WHERE source <> 'known_papers' "
+                    "AND doi IS NOT NULL AND lower(doi) = ? LIMIT 1",
+                    (curated_doi,),
+                ).fetchone()
+                if target is None:
+                    continue
+
+                keep_id = target["id"]
+                conn.execute(
+                    "UPDATE query_log SET paper_id = ? WHERE paper_id = ?",
+                    (keep_id, known["id"]),
+                )
+                cursor = conn.execute(
+                    "DELETE FROM papers WHERE id = ?", (known["id"],)
+                )
+                removed_known_papers += cursor.rowcount or 0
+
+            conn.commit()
+
+            # 5. Rebuild FTS to match the deduped table.
+            conn.execute("INSERT INTO papers_fts(papers_fts) VALUES('rebuild')")
+            conn.commit()
+
+        return {
+            "removed_empty_title": removed_empty,
+            "removed_doi_duplicates": removed_doi,
+            "removed_title_duplicates": removed_title,
+            "removed_known_paper_duplicates": removed_known_papers,
+            "total_removed": (
+                removed_empty + removed_doi + removed_title + removed_known_papers
+            ),
+        }

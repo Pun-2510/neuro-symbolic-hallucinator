@@ -83,6 +83,18 @@ class CISCalculator:
                 num_unresolved=0,
             )
 
+        academic_verdicts = [
+            verdict for verdict in verdicts if verdict.label != ValidationLabel.RESOURCE
+        ]
+        if not academic_verdicts:
+            return CitationIntegrityScore(
+                score=0.0,
+                components=CISComponents(),
+                weights_used=self.w.model_dump(),
+                num_citations=0,
+                num_unresolved=0,
+            )
+
         components = self._compute_components(
             verdicts,
             linking_result=linking_result,
@@ -96,9 +108,8 @@ class CISCalculator:
             + components.identifier_validity * self.w.identifier_validity
         ) * 100.0
 
-        num_unresolved = sum(1 for v in verdicts if v.label in (ValidationLabel.UNRESOLVED, ValidationLabel.RESOURCE))
-        num_citations = len(verdicts)
-        num_academic = sum(1 for v in verdicts if v.label != ValidationLabel.RESOURCE)
+        num_unresolved = sum(1 for v in academic_verdicts if v.label == ValidationLabel.UNRESOLVED)
+        num_citations = len(academic_verdicts)
         return CitationIntegrityScore(
             score=round(score, 2),
             components=components,
@@ -115,15 +126,15 @@ class CISCalculator:
         linking_result: "LinkingResult | None" = None,
         style_profile: "StyleProfile | None" = None,
     ) -> CISComponents:
-        n = len(verdicts)
+        academic_verdicts = [
+            verdict for verdict in verdicts if verdict.label != ValidationLabel.RESOURCE
+        ]
+        n = len(academic_verdicts)
 
-        verified = sum(1 for v in verdicts if v.label == ValidationLabel.VERIFIED)
-        meta_err = sum(1 for v in verdicts if v.label == ValidationLabel.METADATA_ERROR)
-        halluc = sum(1 for v in verdicts if v.label == ValidationLabel.SUSPECTED_HALLUCINATION)
-
-        # Filter out RESOURCE (URLs/References) from academic citation stats
-        academic_verdicts = [v for v in verdicts if v.label != ValidationLabel.RESOURCE]
-        n_academic = len(academic_verdicts)
+        verified = sum(1 for v in academic_verdicts if v.label == ValidationLabel.VERIFIED)
+        meta_err = sum(1 for v in academic_verdicts if v.label == ValidationLabel.METADATA_ERROR)
+        halluc = sum(1 for v in academic_verdicts if v.label == ValidationLabel.SUSPECTED_HALLUCINATION)
+        n_academic = n
 
         # 1. Verified ratio — tỉ lệ academic citations được verify
         verified_ratio = verified / n_academic if n_academic > 0 else 0.0
@@ -136,21 +147,21 @@ class CISCalculator:
         #   a. Từ LinkingResult.links (nếu pipeline có chạy CitationLinker)
         #   b. Từ verdict.mapping_status (fallback nếu linker không chạy)
         in_text_bib_consistency = self._compute_link_consistency(
-            verdicts, linking_result
+            academic_verdicts, linking_result
         )
 
         # 4. Format consistency — TÍNH TỪ StyleDetector
         # Style profile có style (APA-LIKE / IEEE-LIKE / MIXED / UNKNOWN)
         # MIXED = penalty; UNKNOWN = neutral; rõ ràng = high score.
         format_consistency = self._compute_format_consistency(
-            style_profile, verdicts
+            style_profile, academic_verdicts
         )
 
         # 5. Identifier validity: tỉ lệ DOI/URL có resolve được
-        with_doi = sum(1 for v in verdicts if v.citation.doi)
+        with_doi = sum(1 for v in academic_verdicts if v.citation.doi)
         with_doi_valid = sum(
             1
-            for v in verdicts
+            for v in academic_verdicts
             if v.citation.doi and v.label in (ValidationLabel.VERIFIED, ValidationLabel.METADATA_ERROR)
         )
         identifier_validity = (with_doi_valid / with_doi) if with_doi > 0 else 1.0
@@ -180,10 +191,24 @@ class CISCalculator:
 
         # Strategy A: LinkingResult có sẵn
         if linking_result is not None and linking_result.links:
-            total = len(linking_result.links)
+            academic_link_ids = {
+                getattr(v.citation_link, "occurrence_id", None)
+                for v in verdicts
+                if v.citation_link is not None
+            }
+            links = [
+                link
+                for link in linking_result.links
+                if getattr(link, "occurrence_id", None) in academic_link_ids
+            ]
+            # Resource-only links (for example GitHub URLs) are excluded from CIS.
+            if not links:
+                return 1.0
+
+            total = len(links)
             penalty = 0.0
             status_counts: dict[str, int] = {}
-            for link in linking_result.links:
+            for link in links:
                 status = (
                     link.status.value
                     if hasattr(link.status, "value")

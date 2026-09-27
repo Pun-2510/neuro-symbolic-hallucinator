@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from integrity_checker.config import get_settings
+from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate, SourceResult
 from integrity_checker.models.validation import CitationVerdict, MatchFeatures, ValidationLabel
@@ -22,6 +23,8 @@ from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestr
 
 if TYPE_CHECKING:
     from integrity_checker.linking.statuses import CitationMappingStatus, StyleProfile
+
+logger = get_logger(__name__)
 
 
 class NeuroSymbolicChecker:
@@ -89,12 +92,30 @@ class NeuroSymbolicChecker:
         FIX Bug 5: If citation matches a known seminal paper, return VERIFIED
         with high confidence even when all APIs fail.
         """
-        # FIX v1.4: Check for URL/resource citations - classify as RESOURCE
+        # FIX v1.4 + v1.5: Check for URL/resource citations - classify as RESOURCE.
+        # Robust against trailing punctuation (e.g. URL at end of sentence
+        # like "see https://github.com/foo/bar.") by stripping trailing
+        # `.,;:)]"'` before matching the URL prefix.
         import re
         raw_text = citation.raw_text or ""
-        url_pattern = re.compile(r'^(https?://|www\.)[^\s]+$', re.IGNORECASE)
-        if url_pattern.match(raw_text.strip()):
-            # This is a URL citation - classify as RESOURCE (not an academic citation)
+        stripped_text = raw_text.strip()
+        # Strip trailing punctuation that commonly follows a URL in running text.
+        url_candidate = stripped_text.rstrip(".,;:)\"'")
+        # Match if the candidate starts with an URL scheme. The previous regex
+        # required the whole string to be one URL (`^...$`), which failed when
+        # trailing punctuation was present.
+        url_prefix_pattern = re.compile(r'^(https?://|www\.)[^\s]+', re.IGNORECASE)
+        # Require the URL body to be at least 10 chars after the scheme prefix
+        # to reduce false positives (e.g. a sentence starting with "www").
+        prefix_match = re.match(r'^(https?://|www\.)', url_candidate, re.IGNORECASE)
+        url_body_match = re.match(
+            r'^(?:https?://|www\.)(\S{10,})$', url_candidate, re.IGNORECASE
+        )
+        if prefix_match and url_body_match and not url_candidate[len(prefix_match.group(0)):].startswith((" ", "\n", "\t")):
+            logger.debug(
+                f"URL/RESOURCE detected: raw='{raw_text[:80]}' "
+                f"-> url_candidate='{url_candidate[:80]}'"
+            )
             return CitationVerdict(
                 citation=citation,
                 label=ValidationLabel.RESOURCE,
@@ -105,11 +126,17 @@ class NeuroSymbolicChecker:
                 triggered_rules=["R-URL-RESOURCE"],
                 mismatched_fields=[],
             )
+        # Debug aid: if raw_text starts with URL scheme but didn't match, log it.
+        if re.match(r'^(https?://|www\.)', stripped_text, re.IGNORECASE):
+            logger.debug(
+                f"URL-like raw_text but no RESOURCE match: raw='{raw_text[:80]}' "
+                f"url_candidate='{url_candidate[:80]}'"
+            )
 
         # FIX Bug 5: Check for known seminal papers first
+        # FIX v1.5: Now checks title similarity to detect METADATA_ERROR
         is_known, paper_info = RetrievalOrchestrator.is_known_paper(citation)
         if is_known and paper_info:
-            # Known paper - return VERIFIED with high confidence
             # Create a synthetic SourceCandidate from known paper info
             known_candidate = SourceCandidate(
                 source_name="known_papers",
@@ -121,6 +148,46 @@ class NeuroSymbolicChecker:
                 confidence=0.95,
                 score=1.0,
             )
+
+            # FIX v1.5: Check title similarity to detect METADATA_ERROR
+            # If citation has a title and it doesn't match the known paper's title
+            # → likely METADATA_ERROR (wrong title attributed to the author)
+            citation_title = citation.title
+            known_title = paper_info.get("title", "")
+
+            if citation_title and known_title:
+                # Calculate title similarity using FuzzyMatcher
+                # Use token_set_ratio for better matching of titles with different word orders
+                title_sim = self.rules.fuzzy.token_set_ratio(citation_title, known_title)
+                title_sim_threshold = 0.5  # Below this = likely wrong title
+
+                if title_sim < title_sim_threshold:
+                    # Title doesn't match → METADATA_ERROR
+                    # Create source result for feature calculation
+                    enhanced_source = SourceResult(
+                        citation_raw=source.citation_raw,
+                        candidates=[known_candidate] + source.candidates,
+                        sources_queried=["known_papers"] + source.sources_queried,
+                        sources_succeeded=["known_papers"] + source.sources_succeeded,
+                        sources_failed=source.sources_failed,
+                        api_exhausted=source.api_exhausted,
+                    )
+                    features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
+
+                    return CitationVerdict(
+                        citation=citation,
+                        label=ValidationLabel.METADATA_ERROR,
+                        confidence=0.75,
+                        matched_source=enhanced_source,
+                        features=features,
+                        reasoning=f"Known author '{citation.authors[0] if citation.authors else 'unknown'}' found, "
+                                  f"but title '{citation_title}' does not match known paper '{known_title}' "
+                                  f"(similarity: {title_sim:.2f}). This appears to be a wrong title attribution.",
+                        triggered_rules=["R-KNOWN-PAPER", "R-TITLE-MISMATCH"],
+                        mismatched_fields=["title"],
+                    )
+
+            # Title matches or citation has no title → VERIFIED
             # Inject into source result for feature calculation
             enhanced_source = SourceResult(
                 citation_raw=source.citation_raw,

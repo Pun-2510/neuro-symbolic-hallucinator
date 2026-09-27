@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api, type AnalysisReport, type Verdict, type ValidationLabel } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
+import { getSourceDisplayName, getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
 import {
   AlertTriangle,
   AlertCircle,
@@ -35,6 +36,8 @@ function getSeverity(label: ValidationLabel): Severity {
     case 'metadata_error':
       return 'warning';
     case 'unresolved':
+      return 'info';
+    case 'resource':
       return 'info';
     default:
       return 'info';
@@ -99,6 +102,9 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
 
   // Get issue description based on verdict type
   function getIssueDescription(v: Verdict): string {
+    if (isUrlResource(v)) {
+      return `URL resource: ${v.citation_raw}. Excluded from CIS scoring.`;
+    }
     if (v.label === 'suspected_hallucination') {
       return 'No matching publication was found.';
     }
@@ -111,7 +117,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
     if (v.label === 'unresolved') {
       return 'Unable to verify due to insufficient data.';
     }
-    return v.reasoning || 'Verification could not be completed.';
+      return getVerdictExplanation(v);
   }
 
   // Source results for hallucination cases
@@ -125,7 +131,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
-            <VerdictBadge verdict={verdict.label} size="sm" />
+            <VerdictBadge verdict={isUrlResource(verdict) ? 'resource' : verdict.label} size="sm" />
             <span className={`text-sm font-semibold ${config.textColor}`}>
               Citation #{citationNum}
             </span>
@@ -154,16 +160,14 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
       {expanded && (
         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-4">
           {/* Reasoning */}
-          {verdict.reasoning && (
-            <div>
-              <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
-                Reasoning
-              </h4>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {verdict.reasoning}
-              </p>
-            </div>
-          )}
+          <div>
+            <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+              What this means
+            </h4>
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              {getVerdictExplanation(verdict)}
+            </p>
+          </div>
 
           {/* Mismatched fields */}
           {verdict.mismatched_fields.length > 0 && (
@@ -218,7 +222,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
                     <span className="flex items-center gap-2">
                       <SourceIcon source={source.source} />
                       <span className="text-slate-700 dark:text-slate-300 capitalize">
-                        {source.source}
+                        {getSourceDisplayName(source.source)}
                       </span>
                     </span>
                     <span className="text-slate-500 dark:text-slate-400">
@@ -349,10 +353,48 @@ export function IssuesPage() {
       setError('Invalid essay ID');
       return;
     }
-    api
-      .getEssay(numericId)
-      .then(setReport)
-      .catch(() => setError('Failed to load report. Please try again.'));
+
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    const tryFetch = async () => {
+      try {
+        const data = await api.getEssay(numericId);
+        if (cancelled) return;
+        if (data) {
+          setReport(data);
+          setError(null);
+          if (pollTimer) clearInterval(pollTimer);
+        } else {
+          // Pipeline still running — poll status until complete.
+          const status = await api.getEssayStatus(numericId);
+          if (cancelled) return;
+          if (status.status === 'failed') {
+            setError(status.error ?? 'Pipeline failed.');
+            if (pollTimer) clearInterval(pollTimer);
+            return;
+          }
+          if (status.status === 'completed') {
+            const retry = await api.getEssay(numericId);
+            if (retry) {
+              setReport(retry);
+              setError(null);
+              if (pollTimer) clearInterval(pollTimer);
+              return;
+            }
+          }
+          if (!pollTimer) pollTimer = setInterval(tryFetch, 2000);
+        }
+      } catch {
+        if (!cancelled) setError('Failed to load report. Please try again.');
+      }
+    };
+
+    tryFetch();
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearInterval(pollTimer);
+    };
   }, [id]);
 
   // Filter and group verdicts by severity

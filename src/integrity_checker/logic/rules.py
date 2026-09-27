@@ -102,6 +102,33 @@ _KNOWN_FAKE_AUTHORS: list[re.Pattern[str]] = [
 ]
 
 
+# Source names that represent locally-cached metadata rather than a live API
+# round-trip.  A result backed only by these must not be treated as if it were
+# independently corroborated by an external registry.
+_NON_LIVE_SOURCES: frozenset[str] = frozenset({"local_db", "known_papers"})
+
+
+def _has_live_source(
+    source: SourceResult,
+    verified_sources: list[str],
+) -> bool:
+    """True when at least one *live* (non-cache) source backed this result.
+
+    Most callers populate ``sources_succeeded``.  Some legacy callers only
+    provide candidates, in which case the candidate's ``source_name`` is used
+    as the effective provenance instead of rejecting an otherwise valid match.
+    """
+    if verified_sources:
+        return True
+    if source.sources_succeeded:
+        # All succeeded sources were cache-backed → no live confirmation.
+        return False
+    return any(
+        cand.found and cand.source_name not in _NON_LIVE_SOURCES
+        for cand in source.candidates
+    )
+
+
 def _is_fake_author_name(raw_text: str | None) -> tuple[bool, str]:
     """Check if citation author name is clearly fake/fabricated.
 
@@ -294,7 +321,17 @@ class SymbolicRules:
         # Check individual authors
         if citation_authors:
             for author in citation_authors:
-                author_lower = author.lower()
+                # Handle Author objects by converting to string first
+                if hasattr(author, 'last_name'):
+                    parts = [author.last_name]
+                    if getattr(author, 'first_name', None):
+                        parts.append(author.first_name)
+                    if getattr(author, 'middle_name', None):
+                        parts.append(author.middle_name)
+                    author_str = " ".join(p for p in parts if p)
+                else:
+                    author_str = str(author)
+                author_lower = author_str.lower()
                 # Extract last name
                 last_name = author_lower.split()[-1] if author_lower else ""
                 # Check against known authors
@@ -338,6 +375,22 @@ class SymbolicRules:
         provenance_penalty = 0.0
         provenance_warnings: list[str] = []
 
+        # Source names that represent *locally cached* metadata rather than a
+        # live API round-trip.  ``local_db`` is the paper knowledge base;
+        # ``known_papers`` is the curated seminal-paper list bundled with the
+        # code.  Neither is a network source, so a result backed only by these
+        # must not be scored as if it were corroborated by external providers.
+        if source.sources_succeeded:
+            verified_sources = [
+                name
+                for name in source.sources_succeeded
+                if name not in _NON_LIVE_SOURCES
+            ]
+            local_db_only = not verified_sources
+        else:
+            verified_sources = []
+            local_db_only = False
+
         if api_exhausted:
             provenance_penalty = 0.1
             provenance_warnings.append("API_EXHAUSTED")
@@ -345,8 +398,8 @@ class SymbolicRules:
             provenance_penalty = 0.05
             provenance_warnings.append("LOCAL_DB")
 
-        # Check if only local_db was used
-        if source.sources_succeeded == ["local_db"]:
+        # Check if only local/cached sources were used
+        if local_db_only:
             provenance_penalty += 0.15
             provenance_warnings.append("LOCAL_DB_ONLY")
 
@@ -520,17 +573,28 @@ class SymbolicRules:
         if style_triggered:
             triggered_rules.append("R-STYLE-INCONSISTENT")
 
+        # Surface provenance as a triggered rule so audit trails and the UI
+        # show *why* confidence was reduced (cache-only evidence).
+        for warning in provenance_warnings:
+            triggered_rules.append(f"R-{warning}")
+
         # Apply provenance penalty to base confidence
         provenance_note = ""
         if provenance_penalty > 0:
             provenance_note = f" [provenance penalty: -{provenance_penalty:.0%}]"
 
         # --- Rule 1: DOI + title + author khớp mạnh → VERIFIED ---
+        # Guard against a self-confirming match: when the citation's DOI comes
+        # from the local DB / known-paper cache, ``doi_exact_match`` only proves
+        # the cache was keyed on the same DOI, not that an independent registry
+        # resolved it.  Require at least one live source before awarding the
+        # strongest VERIFIED verdict.
         if (
             not mapping_is_matched  # Only apply if not already well-linked
             and doi_match
             and title_sim >= self.title_sim_verified
             and author_sim >= self.author_jaccard_verified
+            and _has_live_source(source, verified_sources)
         ):
             triggered_rules.append("R-DOI-TITLE-AUTHOR")
             return RuleOutcome(

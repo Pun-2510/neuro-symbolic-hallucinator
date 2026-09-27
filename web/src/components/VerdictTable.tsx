@@ -3,6 +3,7 @@ import { VerdictBadge } from './VerdictBadge';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Verdict } from '@/api/client';
+import { getSourceSummary, isUrlResource } from '@/lib/verdictExplanation';
 
 /* ============================================================
    SourceLogic — Verdict Table Component
@@ -15,7 +16,7 @@ interface VerdictTableProps {
   onOverride?: (verdict: Verdict, req: any) => void;
 }
 
-type SortField = 'citation_num' | 'label' | 'confidence' | 'mapping_status';
+type SortField = 'citation_num' | 'label' | 'mapping_status';
 type SortDirection = 'asc' | 'desc';
 
 /* ============================================================
@@ -62,10 +63,6 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
         case 'label':
           aVal = a.label || '';
           bVal = b.label || '';
-          break;
-        case 'confidence':
-          aVal = a.confidence || 0;
-          bVal = b.confidence || 0;
           break;
         case 'mapping_status':
           aVal = a.mapping_status || '';
@@ -177,7 +174,7 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
               </th>
               <th className="px-4 py-3 text-left">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Source
+                   What we found
                 </span>
               </th>
               <th className="px-4 py-3 text-left">
@@ -187,15 +184,6 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
                 >
                   Status
                   <SortIcon sorted={sortField === 'label'} direction={sortDirection} />
-                </button>
-              </th>
-              <th className="px-4 py-3 text-left">
-                <button
-                  onClick={() => handleSort('confidence')}
-                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-                >
-                  Confidence
-                  <SortIcon sorted={sortField === 'confidence'} direction={sortDirection} />
                 </button>
               </th>
             </tr>
@@ -219,26 +207,11 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
                 </td>
                 <td className="px-4 py-3 max-w-xs">
                   <p className="text-sm text-slate-600 dark:text-slate-400 truncate">
-                    {verdict.reasoning ? verdict.reasoning.substring(0, 50) + '...' : 'No reasoning'}
+                    {getSourceSummary(verdict)}
                   </p>
                 </td>
                 <td className="px-4 py-3">
-                  <VerdictBadge verdict={verdict.label} size="sm" />
-                </td>
-                <td className="px-4 py-3">
-                  {verdict.confidence !== undefined && (
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-indigo-500 rounded-full"
-                          style={{ width: `${(verdict.confidence || 0) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {Math.round((verdict.confidence || 0) * 100)}%
-                      </span>
-                    </div>
-                  )}
+                   <VerdictBadge verdict={isUrlResource(verdict) ? 'resource' : verdict.label} size="sm" />
                 </td>
               </tr>
             ))}

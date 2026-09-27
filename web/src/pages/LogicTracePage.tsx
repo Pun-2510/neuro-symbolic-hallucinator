@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api, type AnalysisReport, type Verdict } from '@/api/client';
 import { RuleInspector, RuleInspectorCompact } from '@/components/RuleInspector';
+import { getSearchStepDescription, getVerdictDisplayName, getVerdictExplanation } from '@/lib/verdictExplanation';
 import {
   ArrowLeft,
   Loader2,
@@ -78,46 +79,38 @@ function getStepStatusColor(status: TraceStepStatus): {
 
 // Build trace steps for a verdict
 function buildTraceSteps(verdict: Verdict): TraceStep[] {
+  const sources = verdict.matched_sources ?? [];
   const steps: TraceStep[] = [
     {
       id: 'parse',
-      label: 'Reference Parsed',
-      description: 'Extracted from bibliography',
+      label: 'Match the citation',
+      description: 'Link the in-text citation to the reference in your bibliography.',
       status: 'completed',
       detail: verdict.citation_raw,
     },
     {
       id: 'search',
-      label: 'Academic Search',
-      description: 'Querying 4 academic databases',
-      status: verdict.matched_sources.length > 0 ? 'completed' : 'pending',
-      data: {
-        sources: verdict.matched_sources.map((s) => s.source),
-        candidates: verdict.matched_sources.length,
-      },
+      label: 'Find the publication',
+      description: getSearchStepDescription(verdict),
+      status: sources.length > 0 ? 'completed' : 'pending',
     },
     {
       id: 'compare',
-      label: 'Semantic Comparison',
-      description: 'Title, author, year matching',
+      label: 'Compare the details',
+      description: 'Compare the title, authors, year, and identifiers.',
       status: verdict.confidence > 0 ? 'completed' : 'pending',
-      data: {
-        confidence: `${(verdict.confidence * 100).toFixed(0)}%`,
-        matchedFields: verdict.matched_sources.flatMap((s) => s.matched_fields),
-      },
     },
     {
       id: 'rules',
-      label: 'Symbolic Validation',
-      description: 'Applying neuro-symbolic rules',
+      label: 'Apply verification checks',
+      description: verdict.triggered_rules.length > 0
+        ? 'Additional checks found something to review.'
+        : 'No additional warnings were raised.',
       status: verdict.triggered_rules.length > 0 ? 'completed' : 'pending',
-      data: {
-        rules: verdict.triggered_rules,
-      },
     },
     {
       id: 'verdict',
-      label: 'Final Verdict',
+      label: 'Result',
       status:
         verdict.label === 'verified'
           ? 'completed'
@@ -251,7 +244,7 @@ function VerdictTrace({
         </div>
         <div className="flex items-center gap-3">
           <span className={`text-sm font-semibold capitalize ${verdictColor}`}>
-            {verdict.label.replace(/_/g, ' ')}
+            {getVerdictDisplayName(verdict.label)}
           </span>
           <ChevronRight
             className={`h-5 w-5 text-slate-400 transition-transform ${
@@ -267,7 +260,7 @@ function VerdictTrace({
           {/* Trace steps */}
           <div className="mb-6">
             <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">
-              Verification Trace
+              How the result was reached
             </h5>
             <div>
               {steps.map((step, idx) => (
@@ -281,16 +274,14 @@ function VerdictTrace({
           </div>
 
           {/* Reasoning */}
-          {verdict.reasoning && (
-            <div className="mb-4">
-              <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
-                Reasoning
-              </h5>
-              <p className="text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                {verdict.reasoning}
-              </p>
-            </div>
-          )}
+          <div className="mb-4">
+            <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+              What we found
+            </h5>
+            <p className="text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+              {getVerdictExplanation(verdict)}
+            </p>
+          </div>
 
           {/* Triggered rules */}
           {verdict.triggered_rules.length > 0 && (
@@ -328,10 +319,47 @@ export function LogicTracePage() {
       setError('Invalid essay ID');
       return;
     }
-    api
-      .getEssay(numericId)
-      .then(setReport)
-      .catch(() => setError('Failed to load verification trace. Please try again.'));
+
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    const tryFetch = async () => {
+      try {
+        const data = await api.getEssay(numericId);
+        if (cancelled) return;
+        if (data) {
+          setReport(data);
+          setError(null);
+          if (pollTimer) clearInterval(pollTimer);
+        } else {
+          const status = await api.getEssayStatus(numericId);
+          if (cancelled) return;
+          if (status.status === 'failed') {
+            setError(status.error ?? 'Pipeline failed.');
+            if (pollTimer) clearInterval(pollTimer);
+            return;
+          }
+          if (status.status === 'completed') {
+            const retry = await api.getEssay(numericId);
+            if (retry) {
+              setReport(retry);
+              setError(null);
+              if (pollTimer) clearInterval(pollTimer);
+              return;
+            }
+          }
+          if (!pollTimer) pollTimer = setInterval(tryFetch, 2000);
+        }
+      } catch {
+        if (!cancelled) setError('Failed to load verification trace. Please try again.');
+      }
+    };
+
+    tryFetch();
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearInterval(pollTimer);
+    };
   }, [id]);
 
   // Filter verdicts with issues (show non-verified first)

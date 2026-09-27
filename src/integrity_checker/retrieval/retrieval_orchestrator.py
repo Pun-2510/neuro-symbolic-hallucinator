@@ -138,7 +138,8 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
     },
     ("taylor", "1953"): {
         "title": "Cloze procedure: A new tool for measuring readability",
-        "doi": None,
+        # Verified against api.crossref.org/works/10.1177/107769905303000401
+        "doi": "10.1177/107769905303000401",
         "authors": ["Taylor"],
     },
     ("logeswaran", "2018"): {
@@ -278,7 +279,10 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
     },
     ("sutskever", "2014"): {
         "title": "Sequence to Sequence Learning with Neural Networks",
-        "doi": "10.48550/arXiv.1409.05125",
+        # Correct arXiv id is 1409.3215; the previous "1409.05125" does not
+        # resolve (verified against export.arxiv.org) and produced a phantom
+        # duplicate row in local_papers.db.
+        "doi": "10.48550/arXiv.1409.3215",
         "authors": ["Sutskever", "Vinyals", "Le"],
     },
     ("cho", "2014"): {
@@ -443,7 +447,8 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
     },
     ("faruqui", "2015"): {
         "title": "Community Evaluation and Exchange of Word Vectors at wordvectors.org",
-        "doi": None,
+        # Verified against api.crossref.org/works/10.3115/v1/p14-5004
+        "doi": "10.3115/v1/p14-5004",
         "authors": ["Faruqui", "Tsvetkov", "Rastogi", "Dyer"],
     },
     ("bar-haim", "2006"): {
@@ -1339,8 +1344,14 @@ class RetrievalOrchestrator:
             if not cand.found:
                 continue
 
-            # Determine source
-            source = succeeded[0] if succeeded else "api"
+            # Determine the ``source`` column value.  Candidates already
+            # resolved from a cache (``local_db`` / ``known_papers``) keep
+            # their provenance; otherwise attribute the row to the first
+            # successful live source.
+            if cand.source_name in {"local_db", "known_papers"}:
+                source = cand.source_name
+            else:
+                source = succeeded[0] if succeeded else "api"
 
             # Get arXiv ID from external_ids
             arxiv_id = None

@@ -92,6 +92,23 @@ class TestBibliographyHeader:
         biblio = next(s for s in sections if s.section_type == SectionType.BIBLIOGRAPHY)
         assert biblio.start_page == 3
 
+    def test_header_below_page_furniture(self):
+        """Regression: running header + page number push 'References' down.
+
+        Many theses put the essay title and a standalone page number above the
+        bibliography heading, so the heading is no longer in the first 5 lines.
+        """
+        doc = _doc(
+            "Body",
+            "FAITH UNDER THE FÜHRER\n\n\n52\n\n\nBibliography\n"
+            "Bonhoeffer, D. Letters and Papers from Prison. 2010.",
+        )
+        sections = SectionSegmenter().segment(doc)
+        biblio = next(
+            s for s in sections if s.section_type == SectionType.BIBLIOGRAPHY
+        )
+        assert biblio.start_page == 2
+
 
 class TestAppendixHeader:
     def test_appendix_after_bibliography(self):

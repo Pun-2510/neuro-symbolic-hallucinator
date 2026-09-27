@@ -1,0 +1,102 @@
+[
+  {
+    "citation_id": "eval_0001",
+    "ground_truth": "REAL",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.0,
+    "metadata": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "raw": "Edunov et al. (2018)"
+  },
+  {
+    "citation_id": "eval_0002",
+    "ground_truth": "REAL",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.0,
+    "metadata": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "raw": "Rocktäschel et al. (2016)"
+  },
+  {
+    "citation_id": "eval_0003",
+    "ground_truth": "REAL",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.0,
+    "metadata": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "raw": "Velickovic et al. (2018)"
+  },
+  {
+    "citation_id": "eval_0004",
+    "ground_truth": "REAL",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.0,
+    "metadata": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "raw": "Radford et al. (2021)"
+  },
+  {
+    "citation_id": "eval_0005",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.0,
+    "metadata": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "raw": "Fictional Scholar (2016)"
+  },
+  {
+    "citation_id": "eval_0006",
+    "ground_truth": "METADATA_ERROR",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.0,
+    "metadata": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "raw": "Velickovic et al. (2027)"
+  },
+  {
+    "citation_id": "eval_0007",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.0,
+    "metadata": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "raw": "Goodfellow et al. (2087)"
+  },
+  {
+    "citation_id": "eval_0008",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.0,
+    "metadata": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "raw": "Counterfeit Scholar (2019)"
+  },
+  {
+    "citation_id": "eval_0009",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.0,
+    "metadata": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "raw": "Artificial Author (2017)"
+  },
+  {
+    "citation_id": "eval_0010",
+    "ground_truth": "HALLUCINATED",
+    "predicted": "UNRESOLVED",
+    "confidence": 0.0,
+    "metadata": {
+      "error": "'NeuroSymbolicChecker' object has no attribute '_check_synthetic_patterns'"
+    },
+    "raw": "Kipf and Welling (2078)"
+  }
+]

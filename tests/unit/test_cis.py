@@ -57,3 +57,14 @@ def test_cis_mixed() -> None:
     assert abs(
         sum(cis.weights_used.values()) - 1.0
     ) < 0.01  # weights phải sum = 1
+
+
+def test_cis_excludes_url_resources_from_score() -> None:
+    academic = _make_verdict("paper", ValidationLabel.VERIFIED, doi="10.1/paper")
+    resource = _make_verdict("https://github.com/example/repo", ValidationLabel.RESOURCE)
+
+    cis = CISCalculator().compute([academic, resource])
+
+    assert cis.score > 90.0
+    assert cis.num_citations == 1
+    assert cis.num_unresolved == 0
