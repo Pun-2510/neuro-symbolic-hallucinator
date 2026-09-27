@@ -64,9 +64,12 @@ reports/
 # Spec / reference docx — không commit (tham chiếu nội bộ, có ở ../docs)
 /final*.docx
 /*.docx
-# Stray PDFs at repo root (thesis/essay samples live under data/, which is
-# already ignored). Keeps the 20 MB upload samples out of the repo.
+# Stray PDFs at repo root — keeps large uploaded samples out of the repo.
+# The two sample fixtures below are intentionally tracked (referenced by
+# README.md and test_comprehensive.py), so they are negated back in.
 /*.pdf
+!/thesis.pdf
+!/VietDepression_Research_Article.pdf
 
 # OS
 .DS_Store
