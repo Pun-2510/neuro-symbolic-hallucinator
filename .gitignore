@@ -91,4 +91,3 @@ web/playwright-report/
 
 # Bản nháp/duplicate của agent, không commit
 .claude-plan-fix.md
-essay-integrity-checker/run_ground_truth_evaluation.py
