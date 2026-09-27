@@ -96,6 +96,7 @@ SQLite với FTS5 cho fast lookups:
 
 > `data/local_papers.db` là file generated (không commit). Tái tạo bằng:
 > ```bash
+> git clone https://github.com/acl-org/acl-anthology.git data/acl_data  # nguồn XML ACL (1.1 GB, không commit)
 > python scripts/import_acl_xml.py            # import ACL XML (127k papers)
 > python scripts/clean_local_db.py --apply    # dedupe + dọn venue rác + rebuild FTS
 > python scripts/backfill_citation_confidence.py --apply  # (tuỳ chọn) tính lại confidence cho app.db cũ

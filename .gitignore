@@ -50,6 +50,9 @@ data/app.*.db
 data/local_papers.db
 data/local_papers.db-shm
 data/local_papers.db-wal
+# ACL Anthology source checkout — 1.1 GB external clone, fetched separately.
+# Obtain with: git clone https://github.com/acl-org/acl-anthology.git data/acl_data
+data/acl_data/
 data/*.bak
 data/*.truncated.bak
 # ACL Anthology BibTeX is a 73 MB download — regenerate with
