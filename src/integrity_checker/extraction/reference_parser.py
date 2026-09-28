@@ -388,23 +388,35 @@ class ReferenceListParser:
         on each page, corrupting its author/year metadata. Drop:
           - standalone page numbers ("43"),
           - standalone bibliography headers ("References"),
-          - short lines that repeat at least twice (running headers).
+          - short lines that repeat at least twice (running headers),
+          - running headers with page numbers (e.g. "TITLE...  28").
         """
         lines = text.splitlines()
         counts = Counter(line.strip() for line in lines if line.strip())
+
+        # Pattern to match running headers with page numbers
+        # e.g. "EMOTIONAL INTELLIGENCE AND HEART RATE VARIABILITY... 28"
+        running_header_re = re.compile(r"^[\w\s]+?\s{3,}\d{1,3}\s*$")
+
         cleaned: list[str] = []
         for line in lines:
             stripped = line.strip()
             if not stripped:
                 cleaned.append("")
                 continue
+            # Skip standalone page numbers
             if re.fullmatch(r"\d{1,4}", stripped):
                 continue
+            # Skip bibliography header lines
             if _BIB_HEADER_LINE_RE.match(stripped):
                 continue
+            # Skip running headers with page numbers (TITLE...  28)
+            if running_header_re.match(stripped):
+                continue
+            # Skip short repeated lines without year/URL (typical running headers)
             if (
                 counts[stripped] >= 2
-                and len(stripped) < 80
+                and len(stripped) < 100  # Increased from 80 to catch more headers
                 and not re.search(r"(?:19|20)\d{2}", stripped)
                 and "http" not in stripped.lower()
             ):
