@@ -517,7 +517,7 @@ class IntegrityPipeline:
         )
 
         # 2. Retrieve + check từng citation (PARALLEL cho tốc độ).  Keep one
-        # verdict per extracted citation, but retrieve one canonical paper
+        # verdict per unique citation, but retrieve one canonical paper
         # only once when a bibliography entry and in-text occurrence refer to
         # the same paper.
         unique_citations: dict[str, Citation] = {}
@@ -526,6 +526,10 @@ class IntegrityPipeline:
             key = citation_key(citation)
             citation_keys.append(key)
             unique_citations.setdefault(key, citation)
+
+        # FIX: Only keep unique citations for verdicts - duplicates are expected
+        # when the same source is cited multiple times in the document
+        unique_list = list(unique_citations.values())
 
         _emit(
             "retrieving",
@@ -574,7 +578,8 @@ class IntegrityPipeline:
         )
 
         verdicts: list[CitationVerdict] = []
-        for citation, source in zip(all_citations, sources):
+        # FIX: Use unique citations only - deduplicate before creating verdicts
+        for citation, source in zip(unique_list, unique_sources):
             # NEW v1.2 §3.2.2 (task #33) — compute mapping_status TRƯỚC rules
             # để SymbolicRules có input cho AMBIGUOUS_MAPPING rule.
             # Reference list entries are the reference entries themselves — they're "matched" by definition
@@ -713,11 +718,12 @@ class IntegrityPipeline:
         )
 
         # 5. Build report
+        # FIX: num_citations should reflect unique citations count
         report = AnalysisReport(
             essay_id=essay_id,
             filename=Path(pdf_path).name,
             num_pages=num_pages,
-            num_citations=len(all_citations),
+            num_citations=len(unique_list),
             verdicts=verdicts,
             cis=cis,
             linking_summary=linking_summary,
