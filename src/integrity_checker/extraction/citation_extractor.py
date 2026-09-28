@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import re
+import warnings
 from typing import Iterable
 
 from integrity_checker.extraction.base import Document
+from integrity_checker.extraction.patterns import get_in_text_patterns
+from integrity_checker.extraction.patterns.base import CompiledPattern
 from integrity_checker.extraction.regex_patterns import CITATION_PATTERNS, CitationPattern
 from integrity_checker.extraction.text_preprocessor import TextPreprocessor
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
@@ -173,8 +176,33 @@ class CitationExtractor:
         - Author override khi apa_reference_entry đã parse sẵn
     """
 
-    def __init__(self, patterns: Iterable[CitationPattern] | None = None) -> None:
-        self.patterns = list(patterns) if patterns is not None else list(CITATION_PATTERNS)
+    def __init__(
+        self,
+        patterns: Iterable[CitationPattern | CompiledPattern] | None = None,
+    ) -> None:
+        if patterns is None:
+            # Use patterns from the new modular registry
+            # Include both in-text patterns and utility patterns (DOI, URL)
+            # for backward compatibility with original CITATION_PATTERNS
+            from integrity_checker.extraction.patterns import get_in_text_patterns, get_utility_patterns
+            self.patterns = get_in_text_patterns() + get_utility_patterns()
+        else:
+            # Check if using old CITATION_PATTERNS (for backward compatibility)
+            patterns_list = list(patterns)
+            if patterns_list and hasattr(patterns_list[0], 'style'):
+                # Check if it's the old CITATION_PATTERNS format
+                for p in patterns_list:
+                    if isinstance(p, CitationPattern):
+                        warnings.warn(
+                            "Passing CITATION_PATTERNS directly is deprecated. "
+                            "Use CitationExtractor() without patterns to use the new registry, "
+                            "or pass CompiledPattern objects from the patterns registry.",
+                            DeprecationWarning,
+                            stacklevel=2,
+                        )
+                        break
+            self.patterns = patterns_list
+
         self._compiled = [(p, re.compile(p.pattern)) for p in self.patterns]
         self.preprocessor = TextPreprocessor()
 
@@ -222,9 +250,58 @@ class CitationExtractor:
                 raw = m.group(0).strip()
                 raw_start = m.start()
 
+                # Extract citation_type and style from pattern
+                # Handle both CitationPattern (old) and CompiledPattern (new)
+                if isinstance(pattern_def, CitationPattern):
+                    citation_type = pattern_def.type
+                    style = pattern_def.style
+                else:
+                    # CompiledPattern uses pattern_type enum and CitationStyle enum
+                    # Map PatternType to CitationType
+                    from integrity_checker.extraction.patterns.base import PatternType
+                    pattern_type = pattern_def.pattern_type
+                    pattern_name_lower = pattern_def.name.lower()
+
+                    # Check if this is a numeric-style pattern based on name
+                    # Numeric patterns match [N], [N,M], [N-M] citation formats
+                    is_numeric_pattern = 'numeric' in pattern_name_lower
+
+                    if is_numeric_pattern:
+                        citation_type = CitationType.NUMERIC
+                    elif pattern_type == PatternType.IN_TEXT:
+                        citation_type = CitationType.IN_TEXT
+                    elif pattern_type == PatternType.REFERENCE_ENTRY:
+                        citation_type = CitationType.REFERENCE_LIST
+                    elif pattern_type == PatternType.UTILITY:
+                        # Check the pattern name to determine utility type
+                        if 'doi' in pattern_name_lower:
+                            citation_type = CitationType.DOI
+                        elif 'url' in pattern_name_lower:
+                            citation_type = CitationType.URL
+                        else:
+                            citation_type = CitationType.UNKNOWN
+                    else:
+                        citation_type = CitationType.UNKNOWN
+
+                    # For CompiledPattern, style might need to be inferred from pattern name
+                    if 'apa' in pattern_name_lower:
+                        style = CitationStyle.APA
+                    elif 'ieee' in pattern_name_lower:
+                        style = CitationStyle.IEEE
+                    elif 'vancouver' in pattern_name_lower:
+                        style = CitationStyle.VANCOUVER
+                    elif is_numeric_pattern:
+                        style = CitationStyle.IEEE  # numeric is IEEE style
+                    elif 'doi' in pattern_name_lower:
+                        style = CitationStyle.UNKNOWN
+                    elif 'url' in pattern_name_lower:
+                        style = CitationStyle.UNKNOWN
+                    else:
+                        style = CitationStyle.UNKNOWN
+
                 # Bug fix 1: Filter out IEEE [N] reference list markers
                 # "[4] Xiao, Y., ..." at start of line is a reference list entry, not in-text citation
-                if pattern_def.type == CitationType.NUMERIC:
+                if citation_type == CitationType.NUMERIC:
                     if _is_reference_list_marker(raw_text, raw_start):
                         continue
 
@@ -235,7 +312,7 @@ class CitationExtractor:
 
                 # Bug fix 3: Filter out [N] in test scenario contexts
                 # Test scenarios like "Reference: [1]" or "APA-01: MATCHED" should not extract [1]
-                if pattern_def.type == CitationType.NUMERIC:
+                if citation_type == CitationType.NUMERIC:
                     if _is_in_test_scenario_context(raw_text, raw_start):
                         continue
 
@@ -246,8 +323,8 @@ class CitationExtractor:
 
                 citation = Citation(
                     raw_text=raw,
-                    citation_type=pattern_def.type,
-                    style=pattern_def.style,
+                    citation_type=citation_type,
+                    style=style,
                     page_num=page_num,
                     matched_pattern=pattern_def.name,
                 )
@@ -258,18 +335,14 @@ class CitationExtractor:
 
     def _populate_fields(self, citation: Citation, raw: str) -> None:
         """Best-effort trích DOI / URL / year từ raw text."""
+        from integrity_checker.extraction.patterns.utils import extract_doi, extract_url, extract_year
+
         if not citation.doi:
-            m = re.search(r"10\.\d{4,9}/[^\s\]\)\,;]+", raw)
-            if m:
-                citation.doi = m.group(0).rstrip(".")
+            citation.doi = extract_doi(raw)
         if not citation.url:
-            m = re.search(r"https?://[^\s\]\)\,;]+", raw)
-            if m:
-                citation.url = m.group(0).rstrip(".")
+            citation.url = extract_url(raw)
         if not citation.year:
-            m = re.search(r"\b(19|20)\d{2}[a-z]?\b", raw)
-            if m:
-                citation.year = m.group(0)
+            citation.year = extract_year(raw)
 
     def _estimate_confidence(self, citation: Citation) -> float:
         """Heuristic confidence 0–1 dựa trên field có sẵn."""
