@@ -95,6 +95,12 @@ try:
 except ImportError:
     pass
 
+try:
+    from integrity_checker.extraction.patterns import vancouver  # noqa: F401
+    from integrity_checker.extraction.patterns.vancouver import VancouverFormat
+except ImportError:
+    pass
+
 
 # =============================================================================
 # Public API
@@ -127,4 +133,5 @@ __all__ = [
     "APAFormat",
     "IEEEFormat",
     "NumericFormat",
+    "VancouverFormat",
 ]
