@@ -203,7 +203,20 @@ class CitationExtractor:
                         break
             self.patterns = patterns_list
 
-        self._compiled = [(p, re.compile(p.pattern)) for p in self.patterns]
+        # Handle both CitationPattern (old) and CompiledPattern (new)
+        # CitationPattern has .pattern (string), CompiledPattern has .compiled_regex
+        self._compiled = []
+        for p in self.patterns:
+            if hasattr(p, 'compiled_regex'):
+                # CompiledPattern - already has compiled regex
+                compiled_regex = p.compiled_regex
+            elif hasattr(p, 'compiled'):
+                # Fallback for any module using .compiled
+                compiled_regex = p.compiled
+            else:
+                # CitationPattern - need to compile
+                compiled_regex = re.compile(p.pattern)
+            self._compiled.append((p, compiled_regex))
         self.preprocessor = TextPreprocessor()
 
     # -- public API --

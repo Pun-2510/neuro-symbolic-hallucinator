@@ -48,18 +48,18 @@ _VANCOUVER_NUMERIC = CompiledPattern.create(
     description="Vancouver numeric in-text: [1] | [1,2] | [1-5]",
 )
 
-# Parenthetical: (Author, 2020), (Author et al., 2020) - same as APA
+# Parenthetical: (Author, 2020)
 _VANCOUVER_PARENTHETICAL = CompiledPattern.create(
     name="vancouver_parenthetical",
-    pattern=r"\(\s*([A-Za-zÀ-ž][a-zÀ-ž]*(?:['\s][a-zA-ZÀ-ž][a-zÀ-ž]*)*(?:[A-Z][a-zÀ-ž]*)*(?:,?\s+(?:et\s+al\.|and\s+[A-Z][a-zÀ-ž]*(?:[A-Z][a-zÀ-ž]*)*|,?\s*[A-Z][a-zÀ-ž]*\.?\s*[A-Z]?[a-zÀ-ž]*\.?)*)?)\s*,\s*(\d{4}[a-z]?)\s*\)",
+    pattern=r"\(([^)]+),\s*(\d{4}[a-z]?)\)",
     pattern_type=PatternType.IN_TEXT,
     description="Vancouver parenthetical: (Author, 2020) | (Author et al., 2020)",
 )
 
-# Narrative: Author (2020), Author et al. (2020) - same as APA
+# Narrative: Author (2020) - supports "et al."
 _VANCOUVER_NARRATIVE = CompiledPattern.create(
     name="vancouver_narrative",
-    pattern=r"([A-Za-zÀ-ž][a-zÀ-ž]*(?:['\s][a-zA-ZÀ-ž][a-zÀ-ž]*)*(?:[A-Z][a-zÀ-ž]*)*(?:,?\s+(?:et\s+al\.|and\s+[A-Z][a-zÀ-ž]*(?:[A-Z][a-zÀ-ž]*)*|,?\s*[A-Z][a-zÀ-ž]*\.?\s*[A-Z]?[a-zÀ-ž]*\.?)*)?)\s+\((\d{4}[a-z]?)\)",
+    pattern=r"([A-Z][a-zA-ZÀ-žÀ-ž]+(?:\s+et\s+al\.?)?(?:[\s,][A-Z][a-zA-ZÀ-žÀ-ž]*)*)\s+\((\d{4}[a-z]?)\)",
     pattern_type=PatternType.IN_TEXT,
     description="Vancouver narrative: Author (2020) | Author et al. (2020)",
 )
