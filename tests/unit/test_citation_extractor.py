@@ -27,9 +27,10 @@ def test_extract_apa_intext_parenthetical() -> None:
 
 
 def test_extract_doi() -> None:
+    # DOI patterns are utility patterns, need include_utility=True
     text = "Reference: 10.1038/nature14539 (LeCun et al., 2015)."
     doc = _make_doc(text)
-    citations = CitationExtractor().extract_from_document(doc)
+    citations = CitationExtractor(include_utility=True).extract_from_document(doc)
     doi_citations = [c for c in citations if c.citation_type == CitationType.DOI]
     assert len(doi_citations) >= 1
     assert doi_citations[0].doi == "10.1038/nature14539"

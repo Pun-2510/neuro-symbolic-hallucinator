@@ -179,13 +179,14 @@ class CitationExtractor:
     def __init__(
         self,
         patterns: Iterable[CitationPattern | CompiledPattern] | None = None,
+        include_utility: bool = False,
     ) -> None:
         if patterns is None:
             # Use patterns from the new modular registry
-            # Include both in-text patterns and utility patterns (DOI, URL)
-            # for backward compatibility with original CITATION_PATTERNS
             from integrity_checker.extraction.patterns import get_in_text_patterns, get_utility_patterns
-            self.patterns = get_in_text_patterns() + get_utility_patterns()
+            self.patterns = get_in_text_patterns()
+            if include_utility:
+                self.patterns = self.patterns + get_utility_patterns()
         else:
             # Check if using old CITATION_PATTERNS (for backward compatibility)
             patterns_list = list(patterns)
@@ -203,12 +204,13 @@ class CitationExtractor:
                         break
             self.patterns = patterns_list
 
-        # Filter out utility patterns (year, doi, url) - they shouldn't be used for in-text extraction
-        in_text_patterns = [
-            p for p in self.patterns
-            if not hasattr(p, 'pattern_type') or p.pattern_type.value != 'utility'
-        ]
-        self.patterns = in_text_patterns
+        # Filter out utility patterns (year, doi, url) for in-text extraction
+        # unless include_utility=True
+        if not include_utility:
+            self.patterns = [
+                p for p in self.patterns
+                if not hasattr(p, 'pattern_type') or p.pattern_type.value != 'utility'
+            ]
 
         # Handle both CitationPattern (old) and CompiledPattern (new)
         # CitationPattern has .pattern (string), CompiledPattern has .compiled_regex
