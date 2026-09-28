@@ -285,7 +285,8 @@ class TestRegistry:
         assert "APA" in info
         assert "IEEE" in info
         assert info["APA"]["priority"] == 100
-        assert info["IEEE"]["priority"] == 20
+        # IEEE priority is 90 (higher than Numeric at lower priority)
+        assert info["IEEE"]["priority"] == 90
 
 
 class TestAPAPatterns:
@@ -346,7 +347,8 @@ class TestIEEEPatterns:
     def test_numeric_bracketed(self):
         """Test numeric bracketed citation pattern."""
         patterns = get_in_text_patterns()
-        numeric = next(p for p in patterns if p.name == "numeric_bracketed")
+        # IEEE format uses "ieee_numeric" pattern name
+        numeric = next(p for p in patterns if p.name == "ieee_numeric")
 
         # Test matches
         assert len(numeric.finditer("[1]")) == 1
