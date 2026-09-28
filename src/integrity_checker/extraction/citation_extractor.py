@@ -45,6 +45,15 @@ _TEST_SCENARIO_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
+# Month and season names for filtering date-only patterns
+_MONTH_NAMES = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+]
+_MONTH_NAMES_LOWER = [m.lower() for m in _MONTH_NAMES]
+_SEASON_NAMES = ["Spring", "Summer", "Fall", "Autumn", "Winter"]
+_SEASON_NAMES_LOWER = [s.lower() for s in _SEASON_NAMES]
+
 
 def _is_reference_list_marker(text: str, match_start: int) -> bool:
     """Check if the [N] match is a reference list marker (not an in-text citation).
@@ -100,6 +109,39 @@ def _is_in_test_scenario_context(text: str, match_start: int) -> bool:
     # Check if preceded by "In-text:" or "Reference:" in the same line
     if re.search(r'(?:In-text|Reference)\s*:', line_prefix, re.IGNORECASE):
         return True
+
+    return False
+
+
+def _is_date_only_citation(extracted_text: str) -> bool:
+    """Check if extracted text is a date-only pattern, not a real citation.
+
+    Filters out patterns like "(May 2012)", "(June 1996)", "(Spring 2013)"
+    which are dates in legal citations, not author-year citations.
+
+    Returns True if the text appears to be a date only, not a citation.
+    """
+    # Extract content inside parentheses
+    inner = extracted_text.strip('()').strip()
+
+    # Split by comma to get first word(s)
+    first_part = inner.split(',')[0].strip()
+
+    # Check if first word is a month or season name
+    if first_part.lower() in _MONTH_NAMES_LOWER:
+        return True
+    if first_part.lower() in _SEASON_NAMES_LOWER:
+        return True
+
+    # Additional check: if the entire inner text is just "Month Year" or "Season Year"
+    # without any author-like structure (comma or "et al.")
+    words = inner.split()
+    if len(words) == 2:
+        first_word_lower = words[0].lower()
+        if first_word_lower in _MONTH_NAMES_LOWER or first_word_lower in _SEASON_NAMES_LOWER:
+            # Check if second word looks like a year
+            if re.match(r'^\d{4}$', words[1]):
+                return True
 
     return False
 
@@ -196,6 +238,11 @@ class CitationExtractor:
                 if pattern_def.type == CitationType.NUMERIC:
                     if _is_in_test_scenario_context(raw_text, raw_start):
                         continue
+
+                # Bug fix 4: Filter out date-only patterns like "(May 2012)", "(Spring 2013)"
+                # These are legal citations with dates, not author-year citations
+                if _is_date_only_citation(raw):
+                    continue
 
                 citation = Citation(
                     raw_text=raw,

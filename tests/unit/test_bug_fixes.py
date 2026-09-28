@@ -342,6 +342,45 @@ class TestBug6CISConsistency:
         assert cis.components.verified_ratio == 0.0
 
 
+class TestBug7DateOnlyCitationFilter:
+    """Bug 7: Filter out date-only patterns like '(May 2012)', '(Spring 2013)'.
+
+    These are legal citations with dates, not author-year citations.
+    """
+
+    def test_date_only_citation_filter_filters_month_year(self):
+        """Test that date-only patterns like '(May 2012)' are filtered."""
+        from integrity_checker.extraction.citation_extractor import _is_date_only_citation
+
+        # Should be filtered (date-only)
+        assert _is_date_only_citation("(May 2012)") is True
+        assert _is_date_only_citation("(June 1996)") is True
+        assert _is_date_only_citation("(July 1997)") is True
+        assert _is_date_only_citation("(August 1884)") is True
+        assert _is_date_only_citation("(September 2020)") is True
+        assert _is_date_only_citation("(Spring 2013)") is True
+        assert _is_date_only_citation("(Fall 2022)") is True
+
+    def test_date_only_citation_filter_allows_real_citations(self):
+        """Test that real APA citations like '(Smith, 2020)' are NOT filtered."""
+        from integrity_checker.extraction.citation_extractor import _is_date_only_citation
+
+        # Should NOT be filtered (real citations)
+        assert _is_date_only_citation("(Smith, 2020)") is False
+        assert _is_date_only_citation("(Smith et al., 2020)") is False
+        assert _is_date_only_citation("(Johnson & Williams, 2019)") is False
+        assert _is_date_only_citation("(Brown, 2021)") is False
+
+    def test_date_only_citation_filter_case_insensitive(self):
+        """Test that month/season matching is case-insensitive."""
+        from integrity_checker.extraction.citation_extractor import _is_date_only_citation
+
+        # Case insensitive
+        assert _is_date_only_citation("(MAY 2012)") is True
+        assert _is_date_only_citation("(may 2012)") is True
+        assert _is_date_only_citation("(SPRING 2013)") is True
+
+
 class TestIntegrationBugFixes:
     """Integration tests for bug fixes in the pipeline."""
 
