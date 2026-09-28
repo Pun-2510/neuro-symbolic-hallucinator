@@ -332,15 +332,15 @@ class TestVancouverAuthorsParsing:
         format_obj = VancouverFormat()
         authors = format_obj._parse_authors("Smith J")
         assert len(authors) == 1
-        assert authors[0] == "Smith J"
+        assert authors[0].raw == "Smith J"
 
     def test_two_authors_comma(self):
         """Test parsing two authors with comma."""
         format_obj = VancouverFormat()
         authors = format_obj._parse_authors("Smith J, Jones A")
         assert len(authors) == 2
-        assert authors[0] == "Smith J"
-        assert authors[1] == "Jones A"
+        assert authors[0].raw == "Smith J"
+        assert authors[1].raw == "Jones A"
 
     def test_two_authors_and(self):
         """Test parsing two authors with 'and'."""

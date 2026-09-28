@@ -71,14 +71,13 @@ def register_format(format: CitationFormat) -> None:
 
     _FORMAT_REGISTRY[name] = format
 
-    # Insert into priority order
-    insert_position = 0
+    # Insert into priority order (higher priority = earlier in list = tried first)
+    insert_position = len(_PRIORITY_ORDER)
     for i, existing_name in enumerate(_PRIORITY_ORDER):
         existing_format = _FORMAT_REGISTRY[existing_name]
-        if format.priority < existing_format.priority:
+        if format.priority > existing_format.priority:
             insert_position = i
             break
-        insert_position = i + 1
 
     _PRIORITY_ORDER.insert(insert_position, name)
 

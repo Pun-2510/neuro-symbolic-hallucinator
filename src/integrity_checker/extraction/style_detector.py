@@ -36,6 +36,14 @@ from typing import Optional
 from integrity_checker.config import Settings, StyleDetectionConfig
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
+# Optional import for patterns registry
+try:
+    from .patterns import get_format
+    REGISTRY_AVAILABLE = True
+except ImportError:
+    REGISTRY_AVAILABLE = False
+    get_format = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -112,6 +120,24 @@ class StyleDetector:
 
     # -- internals --
 
+    def _detect_style_from_registry(self, text: str) -> Optional[CitationStyle]:
+        """Detect citation style using patterns registry (if available)."""
+        if not REGISTRY_AVAILABLE or get_format is None:
+            return None
+        try:
+            style_name = get_format(text)
+            if style_name:
+                style_map = {
+                    "apa": CitationStyle.APA,
+                    "ieee": CitationStyle.IEEE,
+                    "vancouver": CitationStyle.VANCOUVER,
+                    "chicago": CitationStyle.CHICAGO,
+                }
+                return style_map.get(style_name.lower())
+        except Exception:
+            pass
+        return None
+
     def _extract_features(
         self,
         body_citations: list[Citation],
@@ -125,7 +151,14 @@ class StyleDetector:
         # Body signals
         for c in body_citations:
             f.body_total_citations += 1
-            if ieee_re.search(c.raw_text):
+
+            # Try registry first (optional enhancement)
+            detected_style = self._detect_style_from_registry(c.raw_text)
+            if detected_style == CitationStyle.IEEE:
+                f.body_ieee_like += 1
+            elif detected_style == CitationStyle.APA:
+                f.body_apa_like += 1
+            elif ieee_re.search(c.raw_text):
                 f.body_ieee_like += 1
             elif apa_re.search(c.raw_text):
                 f.body_apa_like += 1
@@ -134,16 +167,24 @@ class StyleDetector:
             else:
                 f.body_other += 1
 
-        # Bib signals (dùng Citation.style đã được ReferenceListParser set)
+        # Bib signals (dùng Citation.style đã được ReferenceListParser set, hoặc registry nếu có)
         for c in bib_citations:
             f.bib_total_entries += 1
-            if c.style == CitationStyle.APA:
+
+            # Use Citation.style if already set, otherwise try registry
+            style = c.style
+            if style == CitationStyle.UNKNOWN or style is None:
+                detected_style = self._detect_style_from_registry(c.raw_text)
+                if detected_style:
+                    style = detected_style
+
+            if style == CitationStyle.APA:
                 f.bib_apa_style += 1
-            elif c.style == CitationStyle.IEEE:
+            elif style == CitationStyle.IEEE:
                 f.bib_ieee_style += 1
-            elif c.style == CitationStyle.VANCOUVER:
+            elif style == CitationStyle.VANCOUVER:
                 f.bib_vancouver_style += 1
-            elif c.style == CitationStyle.CHICAGO:
+            elif style == CitationStyle.CHICAGO:
                 f.bib_chicago_style += 1
             else:
                 f.bib_other_style += 1

@@ -256,48 +256,9 @@ class CitationExtractor:
                     citation_type = pattern_def.type
                     style = pattern_def.style
                 else:
-                    # CompiledPattern uses pattern_type enum and CitationStyle enum
-                    # Map PatternType to CitationType
-                    from integrity_checker.extraction.patterns.base import PatternType
-                    pattern_type = pattern_def.pattern_type
-                    pattern_name_lower = pattern_def.name.lower()
-
-                    # Check if this is a numeric-style pattern based on name
-                    # Numeric patterns match [N], [N,M], [N-M] citation formats
-                    is_numeric_pattern = 'numeric' in pattern_name_lower
-
-                    if is_numeric_pattern:
-                        citation_type = CitationType.NUMERIC
-                    elif pattern_type == PatternType.IN_TEXT:
-                        citation_type = CitationType.IN_TEXT
-                    elif pattern_type == PatternType.REFERENCE_ENTRY:
-                        citation_type = CitationType.REFERENCE_LIST
-                    elif pattern_type == PatternType.UTILITY:
-                        # Check the pattern name to determine utility type
-                        if 'doi' in pattern_name_lower:
-                            citation_type = CitationType.DOI
-                        elif 'url' in pattern_name_lower:
-                            citation_type = CitationType.URL
-                        else:
-                            citation_type = CitationType.UNKNOWN
-                    else:
-                        citation_type = CitationType.UNKNOWN
-
-                    # For CompiledPattern, style might need to be inferred from pattern name
-                    if 'apa' in pattern_name_lower:
-                        style = CitationStyle.APA
-                    elif 'ieee' in pattern_name_lower:
-                        style = CitationStyle.IEEE
-                    elif 'vancouver' in pattern_name_lower:
-                        style = CitationStyle.VANCOUVER
-                    elif is_numeric_pattern:
-                        style = CitationStyle.IEEE  # numeric is IEEE style
-                    elif 'doi' in pattern_name_lower:
-                        style = CitationStyle.UNKNOWN
-                    elif 'url' in pattern_name_lower:
-                        style = CitationStyle.UNKNOWN
-                    else:
-                        style = CitationStyle.UNKNOWN
+                    # CompiledPattern provides type and style properties
+                    citation_type = pattern_def.type
+                    style = pattern_def.style
 
                 # Bug fix 1: Filter out IEEE [N] reference list markers
                 # "[4] Xiao, Y., ..." at start of line is a reference list entry, not in-text citation

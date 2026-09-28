@@ -262,15 +262,15 @@ class TestIEEEAuthorsParsing:
         format_obj = IEEEFormat()
         authors = format_obj._parse_authors("S. J. Pan")
         assert len(authors) == 1
-        assert authors[0] == "S. J. Pan"
+        assert authors[0].raw == "S. J. Pan"
 
     def test_two_authors(self):
         """Test parsing two authors."""
         format_obj = IEEEFormat()
         authors = format_obj._parse_authors("S. J. Pan and Q. Yang")
         assert len(authors) == 2
-        assert authors[0] == "S. J. Pan"
-        assert authors[1] == "Q. Yang"
+        assert authors[0].raw == "S. J. Pan"
+        assert authors[1].raw == "Q. Yang"
 
     def test_multiple_authors(self):
         """Test parsing multiple authors."""

@@ -347,7 +347,7 @@ class TestAPAAuthorParsing:
         """Test parsing single author."""
         authors = self.apa._parse_authors("Smith, J.")
         assert len(authors) == 1
-        assert "Smith" in authors[0]
+        assert "smith" in authors[0].last_name.lower()
 
     def test_parse_two_authors_ampersand(self):
         """Test parsing two authors with &."""

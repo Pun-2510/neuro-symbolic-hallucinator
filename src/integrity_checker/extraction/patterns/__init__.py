@@ -101,6 +101,18 @@ try:
 except ImportError:
     pass
 
+try:
+    from integrity_checker.extraction.patterns import chicago  # noqa: F401
+    from integrity_checker.extraction.patterns.chicago import ChicagoFormat
+except ImportError:
+    pass
+
+try:
+    from integrity_checker.extraction.patterns import mla  # noqa: F401
+    from integrity_checker.extraction.patterns.mla import MLAFormat
+except ImportError:
+    pass
+
 
 # =============================================================================
 # Public API
@@ -134,4 +146,6 @@ __all__ = [
     "IEEEFormat",
     "NumericFormat",
     "VancouverFormat",
+    "ChicagoFormat",
+    "MLAFormat",
 ]

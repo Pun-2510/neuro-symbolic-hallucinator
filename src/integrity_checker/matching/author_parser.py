@@ -239,8 +239,14 @@ def normalize_author(raw: str) -> Author:
     )
 
 
-def parse_authors(raw: str) -> list[Author]:
+def parse_authors(raw: str, format_name: str | None = None) -> list[Author]:
     """Parse 1 chuỗi nhiều authors thành list Author.
+
+    Args:
+        raw: Chuỗi author names cần parse.
+        format_name: Định dạng citation (APA / IEEE / Vancouver / None).
+            - Nếu None: dùng heuristic detection (mặc định).
+            - Nếu có giá trị: dùng format-specific parsing.
 
     Xử lý separators (APA / Chicago / IEEE / Vancouver):
         - 'Smith, J., & Jones, A.'       (APA with &)
@@ -250,6 +256,11 @@ def parse_authors(raw: str) -> list[Author]:
         - 'Smith, J., Jones, A.'         (comma between authors, no &)
         - 'LeCun, Y., Bengio, Y., & Hinton, G.'  (3+ authors)
         - 'Bowman, Angeli, Potts, et al.' (Vancouver with et al.)
+
+    Format-specific behavior:
+        - **APA**: "LastName, I." format, "et al." support, "&" / "and" separators
+        - **IEEE**: Initials first (e.g., "J. Smith"), comma-separated authors
+        - **Vancouver**: Initials first, no punctuation between initials (e.g., "JABC")
 
     Strategy:
         1. Chuẩn hoá separator chính (& / "and" / "et al." / ;) → TOKEN_SEP.
@@ -261,6 +272,19 @@ def parse_authors(raw: str) -> list[Author]:
     if not raw:
         return []
 
+    # Format-specific parsing when format_name is provided
+    if format_name:
+        format_upper = format_name.upper()
+        if format_upper == "APA":
+            return _parse_apa_format(raw)
+        elif format_upper == "IEEE":
+            return _parse_ieee_format(raw)
+        elif format_upper == "VANCOUVER":
+            return _parse_vancouver_format(raw)
+        # Unknown format, fall back to heuristic detection
+        logger.debug(f"Unknown format_name: {format_name}, using heuristic detection")
+
+    # Heuristic detection (default behavior when format_name is None)
     # Chuẩn hoá separator → split-friendly
     text = raw
 
@@ -283,6 +307,192 @@ def parse_authors(raw: str) -> list[Author]:
 
     # Bước 2: Nếu không có separator chính, có thể là "Last, I., Last, I., & Last, I."
     return _split_apa_authors(text)
+
+
+def _parse_apa_format(text: str) -> list[Author]:
+    """Parse author string using APA format rules.
+
+    APA format characteristics:
+    - "LastName, Initials" pattern (e.g., "Smith, J.", "Vaswani, A.")
+    - "et al." for 3+ authors (e.g., "Brown et al., 2020")
+    - "&" or "and" as separator between authors
+    - "and" before last author in list of 3+
+
+    Examples:
+    - "Smith, J." -> 1 author
+    - "Smith, J., & Jones, A." -> 2 authors
+    - "Vaswani, A., Shazeer, N., Parmar, N., et al." -> 3+ authors with et al.
+    """
+    text = text.strip()
+    if not text:
+        return []
+
+    # Handle "et al." - replace with separator for individual parsing
+    text = re.sub(r",?\s*et\s+al\.?\s*$", ";", text, flags=re.IGNORECASE)
+
+    # Normalize APA separators
+    text = re.sub(r"\s+and\s+", " ; ", text, flags=re.IGNORECASE)
+    text = text.replace("&", ";")
+
+    authors: list[Author] = []
+    if ";" in text:
+        pieces = [p.strip() for p in text.split(";") if p.strip()]
+        for piece in pieces:
+            authors.extend(_split_apa_authors(piece))
+    else:
+        authors = _split_apa_authors(text)
+
+    return authors
+
+
+def _parse_ieee_format(text: str) -> list[Author]:
+    """Parse author string using IEEE format rules.
+
+    IEEE format characteristics:
+    - Initials first, then last name (e.g., "J. Smith", "A. Vaswani")
+    - Multiple initials before last name (e.g., "J. B. Smith")
+    - Periods after each initial
+    - Comma-separated authors
+
+    Examples:
+    - "J. Smith" -> last_name=Smith, initials=[J]
+    - "A. Vaswani, N. Shazeer, et al." -> 2+ authors
+    - "J. B. Smith, A. Jones" -> last_name=Smith, initials=[J, B]
+    """
+    text = text.strip()
+    if not text:
+        return []
+
+    # Handle "et al." - replace with separator
+    text = re.sub(r",?\s*et\s+al\.?\s*$", ";", text, flags=re.IGNORECASE)
+
+    # Normalize IEEE separators: comma + space typically separates authors
+    text = re.sub(r"\s+and\s+", " ; ", text, flags=re.IGNORECASE)
+    text = text.replace("&", ";")
+
+    authors: list[Author] = []
+
+    # Split by semicolon (et al. replacement) or comma
+    if ";" in text:
+        pieces = [p.strip() for p in text.split(";") if p.strip()]
+        for piece in pieces:
+            a = normalize_author(piece)
+            if a.last_name:
+                authors.append(a)
+    else:
+        # IEEE uses comma-separated authors
+        pieces = [p.strip() for p in text.split(",") if p.strip()]
+        for piece in pieces:
+            a = normalize_author(piece)
+            if a.last_name:
+                authors.append(a)
+
+    return authors
+
+
+def _parse_vancouver_format(text: str) -> list[Author]:
+    """Parse author string using Vancouver format rules.
+
+    Vancouver format characteristics:
+    - Initials first (no periods between initials, but can have periods)
+    - No punctuation between initials
+    - Surname last
+    - Up to 6 authors, then "et al." or first 6 + "et al."
+
+    Examples:
+    - "Smith J" -> last_name=Smith, initials=[J]
+    - "Smith JK" -> last_name=Smith, initials=[J, K]
+    - "Bowman SR, Angeli L, Potts C" -> 3 authors
+    - "Vaswani A, Shazeer N, Parmar N, et al." -> 3+ with et al.
+    """
+    text = text.strip()
+    if not text:
+        return []
+
+    # Handle "et al." - replace with separator
+    text = re.sub(r",?\s*et\s+al\.?\s*$", ";", text, flags=re.IGNORECASE)
+
+    # Normalize Vancouver separators: comma typically separates authors
+    text = re.sub(r"\s+and\s+", " ; ", text, flags=re.IGNORECASE)
+    text = text.replace("&", ";")
+
+    authors: list[Author] = []
+
+    # Split by semicolon (et al. replacement) or comma
+    if ";" in text:
+        pieces = [p.strip() for p in text.split(";") if p.strip()]
+    else:
+        pieces = [p.strip() for p in text.split(",") if p.strip()]
+
+    for piece in pieces:
+        # Vancouver: "LastName Initials" - initials are at the end without period between
+        # "Smith JK" -> tokens = ["Smith", "JK"] -> last_name=Smith, initials=[J, K]
+        # "Smith J" -> tokens = ["Smith", "J"] -> last_name=Smith, initials=[J]
+        tokens = piece.split()
+        if not tokens:
+            continue
+
+        if len(tokens) >= 2:
+            # Last token might be initials or last name continuation
+            last_token = tokens[-1]
+            rest = tokens[:-1]
+
+            # Check if last token looks like initials (e.g., "JK", "J", "J.K.")
+            # Initials can be: single letter, multiple letters, or with periods
+            is_initials = len(last_token) <= 6 and (
+                last_token.isupper() or
+                all(c.isupper() or c == '.' for c in last_token)
+            )
+
+            if is_initials and len(rest) >= 1:
+                # Pattern: "LastName Initials" (e.g., "Smith JK")
+                last_name = " ".join(rest).rstrip(".,;|")
+                # Extract initials from last token (remove periods, split into individual)
+                initials = [c for c in last_token if c.isalpha()]
+                initials = [i.upper() for i in initials]
+
+                author = Author(
+                    last_name=last_name.lower(),
+                    initials=initials,
+                    normalized=f"{last_name.lower()}|{''.join(initials).lower()}" if initials else last_name.lower(),
+                    raw=piece,
+                )
+                authors.append(author)
+            else:
+                # Could be "FirstName LastName" format - take last token as last name
+                last_name = last_token.rstrip(".,;|")
+                first_part = " ".join(rest).rstrip(".,;|")
+
+                if first_part:
+                    # Extract initials from first part
+                    initials = []
+                    for word in first_part.split():
+                        if word and word[0].isupper():
+                            initials.append(word[0].upper())
+                else:
+                    initials = []
+
+                if len(last_name) >= 1:
+                    author = Author(
+                        last_name=last_name.lower(),
+                        initials=initials,
+                        normalized=f"{last_name.lower()}|{''.join(initials).lower()}" if initials else last_name.lower(),
+                        raw=piece,
+                    )
+                    authors.append(author)
+        else:
+            # Single token - could be just a last name
+            last_name = tokens[0].rstrip(".,;|")
+            if len(last_name) >= 2:
+                author = Author(
+                    last_name=last_name.lower(),
+                    initials=[],
+                    normalized=last_name.lower(),
+                    raw=piece,
+                )
+                authors.append(author)
+
+    return authors
 
 
 def _safe_parse(piece: str) -> Author | None:

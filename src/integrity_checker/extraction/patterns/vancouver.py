@@ -30,6 +30,7 @@ from typing import Optional
 
 from integrity_checker.extraction.patterns.base import CompiledPattern, PatternType
 from integrity_checker.extraction.patterns.registry import register_format
+from integrity_checker.matching.author_parser import parse_authors
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
 
@@ -500,7 +501,8 @@ class VancouverFormat:
             citation.doi = doi_match.group(0).rstrip('.')
 
         citation.confidence = self._estimate_confidence(citation)
-        return citation if citation.year else None
+        # Only return if we have meaningful data
+        return citation if citation.title or citation.year else None
 
     def _parse_authors(self, authors_str: str) -> list[str]:
         """Parse author string into list of authors.
@@ -509,33 +511,9 @@ class VancouverFormat:
             authors_str: Author string like "Smith J, Jones A" or "Smith J and Jones A"
 
         Returns:
-            List of author strings
+            List of author strings (via parse_authors)
         """
-        authors: list[str] = []
-
-        # Clean up the string
-        authors_str = authors_str.strip()
-
-        # Split by comma or "and"
-        # Vancouver format: "Smith J, Jones A" or "Smith J and Jones A"
-        parts = re.split(r',\s*|\s+and\s+', authors_str)
-
-        for part in parts:
-            part = part.strip()
-            if not part:
-                continue
-
-            # Clean up individual author
-            # Remove trailing commas
-            author = re.sub(r',$', '', part).strip()
-
-            # Normalize spacing
-            author = re.sub(r'\s+', ' ', author)
-
-            if author:
-                authors.append(author)
-
-        return authors
+        return parse_authors(authors_str)
 
     def _parse_venue(self, citation: Citation, venue_text: str) -> None:
         """Parse venue information from remaining text.

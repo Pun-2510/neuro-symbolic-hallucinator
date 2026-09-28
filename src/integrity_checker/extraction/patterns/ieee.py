@@ -24,6 +24,7 @@ from typing import Optional
 
 from integrity_checker.extraction.patterns.base import CompiledPattern, PatternType
 from integrity_checker.extraction.patterns.registry import register_format
+from integrity_checker.matching.author_parser import parse_authors
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
 
@@ -554,7 +555,7 @@ class IEEEFormat:
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
             style=CitationStyle.IEEE,
-            matched_pattern='ieee_fallback',
+            matched_pattern='fallback_ieee_entry',
         )
 
         # Extract numeric index
@@ -582,6 +583,7 @@ class IEEEFormat:
             citation.doi = doi_m.group(0).rstrip('.')
 
         citation.confidence = self._estimate_confidence(citation)
+        # Only return if we have meaningful data
         return citation if citation.title or citation.year else None
 
     def _parse_authors(self, authors_str: str) -> list[str]:
@@ -591,32 +593,9 @@ class IEEEFormat:
             authors_str: Author string like "S. J. Pan and Q. Yang"
 
         Returns:
-            List of author strings
+            List of author strings (via parse_authors)
         """
-        authors: list[str] = []
-
-        # Clean up the string
-        authors_str = authors_str.strip()
-
-        # Split by "and" with proper handling
-        parts = re.split(r'\s+and\s+', authors_str)
-
-        for part in parts:
-            part = part.strip()
-            if not part:
-                continue
-
-            # Clean up individual author
-            # Remove trailing commas
-            author = re.sub(r',$', '', part).strip()
-
-            # Normalize spacing
-            author = re.sub(r'\s+', ' ', author)
-
-            if author:
-                authors.append(author)
-
-        return authors
+        return parse_authors(authors_str)
 
     def _parse_venue(self, citation: Citation, venue_text: str) -> None:
         """Parse venue information from remaining text.
