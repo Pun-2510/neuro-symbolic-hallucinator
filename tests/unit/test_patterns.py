@@ -284,7 +284,7 @@ class TestRegistry:
         info = get_registry_info()
         assert "APA" in info
         assert "IEEE" in info
-        assert info["APA"]["priority"] == 10
+        assert info["APA"]["priority"] == 100
         assert info["IEEE"]["priority"] == 20
 
 

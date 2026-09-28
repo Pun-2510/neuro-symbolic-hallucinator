@@ -9,9 +9,9 @@ Structure:
         base.py          # Core dataclasses and Protocol definitions
         utils.py         # Utility patterns (DOI, URL, Year) - SINGLE SOURCE OF TRUTH
         registry.py      # Format registry for managing citation formats
-        apa.py           # APA format patterns (TODO: implement)
-        ieee.py          # IEEE format patterns (TODO: implement)
-        numeric.py       # Numeric citation patterns (TODO: implement)
+        apa.py           # APA format patterns
+        ieee.py          # IEEE format patterns
+        numeric.py       # Numeric citation patterns
 
 Auto-registration:
     Format modules (apa.py, ieee.py, etc.) should register themselves
@@ -79,16 +79,19 @@ from integrity_checker.extraction.patterns.registry import (
 # Import these at the end to avoid circular imports
 try:
     from integrity_checker.extraction.patterns import apa  # noqa: F401
+    from integrity_checker.extraction.patterns.apa import APAFormat
 except ImportError:
     pass
 
 try:
     from integrity_checker.extraction.patterns import ieee  # noqa: F401
+    from integrity_checker.extraction.patterns.ieee import IEEEFormat
 except ImportError:
     pass
 
 try:
     from integrity_checker.extraction.patterns import numeric  # noqa: F401
+    from integrity_checker.extraction.patterns.numeric import NumericFormat
 except ImportError:
     pass
 
@@ -120,4 +123,8 @@ __all__ = [
     "get_registry_info",
     "register_format",
     "clear_registry",
+    # Citation format classes
+    "APAFormat",
+    "IEEEFormat",
+    "NumericFormat",
 ]
