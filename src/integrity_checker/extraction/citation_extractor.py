@@ -203,6 +203,13 @@ class CitationExtractor:
                         break
             self.patterns = patterns_list
 
+        # Filter out utility patterns (year, doi, url) - they shouldn't be used for in-text extraction
+        in_text_patterns = [
+            p for p in self.patterns
+            if not hasattr(p, 'pattern_type') or p.pattern_type.value != 'utility'
+        ]
+        self.patterns = in_text_patterns
+
         # Handle both CitationPattern (old) and CompiledPattern (new)
         # CitationPattern has .pattern (string), CompiledPattern has .compiled_regex
         self._compiled = []
@@ -261,6 +268,16 @@ class CitationExtractor:
             # Find positions in raw text first (preserves whitespace/newlines)
             for m in compiled.finditer(raw_text):
                 raw = m.group(0).strip()
+                # Clean up: remove newlines and excessive whitespace from raw text
+                raw = re.sub(r'\s+', ' ', raw).strip()
+                # Skip if raw is too long (likely contains page headers)
+                if len(raw) > 150:
+                    continue
+
+                # Skip standalone years (e.g., "2026" - not a citation)
+                if re.match(r'^\d{4}[a-z]?$', raw):
+                    continue
+
                 raw_start = m.start()
 
                 # Extract citation_type and style from pattern

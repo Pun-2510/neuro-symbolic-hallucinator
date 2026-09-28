@@ -295,14 +295,11 @@ class IntegrityPipeline:
         # NEW v1.2 §3.2.2 — CitationLinker cho in-text ↔ reference integrity
         self.linker = linker or CitationLinker()
         settings = get_settings()
+        # Cache disabled by default - set use_report_cache=True only when needed
         self._use_report_cache = (
             use_report_cache
             if use_report_cache is not None
-            else (
-                settings.app.env.casefold() not in {"test", "testing"}
-                and orchestrator is None
-                and checker is None
-            )
+            else False  # Disabled by default
         )
         self._report_cache_dir = settings.paths.cache_dir / "reports"
 
