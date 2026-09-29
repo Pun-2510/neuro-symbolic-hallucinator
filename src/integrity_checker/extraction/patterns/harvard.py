@@ -77,8 +77,9 @@ _HARVARD_BOOK = CompiledPattern.create(
         r"^"
         r"(?P<authors>.+?)\s+\("  # Authors (
         r"(?P<year>\d{4})"  # Year
-        r"\)\.?\s*"  # ).
-        r"(?P<title>.+?)\.?\s*"  # Title
+        r"\)\s+"  # ).
+        r"(?P<title>.+?)"  # Title
+        r"\.\s*"  # Period
         r"(?P<place_pub>(?:.+?:\s*)?[^.]+?)?"  # Place: Publisher (optional)
         r"(?:\.\s*(?P<rest>.*))?"
         r"$"
@@ -95,8 +96,9 @@ _HARVARD_ARTICLE = CompiledPattern.create(
         r"^"
         r"(?P<authors>.+?)\s+\("  # Authors (
         r"(?P<year>\d{4})"  # Year
-        r"\)\.?\s*"  # ).
-        r"(?P<title>.+?)\.?\s*"  # Title
+        r"\)\s+"  # ).
+        r"(?P<title>.+?)"  # Title (captured until period before journal)
+        r"\.\s+"  # Period before journal
         r"(?P<venue>.+)"  # Venue (rest)
         r"$"
     ),

@@ -71,9 +71,9 @@ _MLA_ARTICLE = CompiledPattern.create(
     name="mla_article",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors
-        r'"(?P<title>[^"]+)"\.\s*'  # "Title."
-        r"(?P<venue>.+?)"  # Venue (rest)
+        r"(?P<authors>.+?)\.\s+"  # Authors.
+        r'"(?P<title>.+?)"\.?\s*'  # "Title." or "Title". (period optional)
+        r"(?P<venue>.+)"  # Venue (rest)
         r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -102,8 +102,8 @@ _MLA_BOOK_CHAPTER = CompiledPattern.create(
     name="mla_book_chapter",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors
-        r'"(?P<chapter_title>[^"]+)"\.\s*'  # "Chapter Title."
+        r"(?P<authors>.+?)\.\s+"  # Authors.
+        r'"(?P<chapter_title>.+?)"\.\s*'  # "Chapter Title." - non-greedy
         r"(?P<book_title>.+?)"  # Book Title
         r"(?:,\s+edited\s+by\s+(?P<editor>.+?))?"  # Optional editor
         r"(?:,\s*(?P<publisher_year>.+?))?"  # Optional Publisher, Year
@@ -121,8 +121,8 @@ _MLA_WEBSITE = CompiledPattern.create(
     name="mla_website",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors
-        r'"(?P<title>[^"]+)"\.\s*'  # "Title."
+        r"(?P<authors>.+?)\.\s+"  # Authors.
+        r'"(?P<title>.+?)"\.\s*'  # "Title." - non-greedy
         r"(?P<website>.+?)"  # Website
         r"(?:,\s*(?P<date>.+?))?"  # Optional date
         r"(?:,\s*(?P<url>.+))?"  # Optional URL
@@ -301,12 +301,15 @@ class MLAFormat:
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract title (remove quotes)
+        # Extract title (remove quotes and trailing period)
         title = match.group('title').strip()
-        if title.startswith('"') and title.endswith('"'):
-            title = title[1:-1]
-        elif title.startswith('"') and title.endswith('"'):
-            title = title[1:-1]
+        # Strip ASCII and curly quotes
+        for q in ['"', '"', '"', '"', '"', '"']:
+            if title.startswith(q) and title.endswith(q):
+                title = title[len(q):-len(q)]
+                break
+        # Strip trailing period if present
+        title = title.rstrip('.')
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
@@ -387,10 +390,16 @@ class MLAFormat:
 
         # Extract chapter title
         chapter_title = match.group('chapter_title').strip()
-        if chapter_title.startswith('"') and chapter_title.endswith('"'):
-            chapter_title = chapter_title[1:-1]
-        elif chapter_title.startswith('"') and chapter_title.endswith('"'):
-            chapter_title = chapter_title[1:-1]
+        # Extract chapter title (remove quotes and trailing period)
+        chapter_title = match.group('chapter_title').strip()
+        # Strip ASCII and curly quotes
+        for q in ['"', '"', '"', '"', '"', '"']:
+            if chapter_title.startswith(q) and chapter_title.endswith(q):
+                chapter_title = chapter_title[len(q):-len(q)]
+                break
+        # Strip trailing period if present
+        chapter_title = chapter_title.rstrip('.')
+        citation.title = chapter_title
         citation.title = chapter_title
         citation.title_normalized = self._normalize_title(chapter_title)
 
@@ -439,12 +448,15 @@ class MLAFormat:
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract title (remove quotes)
+        # Extract title (remove quotes and trailing period)
         title = match.group('title').strip()
-        if title.startswith('"') and title.endswith('"'):
-            title = title[1:-1]
-        elif title.startswith('"') and title.endswith('"'):
-            title = title[1:-1]
+        # Strip ASCII and curly quotes
+        for q in ['"', '"', '"', '"', '"', '"']:
+            if title.startswith(q) and title.endswith(q):
+                title = title[len(q):-len(q)]
+                break
+        # Strip trailing period if present
+        title = title.rstrip('.')
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 

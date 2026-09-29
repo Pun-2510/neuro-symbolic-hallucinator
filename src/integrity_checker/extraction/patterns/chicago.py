@@ -113,9 +113,9 @@ _CHICAGO_AD_ARTICLE = CompiledPattern.create(
     name="chicago_ad_article",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors
-        r"(?P<year>\d{4})\.\s+"  # Year
-        r'"(?P<title>[^"]+)"\.\s*'  # "Title."
+        r"(?P<authors>.+?)\.\s+"  # Authors.
+        r"(?P<year>\d{4})\.\s+"  # Year.
+        r'"(?P<title>.+?)"\.?\s*'  # "Title." or "Title". (period optional)
         r"(?P<venue>.+)"  # Venue with volume/issue/pages
         r"$"
     ),
@@ -163,8 +163,8 @@ _CHICAGO_NB_ARTICLE = CompiledPattern.create(
     name="chicago_nb_article",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors
-        r'"(?P<title>[^"]+)"\.\s*'  # "Title."
+        r"(?P<authors>.+?)\.\s+"  # Authors.
+        r'"(?P<title>.+?)"\.?\s*'  # "Title." or "Title". (period optional)
         r"(?P<venue>.+)"  # Venue
         r"$"
     ),
@@ -361,12 +361,15 @@ class ChicagoFormat:
         if year_str:
             citation.year = year_str
 
-        # Extract title (remove quotes)
+        # Extract title (remove quotes and trailing period)
         title = match.group('title').strip()
-        if title.startswith('"') and title.endswith('"'):
-            title = title[1:-1]
-        elif title.startswith('"') and title.endswith('"'):
-            title = title[1:-1]
+        # Strip ASCII and curly quotes
+        for q in ['"', '"', '"', '"', '"', '"']:
+            if title.startswith(q) and title.endswith(q):
+                title = title[len(q):-len(q)]
+                break
+        # Strip trailing period if present
+        title = title.rstrip('.')
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
@@ -481,12 +484,15 @@ class ChicagoFormat:
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract title (remove quotes)
+        # Extract title (remove quotes and trailing period)
         title = match.group('title').strip()
-        if title.startswith('"') and title.endswith('"'):
-            title = title[1:-1]
-        elif title.startswith('"') and title.endswith('"'):
-            title = title[1:-1]
+        # Strip ASCII and curly quotes
+        for q in ['"', '"', '"', '"', '"', '"']:
+            if title.startswith(q) and title.endswith(q):
+                title = title[len(q):-len(q)]
+                break
+        # Strip trailing period if present
+        title = title.rstrip('.')
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 

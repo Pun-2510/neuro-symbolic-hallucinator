@@ -69,52 +69,52 @@ _NATURE_SUPERSCRIPT_COMMA = CompiledPattern.create(
 # --- Reference list Nature patterns ---
 
 # Nature compact article:
-# 1. Authors, Title, Journal Volume, Pages (Year).
+# 1. Authors. Title, Journal Volume, Pages (Year).
 _NATURE_REFERENCE_COMPACT = CompiledPattern.create(
     name="nature_reference_compact",
     pattern=(
         r"^"
         r"(?:\d+\.?\s*)?"  # Optional number.
-        r"(?P<authors>.+?),?\s+"  # Authors,
-        r"(?P<title>.+?),?\s+"  # Title,
-        r"(?P<venue>.+?)\s+"  # Journal
+        r"(?P<authors>.+?)\.\s+"  # Authors.
+        r"(?P<title>.+?),"  # Title,
+        r"\s*(?P<venue>[^0-9]+)\s*"  # Journal (no numbers)
         r"(?P<volume>\d+)"  # Volume
         r"(?:,\s*(?P<pages>[\d–-]+))?"  # , Pages
         r"\s*\((?P<year>\d{4})\)"  # (Year)
         r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
-    description="Nature compact: Authors, Title, Journal Volume, Pages (Year).",
+    description="Nature compact: Authors. Title, Journal Volume, Pages (Year).",
 )
 
 # Nature with numbered prefix:
-# [1] Authors, Title, Journal Volume, Pages (Year).
+# [1] Authors. Title, Journal Volume, Pages (Year).
 _NATURE_NUMBERED = CompiledPattern.create(
     name="nature_numbered",
     pattern=(
         r"^\[\s*(?P<index>\d+)\s*\]\s*"  # [N]
-        r"(?P<authors>.+?),?\s+"  # Authors,
-        r"(?P<title>.+?),?\s+"  # Title,
-        r"(?P<venue>.+?)\s+"  # Journal
+        r"(?P<authors>.+?)\.\s+"  # Authors.
+        r"(?P<title>.+?),"  # Title,
+        r"\s*(?P<venue>[^0-9]+)\s*"  # Journal (no numbers)
         r"(?P<volume>\d+)"  # Volume
         r"(?:,\s*(?P<pages>[\d–-]+))?"  # , Pages
         r"\s*\((?P<year>\d{4})\)"  # (Year)
         r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
-    description="Nature numbered: [1] Authors, Title, Journal Volume, Pages (Year).",
+    description="Nature numbered: [1] Authors. Title, Journal Volume, Pages (Year).",
 )
 
 # Nature article with DOI:
-# 1. Authors, Title, Journal Volume, Pages (Year). doi:...
+# 1. Authors. Title, Journal Volume, Pages (Year). doi:...
 _NATURE_REFERENCE_DOI = CompiledPattern.create(
     name="nature_reference_doi",
     pattern=(
         r"^"
         r"(?:\d+\.?\s*)?"  # Optional number.
-        r"(?P<authors>.+?),?\s+"  # Authors,
-        r"(?P<title>.+?),?\s+"  # Title,
-        r"(?P<venue>.+?)\s+"  # Journal
+        r"(?P<authors>.+?)\.\s+"  # Authors.
+        r"(?P<title>.+?),"  # Title,
+        r"\s*(?P<venue>[^0-9]+)\s*"  # Journal (no numbers)
         r"(?P<volume>\d+)"  # Volume
         r"(?:,\s*(?P<pages>[\d–-]+))?"  # , Pages
         r"\s*\((?P<year>\d{4})\)"  # (Year)
@@ -122,7 +122,7 @@ _NATURE_REFERENCE_DOI = CompiledPattern.create(
         r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
-    description="Nature with DOI: Authors, Title, Journal Volume, Pages (Year). doi:...",
+    description="Nature with DOI: Authors. Title, Journal Volume, Pages (Year). doi:...",
 )
 
 # Nature book:

@@ -73,7 +73,7 @@ _ACM_REFERENCE_ENTRY = CompiledPattern.create(
     pattern=(
         r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
         r'(?P<authors>.+?),?\s*'  # Authors
-        r'[""](?P<title>[^""]+)[""],?\s*'  # "title,"
+        r'"(?P<title>.+?)",?\s*'  # "title,"
         r'(?P<venue>.+?)(?:,?\s*\d{4}[a-z]?\.)?$'  # venue and optional year
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -366,6 +366,14 @@ class ACMFormat:
 
         authors_part = remainder[:first_q].strip().rstrip(',').rstrip()
         title_raw = remainder[first_q + 1:close_q].strip().rstrip(',').strip()
+
+        # Strip quotes and trailing period from title
+        for q in ['"', '"', '"', '"', '"', '"']:
+            if title_raw.startswith(q) and title_raw.endswith(q):
+                title_raw = title_raw[len(q):-len(q)]
+                break
+        title_raw = title_raw.rstrip('.')
+
         venue_year = remainder[close_q + 1:].strip().lstrip(',').strip()
 
         # Year usually at end
@@ -461,8 +469,15 @@ class ACMFormat:
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract title
+        # Extract title (remove quotes and trailing period)
         title = match.group('title').strip()
+        # Strip ASCII and curly quotes
+        for q in ['"', '"', '"', '"', '"', '"']:
+            if title.startswith(q) and title.endswith(q):
+                title = title[len(q):-len(q)]
+                break
+        # Strip trailing period if present
+        title = title.rstrip('.')
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
@@ -510,8 +525,15 @@ class ACMFormat:
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract title
+        # Extract title (remove quotes and trailing period)
         title = match.group('title').strip()
+        # Strip ASCII and curly quotes
+        for q in ['"', '"', '"', '"', '"', '"']:
+            if title.startswith(q) and title.endswith(q):
+                title = title[len(q):-len(q)]
+                break
+        # Strip trailing period if present
+        title = title.rstrip('.')
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
@@ -553,8 +575,15 @@ class ACMFormat:
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract title
+        # Extract title (remove quotes and trailing period)
         title = match.group('title').strip()
+        # Strip ASCII and curly quotes
+        for q in ['"', '"', '"', '"', '"', '"']:
+            if title.startswith(q) and title.endswith(q):
+                title = title[len(q):-len(q)]
+                break
+        # Strip trailing period if present
+        title = title.rstrip('.')
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
@@ -596,8 +625,15 @@ class ACMFormat:
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract title
+        # Extract title (remove quotes and trailing period)
         title = match.group('title').strip()
+        # Strip ASCII and curly quotes
+        for q in ['"', '"', '"', '"', '"', '"']:
+            if title.startswith(q) and title.endswith(q):
+                title = title[len(q):-len(q)]
+                break
+        # Strip trailing period if present
+        title = title.rstrip('.')
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
@@ -687,8 +723,15 @@ class ACMFormat:
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract title
+        # Extract title (remove quotes and trailing period)
         title = match.group('title').strip()
+        # Strip ASCII and curly quotes
+        for q in ['"', '"', '"', '"', '"', '"']:
+            if title.startswith(q) and title.endswith(q):
+                title = title[len(q):-len(q)]
+                break
+        # Strip trailing period if present
+        title = title.rstrip('.')
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
