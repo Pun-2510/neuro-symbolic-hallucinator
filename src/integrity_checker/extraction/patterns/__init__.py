@@ -113,6 +113,42 @@ try:
 except ImportError:
     pass
 
+try:
+    from integrity_checker.extraction.patterns import harvard  # noqa: F401
+    from integrity_checker.extraction.patterns.harvard import HarvardFormat
+except ImportError:
+    pass
+
+try:
+    from integrity_checker.extraction.patterns import ama  # noqa: F401
+    from integrity_checker.extraction.patterns.ama import AMAFormat
+except ImportError:
+    pass
+
+try:
+    from integrity_checker.extraction.patterns import acm  # noqa: F401
+    from integrity_checker.extraction.patterns.acm import ACMFormat
+except ImportError:
+    pass
+
+try:
+    from integrity_checker.extraction.patterns import nature  # noqa: F401
+    from integrity_checker.extraction.patterns.nature import NatureFormat
+except ImportError:
+    pass
+
+try:
+    from integrity_checker.extraction.patterns import acs  # noqa: F401
+    from integrity_checker.extraction.patterns.acs import ACSFormat
+except ImportError:
+    pass
+
+try:
+    from integrity_checker.extraction.patterns import cse  # noqa: F401
+    from integrity_checker.extraction.patterns.cse import CSEFormat
+except ImportError:
+    pass
+
 
 # =============================================================================
 # Public API
@@ -148,4 +184,10 @@ __all__ = [
     "VancouverFormat",
     "ChicagoFormat",
     "MLAFormat",
+    "HarvardFormat",
+    "AMAFormat",
+    "ACMFormat",
+    "NatureFormat",
+    "ACSFormat",
+    "CSEFormat",
 ]

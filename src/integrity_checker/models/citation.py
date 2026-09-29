@@ -27,6 +27,12 @@ class CitationStyle(str, Enum):
     CHICAGO = "Chicago"
     IEEE = "IEEE"
     VANCOUVER = "Vancouver"
+    HARVARD = "Harvard"
+    AMA = "AMA"
+    ACM = "ACM"
+    NATURE = "Nature"
+    ACS = "ACS"
+    CSE = "CSE"
     UNKNOWN = "unknown"
 
 
