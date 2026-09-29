@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api, type AnalysisReport, type Verdict } from '@/api/client';
+import { api, type AnalysisReport, type Verdict, type MatchedSource } from '@/api/client';
 import { CISScoreCard } from '@/components/CISScoreCard';
 import { VerdictTable } from '@/components/VerdictTable';
 import { CitationDetailDrawer } from '@/components/CitationDetailDrawer';
@@ -133,12 +133,33 @@ export function EssayPage() {
   // Calculate stats based on UX/UI Concept
   const academicVerdicts = report.verdicts.filter((v) => !isUrlResource(v));
   const references = report.references ?? [];
-  const inTextVerdicts = report.verdicts.filter(
-    (v) =>
-      v.citation_type === 'in_text' ||
-      v.citation_type === 'numeric' ||
-      (!v.citation_type && references.length === 0)
-  );
+  // Use the backend-extracted citation list when available so repeated
+  // occurrences are preserved.  Fall back to deduplicated verdicts only
+  // for legacy reports that do not carry extracted_citations.
+  const extractedInText = report.extracted_citations ?? [];
+  const inTextVerdicts =
+    extractedInText.length > 0
+      ? extractedInText.map((citation) => ({
+          citation_id: `v${citation.id ?? citation.raw_text}`,
+          citation_raw: citation.raw_text,
+          citation_type: citation.citation_type,
+          mapping_status: 'matched' as const,
+          mapping_confidence: citation.confidence,
+          label: 'verified' as const,
+          confidence: citation.confidence,
+          reasoning: '',
+          triggered_rules: [] as string[],
+          mismatched_fields: [] as string[],
+          matched_sources: [] as MatchedSource[],
+          citation_link: undefined,
+          is_overridden: false,
+        }))
+      : report.verdicts.filter(
+          (v) =>
+            v.citation_type === 'in_text' ||
+            v.citation_type === 'numeric' ||
+            (!v.citation_type && references.length === 0)
+        );
   const stats = {
     total: academicVerdicts.length,
     verified: academicVerdicts.filter((v) => v.label === 'verified').length,

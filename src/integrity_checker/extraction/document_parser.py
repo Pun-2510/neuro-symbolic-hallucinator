@@ -145,7 +145,9 @@ class DocumentParser:
         self._mupdf_parser = mupdf_parser or MuPdfParser()
         self._grobid_post_fn = grobid_post_fn
         self._section_segmenter = SectionSegmenter()
-        self._citation_extractor = CitationExtractor()
+        # Preserve every in-text occurrence for report counts.  The pipeline
+        # still deduplicates retrieval/verification work separately.
+        self._citation_extractor = CitationExtractor(preserve_occurrences=True)
         self._reference_parser = ReferenceListParser()
 
     # ---------- Public API ----------
@@ -353,22 +355,22 @@ class DocumentParser:
                 continue
             # Build a temporary Document for this section
             try:
-                # Page numbers from section.start_page..end_page
+                # The section text is already concatenated.  Put it in one
+                # synthetic page; repeating the full section once per page
+                # duplicates every occurrence when the extractor preserves
+                # repeated citations.
                 section_text = section.text
                 if not section_text:
                     continue
                 # Tạo fake Document để CitationExtractor chạy
                 doc = Document(
                     file_path="",
-                    num_pages=section.end_page - section.start_page + 1,
+                    num_pages=1,
                     pages=[
                         Page(
-                            page_num=section.start_page + i,
+                            page_num=section.start_page,
                             text=section_text,
                             has_text_layer=True,
-                        )
-                        for i in range(
-                            max(1, section.end_page - section.start_page + 1)
                         )
                     ],
                 )

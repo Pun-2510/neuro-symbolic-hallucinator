@@ -210,6 +210,18 @@ def _json_response(
         "num_pages": essay.num_pages,
         "num_citations": total,
         "num_references": reference_count,
+        "extracted_citations": [
+            {
+                "id": c.id,
+                "raw_text": c.raw_text,
+                "citation_type": c.citation_type,
+                "style": c.style,
+                "page_num": c.page_num,
+                "confidence": c.confidence,
+            }
+            for c in citations
+            if c.citation_type in {"in_text", "numeric"}
+        ],
         "essay": {
             "id": essay.id,
             "filename": essay.filename,

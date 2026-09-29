@@ -160,8 +160,11 @@ class TestPipelineWithDocumentParser:
         assert isinstance(report, AnalysisReport)
         assert report.essay_id == 42
         assert report.filename == "path.pdf"
-        assert report.num_citations == 2  # body + ref
-        assert len(report.verdicts) == 2
+        # body + ref now collapse to one verification record because they
+        # describe the same source; occurrences are preserved separately.
+        assert report.num_citations == 1
+        assert len(report.extracted_citations) == 2
+        assert len(report.verdicts) == 1
 
     @pytest.mark.asyncio
     async def test_pipeline_uses_legacy_path_when_disabled(self):

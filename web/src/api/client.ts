@@ -133,6 +133,7 @@ export interface AnalysisReport {
   num_pages: number;
   num_citations: number;
   num_references?: number;
+  extracted_citations?: Citation[];
   // v1.2 new fields
   style_profile: StyleProfile;
   linking_summary: MappingStatusSummary;

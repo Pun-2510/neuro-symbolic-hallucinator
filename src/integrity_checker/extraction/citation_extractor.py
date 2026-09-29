@@ -180,7 +180,9 @@ class CitationExtractor:
         self,
         patterns: Iterable[CitationPattern | CompiledPattern] | None = None,
         include_utility: bool = False,
+        preserve_occurrences: bool = False,
     ) -> None:
+        self.preserve_occurrences = preserve_occurrences
         if patterns is None:
             # Use patterns from the new modular registry
             from integrity_checker.extraction.patterns import get_in_text_patterns, get_utility_patterns
@@ -231,7 +233,13 @@ class CitationExtractor:
     # -- public API --
 
     def extract_from_document(self, doc: Document) -> list[Citation]:
-        """Trích xuất tất cả citation từ Document. Dedup theo (raw_text, page)."""
+        """Trích xuất mọi *occurrence* citation trong Document.
+
+        Không được dedupe theo ``raw_text``: một nguồn có thể được trích dẫn
+        nhiều lần và mỗi lần là một occurrence cần hiển thị/đếm trong báo cáo.
+        Việc chống trùng do nhiều regex match cùng một vị trí được thực hiện
+        trong ``_extract_from_text``.
+        """
         citations: list[Citation] = []
         for page in doc.pages:
             raw_text = page.text  # Keep raw text for whitespace detection
@@ -239,7 +247,8 @@ class CitationExtractor:
             page_citations = self._extract_from_text(raw_text, normalized, page.page_num)
             citations.extend(page_citations)
 
-        citations = self._dedupe(citations)
+        if not self.preserve_occurrences:
+            citations = self._dedupe(citations)
         for c in citations:
             c.confidence = self._estimate_confidence(c)
         return citations
@@ -266,6 +275,10 @@ class CitationExtractor:
             page_num: Page number
         """
         results: list[Citation] = []
+        # Several registered formats can match the same token (notably IEEE
+        # and generic numeric patterns).  Deduplicate only overlapping matches
+        # at the same character span, never equal citations at different spans.
+        matched_spans: set[tuple[int, int, str]] = set()
         for pattern_def, compiled in self._compiled:
             # Find positions in raw text first (preserves whitespace/newlines)
             for m in compiled.finditer(raw_text):
@@ -291,6 +304,11 @@ class CitationExtractor:
                     # CompiledPattern provides type and style properties
                     citation_type = pattern_def.type
                     style = pattern_def.style
+
+                span_key = (m.start(), m.end(), citation_type.value)
+                if span_key in matched_spans:
+                    continue
+                matched_spans.add(span_key)
 
                 # Bug fix 1: Filter out IEEE [N] reference list markers
                 # "[4] Xiao, Y., ..." at start of line is a reference list entry, not in-text citation

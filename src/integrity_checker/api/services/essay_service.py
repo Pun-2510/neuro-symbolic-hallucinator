@@ -32,7 +32,7 @@ class EssayService:
             report = await loop.run_in_executor(None, self.pipeline.run, tmp_path, 0)
 
             essay = self.repo.create_essay(filename=filename, num_pages=report.num_pages)
-            self.repo.add_citations(essay.id, [v.citation for v in report.verdicts])
+            self.repo.add_citations(essay.id, report.extracted_citations)
             self.repo.add_verdicts(essay.id, report.verdicts)
             self.repo.commit()
             return essay.id, report.verdicts

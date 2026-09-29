@@ -91,6 +91,9 @@ class AnalysisReport:
     filename: str = ""
     num_pages: int = 0
     num_citations: int = 0
+    # Every extracted occurrence/entry, retained separately from the deduped
+    # verification verdicts.  Repeated citations must remain countable.
+    extracted_citations: list[Citation] = field(default_factory=list)
     verdicts: list[CitationVerdict] = field(default_factory=list)
     cis: CitationIntegrityScore | None = None
     linking_summary: dict[str, int] = field(default_factory=dict)  # NEW v1.2 — mapping counts
@@ -106,6 +109,7 @@ class AnalysisReport:
             "filename": self.filename,
             "num_pages": self.num_pages,
             "num_citations": self.num_citations,
+            "extracted_citations": [_serialize_citation(c) for c in self.extracted_citations],
             "verdicts": [
                 {
                     # Lớp 1: source verification (nhãn 4 chiều)
@@ -241,6 +245,9 @@ class AnalysisReport:
             filename=payload.get("filename", ""),
             num_pages=int(payload.get("num_pages", 0)),
             num_citations=int(payload.get("num_citations", len(verdicts))),
+            extracted_citations=[
+                _deserialize_citation(c) for c in (payload.get("extracted_citations") or [])
+            ],
             verdicts=verdicts,
             cis=cis,
             linking_summary=dict(payload.get("linking_summary") or {}),
@@ -249,6 +256,34 @@ class AnalysisReport:
             generated_at=payload.get("generated_at", ""),
             cache_hit=True,
         )
+
+
+def _resolution_key(
+    citation: Citation,
+    ref_by_link: dict[str, Citation],
+    link_by_raw_text: dict[str, CitationLink],
+) -> str:
+    """Return a canonical retrieval key for a citation.
+
+    A linked in-text occurrence describes the same source as its bibliography
+    entry, so it resolves to that entry's key.  This keeps retrieval work at
+    one query per source while the report still lists every occurrence.
+    Unlinked occurrences fall back to the regular ``citation_key``.
+    """
+    if citation.citation_type != CitationType.REFERENCE_LIST:
+        link = link_by_raw_text.get(citation.reference_id)
+        if link is None:
+            raw = " ".join(citation.raw_text.split())
+            link = link_by_raw_text.get(raw.lower())
+        if link is None:
+            link = link_by_raw_text.get(
+                IntegrityPipeline._normalize_identifier(citation.raw_text)
+            )
+        if link is not None and link.reference_id:
+            matched_ref = ref_by_link.get(link.reference_id)
+            if matched_ref is not None:
+                return citation_key(matched_ref)
+    return citation_key(citation)
 
 
 class IntegrityPipeline:
@@ -466,13 +501,16 @@ class IntegrityPipeline:
         )
         # Web links are resources, not academic citations, so they must not
         # influence the document style profile used by CIS.
+        # Exclude URL references from style detection but keep numeric
+        # reference list entries (e.g. IEEE ``[N]`` markers) so the detector
+        # does not fall back to APA for numeric documents.
         academic_in_text = [
             citation for citation in in_text_citations
-            if citation.citation_type != CitationType.URL
+            if citation.citation_type not in {CitationType.URL, CitationType.REFERENCE_LIST}
         ]
         academic_references = [
             citation for citation in ref_citations
-            if citation.citation_type != CitationType.URL
+            if citation.citation_type not in {CitationType.URL, CitationType.REFERENCE_LIST}
         ]
         style_profile = self._detect_style(academic_in_text, academic_references)
         style_profile_dict = self._serialize_style_profile(style_profile)
@@ -481,7 +519,7 @@ class IntegrityPipeline:
         _emit(
             "extracting",
             2,
-            citations_found=len(in_text_citations) + len(ref_citations),
+            citations_found=len(in_text_citations),
             references_found=len(ref_citations),
             message=f"Found {len(in_text_citations)} in-text + {len(ref_citations)} references",
         )
@@ -511,7 +549,7 @@ class IntegrityPipeline:
             "linking",
             3,
             linked=_initial_linked,
-            citations_found=len(all_citations),
+            citations_found=len(in_text_citations),
             references_found=len(ref_citations),
             message=f"Linked {_initial_linked} of {len(all_citations)} citations",
         )
@@ -523,6 +561,9 @@ class IntegrityPipeline:
         unique_citations: dict[str, Citation] = {}
         citation_keys: list[str] = []
         for citation in all_citations:
+            # A reference list entry and its in-text occurrence describe the
+            # same source; resolve to the linked entry's key so retrieval only
+            # queries that paper once.
             key = citation_key(citation)
             citation_keys.append(key)
             unique_citations.setdefault(key, citation)
@@ -723,7 +764,12 @@ class IntegrityPipeline:
             essay_id=essay_id,
             filename=Path(pdf_path).name,
             num_pages=num_pages,
+            # ``num_citations`` remains the verification-set size (deduped
+            # citations + references) for CIS/library compatibility.  The
+            # occurrence-level citation counts exposed by API/UI come from
+            # ``extracted_citations``.
             num_citations=len(unique_list),
+            extracted_citations=[*in_text_citations, *ref_citations],
             verdicts=verdicts,
             cis=cis,
             linking_summary=linking_summary,
