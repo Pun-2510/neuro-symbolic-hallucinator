@@ -182,6 +182,9 @@ class CISCalculator:
         """Tính in_text_bib_consistency từ CitationLinker output.
 
         FIX Bug 6: Added debug logging to trace calculation.
+        FIX v1.7: Use ALL linking_result.links (including in-text), not filtered
+        by verdict occurrence_ids. Verdicts now contain only references, so
+        the old filter-by-verdict approach missed in-text mapping failures.
         """
         # DEBUG: Log input state
         logger.debug(
@@ -189,19 +192,12 @@ class CISCalculator:
             f"linking_result={'present' if linking_result else 'None'}"
         )
 
-        # Strategy A: LinkingResult có sẵn
+        # Strategy A: Use ALL links from LinkingResult (preferred)
+        # This includes BOTH in-text AND reference links, giving true consistency score.
+        # CitationLinker only produces MATCHED / MISSING_REFERENCE / AMBIGUOUS_MAPPING,
+        # so no need to filter RESOURCE (that's a validation-layer concept).
         if linking_result is not None and linking_result.links:
-            academic_link_ids = {
-                getattr(v.citation_link, "occurrence_id", None)
-                for v in verdicts
-                if v.citation_link is not None
-            }
-            links = [
-                link
-                for link in linking_result.links
-                if getattr(link, "occurrence_id", None) in academic_link_ids
-            ]
-            # Resource-only links (for example GitHub URLs) are excluded from CIS.
+            links = linking_result.links
             if not links:
                 return 1.0
 
@@ -217,7 +213,7 @@ class CISCalculator:
                 status_counts[status] = status_counts.get(status, 0) + 1
                 penalty += MAPPING_PENALTIES.get(status, 0.0)
 
-            logger.debug(f"CIS from links: status_counts={status_counts}, penalty={penalty:.2f}, total={total}")
+            logger.debug(f"CIS from ALL links: status_counts={status_counts}, penalty={penalty:.2f}, total={total}")
             result = max(0.0, 1.0 - penalty / total) if total > 0 else 1.0
             logger.debug(f"CIS link consistency result: {result:.4f}")
             return result

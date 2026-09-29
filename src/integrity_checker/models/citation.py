@@ -106,6 +106,13 @@ class Citation:
     # Dùng cho Neural content alignment check
     context: Optional[str] = None
 
+    # NEW v1.7 — linking layer cho in-text citations (gắn sau CitationLinker chạy).
+    # Cho phép UI Citations tab hiển thị mapping_status thật cho mỗi in-text.
+    # None cho reference_list entries (chúng có mapping_status từ verdict).
+    mapping_status: Optional[str] = None        # CitationMappingStatus.value
+    mapping_confidence: float = 0.0
+    citation_link: Optional[object] = None     # CitationLink
+
     def to_search_query(self) -> str:
         """Ghép chuỗi truy vấn để gọi API theo title + author + year.
 

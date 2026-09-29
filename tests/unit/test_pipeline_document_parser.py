@@ -33,12 +33,13 @@ from integrity_checker.pipeline.integrity_pipeline import (
 
 
 def _make_citation(
-    raw_text: str, title: str | None = None, year: str | None = None
+    raw_text: str, title: str | None = None, year: str | None = None,
+    citation_type: "CitationType | None" = None,
 ) -> Citation:
     """Build minimal Citation cho test."""
     return Citation(
         raw_text=raw_text,
-        citation_type=CitationType.IN_TEXT,
+        citation_type=citation_type or CitationType.IN_TEXT,
         style=CitationStyle.APA,
         title=title,
         year=year,
@@ -98,7 +99,11 @@ class TestPipelineWithDocumentParser:
         """use_document_parser=True → gọi DocumentParser.parse()."""
         # Mock DocumentParser
         body_cit = _make_citation("(Smith, 2020)")
-        ref_cit = _make_citation("Smith, J. (2020). A study.", title="A study", year="2020")
+        # FIX v1.7: ref must be REFERENCE_LIST to be verifiable
+        ref_cit = _make_citation(
+            "Smith, J. (2020). A study.", title="A study", year="2020",
+            citation_type=CitationType.REFERENCE_LIST
+        )
         parsed = ParsedDocument(
             document=Document(file_path="/fake/path.pdf", num_pages=5, pages=[]),
             body_citations=[body_cit],
@@ -130,7 +135,7 @@ class TestPipelineWithDocumentParser:
         mock_verdict = MagicMock()
         mock_verdict.label.value = "unresolved"
         mock_verdict.confidence = 0.0
-        mock_verdict.citation = body_cit
+        mock_verdict.citation = ref_cit
         mock_verdict.features.title_sim_fuzzy = 0.0
         mock_verdict.features.title_sim_semantic = 0.0
         mock_verdict.features.author_jaccard = 0.0
@@ -160,11 +165,11 @@ class TestPipelineWithDocumentParser:
         assert isinstance(report, AnalysisReport)
         assert report.essay_id == 42
         assert report.filename == "path.pdf"
-        # body + ref now collapse to one verification record because they
-        # describe the same source; occurrences are preserved separately.
+        # FIX v1.7: only REFERENCE_LIST citations get verified.
+        # The reference entry (ref_cit) → verdict; the in-text (body_cit) → NOT verified.
         assert report.num_citations == 1
-        assert len(report.extracted_citations) == 2
-        assert len(report.verdicts) == 1
+        assert len(report.extracted_citations) == 2  # both in-text + ref preserved
+        assert len(report.verdicts) == 1  # only the reference entry has a verdict
 
     @pytest.mark.asyncio
     async def test_pipeline_uses_legacy_path_when_disabled(self):
@@ -177,7 +182,11 @@ class TestPipelineWithDocumentParser:
 
         # Mock parser (legacy BasePDFParser)
         body_cit = _make_citation("(Smith, 2020)")
-        ref_cit = _make_citation("Smith, J. (2020). A study.", title="A study")
+        # FIX v1.7: ref must be REFERENCE_LIST to be verifiable
+        ref_cit = _make_citation(
+            "Smith, J. (2020). A study.", title="A study",
+            citation_type=CitationType.REFERENCE_LIST
+        )
         mock_parser = MagicMock()
         mock_doc = MagicMock(spec=Document)
         mock_doc.num_pages = 5
@@ -210,9 +219,10 @@ class TestPipelineWithDocumentParser:
 
         mock_checker = MagicMock()
         mock_verdict = MagicMock()
-        mock_verdict.label.value = "unresolved"
+        mock_verdict.label.value = "verified"
         mock_verdict.confidence = 0.0
-        mock_verdict.citation = body_cit
+        # FIX v1.7: verdict is for ref_cit (the only verifiable citation)
+        mock_verdict.citation = ref_cit
         mock_verdict.features.title_sim_fuzzy = 0.0
         mock_verdict.features.title_sim_semantic = 0.0
         mock_verdict.features.author_jaccard = 0.0
@@ -244,9 +254,11 @@ class TestPipelineWithDocumentParser:
         mock_extractor.extract_from_document.assert_called_once()
         mock_ref_parser.parse_reference_section.assert_called_once()
 
-        # num_pages từ legacy parser
+        # FIX v1.7: num_citations reflects verifiable citations (references only)
+        # extracted_citations includes all (in-text + ref)
         assert report.num_pages == 5
-        assert report.num_citations == 2
+        assert report.num_citations == 1
+        assert len(report.extracted_citations) == 2  # body + ref
 
     @pytest.mark.asyncio
     async def test_pipeline_default_uses_modern_path(self):

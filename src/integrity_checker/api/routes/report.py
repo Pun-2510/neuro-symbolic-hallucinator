@@ -28,6 +28,7 @@ from integrity_checker.api.deps import get_db
 from integrity_checker.api.progress import get_tracker
 from integrity_checker.config import get_settings
 from integrity_checker.db.repository import Repository
+from integrity_checker.pipeline.integrity_pipeline import _serialize_citation_link
 
 router = APIRouter()
 
@@ -218,6 +219,11 @@ def _json_response(
                 "style": c.style,
                 "page_num": c.page_num,
                 "confidence": c.confidence,
+                # NEW v1.7 — linking layer for UI Citations tab
+                # (mapping_status comes from CitationLinker attached to Citation object)
+                "mapping_status": getattr(c, "mapping_status", None),
+                "mapping_confidence": getattr(c, "mapping_confidence", 0.0),
+                "citation_link": _serialize_citation_link(getattr(c, "citation_link", None)),
             }
             for c in citations
             if c.citation_type in {"in_text", "numeric"}

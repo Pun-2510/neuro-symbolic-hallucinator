@@ -197,6 +197,10 @@ export interface Citation {
   url?: string | null;
   page_num: number;
   confidence: number;
+  // NEW v1.7 — linking layer for Citations tab
+  mapping_status?: CitationMappingStatus;
+  mapping_confidence?: number;
+  citation_link?: CitationLink;
 }
 
 // --- Override request ---

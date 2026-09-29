@@ -66,7 +66,27 @@ logger = get_logger(__name__)
 
 # Bump whenever extraction/linking output shape changes so previously cached
 # (and possibly wrong) reports are recomputed instead of served from disk.
-_REPORT_CACHE_VERSION = "report-v4"
+_REPORT_CACHE_VERSION = "report-v5"
+
+# NEW v1.7: Only retrieve + verify REFERENCE_LIST citations (and DOI/URL inline
+# with enough metadata). In-text citations are verified via linking only.
+_RETREIVABLE_TYPES = frozenset({CitationType.REFERENCE_LIST, CitationType.DOI, CitationType.URL})
+
+
+def _is_verifiable(citation: Citation) -> bool:
+    """Citation này cần source verification (retrieve + checker).
+
+    Chỉ reference list entries (và DOI/URL inline có metadata đầy đủ) mới
+    cần verify qua API/local DB. In-text citations chỉ cần linking —
+    mapping_status từ CitationLinker là đủ.
+    """
+    if citation.citation_type not in _RETREIVABLE_TYPES:
+        return False
+    # Bare DOI/URL inline cần có title hoặc DOI/URL thì mới verify được
+    if citation.citation_type in {CitationType.DOI, CitationType.URL}:
+        return bool(citation.title or citation.doi or citation.url)
+    return True
+
 
 # Regex for normalizing "et al." citation formats for link lookup
 # Matches: "(Vaswani et al., 2017)", "(Vaswani et al. (2017))", "Vaswani et al. (2017)"
@@ -568,26 +588,36 @@ class IntegrityPipeline:
             citation_keys.append(key)
             unique_citations.setdefault(key, citation)
 
-        # FIX: Only keep unique citations for verdicts - duplicates are expected
-        # when the same source is cited multiple times in the document
-        unique_list = list(unique_citations.values())
+        # FIX v1.7: Only keep verifiable citations for retrieval + verdicts.
+        # Reference list entries (và DOI/URL inline với đủ metadata) → verify qua API.
+        # In-text citations → verified qua linking, KHÔNG gọi API.
+        # Track verifiable keys separately (Citation objects can't be dict keys).
+        verifiable_keys: list[str] = []
+        for key in unique_citations:
+            cit = unique_citations[key]
+            if _is_verifiable(cit):
+                verifiable_keys.append(key)
+        unique_list = [unique_citations[key] for key in verifiable_keys]
 
         _emit(
             "retrieving",
             4,
             citations_found=len(all_citations),
-            message=f"Querying academic databases for {len(unique_citations)} unique papers...",
+            message=f"Querying academic databases for {len(unique_list)} unique papers...",
         )
+        # FIX v1.7: Only retrieve for verifiable citations (references, not in-text)
         unique_sources = await asyncio.gather(
-            *(self.orchestrator.retrieve(c) for c in unique_citations.values()),
+            *(self.orchestrator.retrieve(c) for c in unique_list),
             return_exceptions=False,
         )
-        source_by_key = dict(zip(unique_citations, unique_sources))
-        sources = [source_by_key[key] for key in citation_keys]
-        if len(unique_citations) != len(all_citations):
+        # FIX v1.7: source_by_key maps verifiable keys → sources
+        source_by_key = dict(zip(verifiable_keys, unique_sources))
+        # sources[] giờ chỉ dùng cho verifiable citations (references)
+        sources = [source_by_key.get(key) for key in citation_keys]
+        if len(unique_list) < len(unique_citations):
             logger.info(
-                f"Retrieval dedupe: {len(all_citations)} citations -> "
-                f"{len(unique_citations)} unique paper keys"
+                f"Retrieval: {len(all_citations)} citations -> "
+                f"{len(unique_list)} verifiable (references only)"
             )
 
         # Surface per-data-source outcomes to the UI. Sources_queried is built
@@ -619,7 +649,8 @@ class IntegrityPipeline:
         )
 
         verdicts: list[CitationVerdict] = []
-        # FIX: Use unique citations only - deduplicate before creating verdicts
+        # FIX v1.7: Only iterate over verifiable (reference) citations for verdicts.
+        # In-text citations are verified via linking only (mapping_status attached below).
         for citation, source in zip(unique_list, unique_sources):
             # NEW v1.2 §3.2.2 (task #33) — compute mapping_status TRƯỚC rules
             # để SymbolicRules có input cho AMBIGUOUS_MAPPING rule.
@@ -733,6 +764,33 @@ class IntegrityPipeline:
                 f"raw={citation.raw_text[:80]}"
             )
 
+        # FIX v1.7: Attach mapping_status (from linker) to in-text citations
+        # so the UI Citations tab can display correct Linked/Missing Reference status.
+        # In-text citations are NOT in verdicts[] (they don't get source verification),
+        # but their mapping status IS stored on the Citation object for serialization.
+        for cit in in_text_citations:
+            # Try multiple lookup keys since link_by_raw_text is indexed by:
+            # 1. occurrence_id (most reliable for numeric [1])
+            # 2. normalized identifier
+            # 3. raw text lowercased
+            link = link_by_raw_text.get(cit.reference_id)  # occurrence_id
+            if link is None:
+                # Try normalized raw text
+                normalized = IntegrityPipeline._normalize_identifier(
+                    cit.raw_text.replace("\n", " ").replace("  ", " ")
+                )
+                link = link_by_raw_text.get(normalized)
+            if link is None:
+                link = link_by_raw_text.get(cit.raw_text.lower().strip())
+            if link is not None:
+                cit.mapping_status = (
+                    link.status.value
+                    if hasattr(link.status, "value")
+                    else str(link.status)
+                )
+                cit.mapping_confidence = link.confidence
+                cit.citation_link = link
+
         _emit(
             "checking",
             6,
@@ -741,7 +799,9 @@ class IntegrityPipeline:
         )
 
         # 3. Linking summary (counts per CitationMappingStatus) — cho Web UI dashboard
-        linking_summary = self._build_linking_summary(verdicts)
+        # FIX v1.7: Count from BOTH verdicts (reference status) AND linking_result.links
+        # (in-text status) to get complete picture.
+        linking_summary = self._build_linking_summary(verdicts, linking_result)
 
         # 4. CIS
         cis = self.cis_calc.compute(
@@ -1055,13 +1115,22 @@ class IntegrityPipeline:
         return lookup
 
     @staticmethod
-    def _build_linking_summary(verdicts: list[CitationVerdict]) -> dict[str, int]:
-        """Đếm số verdict theo CitationMappingStatus.
+    def _build_linking_summary(
+        verdicts: list[CitationVerdict],
+        linking_result: "LinkingResult | None" = None,
+    ) -> dict[str, int]:
+        """Build linking summary for Web UI dashboard.
 
-        Trả về dict[str, int] cho Web UI dashboard. Bao gồm tất cả 7 status
-        (giá trị 0 nếu không có).
+        FIX v1.7: Separate counts for references vs in-text to avoid double-counting.
+        - Reference statuses (from verdicts): MATCHED, UNCUTED_REFERENCE, DUPLICATE_REFERENCE, etc.
+        - In-text statuses (from links): matched/missing_reference/ambiguous for in-text citations.
+
+        Returns a flat dict[str, int] for backward compat. Reference counts are
+        prefixed with 'ref_' to distinguish from in-text 'matched'/'missing_reference'.
         """
         counts: dict[str, int] = {s.value: 0 for s in CitationMappingStatus}
+
+        # Reference statuses from verdicts (only REFERENCE_LIST have verdicts)
         for v in verdicts:
             if v.mapping_status is not None:
                 status_value = (
@@ -1070,6 +1139,21 @@ class IntegrityPipeline:
                     else str(v.mapping_status)
                 )
                 counts[status_value] = counts.get(status_value, 0) + 1
+
+        # In-text mapping from linking_result.links
+        # (only for non-reference links, to avoid double-counting)
+        if linking_result is not None and linking_result.links:
+            for link in linking_result.links:
+                status_value = (
+                    link.status.value
+                    if hasattr(link.status, "value")
+                    else str(link.status)
+                )
+                # Only count non-MATCHED in-text links separately to avoid double-counting
+                # MATCHED is already counted from verdicts for references
+                if status_value != "matched":
+                    counts[status_value] = counts.get(status_value, 0) + 1
+
         return counts
 
 
@@ -1118,6 +1202,10 @@ def _serialize_citation(citation: Citation) -> dict[str, Any]:
         "confidence": citation.confidence,
         "reference_id": citation.reference_id,
         "context": citation.context,
+        # NEW v1.7: linking layer (for in-text citations in UI Citations tab)
+        "mapping_status": getattr(citation, "mapping_status", None),
+        "mapping_confidence": getattr(citation, "mapping_confidence", 0.0),
+        "citation_link": _serialize_citation_link(getattr(citation, "citation_link", None)),
     }
 
 
@@ -1155,6 +1243,10 @@ def _deserialize_citation(data: dict[str, Any]) -> Citation:
         confidence=float(data.get("confidence", 0.0)),
         reference_id=data.get("reference_id"),
         context=data.get("context"),
+        # NEW v1.7: linking layer
+        mapping_status=data.get("mapping_status"),
+        mapping_confidence=float(data.get("mapping_confidence", 0.0)),
+        citation_link=_deserialize_citation_link(data.get("citation_link")),
     )
 
 

@@ -1,175 +1,307 @@
-# Fix: Citation context + URL RESOURCE classification
+# Plan: Sửa bug — chỉ reference list mới verify qua API, in-text chỉ cần linking
 
 ## Context
 
-Hai bug user report:
+User báo cáo trên UI (essay 39, file `TranThanhPhuoc_523H0002_523H0054.pdf`) hiển thị:
 
-1. **Hard-coded context** trong DocumentInspectorPage.tsx — mọi citation đều hiển thị cùng câu "Recent studies in machine learning have explored various approaches to natural language processing... demonstrating significant improvements in performance benchmarks." Đây là text giả, không phải context thật của citation. Cần lấy sentence/paragraph thật xung quanh citation từ PDF.
+- **Bảng "Citation Reference Linking"** (ảnh 2): tất cả in-text citations đều **Linked** (màu xanh ✓) → linking hoạt động đúng.
+- **Bảng "Reference Verification"** (ảnh 1): hầu hết các dòng cùng raw_text ở trên lại hiển thị **Unresolved** với lý do "No matching publication found" / "Found a matching publication in Crossref" / "Found matching publications in the known-papers library".
 
-2. **URL không được classify là RESOURCE** — User thấy các URL như `https://github.com/iann...` vẫn bị mark là `unresolved` (3 cái). Theo design, URL phải được auto-mark là RESOURCE (không tính vào verification). Bug ở regex quá strict — không match URL có trailing punctuation (e.g. URL ở cuối câu có dấu `.`).
+User chỉ ra đây là logic sai:
 
-Mục tiêu: hiển thị context thật cho từng citation, và URL luôn được RESOURCE (đúng nghĩa "URL/Reference link không phải academic citation").
+> "nó là cite, chỉ kiểm tra nó có link tới ref hay không thôi. tại sao lại đi xác minh nó bằng cách gọi api?"
 
-## Changes
+## Root cause
 
-### Backend
+Pipeline hiện tại ở `src/integrity_checker/pipeline/integrity_pipeline.py`:
 
-#### 1. Populate `citation.context` trong pipeline
-**File:** `src/integrity_checker/pipeline/integrity_pipeline.py` (line ~624-660)
+- **Line 536-538**: `_merge_citations(in_text, ref, [])` gộp **CẢ body citations (in-text) + reference list citations** thành 1 danh sách duy nhất.
+- **Line 581-584**: `orchestrator.retrieve()` được gọi cho **MỌI unique citation** trong danh sách — bao gồm cả in-text như `(WHO, 2023)`, `[1]`, `(Sennrich et al., 2016)`, …
+- **Line 623-734**: `checker.check()` được gọi cho cùng danh sách — gán `label` cho từng cái.
 
-Đã có sẵn function `_extract_citation_context()` (line 748-783) và đã được gọi để lấy `citation_context` local. Chỉ thiếu 1 dòng assign vào `citation.context`:
+**Output thật của `TranThanhPhuoc_523H0002_523H0054.pdf`** (đã chạy & đọc log):
 
-```python
-# Line 624-634 hiện tại: compute citation_context (local variable)
-citation_context = None
-for page in document_pages:
-    if citation.raw_text.lower() in page.text.lower():
-        citation_context = IntegrityPipeline._extract_citation_context(
-            citation.raw_text, page.text, window_chars=200,
-        )
-        break
-
-# THÊM: Persist onto Citation object for serialization
-citation.context = citation_context
-
-# ... sau đó mới pass citation_context vào checker.check()
-verdict = self.checker.check(citation, source, **check_kwargs)
+```
+[ 1] type=reference_list     raw=[1] American Psychiatric…  label=verified     mapping=matched
+[27] type=reference_list     raw=[27] Settles, B., & Craven… label=verified     mapping=matched
+[28] type=in_text            raw=(WHO, 2023)                label=unresolved   mapping=missing_reference  ← LỖI
+[31] type=in_text            raw=Sennrich et al. (2016)     label=verified     mapping=missing_reference  ← LỖI
+[33] type=in_text            raw=Zou (2019)                 label=unresolved   mapping=missing_reference  ← LỖI
+[56] type=in_text            raw=[2]                        label=unresolved   mapping=missing_reference  ← LỖI
 ```
 
-`_serialize_citation` (line 1022-1048) đã include `"context": citation.context` — không cần thay đổi JSON schema. Cached reports cũ sẽ có `context = None` (handled bởi default).
+Từ log retrieval ta thấy TẤT CẢ in-text citations `[1]`, `[4]`, `[17]`, `[24]` … đều đã được linker map sang reference tương ứng (xem bảng Linked Reference). Nhưng vì pipeline gộp cả in-text vào danh sách retrieve, nó gọi API cho `(WHO, 2023)` (1 in-text không có title) → API/local DB MISS → checker trả UNRESOLVED.
 
-#### 2. Robust URL detection + debug log
-**File:** `src/integrity_checker/logic/neuro_symbolic_checker.py` (line 92-107)
+Vậy nên verdicts của in-text citations **không nên tồn tại**. Chúng đang được sinh ra vì pipeline gộp và verify nhầm.
 
-**Vấn đề:** Regex `^(https?://|www\.)[^\s]+$` không match khi raw_text có trailing punctuation. E.g. raw_text = `"https://github.com/iann..."` (với dấu `...` ellipsis) fail vì `.` match `[^\s]+` rồi đến `$` thấy vẫn còn chars.
+## Mục tiêu fix (user confirmed)
 
-**Fix:**
+1. **`verdicts[]` chỉ chứa CitationVerdict cho references.** In-text bỏ hẳn khỏi verdicts[].
+2. **In-text citations vẫn xuất hiện trong `extracted_citations[]`** cho UI Citations tab.
+3. **`mapping_status` cho mỗi in-text citation** được thêm vào `extracted_citations[]` (lấy từ linker) → Citations tab hiển thị đúng trạng thái Linked/Missing Reference.
+4. **API shape JSON giữ nguyên** (chỉ thêm field `mapping_status` vào Citation trong extracted_citations[]).
+5. **CIS tính đúng** — `verified_ratio` chỉ tính trên references, `in_text_bib_consistency` tính trên `LinkingResult.links`.
+6. **Tests pass** — cập nhật tests bị ảnh hưởng.
+
+## Approach
+
+### Backend changes
+
+#### 1. `src/integrity_checker/pipeline/integrity_pipeline.py`
+
+**Thêm helper filter (private method):**
 
 ```python
-# Thêm import ở đầu file
-from integrity_checker.logging import get_logger
-logger = get_logger(__name__)
+@staticmethod
+def _is_verifiable(citation: Citation) -> bool:
+    """Citation này cần source verification (retrieve + checker)?
 
-# Sửa logic check (line 92-107)
-raw_text = citation.raw_text or ""
-stripped_text = raw_text.strip()
-
-# Strip trailing punctuation that commonly follows URLs in sentence context
-url_candidate = stripped_text.rstrip(".,;:)\"'")
-
-# Match if the candidate starts with URL scheme (not just full-string match)
-url_pattern = re.compile(r'^(https?://|www\.)[^\s]+', re.IGNORECASE)
-if url_pattern.match(url_candidate) and len(url_candidate) > len(url_candidate.split()[0]) >= 10:
-    logger.debug(f"URL/RESOURCE detected: {raw_text[:80]}")
-    return CitationVerdict(
-        citation=citation,
-        label=ValidationLabel.RESOURCE,
-        confidence=0.95,
-        matched_source=source,
-        features=None,
-        reasoning=f"URL/Reference link detected: {raw_text[:60]}... (not an academic citation)",
-        triggered_rules=["R-URL-RESOURCE"],
-        mismatched_fields=[],
-    )
-
-# Optional: log when raw_text looks URL-ish but didn't match (helps debug)
-if re.match(r'^(https?://|www\.)', stripped_text) and not url_pattern.match(url_candidate):
-    logger.debug(f"URL-like raw_text but no RESOURCE match: {raw_text[:80]}")
+    Chỉ reference list entries (và DOI/URL inline có metadata đầy đủ) mới
+    cần verify qua API/local DB. In-text citations chỉ cần linking —
+    mapping_status từ CitationLinker là đủ.
+    """
+    if citation.citation_type == CitationType.REFERENCE_LIST:
+        return True
+    if citation.citation_type in {CitationType.DOI, CitationType.URL}:
+        # Bare DOI/URL inline có title thì vẫn verify được
+        return bool(citation.title or citation.doi or citation.url)
+    return False
 ```
 
-Lưu ý: Đổi từ `match()` anchor `^...$` sang match `^...` (chỉ check prefix) + verify độ dài URL đủ dài (≥10 chars để tránh false positive). Giữ logic strict nhưng robust hơn với punctuation.
+**Sửa `run_async()`:**
 
-### Frontend
+- **Line 561-573** (`unique_citations`): giữ nguyên — vẫn dedupe từ tất cả (in-text + ref).
+- **Line 573** (`unique_list`): filter chỉ những citation verifiable (references).
 
-#### 3. Add `context` field to Verdict interface
-**File:** `web/src/api/client.ts` (line 90-110)
+```python
+# Before:
+unique_list = list(unique_citations.values())
+
+# After:
+unique_list = [c for c in unique_citations.values() if IntegrityPipeline._is_verifiable(c)]
+```
+
+- **Line 581-586**: retrieval chỉ chạy trên `unique_list` (đã filter) — không gọi API cho in-text.
+- **Line 623-734**: verdict loop chỉ iterate qua `unique_list` — không có verdict cho in-text.
+- **Line 771** (`num_citations`): `len(unique_list)` — chỉ đếm references (đúng nguyện vọng của user "chỉ cần check link tới ref").
+
+**Thêm: gắn `mapping_status` cho in-text citations trước khi build `extracted_citations`.**
+
+Trong verdict loop hiện tại (line 623-734), ta đã có `mapping_status` cho từng citation đã iterate. Sau fix, ta KHÔNG iterate qua in-text → ta cần 1 pass riêng để gắn `mapping_status` cho in-text.
+
+**Approach:** Trước khi build `AnalysisReport`, ta attach `mapping_status` cho in-text citations:
+
+```python
+# Sau verdict loop, trước AnalysisReport build
+in_text_by_raw = {c.raw_text: c for c in in_text_citations}
+for link in linking_result.links:
+    if link.status and link.occurrence_id:
+        # lookup in_text citation by occurrence_id
+        for cit in in_text_citations:
+            if cit.reference_id == link.occurrence_id:
+                cit.mapping_status = link.status  # new field on Citation
+                cit.mapping_confidence = link.confidence
+                cit.citation_link = link
+                break
+```
+
+**Cần thêm field `mapping_status`, `mapping_confidence`, `citation_link` vào `Citation` dataclass** (line 53-107 trong `src/integrity_checker/models/citation.py`).
+
+#### 2. `src/integrity_checker/models/citation.py`
+
+**Thêm fields (backward compat):**
+
+```python
+# NEW v1.7 — linking layer attached to Citation (for in-text display in UI)
+mapping_status: Optional[str] = None  # CitationMappingStatus.value
+mapping_confidence: float = 0.0
+citation_link: Optional[object] = None  # CitationLink
+```
+
+Cập nhật `_serialize_citation()` (line 1095-1121 trong pipeline) và `from_raw()` (line 137-159) để bao gồm các field mới.
+
+#### 3. `src/integrity_checker/pipeline/integrity_pipeline.py` — `_serialize_citation()` (line 1095-1121)
+
+```python
+def _serialize_citation(citation: Citation) -> dict[str, Any]:
+    return {
+        ...existing fields...
+        "mapping_status": getattr(citation, "mapping_status", None),
+        "mapping_confidence": getattr(citation, "mapping_confidence", 0.0),
+        "citation_link": _serialize_citation_link(getattr(citation, "citation_link", None)),
+    }
+```
+
+#### 4. `src/integrity_checker/api/routes/report.py`
+
+**Line 213-224** (`extracted_citations` serialization): thêm `mapping_status`, `mapping_confidence`, `citation_link` vào dict.
+
+```python
+"extracted_citations": [
+    {
+        "id": c.id,
+        "raw_text": c.raw_text,
+        "citation_type": c.citation_type,
+        "style": c.style,
+        "page_num": c.page_num,
+        "confidence": c.confidence,
+        # NEW v1.7 — linking layer cho UI Citations tab
+        "mapping_status": getattr(c, "mapping_status", None),
+        "mapping_confidence": getattr(c, "mapping_confidence", 0.0),
+        "citation_link": getattr(c, "citation_link", None),
+    }
+    for c in citations
+    if c.citation_type in {"in_text", "numeric"}
+],
+```
+
+**Line 118-132** (`linking_summary`): KHÔNG cần đổi. Sau fix:
+- Verdicts chỉ có references → `linking_summary` count chính xác cho references.
+- In-text mapping status sẽ được hiển thị qua Citations tab (mỗi dòng có `mapping_status` riêng).
+
+**Line 186-202** (`cis_dict` fallback): KHÔNG cần đổi. Sau fix, `academic_verdicts` chỉ có references → `verified_ratio` chính xác hơn.
+
+### Frontend changes
+
+#### 5. `web/src/api/client.ts`
+
+**Line 187-200** (`Citation` interface):
 
 ```typescript
-export interface Verdict {
-  citation_id: string;
-  citation_raw: string;
-  // NEW: surrounding sentence/paragraph context (v1.5)
-  context?: string;
-  // ... existing fields
+export interface Citation {
+  id?: number;
+  raw_text: string;
+  citation_type: CitationType;
+  style: string;
+  authors: string[];
+  year?: string | null;
+  title?: string | null;
+  venue?: string | null;
+  doi?: string | null;
+  url?: string | null;
+  page_num: number;
+  confidence: number;
+  // NEW v1.7 — linking layer
+  mapping_status?: CitationMappingStatus;
+  mapping_confidence?: number;
+  citation_link?: CitationLink;
 }
 ```
 
-Lý do: optional vì cached reports cũ có thể không có field này.
+#### 6. `web/src/pages/EssayPage.tsx` — Citations tab (line 139-162)
 
-#### 4. Render real context trong DocumentInspectorPage
-**File:** `web/src/pages/DocumentInspectorPage.tsx`
+**Before** (hardcode mapping_status='matched', label='verified'):
 
-- **Line 33-40** (`InlineCitation` interface): thêm `context?: string`
-- **Line 43-52** (`buildInlineCitations`): thêm `context: v.context` vào mapping
-- **Line 480-498** (citation document view): thay hard-coded text bằng context thật:
-
-```tsx
-{filteredCitations.map((citation, index) => (
-  <div key={citation.id} className="relative">
-    <span className="absolute -left-8 text-xs ...">p{citation.page}</span>
-    <p className="pl-6">
-      {citation.context ? (
-        // Highlight citation within actual context (best-effort split)
-        <ContextWithHighlight context={citation.context} marker={citation.raw} />
-      ) : (
-        <>No surrounding text extracted for this citation.</>
-      )}
-    </p>
-  </div>
-))}
+```typescript
+const inTextVerdicts = extractedInText.map((citation) => ({
+  citation_id: `v${citation.id ?? citation.raw_text}`,
+  ...
+  mapping_status: 'matched' as const,
+  label: 'verified' as const,
+  ...
+}));
 ```
 
-Helper function `ContextWithHighlight` nhận context string, tìm citation marker bằng case-insensitive substring, render `<mark>` quanh nó. Optional enhancement: nếu user muốn tối giản, fallback dùng raw text nguyên cùng marker chip hiện tại.
+**After** (đọc mapping_status thật từ citation):
 
-- **Line 165-168** (Citation Detail modal): thêm section hiển thị context nếu có (optional polish)
-
-## Verification
-
-```bash
-# Backend unit tests (URL regex change might affect existing tests)
-cd /Users/iannwendy/Desktop/DATN/essay-integrity-checker
-source .venv/bin/activate
-python -m pytest tests/unit/test_bug_fixes.py -v
-python -m pytest tests/unit/test_rules_fake_url.py -v
-python -m pytest tests/unit/test_crossref_disabled.py -v
-
-# Full test suite
-python -m pytest tests/ -v
-
-# Manual test on a real PDF
-python -m integrity_checker.pipeline.integrity_pipeline TranThanhPhuoc_523H0002_523H0054.pdf --output /tmp/test_report.json
-python -c "import json; d=json.load(open('/tmp/test_report.json')); [print(v['citation']['raw_text'][:50], '|', (v['citation'].get('context') or 'NO_CONTEXT')[:80]) for v in d['verdicts'] if 'github.com' in v['citation']['raw_text'].lower() or v['label'] == 'resource']"
-
-# Frontend type check + tests
-cd web
-npm run build
-npm run test:e2e -- --grep "Document Inspector"
+```typescript
+const inTextVerdicts = extractedInText.map((citation) => {
+  const mappingStatus = citation.mapping_status ?? 'matched';
+  const mappingConfidence = citation.mapping_confidence ?? 0;
+  return {
+    citation_id: `c${citation.id ?? citation.raw_text}`,
+    citation_raw: citation.raw_text,
+    citation_type: citation.citation_type,
+    mapping_status: mappingStatus,
+    mapping_confidence: mappingConfidence,
+    citation_link: citation.citation_link,
+    // In-text không có source verification → label = VERIFIED (pass linking)
+    // nếu mapping matched, ngược lại UNRESOLVED.
+    label: mappingStatus === 'matched' ? 'verified' : 'unresolved',
+    confidence: mappingConfidence,
+    reasoning: '',
+    triggered_rules: [],
+    mismatched_fields: [],
+    matched_sources: [],
+    is_overridden: false,
+  };
+});
 ```
 
-### Acceptance criteria
+### Tests
 
-- [ ] Mỗi citation trong Document View hiển thị câu/đoạn văn THẬT xung quanh nó (không phải hard-coded)
-- [ ] URL citations (`https://...`, `www....`) đều được label = `resource` (không còn unresolved cho URLs)
-- [ ] Log có dòng `URL/RESOURCE detected: ...` khi chạy pipeline với log level = DEBUG
-- [ ] Existing tests pass (619 passed, 4 skipped)
-- [ ] Cached reports cũ vẫn load được (context = null/undefined → fallback gracefully)
+#### 7. `tests/unit/test_pipeline_document_parser.py`
 
-### Risks / Edge cases
+Test `test_pipeline_uses_document_parser_when_enabled` (line 96-167) expect `len(report.verdicts) == 1` với 1 body citation IN_TEXT. Sau fix:
+- Nếu body citation là IN_TEXT, không có verdict → `len(report.verdicts) == 0`.
+- Hoặc sửa test data để body citation có `citation_type=REFERENCE_LIST` và `title="..."` (mock API).
 
-- **Cached reports**: Reports đã cache trong `data/cache/reports/` không có field `context`. Cần invalidate cache hoặc handle `context = undefined` gracefully (frontend fallback "No surrounding text extracted").
-- **Regex false positives**: Text bắt đầu bằng `www.` không phải URL hiếm gặp nhưng có thể — đã mitigate bằng check `len ≥ 10`.
-- **Sentence splitting**: Trong context string, citation marker có thể xuất hiện nhiều lần (PDF lặp). Best-effort highlight lần xuất hiện đầu tiên.
-- **HTML escape**: Khi render context, phải escape HTML để tránh XSS (React tự escape nếu dùng `{text}`).
+Cập nhật expectation tương ứng.
 
-## Files to modify
+#### 8. `tests/unit/test_cis.py`
 
-| File | Lines | Change |
-|------|-------|--------|
-| `src/integrity_checker/pipeline/integrity_pipeline.py` | 624-660 | Add `citation.context = citation_context` |
-| `src/integrity_checker/logic/neuro_symbolic_checker.py` | 1-25, 92-107 | Add logger import + robust URL regex |
-| `web/src/api/client.ts` | 90-110 | Add `context?: string` to Verdict |
-| `web/src/pages/DocumentInspectorPage.tsx` | 33-52, 480-498 | Use real context from verdict |
+Thêm test:
+- `test_verified_ratio_excludes_in_text` — gọi `CISCalculator.compute()` với verdicts chỉ chứa references, verify `verified_ratio` đúng.
+- `test_in_text_bib_consistency_uses_linking_result` — verify rằng consistency vẫn tính đúng khi verdicts chỉ có references nhưng có LinkingResult.
 
-## Estimated effort
+#### 9. `tests/integration/test_pipeline_endtoend.py`
 
-~30 minutes implementation + 15 minutes testing.
+Verify end-to-end: PDF → AnalysisReport với:
+- `verdicts[]` chỉ có references.
+- `extracted_citations[]` có cả in-text và references.
+- `extracted_citations[i].mapping_status` cho in-text citations.
+
+## Reference functions / patterns to reuse
+
+- **`IntegrityPipeline._merge_citations`** (line 858-884) — giữ nguyên. Ta dùng nó để compute `citation_keys` cho `unique_citations`, sau đó filter `unique_list` theo `_is_verifiable`.
+
+- **`CitationLinker.link()`** (`src/integrity_checker/linking/citation_linker.py:79-152`) — đã chạy đúng, tạo `CitationLink` cho mỗi in-text occurrence. Ta tái sử dụng `linking_result.links` để attach `mapping_status` cho in-text citations.
+
+- **`CISCalculator.compute()`** (`src/integrity_checker/logic/cis.py:71-119`) — KHÔNG cần đổi. Đã ưu tiên `linking_result.links` cho `in_text_bib_consistency`.
+
+- **`NeuroSymbolicChecker.check()`** (`src/integrity_checker/logic/neuro_symbolic_checker.py:72-248`) — KHÔNG cần đổi.
+
+- **`repository.add_verdicts()`** (`src/integrity_checker/db/repository.py:88`) — KHÔNG cần đổi. Chỉ persist `report.verdicts` (sau fix chỉ có references).
+
+- **`repository.add_citations()`** (`src/integrity_checker/db/repository.py:44`) — KHÔNG cần đổi. Persist tất cả `report.extracted_citations` (gồm in-text + references).
+
+## Files to modify (summary)
+
+| File | Change |
+|------|--------|
+| `src/integrity_checker/models/citation.py` | Add `mapping_status`, `mapping_confidence`, `citation_link` fields |
+| `src/integrity_checker/pipeline/integrity_pipeline.py` | Add `_is_verifiable()`, filter `unique_list`, attach mapping to in-text, update `_serialize_citation()` |
+| `src/integrity_checker/api/routes/report.py` | Add `mapping_status` to extracted_citations serialization |
+| `web/src/api/client.ts` | Add `mapping_status` to `Citation` interface |
+| `web/src/pages/EssayPage.tsx` | Read `mapping_status` from `citation` instead of hardcoding |
+| `tests/unit/test_pipeline_document_parser.py` | Update expectations |
+| `tests/unit/test_cis.py` | Add tests for new behavior |
+
+## Verification plan
+
+1. **Run pipeline trên `TranThanhPhuoc_523H0002_523H0054.pdf`** — confirm:
+   - `verdicts[]` chỉ chứa 27 reference entries (không phải 56).
+   - Tất cả verdicts đều `verified` (vì local DB có hết).
+   - `extracted_citations[]` vẫn chứa 66 in-text + 27 ref.
+   - `extracted_citations[i].mapping_status` cho in-text citations (Linked/Missing Reference).
+   - `linking_summary` cho references đúng.
+   - CIS score vẫn cao (≥90).
+
+2. **Run tests**:
+   ```bash
+   source .venv/bin/activate && python -m pytest tests/ -v
+   ```
+   - Fix broken tests từ expectation mới.
+   - Đảm bảo 619+ tests pass.
+
+3. **Manual UI check** — upload file qua web UI:
+   - Tab "Overview" → Reference Verification chỉ hiển thị 27 references (đã verified).
+   - Tab "Citations" → hiển thị tất cả 66 in-text với mapping_status đúng (Linked = ✓ xanh).
+   - Tab "References" → hiển thị 27 bibliography entries.
+
+4. **Regression check** — chạy pipeline với file test khác (ví dụ `Attention.pdf`, `BERT.pdf`) để đảm bảo không vỡ logic cũ.
+
+5. **Edge cases**:
+   - PDF không có reference list → 0 verdicts, chỉ có in-text extracted_citations.
+   - PDF chỉ có DOI inline → DOI có title → verify, không có title → không verify.
+   - PDF có URL inline (RESOURCE) → classification ngắn mạch trước, không qua API.

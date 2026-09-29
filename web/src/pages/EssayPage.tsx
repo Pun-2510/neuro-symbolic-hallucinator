@@ -137,23 +137,42 @@ export function EssayPage() {
   // occurrences are preserved.  Fall back to deduplicated verdicts only
   // for legacy reports that do not carry extracted_citations.
   const extractedInText = report.extracted_citations ?? [];
+  // FIX v1.7: extractedInText now carries mapping_status from CitationLinker.
+  // Map: reference_id → verdict (so in-text can show the linked reference's label).
+  const verdictByRefId = new Map(
+    (report.verdicts ?? [])
+      .filter((v) => v.citation_link?.reference_id)
+      .map((v) => [v.citation_link!.reference_id, v])
+  );
+
   const inTextVerdicts =
     extractedInText.length > 0
-      ? extractedInText.map((citation) => ({
-          citation_id: `v${citation.id ?? citation.raw_text}`,
-          citation_raw: citation.raw_text,
-          citation_type: citation.citation_type,
-          mapping_status: 'matched' as const,
-          mapping_confidence: citation.confidence,
-          label: 'verified' as const,
-          confidence: citation.confidence,
-          reasoning: '',
-          triggered_rules: [] as string[],
-          mismatched_fields: [] as string[],
-          matched_sources: [] as MatchedSource[],
-          citation_link: undefined,
-          is_overridden: false,
-        }))
+      ? extractedInText.map((citation) => {
+          // NEW v1.7: read real mapping_status from citation (set by CitationLinker)
+          const mappingStatus = citation.mapping_status ?? 'matched';
+          // If this in-text citation links to a reference, inherit the reference's label
+          const refId = citation.citation_link?.reference_id;
+          const linkedVerdict = refId ? verdictByRefId.get(refId) : null;
+          return {
+            citation_id: `c${citation.id ?? citation.raw_text}`,
+            citation_raw: citation.raw_text,
+            citation_type: citation.citation_type,
+            // In-text inherits mapping_status from CitationLinker
+            mapping_status: mappingStatus,
+            mapping_confidence: citation.mapping_confidence ?? 0,
+            // Inherit label from linked reference verdict if available, otherwise
+            // derive from mapping_status (matched → verified, missing → unresolved)
+            label: linkedVerdict?.label
+              ?? (mappingStatus === 'matched' ? 'verified' : 'unresolved'),
+            confidence: citation.mapping_confidence ?? citation.confidence,
+            reasoning: linkedVerdict?.reasoning ?? '',
+            triggered_rules: linkedVerdict?.triggered_rules ?? [],
+            mismatched_fields: linkedVerdict?.mismatched_fields ?? [],
+            matched_sources: linkedVerdict?.matched_sources ?? [],
+            citation_link: citation.citation_link,
+            is_overridden: false,
+          };
+        })
       : report.verdicts.filter(
           (v) =>
             v.citation_type === 'in_text' ||
