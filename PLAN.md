@@ -1,146 +1,163 @@
-# Plan — Fix ProcessingScreen + matched_sources bug
+# Fix Overly Permissive Citation Patterns — 485 False Citations
 
 ## Context
 
-There are two production-blocking bugs in the essay upload → report flow:
+Running pipeline on `TranThanhPhuoc_523H0002_523H0054.pdf` (98 pages, IEEE format, ~27 references)
+returns **485 unique citations** when only ~30–80 are real. Root cause: 4 regex patterns are too
+permissive and match non-citation text.
 
-1. **ProcessingScreen không hoạt động.** `POST /api/essays` is currently a **synchronous** handler: it calls `pipeline.run()` inside `loop.run_in_executor`, waits for the full analysis (PDF parse → retrieval → rules → CIS) to complete, then returns. For a 16-page BERT paper this can take 20-60+ seconds (Crossref/OpenAlex/S2/CORE calls in parallel). During that time the user sees only a tiny button-level spinner on the Upload page. The dedicated ProcessingScreen route (`/verification/processing/:id`) only mounts *after* upload finishes, so the rich "Verification Pipeline" stepper UI never appears during the long wait.
-2. **`verdict.matched_sources is not iterable` crash.** The frontend `Verdict` interface in `web/src/api/client.ts:105` declares `matched_sources: MatchedSource[]` (required), and `CitationGraphView`/`ProcessingPage` call `.some()`, `.filter(...).length` on it. But the backend **never serializes `matched_sources`** into the report payload — `report.py:114-132` builds the verdict dict without that key, so the JSON omits it and JS receives `undefined`. This breaks the Evidence Graph and the "Source Retrieval" counters on the Processing page.
+**Breakdown of 485 matches:**
 
-The user wants:
-- ProcessingScreen to appear immediately on click, with **real** progress pulled from the backend (no fake data, no fake timers).
-- The `matched_sources` bug to be completely gone.
+| Pattern | Matches | Status |
+|---------|---------|--------|
+| `mla_intext_parenthetical` | 333 | **BUG** — matches any parentheses |
+| `acs_comma_separated` | 50 | **BUG** — matches `100,000`, `1,371` (data) |
+| `ama_comma_separated` | 50 | **BUG** — same |
+| `cse_parenthesized` | 23 | **BUG** — matches `(1)`, `(2)` (equation/footnote numbers) |
+| `ieee_numeric` + `nature_bracketed` | 51 | Legit IEEE `[N]` brackets |
 
-## Approach
+Expected reduction: 485 → ~80 (legit IEEE brackets + ~30 other legitimate citations).
 
-### Backend
+## Root Cause
 
-**1. In-memory progress tracker** — `src/integrity_checker/api/progress.py` (new).
+| File | Pattern | Problem |
+|------|---------|---------|
+| `patterns/mla.py:51-56` | `\(([^)]+)\)` | Matches *anything* in parentheses |
+| `patterns/acs.py:70-74` | `(\d+)(?:,\s*\d+)+` | Matches `100,000`, `1,371` (not just `[1,2]`) |
+| `patterns/ama.py:70-74` | same | same |
+| `patterns/cse.py:67-73` | `\((d+)\)` | Matches `(1)` in body (equations/footnotes) |
 
-Module-level dict keyed by `essay_id` storing a `ProgressState` dataclass:
-```python
-@dataclass
-class ProgressState:
-    status: str                     # "queued" | "processing" | "completed" | "failed"
-    step: str                       # "parsing" | "extracting" | "linking" | "retrieving" | "checking" | "scoring" | "done"
-    step_index: int                 # 0..7
-    total_steps: int                # 8
-    message: str
-    citations_found: int = 0
-    references_found: int = 0
-    linked: int = 0
-    sources_queried: dict[str, str] = field(default_factory=dict)  # crossref: "ok" | "failed: 429" | "pending"
-    started_at: float
-    finished_at: float | None = None
-    error: str | None = None
-```
+## Fix Approach
 
-Expose `get(essay_id)`, `set(essay_id, **kwargs)`, `clear(essay_id)`, `snapshot(essay_id) -> dict`.
+### Bug 1 — `mla_intext_parenthetical` (mla.py:51-56)
 
-**2. Async upload** — `src/integrity_checker/api/routes/essays.py`.
-
-Refactor `upload_essay`:
-- Read file, save to tempdir, validate PDF.
-- Create the `EssayRecord` row immediately with `filename`, `num_pages=0`, `user_id`.
-- Initialize `ProgressState(status="processing", step="parsing", step_index=0, started_at=time.time())`.
-- Schedule background work via FastAPI's `BackgroundTasks` (already injected by FastAPI): `background_tasks.add_task(_run_pipeline_task, essay_id, tmp_path, user_id)`.
-- Return `EssayUploadResponse` immediately with the real `essay_id`. No more waiting.
-- Move all pipeline → DB write logic into a private async helper `_run_pipeline_task(essay_id, tmp_path, user_id)` that:
-  - Updates `ProgressState` at each step (parsing → extracting → linking → retrieving → checking → scoring → done).
-  - Calls `pipeline.run_async(pdf_path, essay_id)`.
-  - **With small refactors to `IntegrityPipeline.run_async`** (see #4) so it reports progress.
-  - Persists citations + verdicts + style_profile + cis on completion.
-  - Sets `ProgressState.status = "completed"` (or `"failed"` with error).
-  - Cleans up the temp file.
-
-**3. New status endpoint** — `src/integrity_checker/api/routes/essays.py`.
+**Replace loose pattern** `\(([^)]+)\)` **with tightened regex requiring capitalized author name:**
 
 ```python
-@router.get("/{essay_id}/status")
-def get_essay_status(essay_id: int, ...):
-    state = progress.get(essay_id)
-    if state is None:
-        # Fallback: check DB — if essay exists with verdicts, it's done
-        essay = repo.get_essay(essay_id)
-        if essay and repo.get_verdicts(essay_id):
-            return {"status": "completed", "step": "done", ...}
-        raise HTTPException(404)
-    return progress.snapshot(essay_id)
+# OLD (line 53):
+    pattern=r"\(([^)]+)\)"
+
+# NEW:
+    pattern=r"\(([A-Z][a-zA-ZÀ-ž]+(?:\s+(?:and|&)\s+[A-Z][a-zA-ZÀ-ž]+)?(?:\s+et\s+al\.?)?(?:\s+\d+(?:[-–]\d+)?)?)\)"
 ```
 
-Also adjust `GET /essays/{id}/report` (`report.py`) to return **HTTP 425 (Too Early)** with a `Retry-After` header when status is still `processing`, so the frontend's `getEssay` call on the Processing page gets a clear signal to keep polling instead of failing silently.
+- `[A-Z][a-zA-ZÀ-ž]+` — capitalized word (author last name)
+- `(?:\s+(?:and|&)\s+[A-Z][a-zA-ZÀ-ž]+)?` — optional second author
+- `(?:\s+et\s+al\.?)?` — optional "et al."
+- `(?:\s+\d+(?:[-–]\d+)?)?` — optional page number
 
-**4. Plumb progress into the pipeline** — `src/integrity_checker/pipeline/integrity_pipeline.py`.
+**Rejects:** `(gold standard)`, `(correct)`, `(Deep Learning)`, `(a)`, `(Major Depressive Disorder)`, `(Buồn bã kéo dài)`
+**Accepts:** `(Smith)`, `(Smith et al.)`, `(Smith and Jones)`, `(Nguyen Van A)`
 
-Add an optional `progress_callback: Callable[[str, int, dict], None] | None = None` parameter to `run_async`. The 8 steps already exist (matching `ProcessingPage.steps`), so the callback fires at each natural boundary:
-- step 0: parsing (before `self.parser.parse`)
-- step 1: extracting style profile
-- step 2: extracting citations & references
-- step 3: linking citations ↔ references
-- step 4: retrieving source metadata (per-citation, called once with total count)
-- step 5: comparing candidate publications
-- step 6: applying neuro-symbolic rules
-- step 7: generating report (CIS + final write)
+### Bug 2 — `acs_comma_separated` (acs.py:70-74) — REMOVE
 
-The callback receives `(step_key, step_index, partial_stats)` so the API layer can update its `ProgressState` (e.g. `citations_found=N`, `linked=M`, `sources_queried[db]="ok"|"failed"`).
+Remove the pattern definition and exclude from `in_text_patterns`. ACS/AMA already have
+`acs_parenthesized` for `(1)`, `(2)`; IEEE/Vancouver already cover `[1,2,3]`.
 
-**5. Fix `matched_sources` everywhere** — three places.
+**Changes:**
+- Delete `_ACS_COMMA_SEPARATED` definition (lines 69-75)
+- Remove from `in_text_patterns` property return list
+- Remove from `ACS_IN_TEXT_PATTERNS` module-level export
 
-- `src/integrity_checker/pipeline/integrity_pipeline.py`:
-  - `AnalysisReport.to_dict()` (line 97) — add `"matched_sources": _serialize_matched_sources(v.matched_source)` for each verdict.
-  - `AnalysisReport.from_dict()` (line 166) — rehydrate `matched_sources` back into a `SourceResult` (best-effort) so cache-hit reports work.
-  - New helper `_serialize_matched_sources(source: SourceResult | None) -> list[dict]` that maps each `SourceCandidate` (when `found=True`) to `{"source": source_name, "matched_fields": [...], "checked_at": "...", "url": ..., "doi": ..., "title": ...}`.
-- `src/integrity_checker/api/routes/report.py` `_json_response` (line 110-132):
-  - The verdict dict currently doesn't include `matched_sources`. Add it. For cache-hit / persisted reports we don't have the live `SourceResult`, so reconstruct from existing fields plus a new column-free derivation:
-    - If the verdict record was persisted via the updated `add_verdicts` (see next), we can read it back from the joined JSON.
-    - If it's an old essay: fall back to deriving `matched_sources` from `sources_succeeded` strings only (each becomes `{source: name, matched_fields: [], checked_at: validated_at}`).
-- `src/integrity_checker/db/repository.py` `add_verdicts` (line 87):
-  - Persist `matched_sources_json` on `VerdictRecord` — but to avoid a DB migration we serialize it into the existing `features` JSON column under a `"matched_sources"` key. Then `report.py` reads it back via `json.loads(v.features).get("matched_sources", [])`.
-- `src/integrity_checker/api/routes/verdicts.py` (line 51, 100) — keep current `matched_sources=[]` for override responses but also load from `features` JSON for the list endpoint.
+### Bug 3 — `ama_comma_separated` (ama.py:70-74) — REMOVE
 
-### Frontend
+Same as Bug 2. Pattern inherently flawed — cannot distinguish citation `1,2` from data `1,371`.
 
-**1. `web/src/pages/UploadPage.tsx`** — change `handleUpload` so it navigates the moment the `essay_id` arrives. No waiting on the analysis; the POST now returns immediately (after #2 backend change).
+**Changes:**
+- Delete `_AMA_COMMA_SEPARATED` definition (lines 69-75)
+- Remove from `in_text_patterns` property return list
+- Remove from `AMA_IN_TEXT_PATTERNS` module-level export
 
-**2. `web/src/pages/ProcessingPage.tsx`** — rewrite to be a real-time mirror of `/essays/{id}/status`:
+### Bug 4 — `cse_parenthesized` (cse.py:67-73) — REMOVE FROM IN_TEXT ONLY
 
-- New `api.getEssayStatus(id)` in `web/src/api/client.ts` calling `GET /api/essays/{id}/status`.
-- Polling loop polls **status** every 1.5 s. Step indicator, message, and counters (`num_citations`, `linked`, retrieval source list with their `ok|failed|pending` states) all come from the snapshot.
-- Drop the existing fake `setTimeout`-based step progression (the line `const stepIndex = Math.min(Math.floor(pollCount / 1.5), steps.length - 1)`).
-- Keep the existing visual stepper — just feed it `snapshot.step_index` instead of `pollCount`.
-- When `status === "completed"` AND `verdicts` arrive on `/report`, navigate to `/verification/report/:id`.
-- Show a friendly error UI when `status === "failed"`.
-- The "Source Retrieval" tiles show `snapshot.sources_queried[db]` for real states; once the pipeline finishes they switch to the `report.verdicts.filter(...).length` count for verification (still real data).
+Keep the pattern definition (needed for reference list parsing) but remove from `in_text_patterns`.
+CSE in-text uses `[1]` or `^1`, not `(1)`.
 
-**3. Defensive defaults** — `web/src/api/client.ts`:
+**Changes:**
+- Keep `_CSE_PARENTHESIZED` definition
+- Remove from `in_text_patterns` property return list
 
-- Make `Verdict.matched_sources` typed `MatchedSource[]` with a default of `[]` (TypeScript already infers the API response is non-null, but add `?? []` defensive reads in `ProcessingPage` and `CitationGraphView` to guard against older cached responses or new pipeline steps that don't yet emit candidates).
-- Wrap the `EvidenceGraph` `useMemo` over `verdict.matched_sources` so it tolerates `undefined`.
+## File Changes
 
-**4. `web/src/components/CitationGraphView.tsx`** — defensive guard (one-liner `v.matched_sources ?? []` before `.some`).
+### 1. `src/integrity_checker/extraction/patterns/mla.py`
+- Line 53: Replace pattern string
 
-## Files to change
+### 2. `src/integrity_checker/extraction/patterns/cse.py`
+- Lines 258-266: Remove `_CSE_PARENTHESIZED` from `in_text_patterns` property
 
-| File | Change |
-|------|--------|
-| `src/integrity_checker/api/progress.py` (NEW) | In-memory `ProgressState` + tracker |
-| `src/integrity_checker/api/routes/essays.py` | Async upload via `BackgroundTasks`, add `/{id}/status` endpoint, return essay_id immediately |
-| `src/integrity_checker/pipeline/integrity_pipeline.py` | Add `progress_callback` param + emit at 8 step boundaries; serialize `matched_sources` in `to_dict`/`from_dict`; new `_serialize_matched_sources` helper |
-| `src/integrity_checker/api/routes/report.py` | Include `matched_sources` in verdict dict (read from `features` JSON or reconstructed from `sources_succeeded`); return 425 if still processing |
-| `src/integrity_checker/db/repository.py` | Store `matched_sources` inside `features` JSON blob in `add_verdicts` |
-| `src/integrity_checker/api/routes/verdicts.py` | Read `matched_sources` from stored `features` JSON |
-| `web/src/api/client.ts` | Add `getEssayStatus(id)`; defensive `matched_sources` defaults |
-| `web/src/pages/UploadPage.tsx` | Navigate immediately on POST response (no client-side wait) |
-| `web/src/pages/ProcessingPage.tsx` | Real-time polling of `/status`; drop fake step progression |
-| `web/src/components/CitationGraphView.tsx` | Defensive `?? []` guard on `matched_sources` |
+### 3. `src/integrity_checker/extraction/patterns/acs.py`
+- Lines 69-75: Delete `_ACS_COMMA_SEPARATED` definition
+- Lines 244-251: Remove from `in_text_patterns` return list
+- Lines 810-815: Remove from `ACS_IN_TEXT_PATTERNS` export
+
+### 4. `src/integrity_checker/extraction/patterns/ama.py`
+- Lines 69-75: Delete `_AMA_COMMA_SEPARATED` definition
+- Lines 225-232: Remove from `in_text_patterns` return list
+- Lines 686-691: Remove from `AMA_IN_TEXT_PATTERNS` export
+
+### 5. `tests/unit/test_pattern_bug_fixes.py` (NEW FILE)
+
+Add comprehensive unit tests for all 4 fixes — positive and negative cases.
 
 ## Verification
 
-1. **Unit / backend tests** — `python -m pytest tests/ -v` must remain green (619 passed baseline). Existing tests use synchronous pipeline; the new `progress_callback` defaults to `None` so legacy behavior is preserved.
-2. **End-to-end manual flow**:
-   - Start backend (`uvicorn src.integrity_checker.api.main:app --reload`) and frontend (`cd web && npm run dev`).
-   - Sign in, navigate to **New Check**, drop a PDF (e.g. `data/papers/BERT.pdf`).
-   - Confirm: ProcessingScreen appears **instantly**, stepper animates as `parsing → extracting → linking → retrieving → checking → scoring → done`, retrieval tiles show live `pending/ok/failed` states, citations/references counters tick up in real time.
-   - On completion, redirected to `/verification/report/:id`. Click any verdict → Evidence Graph opens without `matched_sources` crash; the Source Retrieval tiles show the real verified count per DB.
-3. **Regression** — re-run `python -m pytest tests/unit/test_bug_fixes.py -v` and the full suite to confirm no test broke.
-4. **Old essays** — load a previously-uploaded essay (pre-fix DB rows). Report still renders; matched_sources reconstructed from `sources_succeeded` fallback path; no `undefined is not iterable`.
+```bash
+# 1. New unit tests (should all pass)
+source .venv/bin/activate
+python -m pytest tests/unit/test_pattern_bug_fixes.py -v
+
+# 2. Existing test suite (no regressions — 619+ tests pass)
+python -m pytest tests/ -v --tb=short
+
+# 3. Smoke test — pattern count
+python3 -c "
+from integrity_checker.extraction.patterns import get_in_text_patterns
+patterns = get_in_text_patterns()
+print(f'Total in-text patterns: {len(patterns)}')  # Should be 33 (down from 36)
+"
+
+# 4. TranThanhPhuoc PDF — citations should drop from 485 to ~80
+source .venv/bin/activate
+python3 -c "
+from integrity_checker.extraction.mupdf_parser import MuPdfParser
+from integrity_checker.extraction.citation_extractor import CitationExtractor
+parser = MuPdfParser()
+doc = parser.parse('TranThanhPhuoc_523H0002_523H0054.pdf')
+cites = CitationExtractor(preserve_occurrences=False).extract_from_document(doc)
+print(f'Citations: {len(cites)} (expected ~80)')
+"
+
+# 5. Full pipeline on TranThanhPhuoc PDF
+python -m integrity_checker.pipeline.integrity_pipeline TranThanhPhuoc_523H0002_523H0054.pdf --output /tmp/phuoc_fixed.json
+```
+
+## Expected Impact
+
+| Pattern | Before | After |
+|---------|--------|-------|
+| `mla_intext_parenthetical` | 333 | ~0–5 |
+| `acs_comma_separated` | 50 | 0 |
+| `ama_comma_separated` | 50 | 0 |
+| `cse_parenthesized` | 23 | 0 |
+| **Total** | **485** | **~80** |
+
+## Risks
+
+| Risk | Mitigation |
+|------|------------|
+| Missing legit MLA `(Author)` citations | MLA narrative + other formats still catch most cases |
+| Breaking reference list parsing | CSE parens pattern kept (only removed from in_text) |
+| Regression on other papers | Full test suite + BERT/Attention PDF tests |
+
+## Commit Message
+
+```
+fix: tighten overly permissive citation patterns (2026-09-29)
+
+- mla.py: tighten parenthetical regex to require capitalized author name
+- acs.py: remove comma_separated pattern (matches data, not citations)
+- ama.py: remove comma_separated pattern (same issue)
+- cse.py: remove parenthesized from in_text_patterns (keep for ref list)
+
+Reduces TranThanhPhuoc from 485 to ~80 citations.
+```

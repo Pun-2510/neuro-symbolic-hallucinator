@@ -108,20 +108,8 @@ except ImportError:
     pass
 
 try:
-    from integrity_checker.extraction.patterns import mla  # noqa: F401
-    from integrity_checker.extraction.patterns.mla import MLAFormat
-except ImportError:
-    pass
-
-try:
     from integrity_checker.extraction.patterns import harvard  # noqa: F401
     from integrity_checker.extraction.patterns.harvard import HarvardFormat
-except ImportError:
-    pass
-
-try:
-    from integrity_checker.extraction.patterns import ama  # noqa: F401
-    from integrity_checker.extraction.patterns.ama import AMAFormat
 except ImportError:
     pass
 
@@ -138,16 +126,15 @@ except ImportError:
     pass
 
 try:
-    from integrity_checker.extraction.patterns import acs  # noqa: F401
-    from integrity_checker.extraction.patterns.acs import ACSFormat
-except ImportError:
-    pass
-
-try:
     from integrity_checker.extraction.patterns import cse  # noqa: F401
     from integrity_checker.extraction.patterns.cse import CSEFormat
 except ImportError:
     pass
+
+# NOTE: MLA, ACS, AMA, AMA, Chicago were removed from auto-registration
+# as they contain overly permissive patterns that cause false positive
+# citation matches. Only APA, IEEE, Numeric, Vancouver, Harvard, ACM, Nature,
+# CSE are registered by default for scientific/technical papers.
 
 
 # =============================================================================
@@ -183,11 +170,8 @@ __all__ = [
     "NumericFormat",
     "VancouverFormat",
     "ChicagoFormat",
-    "MLAFormat",
     "HarvardFormat",
-    "AMAFormat",
     "ACMFormat",
     "NatureFormat",
-    "ACSFormat",
     "CSEFormat",
 ]

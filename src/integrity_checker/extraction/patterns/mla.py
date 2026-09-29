@@ -47,12 +47,13 @@ _MLA_INTEXT_PARENTHETICAL_PAGE = CompiledPattern.create(
     description="MLA in-text parenthetical: (Author Page) | (Author 25-27)",
 )
 
-# Parenthetical without page: (Nguyen)
+# Parenthetical without page: (Nguyen), (Smith et al.), (Smith and Jones)
+# FIX: tightened to require capitalized author name — rejects (gold standard), (a), (Deep Learning)
 _MLA_INTEXT_PARENTHETICAL = CompiledPattern.create(
     name="mla_intext_parenthetical",
-    pattern=r"\(([^)]+)\)",
+    pattern=r"\(([A-Z][a-zA-ZÀ-ž]+(?:\s+(?:and|&)\s+[A-Z][a-zA-ZÀ-ž]+)?(?:\s+et\s+al\.?)?(?:\s+\d+(?:[-–]\d+)?)?)\)",
     pattern_type=PatternType.IN_TEXT,
-    description="MLA in-text parenthetical: (Author)",
+    description="MLA in-text parenthetical: (Author) | (Smith) | (Smith et al.) | (Smith and Jones)",
 )
 
 # Narrative: Author (Page) or Author (pages 25-27)

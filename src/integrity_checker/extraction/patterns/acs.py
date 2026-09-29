@@ -66,13 +66,10 @@ _ACS_PARENTHESIZED = CompiledPattern.create(
     description="ACS parenthesized: (1) | (2)",
 )
 
-# Comma-separated numbers: 1,2,3
-_ACS_COMMA_SEPARATED = CompiledPattern.create(
-    name="acs_comma_separated",
-    pattern=r"(\d+)(?:,\s*\d+)+",
-    pattern_type=PatternType.IN_TEXT,
-    description="ACS comma-separated: 1,2,3",
-)
+# FIX: removed _ACS_COMMA_SEPARATED — pattern `(\d+)(?:,\s*\d+)+` matches data like
+# 100,000 / 1,371 (population numbers), not just citation [1,2]. IEEE/Vancouver
+# brackets already cover legitimate comma-separated citations. ACS parenthesized
+# covers (1), (2) format.
 
 # --- Reference list ACS patterns ---
 
@@ -247,7 +244,7 @@ class ACSFormat:
             _ACS_SUPERSCRIPT,
             _ACS_AUTHOR_SUPERSCRIPT,
             _ACS_PARENTHESIZED,
-            _ACS_COMMA_SEPARATED,
+            # FIX: removed _ACS_COMMA_SEPARATED (see above)
         ]
 
     @property
@@ -811,7 +808,7 @@ ACS_IN_TEXT_PATTERNS = [
     _ACS_SUPERSCRIPT,
     _ACS_AUTHOR_SUPERSCRIPT,
     _ACS_PARENTHESIZED,
-    _ACS_COMMA_SEPARATED,
+    # FIX: removed _ACS_COMMA_SEPARATED
 ]
 
 ACS_REFERENCE_PATTERNS = [

@@ -66,6 +66,7 @@ addopts = "-v --tb=short --strict-markers"
 markers = [
     "integration: tests cần network/IO thật",
     "slow: tests chậm (skipped by default)",
+    "asyncio: async tests",
 ]
 
 [tool.setuptools.packages.find]

@@ -260,7 +260,9 @@ class CSEFormat:
         return [
             _CSE_SUPERSCRIPT,
             _CSE_BRACKETED,
-            _CSE_PARENTHESIZED,
+            # FIX: removed _CSE_PARENTHESIZED — matches (1), (2) in body (equations/footnotes),
+            # not legitimate in-text citations. CSE in-text uses [N] or ^N. Pattern kept for
+            # reference list parsing via reference_patterns.
             _CSE_NAMEYEAR_PARENTHETICAL,
             _CSE_NAMEYEAR_PARENTHETICAL_NOCOMMA,
         ]

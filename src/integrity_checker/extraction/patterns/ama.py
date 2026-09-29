@@ -66,13 +66,9 @@ _AMA_PARENTHESIZED = CompiledPattern.create(
     description="AMA parenthesized: (1) | (2)",
 )
 
-# Comma-separated numbers: 1,2,3 or 1, 2, 3
-_AMA_COMMA_SEPARATED = CompiledPattern.create(
-    name="ama_comma_separated",
-    pattern=r"(\d+)(?:,\s*\d+)+",
-    pattern_type=PatternType.IN_TEXT,
-    description="AMA comma-separated: 1,2,3",
-)
+# FIX: removed _AMA_COMMA_SEPARATED — same issue as ACS: pattern matches data like
+# 100,000 / 1,371, not just citation [1,2]. AMA already has AMA bracketed [N]
+# and AMA parenthesized (N) for legitimate numeric citations.
 
 # --- Reference list AMA patterns ---
 
@@ -228,7 +224,7 @@ class AMAFormat:
             _AMA_SUPERSCRIPT,
             _AMA_BRACKETED,
             _AMA_PARENTHESIZED,
-            _AMA_COMMA_SEPARATED,
+            # FIX: removed _AMA_COMMA_SEPARATED (see above)
         ]
 
     @property
@@ -687,7 +683,7 @@ AMA_IN_TEXT_PATTERNS = [
     _AMA_SUPERSCRIPT,
     _AMA_BRACKETED,
     _AMA_PARENTHESIZED,
-    _AMA_COMMA_SEPARATED,
+    # FIX: removed _AMA_COMMA_SEPARATED
 ]
 
 AMA_REFERENCE_PATTERNS = [
