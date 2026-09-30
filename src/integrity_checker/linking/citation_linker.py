@@ -45,6 +45,11 @@ _APA_ETAL_YEAR_RE = re.compile(
     r"([A-Za-zÀ-ÿ'.\s-]+?)\s+et\s+al\.?\s*\(\s*((?:19|20)\d{2}[a-z]?)\s*\)",
     re.IGNORECASE,
 )
+# Narrative citation: ``Author et al. (2018)`` or ``Author (2018)``.
+_NARRATIVE_YEAR_RE = re.compile(
+    r"([A-Za-zÀ-ÿ'.\s-]+?)\s*\(\s*((?:19|20)\d{2}[a-z]?)\s*\)",
+    re.IGNORECASE,
+)
 # Regex cho in-text IEEE numeric: [N] or [N, M] or [N-M]
 _IEEE_NUM_RE = re.compile(r"\[(\d+(?:\s*[-–,]\s*\d+)*)\]")
 # Regex cho year extraction từ bib entry
@@ -231,6 +236,41 @@ class CitationLinker:
                 return links
 
         # 3. AUTHOR_YEAR (APA-like)
+        # A single parenthetical citation often contains several independent
+        # author-year keys separated by semicolons.  The extractor keeps this
+        # as one occurrence (important for audit/UI), but the occurrence must
+        # still link to every cited bibliography entry.
+        if cit.citation_type == CitationType.IN_TEXT and ";" in cit.raw_text:
+            multi_links: list[CitationLink] = []
+            for part in cit.raw_text.split(";"):
+                # Splitting removes the outer closing parenthesis from every
+                # component except the last one.  Parse each component as a
+                # standalone APA key and repair PDF line-break hyphenation.
+                part = re.sub(r"(?<=\w)-\s+(?=\w)", "", part)
+                if not part.lstrip().startswith("("):
+                    part = "(" + part
+                if not part.rstrip().endswith(")"):
+                    part = part + ")"
+                author_part, year_part, suffix_part = self._extract_author_year(part)
+                if not author_part or not year_part:
+                    continue
+                candidates = (
+                    bib_by_author_year_suffix.get((author_part.lower(), year_part, suffix_part), [])
+                    if suffix_part
+                    else bib_by_author_year.get((author_part.lower(), year_part), [])
+                )
+                if candidates:
+                    bib_idx = self._find_bib_index(candidates[0], bib_citations)
+                    multi_links.append(CitationLink(
+                        occurrence_id=occ_id,
+                        reference_id=candidates[0].reference_id or f"ref-{bib_idx:04d}",
+                        status=CitationMappingStatus.MATCHED,
+                        confidence=self.author_year_confidence,
+                        method=MappingMethod.AUTHOR_YEAR,
+                    ))
+            if multi_links:
+                return multi_links
+
         author, year, year_suffix = self._extract_author_year(cit.raw_text)
         if author and year:
             # Try exact match first (author + year + suffix)
@@ -512,6 +552,13 @@ class CitationLinker:
                 year = year[:4]
             normalized = self._normalize_last_name(raw_author)
             return normalized, year, year_suffix
+
+        m3 = _NARRATIVE_YEAR_RE.search(text_normalized)
+        if m3:
+            raw_author = re.sub(r"\s+et\s+al\.?\s*$", "", m3.group(1), flags=re.I).strip()
+            year = m3.group(2)
+            year_suffix = year[4:] if len(year) == 5 else None
+            return self._normalize_last_name(raw_author), year[:4], year_suffix
 
         return None, None, None
 
