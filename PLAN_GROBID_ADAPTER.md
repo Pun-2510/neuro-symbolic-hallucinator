@@ -127,7 +127,7 @@ Trước khi code:
 
 - Chạy toàn bộ test hiện tại.
 - Chạy evaluation trên dataset hiện có.
-- Chọn PDF IEEE nhiều cột, APA, Vancouver/AMA, luận văn tiếng Việt, reference lỗi và case GROBID fallback.
+- Chọn PDF IEEE nhiều cột, APA, Vancouver/AMA, reference lỗi và case GROBID fallback.
 - Lưu citation/reference precision-recall, linking accuracy, style accuracy, verdict count, API calls và fallback rate.
 
 Deliverable: `reports/grobid_adapter_baseline_2026-10-01.*`.
@@ -256,7 +256,7 @@ Ngưỡng định lượng đề xuất:
 
 | Rủi ro | Giảm thiểu |
 |---|---|
-| GROBID parse sai PDF tiếng Việt | merge, regex fallback, evaluation riêng |
+| GROBID parse sai PDF có layout phức tạp | merge, regex fallback, evaluation riêng |
 | GROBID bỏ sót citation | union với regex, dedupe |
 | TEI ID không ổn định | normalize ID, fallback CitationLinker |
 | Mất multi-ref | giữ `citation_links: list`, fixture bắt buộc |
