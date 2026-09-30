@@ -26,6 +26,8 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
+import sys
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -125,6 +127,21 @@ class GrobidServiceManager:
             )
             return False
 
+    def _docker_client(self):
+        """Return a client pinned to Docker Desktop on macOS.
+
+        Docker CLI contexts are not consistently honored by every version of
+        the Python SDK.  Prefer Desktop's socket when it exists, preventing a
+        stale ``DOCKER_CONTEXT=colima`` from making GROBID appear unavailable.
+        Tests and non-macOS environments retain the normal SDK behavior.
+        """
+        desktop_socket = Path.home() / ".docker" / "run" / "docker.sock"
+        if desktop_socket.exists() and os.name == "posix" and sys.platform == "darwin":
+            return self._docker.DockerClient(
+                base_url=f"unix://{desktop_socket}"
+            )
+        return self._docker.from_env()
+
     @property
     def status(self) -> GROBID_STATUS:
         """Lấy current GROBID status."""
@@ -205,7 +222,7 @@ class GrobidServiceManager:
             return "unavailable"
 
         try:
-            client = self._docker.from_env()
+            client = self._docker_client()
             container = client.containers.get(self._container_name)
             self.stats.container_id = container.id[:12]
             return container.status
@@ -238,7 +255,7 @@ class GrobidServiceManager:
             return False
 
         try:
-            client = self._docker.from_env()
+            client = self._docker_client()
 
             # Pull image nếu chưa có
             try:
@@ -300,7 +317,7 @@ class GrobidServiceManager:
             return False
 
         try:
-            client = self._docker.from_env()
+            client = self._docker_client()
             container = client.containers.get(self._container_name)
             container.stop(timeout=30)
             logger.info("GROBID container stopped")

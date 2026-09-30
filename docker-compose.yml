@@ -8,13 +8,19 @@ services:
   grobid:
     image: lfoppiano/grobid:0.8.0
     container_name: essay-check-grobid
-    expose:
-      - "8070"   # Internal only - API connects via Docker network
-      - "8071"
+    # Publish the API as well so a backend running on macOS (outside Compose)
+    # can use the same endpoint.  Docker Desktop owns this port; Colima must
+    # never be required for this project.
+    ports:
+      - "8070:8070"
+      - "8071:8071"
     environment:
       - JAVA_OPTS=-Xmx2g
-    volumes:
-      - grobid_data:/opt/grobid
+    platform: linux/amd64
+    # The upstream image's tini entrypoint is not reliable on macOS VM
+    # backends. Start the service directly, as in grobid_docker_setup.sh.
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["CLASSPATH=/opt/grobid/grobid-service/lib/* && exec java -Xmx2g -XX:+UseG1GC -classpath \"$${CLASSPATH}\" org.grobid.service.main.GrobidServiceApplication --server.port=8070"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8070/api/isalive"]
@@ -72,6 +78,3 @@ networks:
   internal:
     driver: bridge
     internal: false  # Allow external for dev, set to true for production
-
-volumes:
-  grobid_data:
