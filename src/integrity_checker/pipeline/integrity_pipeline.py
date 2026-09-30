@@ -149,6 +149,11 @@ class AnalysisReport:
                         if v.citation_link is not None
                         else None
                     ),
+                    # v1.9 — lossless list ("[9, 10]" keeps both refs).
+                    "citation_links": _serialize_citation_link_list(
+                        getattr(v, "citation_links", None)
+                        or getattr(v, "citation_link", None)
+                    ),
                     # Bằng chứng
                     "reasoning": v.reasoning,
                     "triggered_rules": v.triggered_rules,
@@ -216,6 +221,11 @@ class AnalysisReport:
                 mapping_status=mapping_status,
                 mapping_confidence=float(raw_verdict.get("mapping_confidence", 0.0)),
                 citation_link=citation_link,
+                citation_links=_deserialize_citation_link_list(
+                    raw_verdict.get("citation_links")
+                    if raw_verdict.get("citation_links") is not None
+                    else raw_verdict.get("citation_link")
+                ),
                 features=features,
                 reasoning=raw_verdict.get("reasoning", ""),
                 triggered_rules=list(raw_verdict.get("triggered_rules", [])),
@@ -545,6 +555,9 @@ class IntegrityPipeline:
         )
         linking_result = self._run_linking(in_text_citations, ref_citations, style_profile)
         link_by_raw_text = self._build_link_lookup(linking_result.links)
+        # v1.9 — lossless view: one occurrence may cite several references
+        # ("[9, 10]"), and the single-slot map above keeps only the last.
+        links_by_key_multi = self._build_link_lookup_multi(linking_result.links)
 
         # 1d. Populate metadata for in-text citations from matched references
         # FIX: For numeric citations like "[1]" that have no title/author/year,
@@ -659,7 +672,15 @@ class IntegrityPipeline:
                 mapping_status = CitationMappingStatus.MATCHED
                 mapping_confidence = 0.95
                 citation_link = None
+                # v1.7 — reference entries are matched by definition, so they
+                # carry no in-text link edges. Still initialise the name here:
+                # this branch falls through to ``verdict.citation_links =
+                # citation_links_verdict`` below, and the old code only bound
+                # it in the ``else`` branch → UnboundLocalError for every
+                # reference-list verdict (all 11 pipeline tests).
+                citation_links_verdict: list = []
             else:
+                citation_links_verdict = []
                 # Normalize the raw_text to handle newlines/whitespace variations
                 normalized_text = citation.raw_text.replace("\n", " ").replace("  ", " ")
                 # Try lookup with normalized text
@@ -698,6 +719,12 @@ class IntegrityPipeline:
                     mapping_status = link.status
                     mapping_confidence = link.confidence
                     citation_link = link
+                    # v1.9 — every edge of this occurrence ("[9, 10]" → 2).
+                    citation_links_verdict = list(
+                        links_by_key_multi.get(normalized_key)
+                        or links_by_key_multi.get(normalized_text.lower().strip())
+                        or [link]
+                    )
                 else:
                     # Không tìm thấy link — mặc định MISSING_REFERENCE nếu ref_list rỗng,
                     # nếu không thì AMBIGUOUS_MAPPING.
@@ -750,6 +777,7 @@ class IntegrityPipeline:
             verdict.mapping_status = mapping_status
             verdict.mapping_confidence = mapping_confidence
             verdict.citation_link = citation_link
+            verdict.citation_links = citation_links_verdict
 
             # NEW v1.3: Provenance tracking on verdict
             verdict.sources_succeeded = source.sources_succeeded
@@ -773,22 +801,26 @@ class IntegrityPipeline:
             # 1. occurrence_id (most reliable for numeric [1])
             # 2. normalized identifier
             # 3. raw text lowercased
-            link = link_by_raw_text.get(cit.reference_id)  # occurrence_id
-            if link is None:
+            links = links_by_key_multi.get(cit.reference_id)  # occurrence_id
+            if not links:
                 # Try normalized raw text
                 normalized = IntegrityPipeline._normalize_identifier(
                     cit.raw_text.replace("\n", " ").replace("  ", " ")
                 )
-                link = link_by_raw_text.get(normalized)
-            if link is None:
-                link = link_by_raw_text.get(cit.raw_text.lower().strip())
-            if link is not None:
+                links = links_by_key_multi.get(normalized)
+            if not links:
+                links = links_by_key_multi.get(cit.raw_text.lower().strip())
+            if links:
+                link = links[0]
                 cit.mapping_status = (
                     link.status.value
                     if hasattr(link.status, "value")
                     else str(link.status)
                 )
                 cit.mapping_confidence = link.confidence
+                # Keep BOTH: the list is the source of truth ("[9, 10]" → two
+                # refs), the scalar stays for legacy consumers.
+                cit.citation_links = list(links)
                 cit.citation_link = link
 
         _emit(
@@ -1115,6 +1147,49 @@ class IntegrityPipeline:
         return lookup
 
     @staticmethod
+    def _build_link_lookup_multi(
+        links: list[CitationLink],
+    ) -> dict[str, list[CitationLink]]:
+        """Map normalized identifier → EVERY CitationLink sharing that key.
+
+        The single-slot :meth:`_build_link_lookup` cannot represent an
+        occurrence that cites several references at once: ``"[9, 10]"`` yields
+        two links with the SAME ``occurrence_id``, so the dict assignment kept
+        only the last one and ``ref-0009`` silently disappeared from the report.
+
+        This variant APPENDS instead, so all links of an occurrence survive.
+        Keys are the same three the single-slot version uses (occurrence_id,
+        normalized identifier, lowercased raw text), and the lists keep the
+        linker's emission order.
+
+        Callers that only need "the" link can keep using
+        :meth:`_build_link_lookup`; this one is for persistence/serialization
+        where every edge must be preserved.
+        """
+        lookup: dict[str, list[CitationLink]] = {}
+
+        def _add(key: str, link: CitationLink) -> None:
+            if not key:
+                return
+            bucket = lookup.setdefault(key, [])
+            # Guard against re-adding the identical edge (the three key forms
+            # can collide, e.g. a raw text that normalizes to itself).
+            if link not in bucket:
+                bucket.append(link)
+
+        for link in links:
+            # Index by occurrence_id FIRST (most reliable for numeric citations)
+            _add(link.occurrence_id, link)
+
+            evidence = link.evidence or {}
+            raw = evidence.get("raw", "") or evidence.get("raw_text", "")
+            if raw:
+                raw_normalized = raw.replace("\n", " ").replace("  ", " ").strip()
+                _add(IntegrityPipeline._normalize_identifier(raw_normalized), link)
+                _add(raw_normalized.lower(), link)
+        return lookup
+
+    @staticmethod
     def _build_linking_summary(
         verdicts: list[CitationVerdict],
         linking_result: "LinkingResult | None" = None,
@@ -1206,6 +1281,13 @@ def _serialize_citation(citation: Citation) -> dict[str, Any]:
         "mapping_status": getattr(citation, "mapping_status", None),
         "mapping_confidence": getattr(citation, "mapping_confidence", 0.0),
         "citation_link": _serialize_citation_link(getattr(citation, "citation_link", None)),
+        # NEW v1.9: every edge of the occurrence, not only the first. The
+        # single-link field above is kept so existing report consumers keep
+        # working; this is the lossless one.
+        "citation_links": _serialize_citation_link_list(
+            getattr(citation, "citation_links", None)
+            or getattr(citation, "citation_link", None)
+        ),
     }
 
 
@@ -1247,6 +1329,10 @@ def _deserialize_citation(data: dict[str, Any]) -> Citation:
         mapping_status=data.get("mapping_status"),
         mapping_confidence=float(data.get("mapping_confidence", 0.0)),
         citation_link=_deserialize_citation_link(data.get("citation_link")),
+        citation_links=_deserialize_citation_link_list(
+            data.get("citation_links") if data.get("citation_links") is not None
+            else data.get("citation_link")
+        ),
     )
 
 
@@ -1364,6 +1450,41 @@ def _serialize_citation_link(link: Any) -> dict[str, Any]:
     }
 
 
+def _serialize_citation_link_list(links: Any) -> list[dict[str, Any]]:
+    """[CitationLink] → list of JSON-friendly dicts.
+
+    An occurrence may cite several references at once ("[9, 10]"), so the
+    report must carry EVERY edge, not just the first. Tolerates a bare single
+    link (legacy callers that still hold ``citation_link``) by wrapping it.
+    """
+    if links is None:
+        return []
+    if not isinstance(links, (list, tuple)):
+        links = [links]
+    return [_serialize_citation_link(link) for link in links if link is not None]
+
+
+def _deserialize_citation_link_list(data: Any) -> list[CitationLink]:
+    """list[dict] → [CitationLink], tolerating the legacy single-dict shape.
+
+    Reports cached before v1.9 stored ``citation_link`` as ONE object; reading
+    them must still work, so a dict is treated as a one-element list.
+    """
+    if not data:
+        return []
+    if isinstance(data, dict):
+        data = [data]
+    if not isinstance(data, (list, tuple)):
+        return []
+    out: list[CitationLink] = []
+    for item in data:
+        if isinstance(item, dict):
+            link = _deserialize_citation_link(item)
+            if link is not None:
+                out.append(link)
+    return out
+
+
 def _serialize_matched_sources(source: Any) -> list[dict[str, Any]]:
     """SourceResult → list of MatchedSource-shaped dicts for the API.
 
@@ -1444,6 +1565,9 @@ def _deserialize_matched_sources(payload: Any) -> SourceResult | None:
 def main() -> None:
     """CLI: python -m integrity_checker.pipeline.integrity_pipeline FILE [--output FILE]"""
     configure_logging()
+    # Ensure DB schema + migrations are up to date before any session is opened.
+    from integrity_checker.db.session import init_db
+    init_db()
 
     parser = argparse.ArgumentParser(
         description="Essay Integrity Checker — run pipeline trên 1 PDF tiểu luận"

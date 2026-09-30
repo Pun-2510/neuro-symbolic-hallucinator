@@ -120,6 +120,11 @@ class CitationVerdict:
     mapping_confidence: float = 0.0    # 0.0–1.0, integrity layer
     citation_link: object = None       # CitationLink -- tránh circular import
 
+    # NEW v1.9 — MỌI edge của occurrence này (một occurrence có thể cite nhiều
+    # reference: "[9, 10]"). ``citation_link`` chỉ là ``citation_links[0]``,
+    # giữ lại để không phá consumer cũ.
+    citation_links: list = field(default_factory=list)   # list[CitationLink]
+
     # Bằng chứng
     matched_source: Optional[SourceResult] = None
     features: MatchFeatures = field(default_factory=MatchFeatures)

@@ -33,10 +33,46 @@ def get_session() -> Session:
     """Trả về session mới. Caller chịu trách nhiệm close."""
     global _SessionLocal
     if _SessionLocal is None:
+        _ensure_db_initialized()
         _SessionLocal = sessionmaker(bind=get_engine(), autoflush=False, autocommit=False)
     return _SessionLocal()
 
 
+def _run_inline_migrations(engine: Engine) -> None:
+    """Apply incremental ALTER TABLE migrations not covered by create_all.
+
+    History:
+        2026-09-30 (v1.8) — citations table gained mapping_status,
+            mapping_confidence, citation_link_json so the UI Citations tab can
+            show the real linking verdict for each in-text occurrence (these
+            fields were previously attached in-memory only).
+    """
+    with engine.begin() as conn:
+        cols = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(citations)").fetchall()
+        }
+        if "mapping_status" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE citations ADD COLUMN mapping_status VARCHAR"
+            )
+        if "mapping_confidence" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE citations ADD COLUMN mapping_confidence FLOAT DEFAULT 0"
+            )
+        if "citation_link_json" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE citations ADD COLUMN citation_link_json TEXT"
+            )
+
+
+def _ensure_db_initialized() -> None:
+    """Ensure all migrations have run and tables exist."""
+    engine = get_engine()
+    _run_inline_migrations(engine)
+    Base.metadata.create_all(bind=engine)
+
+
 def init_db() -> None:
-    """Tạo tables (MVP — không dùng Alembic)."""
-    Base.metadata.create_all(bind=get_engine())
+    """Public entry-point — used by FastAPI startup and CLI tools."""
+    _ensure_db_initialized()

@@ -62,6 +62,46 @@ class Repository:
                     out.append(str(a))
             return json.dumps(out, ensure_ascii=False)
 
+        def _one_link_dict(link):
+            """CitationLink → JSON-friendly dict (enums flattened to .value)."""
+            status = getattr(link, "status", None)
+            method = getattr(link, "method", None)
+            status_value = (
+                status.value if hasattr(status, "value") else (status or None)
+            )
+            method_value = (
+                method.value if hasattr(method, "value") else (method or None)
+            )
+            return {
+                "occurrence_id": getattr(link, "occurrence_id", ""),
+                "reference_id": getattr(link, "reference_id", None),
+                "status": status_value,
+                "confidence": float(getattr(link, "confidence", 0.0) or 0.0),
+                "method": method_value,
+            }
+
+        def _citation_links_to_json(links, fallback=None):
+            """Serialize EVERY edge of a citation as a JSON list (v1.9).
+
+            An occurrence may cite several references at once ("[9, 10]"), and
+            storing a single object silently dropped every reference but the
+            last. Returns ``None`` when there is no edge at all, so the column
+            stays NULL for reference-list rows.
+
+            Tolerates a bare single link for callers that still hold
+            ``citation_link``.
+            """
+            if links is None:
+                links = fallback
+            if links is None:
+                return None
+            if not isinstance(links, (list, tuple)):
+                links = [links]
+            payload = [_one_link_dict(link) for link in links if link is not None]
+            if not payload:
+                return None
+            return json.dumps(payload, ensure_ascii=False)
+
         records = [
             CitationRecord(
                 essay_id=essay_id,
@@ -76,6 +116,14 @@ class Repository:
                 url=c.url,
                 page_num=c.page_num,
                 confidence=c.confidence,
+                # NEW v1.8 — persist in-text linking layer so the UI Citations
+                # tab can render the real verdict after the report is reloaded.
+                mapping_status=getattr(c, "mapping_status", None),
+                mapping_confidence=float(getattr(c, "mapping_confidence", 0.0) or 0.0),
+                citation_link_json=_citation_links_to_json(
+                    getattr(c, "citation_links", None),
+                    fallback=getattr(c, "citation_link", None),
+                ),
             )
             for c in citations
         ]

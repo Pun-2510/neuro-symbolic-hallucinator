@@ -113,6 +113,14 @@ class Citation:
     mapping_confidence: float = 0.0
     citation_link: Optional[object] = None     # CitationLink
 
+    # NEW v1.9 — MỌI link của occurrence này, không chỉ cái đầu.
+    #
+    # Một occurrence có thể cite nhiều reference cùng lúc ("[9, 10]" → ref-0009
+    # + ref-0010). ``citation_link`` chỉ giữ được 1 slot nên ref thứ hai bị mất
+    # khỏi report. Field này là nguồn sự thật; ``citation_link`` được giữ song
+    # song (= ``citation_links[0]``) để không phá code/consumer cũ.
+    citation_links: list = field(default_factory=list)   # list[CitationLink]
+
     def to_search_query(self) -> str:
         """Ghép chuỗi truy vấn để gọi API theo title + author + year.
 

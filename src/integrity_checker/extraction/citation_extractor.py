@@ -275,10 +275,14 @@ class CitationExtractor:
             page_num: Page number
         """
         results: list[Citation] = []
-        # Several registered formats can match the same token (notably IEEE
-        # and generic numeric patterns).  Deduplicate only overlapping matches
-        # at the same character span, never equal citations at different spans.
-        matched_spans: set[tuple[int, int, str]] = set()
+        # Several registered formats can match the same token at the same
+        # character span (e.g. "[1]" is matched by IEEE, ACM, Vancouver, Nature,
+        # CSE and Chicago Notes patterns at once).  Deduplicate by SPAN ONLY:
+        # the first pattern to claim a span wins.  Keying on citation_type as
+        # well let one survivor through per type — a numeric and an in_text
+        # variant of the very same "[24]" — which doubled every numeric
+        # occurrence in the report ("x4" instead of "x2").
+        matched_spans: set[tuple[int, int]] = set()
         for pattern_def, compiled in self._compiled:
             # Find positions in raw text first (preserves whitespace/newlines)
             for m in compiled.finditer(raw_text):
@@ -305,7 +309,7 @@ class CitationExtractor:
                     citation_type = pattern_def.type
                     style = pattern_def.style
 
-                span_key = (m.start(), m.end(), citation_type.value)
+                span_key = (m.start(), m.end())
                 if span_key in matched_spans:
                     continue
                 matched_spans.add(span_key)

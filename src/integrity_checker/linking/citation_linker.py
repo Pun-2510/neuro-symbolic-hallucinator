@@ -105,32 +105,37 @@ class CitationLinker:
         bib_by_author_year = self._index_by_author_year(bib_citations)
         bib_by_author_year_suffix = self._index_by_author_year_suffix(bib_citations)
 
-        # Track which bib entries are matched (by index)
-        # NOTE: same bib can be matched by multiple in-text occurrences
+        # Track which bib entries are matched (by index) — each entry is
+        # matched when at least one occurrence resolves to it; multiple
+        # occurrences (and multiple indices inside one "[9, 10]") may point
+        # at the same entry, which is valid.
         bib_matched: set[int] = set()
 
         for i, cit in enumerate(body_citations):
             occ_id = cit.reference_id or f"occ-{i:04d}"
 
-            # Try match methods in priority order
-            link = self._try_match(
+            # Try match methods in priority order.  One occurrence may resolve
+            # to several references at once ("[9, 10]" cites both 9 and 10), so
+            # this returns a list.
+            links = self._try_match(
                 cit, occ_id, bib_by_doi, bib_by_index,
                 bib_by_author_year, bib_by_author_year_suffix,
                 bib_citations
             )
 
-            if link is not None:
-                # Populate evidence['raw'] so downstream lookups can find this link
-                # by the in-text citation's raw_text (the pipeline indexes links
-                # by lowercased raw_text).
-                link.evidence["raw"] = cit.raw_text
-                result.add_link(link)
-                # Track matched bibs (without blocking reuse)
-                if link.reference_id:
-                    for idx, bib in enumerate(bib_citations):
-                        if (bib.reference_id or f"ref-{idx:04d}") == link.reference_id:
-                            bib_matched.add(idx)
-                            break
+            if links:
+                for link in links:
+                    # Populate evidence['raw'] so downstream lookups can find
+                    # this link by the in-text citation's raw_text (the pipeline
+                    # indexes links by lowercased raw_text).
+                    link.evidence["raw"] = cit.raw_text
+                    result.add_link(link)
+                    # Track matched bibs (without blocking reuse)
+                    if link.reference_id:
+                        for idx, bib in enumerate(bib_citations):
+                            if (bib.reference_id or f"ref-{idx:04d}") == link.reference_id:
+                                bib_matched.add(idx)
+                                break
             else:
                 # No match → MISSING_REFERENCE. Also set raw so lookups succeed.
                 result.add_link(
@@ -162,41 +167,68 @@ class CitationLinker:
         bib_by_author_year: dict[tuple[str, str], list[Citation]],
         bib_by_author_year_suffix: dict[tuple[str, str, str], list[Citation]],
         bib_citations: list[Citation],
-    ) -> Optional[CitationLink]:
+    ) -> Optional[list[CitationLink]]:
         """Try matching in priority: DOI → NUMERIC → AUTHOR_YEAR → FUZZY.
+
+        Returns a LIST of links: ``None`` when nothing matched, otherwise one
+        link per reference the occurrence cites (a single numeric occurrence
+        such as ``[9, 10]`` cites two).
 
         NOTE: No blocking — same reference entry can match multiple in-text
         occurrences. This is valid: the same source may be cited multiple times.
         Unmatched references (uncited entries) are detected after all linking.
         """
 
+        def _one(link: CitationLink) -> list[CitationLink]:
+            """Wrap a single-link decision in the list contract."""
+            return [link]
+
+        def _bib_link(bib_match: Citation, confidence: float, method) -> list[CitationLink]:
+            """Build a MATCHED link pointing at ``bib_match``."""
+            bib_idx = self._find_bib_index(bib_match, bib_citations)
+            return _one(
+                CitationLink(
+                    occurrence_id=occ_id,
+                    reference_id=bib_match.reference_id or f"ref-{bib_idx:04d}",
+                    status=CitationMappingStatus.MATCHED,
+                    confidence=confidence,
+                    method=method,
+                )
+            )
+
         # 1. DOI exact
         doi = self._extract_doi(cit.raw_text)
         if doi and doi in bib_by_doi:
-            bib_match = bib_by_doi[doi]
-            bib_idx = self._find_bib_index(bib_match, bib_citations)
-            return CitationLink(
-                occurrence_id=occ_id,
-                reference_id=bib_match.reference_id or f"ref-{bib_idx:04d}",
-                status=CitationMappingStatus.MATCHED,
-                confidence=self.doi_confidence,
-                method=MappingMethod.DOI_EXACT,
+            return _bib_link(
+                bib_by_doi[doi], self.doi_confidence, MappingMethod.DOI_EXACT
             )
 
         # 2. NUMERIC_INDEX (IEEE)
+        #
+        # A single occurrence may cite SEVERAL references at once — "[9, 10]",
+        # "[3, 25]", "[26-28]".  Every resolvable index gets its OWN link: the
+        # report must show the occurrence linked to all of them, and the
+        # "cited in text" count of each reference must include this occurrence.
+        # Returning inside the loop (the previous behaviour) dropped every
+        # index after the first.
         if cit.citation_type == CitationType.NUMERIC:
-            indices = self._extract_numeric_indices(cit.raw_text)
-            for idx in indices:
-                if idx in bib_by_index:
-                    bib_ref = bib_by_index[idx]
-                    bib_idx = self._find_bib_index(bib_ref, bib_citations)
-                    return CitationLink(
+            links: list[CitationLink] = []
+            for idx in self._extract_numeric_indices(cit.raw_text):
+                bib_ref = bib_by_index.get(idx)
+                if bib_ref is None:
+                    continue
+                bib_idx = self._find_bib_index(bib_ref, bib_citations)
+                links.append(
+                    CitationLink(
                         occurrence_id=occ_id,
                         reference_id=bib_ref.reference_id or f"ref-{bib_idx:04d}",
                         status=CitationMappingStatus.MATCHED,
                         confidence=self.numeric_confidence,
                         method=MappingMethod.NUMERIC_INDEX,
                     )
+                )
+            if links:
+                return links
 
         # 3. AUTHOR_YEAR (APA-like)
         author, year, year_suffix = self._extract_author_year(cit.raw_text)
@@ -206,27 +238,19 @@ class CitationLinker:
                 key_suffix = (author.lower().strip(), year, year_suffix)
                 candidates_suffix = bib_by_author_year_suffix.get(key_suffix, [])
                 if candidates_suffix:
-                    candidate = candidates_suffix[0]
-                    bib_idx = self._find_bib_index(candidate, bib_citations)
-                    return CitationLink(
-                        occurrence_id=occ_id,
-                        reference_id=candidate.reference_id or f"ref-{bib_idx:04d}",
-                        status=CitationMappingStatus.MATCHED,
-                        confidence=self.author_year_confidence,
-                        method=MappingMethod.AUTHOR_YEAR,
+                    return _bib_link(
+                        candidates_suffix[0],
+                        self.author_year_confidence,
+                        MappingMethod.AUTHOR_YEAR,
                     )
             # Fallback: author + year only
             key = (author.lower().strip(), year)
             candidates = bib_by_author_year.get(key, [])
             if candidates:
-                candidate = candidates[0]
-                bib_idx = self._find_bib_index(candidate, bib_citations)
-                return CitationLink(
-                    occurrence_id=occ_id,
-                    reference_id=candidate.reference_id or f"ref-{bib_idx:04d}",
-                    status=CitationMappingStatus.MATCHED,
-                    confidence=self.author_year_confidence,
-                    method=MappingMethod.AUTHOR_YEAR,
+                return _bib_link(
+                    candidates[0],
+                    self.author_year_confidence,
+                    MappingMethod.AUTHOR_YEAR,
                 )
 
         # 3b. ORGANIZATION_AS_AUTHOR — web references often cite the publisher
@@ -236,12 +260,12 @@ class CitationLinker:
         if author and year:
             org = self._try_org_author(cit, occ_id, author, year, bib_citations)
             if org is not None:
-                return org
+                return _one(org)
 
         # 4. FUZZY — title similarity (if bib entries have title_normalized)
         best = self._try_fuzzy(cit, occ_id, bib_by_doi, bib_citations)
         if best is not None:
-            return best
+            return _one(best)
 
         # No match
         return None

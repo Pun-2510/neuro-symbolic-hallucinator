@@ -72,6 +72,123 @@ async def get_report(
     raise HTTPException(status_code=400, detail=f"Unsupported format: {format}")
 
 
+def _deserialize_citation_link_json(json_str: str | None) -> dict[str, Any] | None:
+    """Read citation_link_json column (v1.8) into the FIRST link's dict."""
+    links = _deserialize_citation_links_json(json_str)
+    return links[0] if links else None
+
+
+def _deserialize_citation_links_json(json_str: str | None) -> list[dict[str, Any]]:
+    """Read citation_link_json column into a LIST of link dicts (v1.9).
+
+    v1.8 stored a single object; rows written before that upgrade must keep
+    working, so a bare dict is read as a one-element list. Returns ``[]`` when
+    the column is NULL/empty/unparseable.
+    """
+    if not json_str:
+        return []
+    try:
+        data = json.loads(json_str)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if isinstance(data, dict):
+        return [data]
+    if isinstance(data, list):
+        return [d for d in data if isinstance(d, dict)]
+    return []
+
+
+def _serialize_extracted_citation(c) -> dict[str, Any]:
+    """One row of the API's ``extracted_citations`` payload.
+
+    Reads the linking layer persisted in v1.8 on ``CitationRecord``, preferring
+    the in-memory attributes of a freshly produced report. Emits BOTH the
+    lossless ``citation_links`` list (v1.9 — an occurrence may cite several
+    references, "[9, 10]") and the single ``citation_link`` scalar so older
+    consumers keep working.
+    """
+    all_links = _deserialize_citation_links_json(
+        getattr(c, "citation_link_json", None)
+    )
+    # A freshly produced report holds live CitationLink objects that are richer
+    # than the persisted subset, so prefer them when present.
+    live_links = getattr(c, "citation_links", None)
+    if live_links:
+        all_links = [_serialize_citation_link(link) for link in live_links]
+    elif not all_links:
+        live_one = _serialize_citation_link(getattr(c, "citation_link", None))
+        if live_one:
+            all_links = [live_one]
+
+    first_link = all_links[0] if all_links else None
+    return {
+        "id": c.id,
+        "raw_text": c.raw_text,
+        "citation_type": c.citation_type,
+        "style": c.style,
+        "page_num": c.page_num,
+        "confidence": c.confidence,
+        # NEW v1.7/v1.8 — linking layer for UI Citations tab.
+        "mapping_status": getattr(c, "mapping_status", None)
+        or (first_link or {}).get("status"),
+        "mapping_confidence": getattr(c, "mapping_confidence", 0.0),
+        # v1.9 — the lossless LIST; the scalar below is kept for older readers.
+        "citation_links": all_links,
+        "citation_link": _serialize_citation_link(getattr(c, "citation_link", None))
+        or first_link,
+    }
+
+
+def _compute_in_text_citation_index(
+    citations: list,
+) -> tuple[dict[str, dict[str, Any]], dict[int, str]]:
+    """Index in-text citations by their link's reference_id.
+
+    Returns:
+        in_text_by_ref: maps ``ref-NNNN`` → {count, pages[]} (de-duped pages).
+        ref_link_by_record_id: maps a reference CitationRecord.id → the
+            ``ref-NNNN`` string used by the linker for the same position in
+            the bibliography (so the frontend can look up "Ref #3" given
+            ``citation_link.reference_id``).
+    """
+    in_text_by_ref: dict[str, dict[str, Any]] = {}
+    for c in citations:
+        if c.citation_type not in {"in_text", "numeric"}:
+            continue
+        # v1.9 — one occurrence may cite SEVERAL references ("[9, 10]"), so
+        # every link must be counted. Reading only link_dict[0] left ref #9
+        # with a "cited in text" count that was short by one.
+        for link_dict in _deserialize_citation_links_json(
+            getattr(c, "citation_link_json", None)
+        ):
+            ref_link_id = link_dict.get("reference_id")
+            if not ref_link_id:
+                continue
+            entry = in_text_by_ref.setdefault(
+                ref_link_id, {"count": 0, "pages": []}
+            )
+            entry["count"] += 1
+            if getattr(c, "page_num", 0):
+                entry["pages"].append(c.page_num)
+
+    # Map each reference DB row (insertion order = bibliography order) to the
+    # synthetic ``ref-NNNN`` id the linker uses for it.
+    #
+    # The linker numbers references 1-BASED — ``_run_linking`` does
+    # ``f"ref-{idx + 1:04d}"`` over the bibliography — so row i is ``ref-(i+1)``.
+    # This must match, otherwise every ``cited_in_text_count`` / ``cited_on_pages``
+    # lands on the neighbouring reference (off by one).
+    ref_records_sorted = sorted(
+        [c for c in citations if c.citation_type == "reference_list"],
+        key=lambda c: c.id,
+    )
+    ref_link_by_record_id = {
+        r.id: f"ref-{i + 1:04d}" for i, r in enumerate(ref_records_sorted)
+    }
+
+    return in_text_by_ref, ref_link_by_record_id
+
+
 def _csv_response(filename: str, verdicts: list) -> StreamingResponse:
     buf = io.StringIO()
     writer = csv.writer(buf)
@@ -205,6 +322,10 @@ def _json_response(
     # v1.2 schema: trả về flat fields (essay_id, filename, num_pages, num_citations)
     # ở top-level để frontend `AnalysisReport` interface map 1-1.
     # Giữ `essay` nested để không phá clients khác (CSV/PDF export, scripts).
+    # NEW v1.8 — index in-text citations for the References tab
+    # ("cited in text" indicator) and the Citations tab (Linked Reference).
+    in_text_by_ref, ref_link_by_record_id = _compute_in_text_citation_index(citations)
+
     payload = {
         "essay_id": essay.id,
         "filename": essay.filename,
@@ -212,19 +333,7 @@ def _json_response(
         "num_citations": total,
         "num_references": reference_count,
         "extracted_citations": [
-            {
-                "id": c.id,
-                "raw_text": c.raw_text,
-                "citation_type": c.citation_type,
-                "style": c.style,
-                "page_num": c.page_num,
-                "confidence": c.confidence,
-                # NEW v1.7 — linking layer for UI Citations tab
-                # (mapping_status comes from CitationLinker attached to Citation object)
-                "mapping_status": getattr(c, "mapping_status", None),
-                "mapping_confidence": getattr(c, "mapping_confidence", 0.0),
-                "citation_link": _serialize_citation_link(getattr(c, "citation_link", None)),
-            }
+            _serialize_extracted_citation(c)
             for c in citations
             if c.citation_type in {"in_text", "numeric"}
         ],
@@ -251,6 +360,15 @@ def _json_response(
                 "url": c.url,
                 "page_num": c.page_num,
                 "confidence": c.confidence,
+                # NEW v1.8 — "cited in text" indicator for the References tab
+                "cited_in_text_count": in_text_by_ref.get(
+                    ref_link_by_record_id.get(c.id, ""), {"count": 0}
+                )["count"],
+                "cited_on_pages": sorted(set(
+                    in_text_by_ref.get(
+                        ref_link_by_record_id.get(c.id, ""), {"pages": []}
+                    )["pages"]
+                )),
             }
             for c in citations
             if c.citation_type == "reference_list"

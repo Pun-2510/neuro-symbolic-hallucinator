@@ -105,6 +105,14 @@ class CitationRecord(Base):
     page_num: Mapped[int] = mapped_column(Integer, default=0)
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
 
+    # NEW v1.8 — linking layer persisted so the UI Citations tab can
+    # display the real mapping_status / citation_link for every occurrence
+    # (previously these were attached in-memory only and became null when
+    # reloaded from the DB, which made every in-text render as "Linked").
+    mapping_status: Mapped[str | None] = mapped_column(String, nullable=True)
+    mapping_confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    citation_link_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     essay: Mapped[EssayRecord] = relationship(back_populates="citations")
 
 

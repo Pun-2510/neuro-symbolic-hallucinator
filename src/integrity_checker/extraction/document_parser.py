@@ -326,7 +326,7 @@ class DocumentParser:
         sections = self._section_segmenter.segment(text_doc)
 
         # 3.2 Body citations (regex trên body sections)
-        body_citations = self._extract_body_citations(sections)
+        body_citations = self._extract_body_citations(sections, text_doc)
 
         # 3.3 References (ưu tiên GROBID, fallback regex)
         references = self._extract_references(sections, grobid)
@@ -346,35 +346,38 @@ class DocumentParser:
     # ---------- Helpers ----------
 
     def _extract_body_citations(
-        self, sections: list[DocumentSection]
+        self,
+        sections: list[DocumentSection],
+        source_doc: Document,
     ) -> list[Citation]:
-        """Run CitationExtractor trên body sections."""
+        """Run CitationExtractor trên body sections, PAGE BY PAGE.
+
+        ``DocumentSection`` only stores concatenated text, so we rebuild a
+        per-page ``Document`` from ``source_doc`` to keep every citation's
+        TRUE page number.  A section-wide synthetic page (the previous
+        behaviour) reported every body citation as living on page 1, which
+        made "cited on pages …" meaningless.  Each real page is passed through
+        once, so an occurrence is still emitted once per literal appearance.
+        """
         citations: list[Citation] = []
+        by_page = {p.page_num: p for p in source_doc.pages}
         for section in sections:
             if section.section_type != SectionType.BODY:
                 continue
-            # Build a temporary Document for this section
             try:
-                # The section text is already concatenated.  Put it in one
-                # synthetic page; repeating the full section once per page
-                # duplicates every occurrence when the extractor preserves
-                # repeated citations.
-                section_text = section.text
-                if not section_text:
+                page_nums = [
+                    n
+                    for n in sorted(by_page)
+                    if section.start_page <= n <= section.end_page
+                    and by_page[n].text
+                ]
+                if not page_nums:
                     continue
-                # Tạo fake Document để CitationExtractor chạy
                 doc = Document(
                     file_path="",
-                    num_pages=1,
-                    pages=[
-                        Page(
-                            page_num=section.start_page,
-                            text=section_text,
-                            has_text_layer=True,
-                        )
-                    ],
+                    num_pages=max(page_nums),
+                    pages=[by_page[n] for n in page_nums],
                 )
-                # Chỉ lấy citations từ page đầu của section (đơn giản hoá)
                 citations.extend(self._citation_extractor.extract_from_document(doc))
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Body citation extraction failed: %s", exc)
