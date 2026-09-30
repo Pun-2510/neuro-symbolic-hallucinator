@@ -81,7 +81,10 @@ async def _run_pipeline_task(
             if essay:
                 essay.num_pages = report.num_pages
 
-            repo.add_citations(essay_id, [v.citation for v in report.verdicts])
+            # Persist every extracted occurrence/entry so the Citations and
+            # References tabs reflect the real document, not the deduped
+            # verification set.
+            repo.add_citations(essay_id, report.extracted_citations)
             repo.add_verdicts(essay_id, report.verdicts)
 
             # Persist full pipeline output for GET /report
@@ -262,6 +265,7 @@ def get_essay_status(
     # No tracker entry — fall back to DB state
     verdicts = repo.get_verdicts(essay_id)
     if verdicts:
+        extracted = repo.get_citations(essay_id)
         # Pipeline completed (possibly via cache hit or prior run)
         return {
             "status": "completed",
@@ -269,9 +273,9 @@ def get_essay_status(
             "step_index": 7,
             "total_steps": 8,
             "message": "Analysis complete",
-            "citations_found": essay.num_pages,
-            "references_found": 0,
-            "linked": 0,
+            "citations_found": sum(c.citation_type in {"in_text", "numeric"} for c in extracted),
+            "references_found": sum(c.citation_type == "reference_list" for c in extracted),
+            "linked": sum(v.mapping_status == "matched" for v in verdicts),
             "sources_queried": {},
             "elapsed_seconds": 0.0,
             "finished_at": None,

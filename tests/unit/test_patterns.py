@@ -251,10 +251,11 @@ class TestRegistry:
         assert "IEEE" in names
 
     def test_formats_sorted_by_priority(self):
-        """Test formats are sorted by priority."""
+        """Test formats are sorted by priority (higher priority first)."""
         formats = get_all_formats()
         priorities = [f.priority for f in formats]
-        assert priorities == sorted(priorities)
+        # Higher priority values = earlier in list (tried first)
+        assert priorities == sorted(priorities, reverse=True)
 
     def test_get_in_text_patterns(self):
         """Test getting all in-text patterns."""

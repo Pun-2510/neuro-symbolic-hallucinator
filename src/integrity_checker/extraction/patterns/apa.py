@@ -24,6 +24,7 @@ from typing import Optional
 
 from integrity_checker.extraction.patterns.base import CompiledPattern, PatternType
 from integrity_checker.extraction.patterns.registry import register_format
+from integrity_checker.matching.author_parser import parse_authors
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
 
@@ -34,20 +35,19 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 # --- In-text APA patterns ---
 
 # Parenthetical: (Author, 2020), (Author et al., 2020)
-# Supports: Single author, multiple authors, "et al.", "and"
-# Note: Supports compound names like "van der", "de la"
+# Optimized pattern with proper capture groups
 _APA_INTEXT_PARENTHETICAL = CompiledPattern.create(
     name="apa_intext_parenthetical",
-    pattern=r"\(\s*([A-Za-zÀ-ž][a-zÀ-ž]*(?:['\s][a-zA-ZÀ-ž][a-zÀ-ž]*)*(?:[A-Z][a-zÀ-ž]*)*(?:,?\s+(?:et\s+al\.|and\s+[A-Z][a-zÀ-ž]*(?:[A-Z][a-zÀ-ž]*)*|,?\s*[A-Z][a-zÀ-ž]*\.?\s*[A-Z]?[a-zÀ-ž]*\.?)*)?)\s*,\s*(\d{4}[a-z]?)\s*\)",
+    pattern=r"\(([^)]+),\s*(\d{4}[a-z]?)\)",
     pattern_type=PatternType.IN_TEXT,
     description="APA in-text parenthetical: (Author, 2020) | (Author et al., 2020)",
 )
 
 # Narrative: Author (2020), Author et al. (2020)
-# Supports: Single author, multiple authors, "et al.", "and"
+# Supports single author and "et al." notation
 _APA_INTEXT_NARRATIVE = CompiledPattern.create(
     name="apa_intext_narrative",
-    pattern=r"([A-Za-zÀ-ž][a-zÀ-ž]*(?:['\s][a-zA-ZÀ-ž][a-zÀ-ž]*)*(?:[A-Z][a-zÀ-ž]*)*(?:,?\s+(?:et\s+al\.|and\s+[A-Z][a-zÀ-ž]*(?:[A-Z][a-zÀ-ž]*)*|,?\s*[A-Z][a-zÀ-ž]*\.?\s*[A-Z]?[a-zÀ-ž]*\.?)*)?)\s+\((\d{4}[a-z]?)\)",
+    pattern=r"([A-Z][a-zA-ZÀ-žÀ-ž]+(?:\s+et\s+al\.?)?(?:[\s,][A-Z][a-zA-ZÀ-žÀ-ž]*)*)\s+\((\d{4}[a-z]?)\)",
     pattern_type=PatternType.IN_TEXT,
     description="APA narrative: Author (2020) | Author et al. (2020)",
 )
@@ -392,7 +392,8 @@ class APAFormat:
             citation.doi = doi_match.group(1).rstrip(".,;")
 
         citation.confidence = self._estimate_confidence(citation)
-        return citation if citation.year else None
+        # Only return if we have meaningful data (title OR year with some other field)
+        return citation if citation.title or citation.year else None
 
     def _parse_authors(self, authors_str: str) -> list[str]:
         """Parse author string into list of authors.
@@ -401,35 +402,9 @@ class APAFormat:
             authors_str: Author string like "Smith, J., & Jones, A."
 
         Returns:
-            List of author strings
+            List of author strings (via parse_authors)
         """
-        authors: list[str] = []
-
-        # Clean up the string
-        authors_str = authors_str.strip()
-
-        # Split by "&" or "and" with proper handling
-        # Pattern: ", & " or ", and " or just " & "
-        parts = re.split(
-            r"\s*,\s*&\s+|\s+and\s+|,&", authors_str
-        )
-
-        for part in parts:
-            part = part.strip()
-            if not part:
-                continue
-
-            # Clean up individual author
-            # Remove trailing commas
-            author = re.sub(r",$", "", part).strip()
-
-            # Normalize spacing
-            author = re.sub(r"\s+", " ", author)
-
-            if author:
-                authors.append(author)
-
-        return authors
+        return parse_authors(authors_str)
 
     def _parse_venue(self, citation: Citation, venue_text: str) -> None:
         """Parse venue information from remaining text.

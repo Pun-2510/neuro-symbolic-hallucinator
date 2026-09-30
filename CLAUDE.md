@@ -8,7 +8,7 @@
 
 **Essay Integrity Checker** - Hệ thống kiểm tra tính toàn vẹn trích dẫn trong tiểu luận học thuật.
 
-- **Version:** v1.5 (2026-09-24)
+- **Version:** v1.6 (2026-09-28)
 - **Tests:** 619 passed, 4 skipped
 - **Status:** MVP Near Completion
 
@@ -32,6 +32,32 @@ essay-integrity-checker/
 ├── web/                # React frontend
 └── configs/            # Configuration
 ```
+
+## Modular Citation Patterns (v1.6)
+
+Citation format patterns are organized in a modular system:
+
+```
+src/integrity_checker/extraction/patterns/
+├── __init__.py      # Public API
+├── base.py          # CitationFormat Protocol, PatternType enum
+├── registry.py      # Format registry
+├── utils.py         # DOI/URL/Year patterns (single source)
+├── apa.py           # APA format (priority: 100)
+├── ieee.py          # IEEE format (priority: 90)
+├── vancouver.py     # Vancouver format (priority: 80)
+├── chicago.py       # Chicago format (placeholder)
+└── mla.py          # MLA format (placeholder)
+```
+
+Adding new formats:
+1. Create `new_format.py` implementing `CitationFormat` Protocol
+2. Set priority (higher = checked first)
+3. Implement `in_text_patterns`, `reference_patterns`
+4. Implement `parse_reference_entry()` and `is_valid_citation()`
+5. Auto-register via `register_format(YourFormat())`
+
+See `docs/format_development_guide.md`
 
 ## Validation Labels (v1.4)
 

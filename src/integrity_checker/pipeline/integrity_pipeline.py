@@ -66,7 +66,27 @@ logger = get_logger(__name__)
 
 # Bump whenever extraction/linking output shape changes so previously cached
 # (and possibly wrong) reports are recomputed instead of served from disk.
-_REPORT_CACHE_VERSION = "report-v4"
+_REPORT_CACHE_VERSION = "report-v5"
+
+# NEW v1.7: Only retrieve + verify REFERENCE_LIST citations (and DOI/URL inline
+# with enough metadata). In-text citations are verified via linking only.
+_RETREIVABLE_TYPES = frozenset({CitationType.REFERENCE_LIST, CitationType.DOI, CitationType.URL})
+
+
+def _is_verifiable(citation: Citation) -> bool:
+    """Citation này cần source verification (retrieve + checker).
+
+    Chỉ reference list entries (và DOI/URL inline có metadata đầy đủ) mới
+    cần verify qua API/local DB. In-text citations chỉ cần linking —
+    mapping_status từ CitationLinker là đủ.
+    """
+    if citation.citation_type not in _RETREIVABLE_TYPES:
+        return False
+    # Bare DOI/URL inline cần có title hoặc DOI/URL thì mới verify được
+    if citation.citation_type in {CitationType.DOI, CitationType.URL}:
+        return bool(citation.title or citation.doi or citation.url)
+    return True
+
 
 # Regex for normalizing "et al." citation formats for link lookup
 # Matches: "(Vaswani et al., 2017)", "(Vaswani et al. (2017))", "Vaswani et al. (2017)"
@@ -91,6 +111,9 @@ class AnalysisReport:
     filename: str = ""
     num_pages: int = 0
     num_citations: int = 0
+    # Every extracted occurrence/entry, retained separately from the deduped
+    # verification verdicts.  Repeated citations must remain countable.
+    extracted_citations: list[Citation] = field(default_factory=list)
     verdicts: list[CitationVerdict] = field(default_factory=list)
     cis: CitationIntegrityScore | None = None
     linking_summary: dict[str, int] = field(default_factory=dict)  # NEW v1.2 — mapping counts
@@ -106,6 +129,7 @@ class AnalysisReport:
             "filename": self.filename,
             "num_pages": self.num_pages,
             "num_citations": self.num_citations,
+            "extracted_citations": [_serialize_citation(c) for c in self.extracted_citations],
             "verdicts": [
                 {
                     # Lớp 1: source verification (nhãn 4 chiều)
@@ -124,6 +148,11 @@ class AnalysisReport:
                         _serialize_citation_link(v.citation_link)
                         if v.citation_link is not None
                         else None
+                    ),
+                    # v1.9 — lossless list ("[9, 10]" keeps both refs).
+                    "citation_links": _serialize_citation_link_list(
+                        getattr(v, "citation_links", None)
+                        or getattr(v, "citation_link", None)
                     ),
                     # Bằng chứng
                     "reasoning": v.reasoning,
@@ -192,6 +221,11 @@ class AnalysisReport:
                 mapping_status=mapping_status,
                 mapping_confidence=float(raw_verdict.get("mapping_confidence", 0.0)),
                 citation_link=citation_link,
+                citation_links=_deserialize_citation_link_list(
+                    raw_verdict.get("citation_links")
+                    if raw_verdict.get("citation_links") is not None
+                    else raw_verdict.get("citation_link")
+                ),
                 features=features,
                 reasoning=raw_verdict.get("reasoning", ""),
                 triggered_rules=list(raw_verdict.get("triggered_rules", [])),
@@ -241,6 +275,9 @@ class AnalysisReport:
             filename=payload.get("filename", ""),
             num_pages=int(payload.get("num_pages", 0)),
             num_citations=int(payload.get("num_citations", len(verdicts))),
+            extracted_citations=[
+                _deserialize_citation(c) for c in (payload.get("extracted_citations") or [])
+            ],
             verdicts=verdicts,
             cis=cis,
             linking_summary=dict(payload.get("linking_summary") or {}),
@@ -249,6 +286,34 @@ class AnalysisReport:
             generated_at=payload.get("generated_at", ""),
             cache_hit=True,
         )
+
+
+def _resolution_key(
+    citation: Citation,
+    ref_by_link: dict[str, Citation],
+    link_by_raw_text: dict[str, CitationLink],
+) -> str:
+    """Return a canonical retrieval key for a citation.
+
+    A linked in-text occurrence describes the same source as its bibliography
+    entry, so it resolves to that entry's key.  This keeps retrieval work at
+    one query per source while the report still lists every occurrence.
+    Unlinked occurrences fall back to the regular ``citation_key``.
+    """
+    if citation.citation_type != CitationType.REFERENCE_LIST:
+        link = link_by_raw_text.get(citation.reference_id)
+        if link is None:
+            raw = " ".join(citation.raw_text.split())
+            link = link_by_raw_text.get(raw.lower())
+        if link is None:
+            link = link_by_raw_text.get(
+                IntegrityPipeline._normalize_identifier(citation.raw_text)
+            )
+        if link is not None and link.reference_id:
+            matched_ref = ref_by_link.get(link.reference_id)
+            if matched_ref is not None:
+                return citation_key(matched_ref)
+    return citation_key(citation)
 
 
 class IntegrityPipeline:
@@ -295,14 +360,11 @@ class IntegrityPipeline:
         # NEW v1.2 §3.2.2 — CitationLinker cho in-text ↔ reference integrity
         self.linker = linker or CitationLinker()
         settings = get_settings()
+        # Cache disabled by default - set use_report_cache=True only when needed
         self._use_report_cache = (
             use_report_cache
             if use_report_cache is not None
-            else (
-                settings.app.env.casefold() not in {"test", "testing"}
-                and orchestrator is None
-                and checker is None
-            )
+            else False  # Disabled by default
         )
         self._report_cache_dir = settings.paths.cache_dir / "reports"
 
@@ -469,13 +531,16 @@ class IntegrityPipeline:
         )
         # Web links are resources, not academic citations, so they must not
         # influence the document style profile used by CIS.
+        # Exclude URL references from style detection but keep numeric
+        # reference list entries (e.g. IEEE ``[N]`` markers) so the detector
+        # does not fall back to APA for numeric documents.
         academic_in_text = [
             citation for citation in in_text_citations
-            if citation.citation_type != CitationType.URL
+            if citation.citation_type not in {CitationType.URL, CitationType.REFERENCE_LIST}
         ]
         academic_references = [
             citation for citation in ref_citations
-            if citation.citation_type != CitationType.URL
+            if citation.citation_type not in {CitationType.URL, CitationType.REFERENCE_LIST}
         ]
         style_profile = self._detect_style(academic_in_text, academic_references)
         style_profile_dict = self._serialize_style_profile(style_profile)
@@ -484,12 +549,15 @@ class IntegrityPipeline:
         _emit(
             "extracting",
             2,
-            citations_found=len(in_text_citations) + len(ref_citations),
+            citations_found=len(in_text_citations),
             references_found=len(ref_citations),
             message=f"Found {len(in_text_citations)} in-text + {len(ref_citations)} references",
         )
         linking_result = self._run_linking(in_text_citations, ref_citations, style_profile)
         link_by_raw_text = self._build_link_lookup(linking_result.links)
+        # v1.9 — lossless view: one occurrence may cite several references
+        # ("[9, 10]"), and the single-slot map above keeps only the last.
+        links_by_key_multi = self._build_link_lookup_multi(linking_result.links)
 
         # 1d. Populate metadata for in-text citations from matched references
         # FIX: For numeric citations like "[1]" that have no title/author/year,
@@ -514,38 +582,55 @@ class IntegrityPipeline:
             "linking",
             3,
             linked=_initial_linked,
-            citations_found=len(all_citations),
+            citations_found=len(in_text_citations),
             references_found=len(ref_citations),
             message=f"Linked {_initial_linked} of {len(all_citations)} citations",
         )
 
         # 2. Retrieve + check từng citation (PARALLEL cho tốc độ).  Keep one
-        # verdict per extracted citation, but retrieve one canonical paper
+        # verdict per unique citation, but retrieve one canonical paper
         # only once when a bibliography entry and in-text occurrence refer to
         # the same paper.
         unique_citations: dict[str, Citation] = {}
         citation_keys: list[str] = []
         for citation in all_citations:
+            # A reference list entry and its in-text occurrence describe the
+            # same source; resolve to the linked entry's key so retrieval only
+            # queries that paper once.
             key = citation_key(citation)
             citation_keys.append(key)
             unique_citations.setdefault(key, citation)
+
+        # FIX v1.7: Only keep verifiable citations for retrieval + verdicts.
+        # Reference list entries (và DOI/URL inline với đủ metadata) → verify qua API.
+        # In-text citations → verified qua linking, KHÔNG gọi API.
+        # Track verifiable keys separately (Citation objects can't be dict keys).
+        verifiable_keys: list[str] = []
+        for key in unique_citations:
+            cit = unique_citations[key]
+            if _is_verifiable(cit):
+                verifiable_keys.append(key)
+        unique_list = [unique_citations[key] for key in verifiable_keys]
 
         _emit(
             "retrieving",
             4,
             citations_found=len(all_citations),
-            message=f"Querying academic databases for {len(unique_citations)} unique papers...",
+            message=f"Querying academic databases for {len(unique_list)} unique papers...",
         )
+        # FIX v1.7: Only retrieve for verifiable citations (references, not in-text)
         unique_sources = await asyncio.gather(
-            *(self.orchestrator.retrieve(c) for c in unique_citations.values()),
+            *(self.orchestrator.retrieve(c) for c in unique_list),
             return_exceptions=False,
         )
-        source_by_key = dict(zip(unique_citations, unique_sources))
-        sources = [source_by_key[key] for key in citation_keys]
-        if len(unique_citations) != len(all_citations):
+        # FIX v1.7: source_by_key maps verifiable keys → sources
+        source_by_key = dict(zip(verifiable_keys, unique_sources))
+        # sources[] giờ chỉ dùng cho verifiable citations (references)
+        sources = [source_by_key.get(key) for key in citation_keys]
+        if len(unique_list) < len(unique_citations):
             logger.info(
-                f"Retrieval dedupe: {len(all_citations)} citations -> "
-                f"{len(unique_citations)} unique paper keys"
+                f"Retrieval: {len(all_citations)} citations -> "
+                f"{len(unique_list)} verifiable (references only)"
             )
 
         # Surface per-data-source outcomes to the UI. Sources_queried is built
@@ -577,7 +662,9 @@ class IntegrityPipeline:
         )
 
         verdicts: list[CitationVerdict] = []
-        for citation, source in zip(all_citations, sources):
+        # FIX v1.7: Only iterate over verifiable (reference) citations for verdicts.
+        # In-text citations are verified via linking only (mapping_status attached below).
+        for citation, source in zip(unique_list, unique_sources):
             # NEW v1.2 §3.2.2 (task #33) — compute mapping_status TRƯỚC rules
             # để SymbolicRules có input cho AMBIGUOUS_MAPPING rule.
             # Reference list entries are the reference entries themselves — they're "matched" by definition
@@ -585,7 +672,15 @@ class IntegrityPipeline:
                 mapping_status = CitationMappingStatus.MATCHED
                 mapping_confidence = 0.95
                 citation_link = None
+                # v1.7 — reference entries are matched by definition, so they
+                # carry no in-text link edges. Still initialise the name here:
+                # this branch falls through to ``verdict.citation_links =
+                # citation_links_verdict`` below, and the old code only bound
+                # it in the ``else`` branch → UnboundLocalError for every
+                # reference-list verdict (all 11 pipeline tests).
+                citation_links_verdict: list = []
             else:
+                citation_links_verdict = []
                 # Normalize the raw_text to handle newlines/whitespace variations
                 normalized_text = citation.raw_text.replace("\n", " ").replace("  ", " ")
                 # Try lookup with normalized text
@@ -624,6 +719,12 @@ class IntegrityPipeline:
                     mapping_status = link.status
                     mapping_confidence = link.confidence
                     citation_link = link
+                    # v1.9 — every edge of this occurrence ("[9, 10]" → 2).
+                    citation_links_verdict = list(
+                        links_by_key_multi.get(normalized_key)
+                        or links_by_key_multi.get(normalized_text.lower().strip())
+                        or [link]
+                    )
                 else:
                     # Không tìm thấy link — mặc định MISSING_REFERENCE nếu ref_list rỗng,
                     # nếu không thì AMBIGUOUS_MAPPING.
@@ -676,6 +777,7 @@ class IntegrityPipeline:
             verdict.mapping_status = mapping_status
             verdict.mapping_confidence = mapping_confidence
             verdict.citation_link = citation_link
+            verdict.citation_links = citation_links_verdict
 
             # NEW v1.3: Provenance tracking on verdict
             verdict.sources_succeeded = source.sources_succeeded
@@ -690,6 +792,37 @@ class IntegrityPipeline:
                 f"raw={citation.raw_text[:80]}"
             )
 
+        # FIX v1.7: Attach mapping_status (from linker) to in-text citations
+        # so the UI Citations tab can display correct Linked/Missing Reference status.
+        # In-text citations are NOT in verdicts[] (they don't get source verification),
+        # but their mapping status IS stored on the Citation object for serialization.
+        for cit in in_text_citations:
+            # Try multiple lookup keys since link_by_raw_text is indexed by:
+            # 1. occurrence_id (most reliable for numeric [1])
+            # 2. normalized identifier
+            # 3. raw text lowercased
+            links = links_by_key_multi.get(cit.reference_id)  # occurrence_id
+            if not links:
+                # Try normalized raw text
+                normalized = IntegrityPipeline._normalize_identifier(
+                    cit.raw_text.replace("\n", " ").replace("  ", " ")
+                )
+                links = links_by_key_multi.get(normalized)
+            if not links:
+                links = links_by_key_multi.get(cit.raw_text.lower().strip())
+            if links:
+                link = links[0]
+                cit.mapping_status = (
+                    link.status.value
+                    if hasattr(link.status, "value")
+                    else str(link.status)
+                )
+                cit.mapping_confidence = link.confidence
+                # Keep BOTH: the list is the source of truth ("[9, 10]" → two
+                # refs), the scalar stays for legacy consumers.
+                cit.citation_links = list(links)
+                cit.citation_link = link
+
         _emit(
             "checking",
             6,
@@ -698,7 +831,9 @@ class IntegrityPipeline:
         )
 
         # 3. Linking summary (counts per CitationMappingStatus) — cho Web UI dashboard
-        linking_summary = self._build_linking_summary(verdicts)
+        # FIX v1.7: Count from BOTH verdicts (reference status) AND linking_result.links
+        # (in-text status) to get complete picture.
+        linking_summary = self._build_linking_summary(verdicts, linking_result)
 
         # 4. CIS
         cis = self.cis_calc.compute(
@@ -716,11 +851,17 @@ class IntegrityPipeline:
         )
 
         # 5. Build report
+        # FIX: num_citations should reflect unique citations count
         report = AnalysisReport(
             essay_id=essay_id,
             filename=Path(pdf_path).name,
             num_pages=num_pages,
-            num_citations=len(all_citations),
+            # ``num_citations`` remains the verification-set size (deduped
+            # citations + references) for CIS/library compatibility.  The
+            # occurrence-level citation counts exposed by API/UI come from
+            # ``extracted_citations``.
+            num_citations=len(unique_list),
+            extracted_citations=[*in_text_citations, *ref_citations],
             verdicts=verdicts,
             cis=cis,
             linking_summary=linking_summary,
@@ -1006,13 +1147,65 @@ class IntegrityPipeline:
         return lookup
 
     @staticmethod
-    def _build_linking_summary(verdicts: list[CitationVerdict]) -> dict[str, int]:
-        """Đếm số verdict theo CitationMappingStatus.
+    def _build_link_lookup_multi(
+        links: list[CitationLink],
+    ) -> dict[str, list[CitationLink]]:
+        """Map normalized identifier → EVERY CitationLink sharing that key.
 
-        Trả về dict[str, int] cho Web UI dashboard. Bao gồm tất cả 7 status
-        (giá trị 0 nếu không có).
+        The single-slot :meth:`_build_link_lookup` cannot represent an
+        occurrence that cites several references at once: ``"[9, 10]"`` yields
+        two links with the SAME ``occurrence_id``, so the dict assignment kept
+        only the last one and ``ref-0009`` silently disappeared from the report.
+
+        This variant APPENDS instead, so all links of an occurrence survive.
+        Keys are the same three the single-slot version uses (occurrence_id,
+        normalized identifier, lowercased raw text), and the lists keep the
+        linker's emission order.
+
+        Callers that only need "the" link can keep using
+        :meth:`_build_link_lookup`; this one is for persistence/serialization
+        where every edge must be preserved.
+        """
+        lookup: dict[str, list[CitationLink]] = {}
+
+        def _add(key: str, link: CitationLink) -> None:
+            if not key:
+                return
+            bucket = lookup.setdefault(key, [])
+            # Guard against re-adding the identical edge (the three key forms
+            # can collide, e.g. a raw text that normalizes to itself).
+            if link not in bucket:
+                bucket.append(link)
+
+        for link in links:
+            # Index by occurrence_id FIRST (most reliable for numeric citations)
+            _add(link.occurrence_id, link)
+
+            evidence = link.evidence or {}
+            raw = evidence.get("raw", "") or evidence.get("raw_text", "")
+            if raw:
+                raw_normalized = raw.replace("\n", " ").replace("  ", " ").strip()
+                _add(IntegrityPipeline._normalize_identifier(raw_normalized), link)
+                _add(raw_normalized.lower(), link)
+        return lookup
+
+    @staticmethod
+    def _build_linking_summary(
+        verdicts: list[CitationVerdict],
+        linking_result: "LinkingResult | None" = None,
+    ) -> dict[str, int]:
+        """Build linking summary for Web UI dashboard.
+
+        FIX v1.7: Separate counts for references vs in-text to avoid double-counting.
+        - Reference statuses (from verdicts): MATCHED, UNCUTED_REFERENCE, DUPLICATE_REFERENCE, etc.
+        - In-text statuses (from links): matched/missing_reference/ambiguous for in-text citations.
+
+        Returns a flat dict[str, int] for backward compat. Reference counts are
+        prefixed with 'ref_' to distinguish from in-text 'matched'/'missing_reference'.
         """
         counts: dict[str, int] = {s.value: 0 for s in CitationMappingStatus}
+
+        # Reference statuses from verdicts (only REFERENCE_LIST have verdicts)
         for v in verdicts:
             if v.mapping_status is not None:
                 status_value = (
@@ -1021,6 +1214,21 @@ class IntegrityPipeline:
                     else str(v.mapping_status)
                 )
                 counts[status_value] = counts.get(status_value, 0) + 1
+
+        # In-text mapping from linking_result.links
+        # (only for non-reference links, to avoid double-counting)
+        if linking_result is not None and linking_result.links:
+            for link in linking_result.links:
+                status_value = (
+                    link.status.value
+                    if hasattr(link.status, "value")
+                    else str(link.status)
+                )
+                # Only count non-MATCHED in-text links separately to avoid double-counting
+                # MATCHED is already counted from verdicts for references
+                if status_value != "matched":
+                    counts[status_value] = counts.get(status_value, 0) + 1
+
         return counts
 
 
@@ -1069,6 +1277,17 @@ def _serialize_citation(citation: Citation) -> dict[str, Any]:
         "confidence": citation.confidence,
         "reference_id": citation.reference_id,
         "context": citation.context,
+        # NEW v1.7: linking layer (for in-text citations in UI Citations tab)
+        "mapping_status": getattr(citation, "mapping_status", None),
+        "mapping_confidence": getattr(citation, "mapping_confidence", 0.0),
+        "citation_link": _serialize_citation_link(getattr(citation, "citation_link", None)),
+        # NEW v1.9: every edge of the occurrence, not only the first. The
+        # single-link field above is kept so existing report consumers keep
+        # working; this is the lossless one.
+        "citation_links": _serialize_citation_link_list(
+            getattr(citation, "citation_links", None)
+            or getattr(citation, "citation_link", None)
+        ),
     }
 
 
@@ -1106,6 +1325,14 @@ def _deserialize_citation(data: dict[str, Any]) -> Citation:
         confidence=float(data.get("confidence", 0.0)),
         reference_id=data.get("reference_id"),
         context=data.get("context"),
+        # NEW v1.7: linking layer
+        mapping_status=data.get("mapping_status"),
+        mapping_confidence=float(data.get("mapping_confidence", 0.0)),
+        citation_link=_deserialize_citation_link(data.get("citation_link")),
+        citation_links=_deserialize_citation_link_list(
+            data.get("citation_links") if data.get("citation_links") is not None
+            else data.get("citation_link")
+        ),
     )
 
 
@@ -1223,6 +1450,41 @@ def _serialize_citation_link(link: Any) -> dict[str, Any]:
     }
 
 
+def _serialize_citation_link_list(links: Any) -> list[dict[str, Any]]:
+    """[CitationLink] → list of JSON-friendly dicts.
+
+    An occurrence may cite several references at once ("[9, 10]"), so the
+    report must carry EVERY edge, not just the first. Tolerates a bare single
+    link (legacy callers that still hold ``citation_link``) by wrapping it.
+    """
+    if links is None:
+        return []
+    if not isinstance(links, (list, tuple)):
+        links = [links]
+    return [_serialize_citation_link(link) for link in links if link is not None]
+
+
+def _deserialize_citation_link_list(data: Any) -> list[CitationLink]:
+    """list[dict] → [CitationLink], tolerating the legacy single-dict shape.
+
+    Reports cached before v1.9 stored ``citation_link`` as ONE object; reading
+    them must still work, so a dict is treated as a one-element list.
+    """
+    if not data:
+        return []
+    if isinstance(data, dict):
+        data = [data]
+    if not isinstance(data, (list, tuple)):
+        return []
+    out: list[CitationLink] = []
+    for item in data:
+        if isinstance(item, dict):
+            link = _deserialize_citation_link(item)
+            if link is not None:
+                out.append(link)
+    return out
+
+
 def _serialize_matched_sources(source: Any) -> list[dict[str, Any]]:
     """SourceResult → list of MatchedSource-shaped dicts for the API.
 
@@ -1303,6 +1565,9 @@ def _deserialize_matched_sources(payload: Any) -> SourceResult | None:
 def main() -> None:
     """CLI: python -m integrity_checker.pipeline.integrity_pipeline FILE [--output FILE]"""
     configure_logging()
+    # Ensure DB schema + migrations are up to date before any session is opened.
+    from integrity_checker.db.session import init_db
+    init_db()
 
     parser = argparse.ArgumentParser(
         description="Essay Integrity Checker — run pipeline trên 1 PDF tiểu luận"

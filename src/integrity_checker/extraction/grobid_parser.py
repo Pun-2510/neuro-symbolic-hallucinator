@@ -415,9 +415,28 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
             if when:
                 year = when[:4]
 
+        # Some PDFs use author-year suffixes (``2018a. Title``).  GROBID can
+        # occasionally attach that prefix to the analytic title and omit the
+        # date element.  Recover the year/suffix and remove the artefact so
+        # linking and metadata comparison see the actual title.
+        if title:
+            prefix = re.match(r"^(19|20)\d{2}([a-z])?\.\s+", title, re.I)
+            if prefix:
+                if year is None:
+                    year = prefix.group(0)[:4]
+                title = title[prefix.end():].strip()
+
         # Venue (journal-level title) — dùng .// để tìm trong <monogr>
         venue_el = bibl.find(f".//{_TEI}title[@level='j']")
         venue = "".join(venue_el.itertext()).strip() if venue_el is not None else None
+
+        # For malformed two-column references GROBID may put the continuation
+        # of the author list in <analytic>/<title>, while the real title is in
+        # the monograph title (e.g. Warstadt et al.).
+        if title and re.search(r",\s*(?:and\s+)?[^.]+\b(?:Bowman|Manning)\b", title):
+            monogr_title = bibl.find(f".//{_TEI}title[@level='m']")
+            if monogr_title is not None and "".join(monogr_title.itertext()).strip():
+                title = "".join(monogr_title.itertext()).strip()
 
         # DOI
         doi_el = bibl.find(f".//{_TEI}idno[@type='DOI']")

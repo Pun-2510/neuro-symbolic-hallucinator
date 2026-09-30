@@ -101,6 +101,41 @@ try:
 except ImportError:
     pass
 
+try:
+    from integrity_checker.extraction.patterns import chicago  # noqa: F401
+    from integrity_checker.extraction.patterns.chicago import ChicagoFormat
+except ImportError:
+    pass
+
+try:
+    from integrity_checker.extraction.patterns import harvard  # noqa: F401
+    from integrity_checker.extraction.patterns.harvard import HarvardFormat
+except ImportError:
+    pass
+
+try:
+    from integrity_checker.extraction.patterns import acm  # noqa: F401
+    from integrity_checker.extraction.patterns.acm import ACMFormat
+except ImportError:
+    pass
+
+try:
+    from integrity_checker.extraction.patterns import nature  # noqa: F401
+    from integrity_checker.extraction.patterns.nature import NatureFormat
+except ImportError:
+    pass
+
+try:
+    from integrity_checker.extraction.patterns import cse  # noqa: F401
+    from integrity_checker.extraction.patterns.cse import CSEFormat
+except ImportError:
+    pass
+
+# NOTE: MLA, ACS, AMA, AMA, Chicago were removed from auto-registration
+# as they contain overly permissive patterns that cause false positive
+# citation matches. Only APA, IEEE, Numeric, Vancouver, Harvard, ACM, Nature,
+# CSE are registered by default for scientific/technical papers.
+
 
 # =============================================================================
 # Public API
@@ -134,4 +169,9 @@ __all__ = [
     "IEEEFormat",
     "NumericFormat",
     "VancouverFormat",
+    "ChicagoFormat",
+    "HarvardFormat",
+    "ACMFormat",
+    "NatureFormat",
+    "CSEFormat",
 ]

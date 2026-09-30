@@ -98,6 +98,8 @@ export interface Verdict {
   // Integrity layer (linking/)
   mapping_status: CitationMappingStatus;
   mapping_confidence: number;
+  citation_links?: CitationLink[];
+  /** First edge only — kept for older consumers; prefer `citation_links`. */
   citation_link?: CitationLink;
   style_penalty?: number;
   domain_exception?: boolean;
@@ -133,6 +135,7 @@ export interface AnalysisReport {
   num_pages: number;
   num_citations: number;
   num_references?: number;
+  extracted_citations?: Citation[];
   // v1.2 new fields
   style_profile: StyleProfile;
   linking_summary: MappingStatusSummary;
@@ -196,6 +199,23 @@ export interface Citation {
   url?: string | null;
   page_num: number;
   confidence: number;
+  // NEW v1.7 — linking layer for Citations tab
+  mapping_status?: CitationMappingStatus;
+  mapping_confidence?: number;
+  /**
+   * NEW v1.9 — EVERY reference this occurrence cites. A single occurrence can
+   * cite several at once ("[9, 10]" → ref-0009 AND ref-0010), so the scalar
+   * ``citation_link`` below is only the first edge. Read this field; fall back
+   * to ``[citation_link]`` for reports produced before v1.9.
+   */
+  citation_links?: CitationLink[];
+  /** First edge only — kept for older consumers. Prefer ``citation_links``. */
+  citation_link?: CitationLink;
+  // NEW v1.8 — References tab: how often this reference entry is cited in
+  // the body text (0 = never cited). ``cited_on_pages`` lists the 1-indexed
+  // page numbers where those in-text occurrences were found.
+  cited_in_text_count?: number;
+  cited_on_pages?: number[];
 }
 
 // --- Override request ---

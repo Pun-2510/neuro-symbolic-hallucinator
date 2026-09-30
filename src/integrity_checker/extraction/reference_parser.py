@@ -6,6 +6,11 @@ Hỗ trợ (v1.2 §3.4):
     - Vancouver: 'Smith J. Title. Journal A. 2020;10:1-10.'
     - Chicago author-date: tương tự APA
 
+Sử dụng modular citation format system (patterns/):
+    - Formats are loaded from registry at initialization
+    - Format modules (APA, IEEE, Vancouver) are tried first
+    - Legacy patterns kept as fallback for backward compatibility
+
 Output:
     Citation với citation_type=REFERENCE_LIST và:
         - authors: list[str] (raw, dùng author_parser để canonicalize ở pipeline)
@@ -33,6 +38,8 @@ from typing import Iterable
 
 from integrity_checker.extraction.base import Document
 from integrity_checker.extraction.citation_extractor import CitationExtractor
+from integrity_checker.extraction.patterns import get_format, get_all_formats
+from integrity_checker.extraction.patterns.base import CitationFormat
 from integrity_checker.matching.author_parser import parse_authors
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
@@ -177,6 +184,11 @@ class ReferenceListParser:
 
     def __init__(self, extractor: CitationExtractor | None = None) -> None:
         self.extractor = extractor or CitationExtractor()
+        # Initialize format parsers from registry (ordered by priority)
+        # IEEE has [N] marker detection and should be tried first for numbered entries
+        self.format_parsers: dict[str, CitationFormat] = {}
+        for fmt in get_all_formats():
+            self.format_parsers[fmt.name] = fmt
 
     def parse_reference_section(self, doc: Document) -> list[Citation]:
         """Trích và parse các entry ở reference section.
@@ -376,23 +388,35 @@ class ReferenceListParser:
         on each page, corrupting its author/year metadata. Drop:
           - standalone page numbers ("43"),
           - standalone bibliography headers ("References"),
-          - short lines that repeat at least twice (running headers).
+          - short lines that repeat at least twice (running headers),
+          - running headers with page numbers (e.g. "TITLE...  28").
         """
         lines = text.splitlines()
         counts = Counter(line.strip() for line in lines if line.strip())
+
+        # Pattern to match running headers with page numbers
+        # e.g. "EMOTIONAL INTELLIGENCE AND HEART RATE VARIABILITY... 28"
+        running_header_re = re.compile(r"^[\w\s]+?\s{3,}\d{1,3}\s*$")
+
         cleaned: list[str] = []
         for line in lines:
             stripped = line.strip()
             if not stripped:
                 cleaned.append("")
                 continue
+            # Skip standalone page numbers
             if re.fullmatch(r"\d{1,4}", stripped):
                 continue
+            # Skip bibliography header lines
             if _BIB_HEADER_LINE_RE.match(stripped):
                 continue
+            # Skip running headers with page numbers (TITLE...  28)
+            if running_header_re.match(stripped):
+                continue
+            # Skip short repeated lines without year/URL (typical running headers)
             if (
                 counts[stripped] >= 2
-                and len(stripped) < 80
+                and len(stripped) < 100  # Increased from 80 to catch more headers
                 and not re.search(r"(?:19|20)\d{2}", stripped)
                 and "http" not in stripped.lower()
             ):
@@ -447,7 +471,15 @@ class ReferenceListParser:
     def _parse_entry(
         self, entry: str, order_index: int, page_num: int
     ) -> Citation | None:
-        """Parse 1 entry. Thử lần lượt APA, IEEE, Vancouver."""
+        """Parse 1 entry. Try format modules first, then fallback to legacy patterns.
+
+        Strategy:
+            1. Normalize: replace newlines with spaces
+            2. Extract numeric_index if entry starts with [N] prefix
+            3. Try format modules from registry
+            4. Fallback to legacy patterns (_parse_apa_entry, _parse_ieee_entry, etc.)
+            5. Fallback to _parse_fallback_entry if numeric_index available
+        """
         # Normalize: replace newlines with spaces (wrapped lines)
         entry = entry.replace("\n", " ").replace("  ", " ")
 
@@ -457,12 +489,33 @@ class ReferenceListParser:
         if idx_match:
             numeric_index = int(idx_match.group(1))
 
+        # Try format modules from registry first
+        # Require title for a meaningful match (year alone is not enough)
+        # IEEE entries with [N] prefix are an exception - they should be accepted with just year
+        for fmt in get_all_formats():
+            citation = fmt.parse_reference_entry(entry)
+            if citation:
+                has_title = bool(citation.title)
+                has_year = bool(citation.year)
+                has_numeric_index = citation.numeric_index is not None
+                # Accept if: has title, OR (has year AND is IEEE with [N] prefix)
+                if has_title or (has_year and has_numeric_index):
+                    # Set common fields
+                    citation.page_num = page_num
+                    citation.order_index = order_index
+                    citation.citation_type = CitationType.REFERENCE_LIST
+                    # Set numeric_index if found and not already set
+                    if numeric_index and citation.numeric_index is None:
+                        citation.numeric_index = numeric_index
+                    return citation
+
+        # Fallback to legacy patterns if format modules didn't match
         # IEEE first (vì có marker [N] đặc trưng)
         if re.match(r"^\s*\[\d+\]", entry):
             citation = self._parse_ieee_entry(entry, order_index, page_num)
-            if citation and numeric_index and citation.numeric_index is None:
-                citation.numeric_index = numeric_index
             if citation:
+                if numeric_index and citation.numeric_index is None:
+                    citation.numeric_index = numeric_index
                 return citation
 
         citation = self._parse_apa_entry(entry, order_index, page_num)
@@ -494,6 +547,7 @@ class ReferenceListParser:
     def _parse_apa_entry(
         self, entry: str, order_index: int, page_num: int
     ) -> Citation | None:
+        """Legacy APA entry parser (fallback when format module doesn't match)."""
         m = _APA_ENTRY_RE.search(entry)
         if not m:
             return None

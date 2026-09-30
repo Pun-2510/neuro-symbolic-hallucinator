@@ -32,7 +32,7 @@ def test_doi_pattern_matches_real_doi() -> None:
 
 
 def test_numeric_matches_brackets() -> None:
-    p = [p for p in get_all_patterns() if p.name == "numeric_brackets"][0]
+    p = [p for p in get_all_patterns() if p.name == "ieee_numeric"][0]
     regex = re.compile(p.pattern)
     assert regex.search("[1]") is not None
     assert regex.search("[1,2]") is not None

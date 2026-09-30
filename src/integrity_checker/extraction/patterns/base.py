@@ -118,6 +118,63 @@ class CompiledPattern:
         """
         return self.compiled_regex.match(text)
 
+    @property
+    def type(self) -> "CitationType":
+        """Pattern type as CitationType enum for backward compatibility.
+
+        Converts PatternType to the corresponding CitationType.
+        """
+        from integrity_checker.models.citation import CitationType
+
+        name_lower = self.name.lower()
+
+        # Check if this is a numeric-style pattern based on name
+        # Numeric patterns match [N], [N,M], [N-M] citation formats
+        is_numeric_pattern = 'numeric' in name_lower
+
+        # Map PatternType to CitationType
+        if is_numeric_pattern:
+            return CitationType.NUMERIC
+        elif self.pattern_type == PatternType.IN_TEXT:
+            return CitationType.IN_TEXT
+        elif self.pattern_type == PatternType.REFERENCE_ENTRY:
+            return CitationType.REFERENCE_LIST
+        elif self.pattern_type == PatternType.UTILITY:
+            # For utility patterns, infer from pattern name
+            if 'doi' in name_lower:
+                return CitationType.DOI
+            elif 'url' in name_lower:
+                return CitationType.URL
+            else:
+                return CitationType.UNKNOWN
+        else:
+            return CitationType.UNKNOWN
+
+    @property
+    def style(self) -> "CitationStyle":
+        """Infer CitationStyle from pattern name.
+
+        Returns CitationStyle based on the pattern name prefix.
+        """
+        from integrity_checker.models.citation import CitationStyle
+
+        name_lower = self.name.lower()
+        if 'apa' in name_lower:
+            return CitationStyle.APA
+        elif 'ieee' in name_lower:
+            return CitationStyle.IEEE
+        elif 'vancouver' in name_lower:
+            return CitationStyle.VANCOUVER
+        elif 'numeric' in name_lower and 'ieee' not in name_lower and 'vancouver' not in name_lower:
+            # Standalone numeric patterns could be either IEEE or Vancouver
+            # Default to IEEE for bracketed, Vancouver for parenthesized
+            if 'bracketed' in name_lower or 'bracket' in name_lower:
+                return CitationStyle.IEEE
+            else:
+                return CitationStyle.VANCOUVER
+        else:
+            return CitationStyle.UNKNOWN
+
 
 @runtime_checkable
 class CitationFormat(Protocol):

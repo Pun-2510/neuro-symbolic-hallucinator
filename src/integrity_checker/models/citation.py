@@ -27,6 +27,12 @@ class CitationStyle(str, Enum):
     CHICAGO = "Chicago"
     IEEE = "IEEE"
     VANCOUVER = "Vancouver"
+    HARVARD = "Harvard"
+    AMA = "AMA"
+    ACM = "ACM"
+    NATURE = "Nature"
+    ACS = "ACS"
+    CSE = "CSE"
     UNKNOWN = "unknown"
 
 
@@ -99,6 +105,21 @@ class Citation:
     # NEW v1.3 — citation context: đoạn văn xung quanh citation
     # Dùng cho Neural content alignment check
     context: Optional[str] = None
+
+    # NEW v1.7 — linking layer cho in-text citations (gắn sau CitationLinker chạy).
+    # Cho phép UI Citations tab hiển thị mapping_status thật cho mỗi in-text.
+    # None cho reference_list entries (chúng có mapping_status từ verdict).
+    mapping_status: Optional[str] = None        # CitationMappingStatus.value
+    mapping_confidence: float = 0.0
+    citation_link: Optional[object] = None     # CitationLink
+
+    # NEW v1.9 — MỌI link của occurrence này, không chỉ cái đầu.
+    #
+    # Một occurrence có thể cite nhiều reference cùng lúc ("[9, 10]" → ref-0009
+    # + ref-0010). ``citation_link`` chỉ giữ được 1 slot nên ref thứ hai bị mất
+    # khỏi report. Field này là nguồn sự thật; ``citation_link`` được giữ song
+    # song (= ``citation_links[0]``) để không phá code/consumer cũ.
+    citation_links: list = field(default_factory=list)   # list[CitationLink]
 
     def to_search_query(self) -> str:
         """Ghép chuỗi truy vấn để gọi API theo title + author + year.
