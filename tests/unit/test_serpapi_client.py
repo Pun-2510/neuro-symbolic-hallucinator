@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from integrity_checker.models.citation import Citation
 from integrity_checker.retrieval.serpapi_client import SerpApiClient
+
+# Integration tests cần SerpApi key thật — đọc từ env, KHÔNG hardcode.
+# Chạy: SERPAPI_API_KEY=<key> pytest -m integration
+SERPAPI_KEY = os.environ.get("SERPAPI_API_KEY")
+
+requires_serpapi_key = pytest.mark.skipif(
+    not SERPAPI_KEY,
+    reason="SERPAPI_API_KEY không được set — bỏ qua integration test",
+)
 
 
 class TestSerpApiClient:
@@ -84,11 +95,10 @@ class TestSerpApiClient:
 
     @pytest.mark.asyncio
     @pytest.mark.integration
+    @requires_serpapi_key
     async def test_lookup_known_paper(self) -> None:
         """Integration test với paper nổi tiếng."""
-        client = SerpApiClient(
-            api_key="***REMOVED-SerpAPI-Key***"
-        )
+        client = SerpApiClient(api_key=SERPAPI_KEY)
         citation = Citation(
             raw_text="Vaswani et al. (2017)",
             title="Attention Is All You Need",
@@ -107,11 +117,10 @@ class TestSerpApiClient:
 
     @pytest.mark.asyncio
     @pytest.mark.integration
+    @requires_serpapi_key
     async def test_lookup_obscure_paper(self) -> None:
         """Integration test với paper ít known."""
-        client = SerpApiClient(
-            api_key="***REMOVED-SerpAPI-Key***"
-        )
+        client = SerpApiClient(api_key=SERPAPI_KEY)
         citation = Citation(
             raw_text="Smith (2021)",
             title="Novel Research Methods for Complex Systems Analysis XYZ123",

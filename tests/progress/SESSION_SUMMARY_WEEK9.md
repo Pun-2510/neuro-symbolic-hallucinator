@@ -24,7 +24,7 @@ Hoàn thiện MVP, tích hợp Local Database với FTS5, remove disk cache.
 - Simplified architecture
 
 ### 3. API Key Integration
-- OpenAlex API key: `***REMOVED-OpenAlex-Key***` (user provided)
+- OpenAlex API key: đã cấu hình trong `.env` (`OPENALEX_API_KEY`) — **KHÔNG ghi vào file này, KHÔNG commit**
 - Rate limits: Crossref 3/s, OpenAlex 50/s
 - Contact email: `iannwendii@gmail.com`
 
