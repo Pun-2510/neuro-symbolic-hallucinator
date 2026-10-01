@@ -1,6 +1,7 @@
 """Regression tests for the ACL Anthology XML importer.
 
-These cover the two bugs documented in ``DATA_AUDIT_HANDOFF.md`` § 2.4:
+These cover the two ACL-importer bugs found during the 2026-09 data audit
+(the audit notes were removed from the repo after all of P1-P6 were resolved):
 
 1. Only the first ``<volume>`` of each file was read, dropping ~35% of the
    corpus (44,904 of 127,851 papers).

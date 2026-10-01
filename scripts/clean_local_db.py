@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Maintenance pass for ``data/local_papers.db`` (paper knowledge base).
 
-Addresses the data-quality findings in ``DATA_AUDIT_HANDOFF.md``:
+Addresses the data-quality findings from the 2026-09 audit of the paper
+knowledge base:
 
 * P4 — remove rows with empty titles, drop DOI/title duplicates, and replace
   non-academic Crossref mis-matches (dictionary entries, music/fiction books)
