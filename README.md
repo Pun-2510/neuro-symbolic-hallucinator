@@ -139,11 +139,11 @@ cd web && npm run dev
 
 ```bash
 # Chạy pipeline trên PDF
-python -m integrity_checker.pipeline.integrity_pipeline thesis.pdf --output report.json
+python -m integrity_checker.pipeline.integrity_pipeline your_paper.pdf --output report.json
 
 # Export các định dạng
-python -m integrity_checker.pipeline.integrity_pipeline thesis.pdf --format csv --output report.csv
-python -m integrity_checker.pipeline.integrity_pipeline thesis.pdf --format pdf --output report.pdf
+python -m integrity_checker.pipeline.integrity_pipeline your_paper.pdf --format csv --output report.csv
+python -m integrity_checker.pipeline.integrity_pipeline your_paper.pdf --format pdf --output report.pdf
 ```
 
 ### Web UI
@@ -162,7 +162,7 @@ python -m integrity_checker.pipeline.integrity_pipeline thesis.pdf --format pdf 
 ```bash
 # Upload PDF
 curl -X POST http://localhost:8000/api/essays/upload \
-  -F "file=@thesis.pdf"
+  -F "file=@your_paper.pdf"
 
 # Get report
 curl http://localhost:8000/api/essays/{id}/report

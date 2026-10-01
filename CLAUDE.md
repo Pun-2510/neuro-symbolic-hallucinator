@@ -122,7 +122,7 @@ python -m pytest tests/ --cov=src/integrity_checker --cov-report=html
 ```bash
 # Run pipeline on PDF
 source .venv/bin/activate
-python -m integrity_checker.pipeline.integrity_pipeline thesis.pdf --output report.json
+python -m integrity_checker.pipeline.integrity_pipeline your_paper.pdf --output report.json
 
 # Start backend
 uvicorn src.integrity_checker.api.main:app --reload --port 8000

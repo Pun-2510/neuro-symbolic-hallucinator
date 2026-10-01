@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -158,7 +159,11 @@ async def test_citation(
 
 
 async def run_thesis_test():
-    """Test on VietDepression_Research_Article.pdf"""
+    """Test trên một PDF mẫu.
+
+    PDF KHÔNG được track trong git — đặt file bất kỳ ở repo root và trỏ
+    biến môi trường SAMPLE_PDF tới nó (mặc định: thesis.pdf).
+    """
     from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
     from integrity_checker.retrieval.crossref_client import CrossrefClient
     from integrity_checker.retrieval.openalex_client import OpenAlexClient
@@ -182,10 +187,11 @@ async def run_thesis_test():
     )
     checker = NeuroSymbolicChecker(enable_content_alignment=False)
 
-    # Extract citations from PDF
-    pdf_path = Path("VietDepression_Research_Article.pdf")
+    # Extract citations from PDF (không track trong git — xem .gitignore)
+    pdf_path = Path(os.environ.get("SAMPLE_PDF", "thesis.pdf"))
     if not pdf_path.exists():
         print(f"❌ PDF not found: {pdf_path}")
+        print("   Đặt một PDF mẫu ở repo root, hoặc set SAMPLE_PDF=<đường dẫn>.")
         return []
 
     # Parse PDF using DocumentParser
@@ -362,12 +368,37 @@ def compare_scenarios(results_dict: dict):
               f"{data['db_hits']}/{data['total']:<10}")
 
 
+async def ensure_scenario_fixtures() -> None:
+    """Sinh fixture PDF cho scenario test nếu chưa có.
+
+    Hai file PDF scenario KHÔNG được track trong git (xem .gitignore) —
+    chúng là dữ liệu sinh tự động, chỉ nằm trên máy. Hàm này gọi lại
+    generator để bảo đảm fixture tồn tại trước khi test.
+    """
+    scenario_a = Path("data/test_scenarios/test_cite_scenario_a.pdf")
+    scenario_b = Path("data/test_scenarios/test_cite_scenario_b.pdf")
+
+    if scenario_a.exists() and scenario_b.exists():
+        return
+
+    print("🔧 Scenario PDF fixtures chưa có — đang sinh bằng test_cite_scenarios.py ...")
+    try:
+        import test_cite_scenarios
+
+        test_cite_scenarios.main()
+        print("✅ Đã sinh xong scenario fixtures")
+    except Exception as e:
+        print(f"⚠️ Không sinh được scenario fixtures: {e}")
+
+
 async def main():
     """Main test function."""
     print("="*70)
     print("CITATION INTEGRITY CHECKER - COMPREHENSIVE TEST")
     print("="*70)
     print(f"Timestamp: {datetime.now().isoformat()}")
+
+    await ensure_scenario_fixtures()
 
     results_dict = {}
 
