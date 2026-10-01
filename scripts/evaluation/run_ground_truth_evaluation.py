@@ -5,7 +5,7 @@ This evaluates the REAL system behavior, NOT a simplified version.
 The evaluation should use the SAME code paths as the real PDF pipeline.
 
 Usage:
-    python run_ground_truth_evaluation.py [--limit N]
+    python scripts/evaluation/run_ground_truth_evaluation.py [--limit N]
 """
 
 from __future__ import annotations
@@ -17,8 +17,9 @@ import time
 from pathlib import Path
 from typing import Optional
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add repository source to path (this file now lives under scripts/evaluation/).
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from integrity_checker.logic.neuro_symbolic_checker import NeuroSymbolicChecker
 from integrity_checker.models.citation import Citation
@@ -29,7 +30,7 @@ from evaluation.evaluator import FakeDetectionEvaluator
 
 def load_ground_truth() -> list[dict]:
     """Load ground truth dataset."""
-    gt_path = Path(__file__).parent / "evaluation" / "ground_truth.json"
+    gt_path = REPO_ROOT / "evaluation" / "ground_truth.json"
     with open(gt_path, encoding="utf-8") as f:
         return json.load(f)
 
@@ -166,7 +167,7 @@ async def run_evaluation(limit: Optional[int] = None) -> dict:
     evaluator.print_report(result)
 
     # Save results
-    output_dir = Path(__file__).parent / "evaluation"
+    output_dir = REPO_ROOT / "evaluation"
     output_dir.mkdir(exist_ok=True)
 
     # Save predictions

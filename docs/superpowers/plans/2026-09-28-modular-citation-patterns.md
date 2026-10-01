@@ -4,6 +4,13 @@
 
 **Goal:** Refactor monolithic citation pattern files into a modular architecture where each citation format (APA, IEEE, Vancouver, etc.) lives in its own file with clear interfaces, enabling easy addition of new formats.
 
+> **Status (2026-10-01):** Core modular architecture and the APA/IEEE/Vancouver
+> implementations are already present in `src/integrity_checker/extraction/patterns/`.
+> The registry currently auto-registers 9 safe formats. MLA/ACS/AMA remain
+> opt-in because their permissive patterns need hardening; Chicago is still a
+> placeholder. Treat the unchecked steps below as historical implementation
+> notes, not an accurate task counter.
+
 **Architecture:** Create a plugin-style architecture with a central registry that coordinates format-specific pattern modules. Each format module exposes a standardized interface for in-text patterns, reference list patterns, and parser logic.
 
 **Tech Stack:** Python 3.10+, dataclasses, typing.Protocol for interfaces, YAML for optional config, existing Pydantic models.

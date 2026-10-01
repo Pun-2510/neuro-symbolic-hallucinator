@@ -302,8 +302,14 @@ TITLE_ITALIC = r"<i>([^<]+)</i>"
 | IEEE | ieee.py | Complete |
 | Vancouver | vancouver.py | Complete |
 | Numeric | numeric.py | Complete |
-| Chicago | chicago.py | Placeholder |
-| MLA | mla.py | Placeholder |
+| Chicago | chicago.py | Placeholder / chưa đăng ký mặc định |
+| MLA | mla.py | Implemented, chưa đăng ký mặc định |
+| Harvard | harvard.py | Implemented |
+| ACM | acm.py | Implemented |
+| Nature | nature.py | Implemented |
+| CSE | cse.py | Implemented |
+| ACS | acs.py | Implemented, chưa đăng ký mặc định |
+| AMA | ama.py | Implemented, chưa đăng ký mặc định |
 
 ## References
 

@@ -279,7 +279,7 @@ Thứ tự: `legacy_regex` → `grobid_shadow` → `grobid_merge` → `grobid_pr
 
 ## 13. Deliverables
 
-1. `PLAN_GROBID_ADAPTER.md`.
+1. `docs/plans/grobid-adapter.md`.
 2. `grobid_adapter.py` và merge/provenance model.
 3. Tích hợp DocumentParser/pipeline.
 4. Unit, integration, regression tests.

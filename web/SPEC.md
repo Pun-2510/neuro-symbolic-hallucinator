@@ -1,6 +1,6 @@
 # Web UI v1.2 — Spec
 
-**Ngày cập nhật:** 2026-09-12
+**Ngày cập nhật:** 2026-10-01
 **Mục tiêu:** Mô tả trạng thái Web UI v1.2 và các phần còn lại trước khi demo/đóng gói.
 
 ## Current State
@@ -13,12 +13,15 @@
 - `OverrideControls.tsx` — UI override label/status và reason ✅
 - `AppLayout.tsx` — layout dùng chung cho dashboard/upload/history/report ✅
 - Production build (`npm run build`) ✅
+- Các trang bổ sung hiện có: dashboard, login, settings, document inspector,
+  rules inspector và admin; xem `web/src/pages/`.
 
 ## Remaining
 
-- Hoàn thiện E2E Playwright cho login → upload → report → history.
+- E2E Playwright cho login → upload → report → history vẫn chưa hoàn tất.
 - Đồng bộ TypeScript types với toàn bộ trường mapping (`mapping_status`, `mapping_confidence`, `citation_link`, `style_penalty`, `domain_exception`).
-- Backend override cần persist thật vào DB và ghi `audit_logs`.
+- Cần kiểm tra lại persistence/audit của override bằng backend thật; UI override
+  và API route đã tồn tại.
 - Thêm màu/hiển thị đầy đủ cho mọi `CitationMappingStatus` ở các màn hình.
 - Kiểm tra deployment Docker production và cấu hình `VITE_API_BASE_URL`.
 

@@ -21,7 +21,7 @@ data/
 ├── citations.json                   # 174 citations (5 papers)
 ├── citations_full.json              # 2887 citations (55 papers)
 ├── citations_enriched.json          # Crossref-enriched (5 papers)
-├── citations_full_enriched.json     # Crossref-enriched (55 papers, in progress)
+├── citations_full_enriched.json     # Crossref-enriched (55 papers)
 ├── gold_dataset.json                # Full structured dataset
 ├── gold_dataset_annotation.csv      # CSV for human annotation
 ├── gold_dataset_train.json          # 70% split
@@ -98,15 +98,24 @@ python scripts/collect_dataset/06_split_dataset.py \
 # → gold_dataset_train.json / val / test + data_split_manifest.json
 ```
 
+## Trạng thái hiện tại (2026-10-01)
+
+- Đã tải và extract **55 papers / 2.887 citations** bằng PyMuPDF.
+- Đã enrich dữ liệu và tạo dataset cùng các split train/validation/test.
+- File annotation đã tạo (**2.900 rows**), nhưng hiện chưa có nhãn
+  `ground_truth_label` hoặc annotator nào. Đây là bước đang chặn IAA và đánh giá
+  supervised/baseline.
+- GROBID vẫn là tùy chọn; pipeline offline PyMuPDF là đường chạy hiện tại.
+
 ## Phân công
 
 | Step | Ai làm | Thời gian |
 |------|--------|-----------|
 | 1. Download papers | ✅ Tự động | 15–30 phút |
-| 2. Extract citations | ✅ Tự động | 10–15 phút |
-| 3. Enrich Crossref | ✅ Tự động | 15–30 phút |
+| 2. Extract citations | ✅ Đã chạy (55 papers) | 10–15 phút |
+| 3. Enrich Crossref | ✅ Đã chạy (55 papers) | 15–30 phút |
 | 4. Format dataset | ✅ Tự động | 1 phút |
-| **5. Annotate** | ⚠️ **Thủ công** | 2–4 tiếng |
+| **5. Annotate** | 🔴 **Chưa bắt đầu** | 2–4 tiếng |
 | 6. IAA | ✅ Tự động | 1 phút |
 | 7. Split | ✅ Tự động | 1 phút |
 

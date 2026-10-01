@@ -6,6 +6,13 @@ Gán nhãn 2887 citations từ 55 bài báo arXiv NLP để tạo **gold dataset
 
 > **Thuật ngữ:** Một "citation" là một tham chiếu trong danh mục tài liệu tham khảo (reference list) của một bài báo.
 
+## Trạng thái hiện tại (2026-10-01)
+
+- Công cụ và hướng dẫn đã sẵn sàng.
+- Dataset có **2.887 citations từ 55 papers**.
+- **Chưa có citation nào được gán nhãn**: `ground_truth_label` và `annotator`
+  hiện đang trống. Các số liệu mục tiêu bên dưới không phải tiến độ đã hoàn thành.
+
 ## Bước 1: Mở Tool Gán Nhãn
 
 Mở file `annotate_full.html` trong trình duyệt (Chrome, Safari, Firefox đều được):

@@ -15,6 +15,11 @@ Các file trong thư mục:
 | `SESSION_SUMMARY_WEEK8.md` | 2026-08-24 | v1.2 — Tuần 8 | `linking/` scaffold (statuses + citation_linker + duplicate_detector) + `DocumentParser` orchestrator + close backlog #18 (ReferenceListParser Dutch + 2-line APA). 225 tests pass / 0 deferred. |
 | `SESSION_SUMMARY_WEEK8B.md` | 2026-08-25 | v1.2 — Tuần 8 tiếp theo | Tasks #23 (GROBID Docker adapter) + #24 (4 real HTTP clients) + #25 (DocumentParser integration) + #26 (end-to-end test). **257 tests pass / 0 deferred.** |
 
+Các recap trên là **lịch sử**, không phải số liệu hiện tại. Tính đến
+2026-10-01, suite Python có **899 passed, 4 skipped, 0 failed** (903 tests
+collected). GROBID real-mode vẫn là 4 test skip vì cần Docker/RAM; mock mode
+đã được kiểm thử.
+
 **Lưu ý:** File docs gốc ở root repo (`README.md`, `KNOWN_ISSUES_AND_TODO.md`, `DEVELOPER_QUICKSTART.md`, `LICENSE`) là reference docs dài hạn — **không move** vào đây. Chỉ recap theo tuần mới vào thư mục này.
 
 **Cách đặt tên file mới:** `SESSION_SUMMARY_WEEK{N}_{M}.md` (vd `SESSION_SUMMARY_WEEK8_9.md`).

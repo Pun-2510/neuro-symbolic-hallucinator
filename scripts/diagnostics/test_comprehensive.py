@@ -14,6 +14,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+# Keep repository-root execution working after moving this diagnostic script.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 # Configure logging to track API vs DB calls
 logging.basicConfig(
     level=logging.DEBUG,
@@ -381,9 +386,9 @@ async def ensure_scenario_fixtures() -> None:
     if scenario_a.exists() and scenario_b.exists():
         return
 
-    print("🔧 Scenario PDF fixtures chưa có — đang sinh bằng test_cite_scenarios.py ...")
+    print("🔧 Scenario PDF fixtures chưa có — đang sinh bằng scripts/fixtures/test_cite_scenarios.py ...")
     try:
-        import test_cite_scenarios
+        from scripts.fixtures import test_cite_scenarios
 
         test_cite_scenarios.main()
         print("✅ Đã sinh xong scenario fixtures")

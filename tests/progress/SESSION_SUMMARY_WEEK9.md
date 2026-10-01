@@ -7,9 +7,8 @@ Hoàn thiện MVP, tích hợp Local Database với FTS5, remove disk cache.
 ## ✅ Đã hoàn thành
 
 ### 1. Local Database với FTS5
-- Thêm `data/local_papers.db` với các bài ACL (con số "83,541" ghi ban đầu là
-  output của importer bị bug — chỉ đọc `<volume>` đầu tiên của mỗi file XML,
-  xem `DATA_AUDIT_HANDOFF.md` §2.4)
+- Thêm `data/local_papers.db` với các bài ACL. Importer đã được sửa và dữ liệu
+  ACL đã được import lại; các handoff/checkpoint cũ không còn là nguồn chính.
 - FTS5 search cho fast fuzzy lookups
 - Auto-sync papers từ API vào DB
 
@@ -56,7 +55,7 @@ Modified (15 files):
   - src/integrity_checker/api/main.py
   - configs/config.yaml
   - README.md
-  - CHECKPOINT_2026-09-23.md
+  - (checkpoint cũ đã được dọn khỏi repository)
 
 Deleted (2 files):
   - src/integrity_checker/retrieval/cache.py
