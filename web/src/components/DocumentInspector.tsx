@@ -106,11 +106,11 @@ export function DocumentInspector({
           <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900">
             <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100">
               Document Viewer
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate" title={report.filename}>
               {report.filename}
             </p>
           </div>

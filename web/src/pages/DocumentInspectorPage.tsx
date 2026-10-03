@@ -204,7 +204,7 @@ function CitationPopup({
         {/* Content */}
         <div className="p-6 space-y-4">
           {/* Citation raw text */}
-          <div>
+          <div className="min-w-0 flex-1">
             <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
               In-text Citation
             </label>
@@ -465,7 +465,7 @@ export function DocumentInspectorPage() {
             <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
               Document Inspector
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-slate-500 dark:text-slate-400 mt-1 truncate" title={report.filename}>
               {report.filename}
             </p>
           </div>

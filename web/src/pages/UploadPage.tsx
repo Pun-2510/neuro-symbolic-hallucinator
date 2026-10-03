@@ -118,8 +118,8 @@ export function UploadPage() {
             <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
               <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="text-left">
-              <p className="font-semibold text-slate-900 dark:text-white">{file.name}</p>
+            <div className="text-left min-w-0 flex-1">
+              <p className="font-semibold text-slate-900 dark:text-white truncate" title={file.name}>{file.name}</p>
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {(file.size / 1024 / 1024).toFixed(2)} MB
               </p>
@@ -130,7 +130,7 @@ export function UploadPage() {
                 setFile(null);
                 setError(null);
               }}
-              className="ml-auto p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              className="relative z-10 ml-auto shrink-0 p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
             >
               <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
             </button>

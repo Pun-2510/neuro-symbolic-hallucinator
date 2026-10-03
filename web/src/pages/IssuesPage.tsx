@@ -160,7 +160,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
       {expanded && (
         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-4">
           {/* Reasoning */}
-          <div>
+          <div className="min-w-0 flex-1">
             <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
               What this means
             </h4>
@@ -472,7 +472,7 @@ export function IssuesPage() {
             <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
               Issues
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-slate-500 dark:text-slate-400 mt-1 truncate" title={report.filename}>
               {report.filename}
             </p>
           </div>

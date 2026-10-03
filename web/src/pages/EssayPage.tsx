@@ -324,7 +324,7 @@ export function EssayPage() {
     <div className="space-y-6">
       {/* Breadcrumb & Header - Section 7 */}
       <div className="flex items-start justify-between flex-wrap gap-4">
-        <div>
+        <div className="min-w-0 flex-1">
           <Link
             to="/history"
             className="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-3 transition-colors"
@@ -332,7 +332,7 @@ export function EssayPage() {
             <ArrowLeft className="h-4 w-4" />
             Back to Reports
           </Link>
-          <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
+          <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100 truncate" title={report.filename}>
             {report.filename}
           </h1>
           <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400 mt-2 flex-wrap">

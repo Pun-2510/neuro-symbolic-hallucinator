@@ -274,7 +274,7 @@ export function OrphanDetectionPage() {
       <div className="card p-6 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800">
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="font-medium text-red-700 dark:text-red-300">Error: {error}</p>
             <Link
               to="/history"
@@ -317,7 +317,7 @@ export function OrphanDetectionPage() {
             <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
               Citation Consistency
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-slate-500 dark:text-slate-400 mt-1 truncate" title={report.filename}>
               {report.filename}
             </p>
           </div>
