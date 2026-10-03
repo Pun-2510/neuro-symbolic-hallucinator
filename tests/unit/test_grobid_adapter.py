@@ -164,12 +164,12 @@ class TestGrobidToReferences:
         assert citations[0].confidence < 0.95
 
     def test_grobid_ref_id_stored(self, sample_grobid_output):
-        """grobid_ref_id được lưu trong _grobid_ref_id attribute."""
+        """grobid_ref_id được lưu trong Citation.grobid_ref_id field."""
         citations = grobid_to_references(sample_grobid_output)
 
-        assert getattr(citations[0], "_grobid_ref_id") == "b0"
-        assert getattr(citations[1], "_grobid_ref_id") == "b1"
-        assert getattr(citations[2], "_grobid_ref_id") == "b2"
+        assert citations[0].grobid_ref_id == "b0"
+        assert citations[1].grobid_ref_id == "b1"
+        assert citations[2].grobid_ref_id == "b2"
 
     def test_authors_extracted(self, grobid_output_with_authors):
         """Authors được trích xuất đúng."""
@@ -263,12 +263,12 @@ class TestGrobidToInTextCitations:
         assert citations[2].page_num == 5
 
     def test_grobid_ref_id_stored(self, sample_grobid_output):
-        """ref_id được lưu trong _grobid_ref_id."""
+        """ref_id được lưu trong Citation.grobid_ref_id field."""
         citations = grobid_to_in_text_citations(sample_grobid_output)
 
-        assert getattr(citations[0], "_grobid_ref_id") == "b0"
-        assert getattr(citations[1], "_grobid_ref_id") == "b1"
-        assert getattr(citations[2], "_grobid_ref_id") == "b2"
+        assert citations[0].grobid_ref_id == "b0"
+        assert citations[1].grobid_ref_id == "b1"
+        assert citations[2].grobid_ref_id == "b2"
 
     def test_citation_type_numeric_for_brackets(self):
         """Citation type = NUMERIC cho [N] format."""

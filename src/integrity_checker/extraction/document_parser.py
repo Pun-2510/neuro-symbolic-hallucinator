@@ -562,11 +562,11 @@ class DocumentParser:
 
         citations = grobid_to_references(grobid)
 
-        # Set provenance fields on each citation
+        # Set provenance fields on each citation (canonical fields from Citation model)
         for c in citations:
             c.source = "grobid"
             c.source_confidence = c.confidence
-            c.grobid_ref_id = getattr(c, "_grobid_ref_id", None)
+            # grobid_ref_id is already set by grobid_adapter (canonical field)
             # Check if this ref is linked from in-text citations
             if grobid.is_available and grobid.citations:
                 linked_refs = {cit.ref_id for cit in grobid.citations if cit.ref_id}

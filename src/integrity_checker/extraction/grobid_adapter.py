@@ -185,11 +185,11 @@ def _grobid_bib_to_citation(bib: GrobidBibEntry, order_index: int) -> Citation:
         numeric_index=order_index,  # GROBID bib order = numeric reference index
         year_suffix=year_suffix,
         confidence=confidence,
-        # Provenance tracking via matched_pattern (Phase 1 backward compat)
-        matched_pattern=f"grobid:{bib.id}",
+        # Provenance fields (v1.10)
+        source="grobid",
+        source_confidence=confidence,
+        grobid_ref_id=bib.id,  # Canonical field for TEI link mapping
     )
-    # Store grobid_ref_id for TEI link mapping (Phase 2)
-    c._grobid_ref_id = bib.id  # type: ignore
 
     return c
 
@@ -284,11 +284,11 @@ def _grobid_cit_to_citation(cit: GrobidCitation, order_index: int) -> Citation:
         page_num=cit.page or 0,
         order_index=order_index,
         confidence=0.90,  # GROBID structured extraction is reliable
-        # Provenance tracking via matched_pattern (Phase 1 backward compat)
-        matched_pattern=f"grobid_intext:{cit.ref_id}" if cit.ref_id else "grobid_intext",
+        # Provenance fields (v1.10)
+        source="grobid",
+        source_confidence=0.90,
+        grobid_ref_id=cit.ref_id,  # Canonical field for TEI link mapping
     )
-    # Store grobid_ref_id for TEI link mapping (Phase 2)
-    c._grobid_ref_id = cit.ref_id  # type: ignore
 
     return c
 
@@ -313,7 +313,7 @@ def build_grobid_id_map(citations: list) -> dict[str, list]:
     id_map: dict[str, list] = {}
 
     for cit in citations:
-        ref_id = getattr(cit, "_grobid_ref_id", None)
+        ref_id = getattr(cit, "grobid_ref_id", None)
         if ref_id:
             id_map.setdefault(ref_id, []).append(cit)
 
@@ -424,7 +424,7 @@ def _merge_references(
 
     # Step 1: Add GROBID references first (higher priority)
     for cit in grobid_refs:
-        ref_id = getattr(cit, "_grobid_ref_id", None)
+        ref_id = getattr(cit, "grobid_ref_id", None)
 
         # Add provenance info
         provenance[cit.raw_text[:100]] = ProvenanceInfo(
@@ -487,7 +487,7 @@ def _merge_intext_citations(
 
     # Step 1: Add GROBID in-text first (higher priority)
     for cit in grobid_intext:
-        ref_id = getattr(cit, "_grobid_ref_id", None)
+        ref_id = getattr(cit, "grobid_ref_id", None)
 
         provenance[cit.raw_text[:100]] = ProvenanceInfo(
             source="grobid",
@@ -630,12 +630,12 @@ def resolve_tei_links(
     # Build reverse map: ref_id → REFERENCE citations only (not in-text)
     ref_by_id: dict[str, list] = {}
     for cit in ref_citations:
-        ref_id = getattr(cit, "_grobid_ref_id", None)
+        ref_id = getattr(cit, "grobid_ref_id", None)
         if ref_id:
             ref_by_id.setdefault(ref_id, []).append(cit)
 
     for cit in intext_citations:
-        ref_id = getattr(cit, "_grobid_ref_id", None)
+        ref_id = getattr(cit, "grobid_ref_id", None)
         if not ref_id:
             continue
 
