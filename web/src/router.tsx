@@ -13,6 +13,7 @@ import { IssuesPage } from './pages/IssuesPage';
 import { LogicTracePage } from './pages/LogicTracePage';
 import { DocumentInspectorPage } from './pages/DocumentInspectorPage';
 import { OrphanDetectionPage } from './pages/OrphanDetectionPage';
+import { BatchUploadPage } from './pages/BatchUploadPage';
 
 /* ============================================================
    SourceLogic — Router Configuration
@@ -67,6 +68,10 @@ export const router = createBrowserRouter([
       {
         path: '/upload',
         element: <UploadPage />,
+      },
+      {
+        path: '/batch-upload',
+        element: <BatchUploadPage />,
       },
       {
         path: '/verification/processing',

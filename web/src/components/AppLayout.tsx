@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FileSearch, Upload, History, Menu, X, BookOpen, LogOut, User } from 'lucide-react';
+import { FileSearch, Upload, History, Menu, X, BookOpen, LogOut, User, Layers } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: FileSearch },
   { path: '/upload', label: 'New Check', icon: Upload },
+  { path: '/batch-upload', label: 'Batch Check', icon: Layers },
   { path: '/history', label: 'History', icon: History },
 ];
 
