@@ -34,6 +34,16 @@ from integrity_checker.extraction.grobid_service import (
     get_grobid_manager,
     reset_grobid_manager,
 )
+from integrity_checker.extraction.grobid_adapter import (
+    ProvenanceInfo,
+    MergeResult,
+    grobid_to_references,
+    grobid_to_in_text_citations,
+    build_grobid_id_map,
+    merge_extraction_results,
+    resolve_tei_links,
+    normalize_grobid_id,
+)
 from integrity_checker.extraction.regex_patterns import CitationPattern, get_all_patterns
 from integrity_checker.extraction.section_segmenter import (
     DocumentSection,
@@ -72,4 +82,13 @@ __all__ = [
     "StyleDetector",
     "StyleFeatures",
     "StyleProfile",
+    # GROBID Adapter (v1.10)
+    "ProvenanceInfo",
+    "MergeResult",
+    "grobid_to_references",
+    "grobid_to_in_text_citations",
+    "build_grobid_id_map",
+    "merge_extraction_results",
+    "resolve_tei_links",
+    "normalize_grobid_id",
 ]

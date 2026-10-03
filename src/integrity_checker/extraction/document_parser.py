@@ -443,54 +443,23 @@ class DocumentParser:
 
     @staticmethod
     def _grobid_to_citations(grobid: GrobidOutput) -> list[Citation]:
-        """Convert GrobidOutput.bibliography → Citation[]."""
-        from integrity_checker.models.citation import (
-            Citation,
-            CitationStyle,
-            CitationType,
-        )
+        """Convert GrobidOutput.bibliography → Citation[] với provenance tracking.
 
-        citations: list[Citation] = []
-        for idx, bib in enumerate(grobid.bibliography, start=1):
-            authors_raw = [a.full_name for a in bib.authors if a.full_name]
-            year = bib.year
-            # Suffix nếu year có 4-char
-            year_suffix = None
-            if year and len(year) > 4:
-                year_suffix = year[4:]
-                year = year[:4]
+        Sử dụng grobid_adapter để chuẩn hóa structured extraction,
+        với provenance fields cho downstream tracking.
+        """
+        from integrity_checker.extraction.grobid_adapter import grobid_to_references
 
-            # Build human-readable raw_text from structured fields (not raw XML!)
-            raw_parts = []
-            if authors_raw:
-                raw_parts.append(", ".join(authors_raw))
-            raw_parts.append(f"({year or 'n.d.'})" if year else "")
-            if bib.title:
-                raw_parts.append(bib.title)
-            if bib.venue:
-                raw_parts.append(bib.venue)
-            if bib.doi:
-                raw_parts.append(f"DOI: {bib.doi}")
-            raw_text = " ".join(raw_parts) or f"{bib.title or ''} ({year or 'n.d.'})"
+        citations = grobid_to_references(grobid)
 
-            c = Citation(
-                raw_text=raw_text,
-                citation_type=CitationType.REFERENCE_LIST,
-                # GROBID mặc định trả APA-like format
-                style=CitationStyle.APA if not authors_raw else CitationStyle.APA,
-                authors=authors_raw,
-                year=year,
-                title=bib.title,
-                venue=bib.venue,
-                doi=bib.doi,
-                order_index=idx,
-                # GROBID bibliography entries are structured and may not
-                # retain the printed ``[N]`` marker.  Their document order is
-                # the numeric reference index used by IEEE/Vancouver in-text
-                # citations.
-                numeric_index=idx,
-                year_suffix=year_suffix,
-                confidence=0.9,  # GROBID quality thường cao
-            )
-            citations.append(c)
+        # Set provenance fields on each citation
+        for c in citations:
+            c.source = "grobid"
+            c.source_confidence = c.confidence
+            c.grobid_ref_id = getattr(c, "_grobid_ref_id", None)
+            # Check if this ref is linked from in-text citations
+            if grobid.is_available and grobid.citations:
+                linked_refs = {cit.ref_id for cit in grobid.citations if cit.ref_id}
+                c.is_grobid_linked = c.grobid_ref_id in linked_refs if c.grobid_ref_id else False
+
         return citations

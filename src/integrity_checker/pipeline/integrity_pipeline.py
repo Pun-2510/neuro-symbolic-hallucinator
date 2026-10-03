@@ -1288,6 +1288,12 @@ def _serialize_citation(citation: Citation) -> dict[str, Any]:
             getattr(citation, "citation_links", None)
             or getattr(citation, "citation_link", None)
         ),
+        # NEW v1.10: GROBID adapter provenance tracking
+        "source": getattr(citation, "source", "regex"),
+        "source_confidence": getattr(citation, "source_confidence", None),
+        "grobid_ref_id": getattr(citation, "grobid_ref_id", None),
+        "is_grobid_linked": getattr(citation, "is_grobid_linked", False),
+        "conflict_fields": getattr(citation, "conflict_fields", []),
     }
 
 
@@ -1333,6 +1339,12 @@ def _deserialize_citation(data: dict[str, Any]) -> Citation:
             data.get("citation_links") if data.get("citation_links") is not None
             else data.get("citation_link")
         ),
+        # NEW v1.10: GROBID adapter provenance
+        source=data.get("source", "regex"),
+        source_confidence=data.get("source_confidence"),
+        grobid_ref_id=data.get("grobid_ref_id"),
+        is_grobid_linked=data.get("is_grobid_linked", False),
+        conflict_fields=list(data.get("conflict_fields") or []),
     )
 
 

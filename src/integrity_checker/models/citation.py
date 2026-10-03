@@ -121,6 +121,18 @@ class Citation:
     # song (= ``citation_links[0]``) để không phá code/consumer cũ.
     citation_links: list = field(default_factory=list)   # list[CitationLink]
 
+    # NEW v1.10 (GROBID adapter) — Provenance tracking cho extraction source
+    # source: extraction source — 'grobid', 'regex', 'pymupdf', 'merged'
+    # source_confidence: 0.0-1.0 confidence của nguồn này
+    # grobid_ref_id: TEI xml:id nếu citation đến từ GROBID (vd 'b0', 'b1')
+    # is_grobid_linked: True nếu citation có TEI link đến bibliography entry
+    # conflict_fields: list các fields bị conflict khi merge GROBID + regex
+    source: str = "regex"
+    source_confidence: Optional[float] = None
+    grobid_ref_id: Optional[str] = None
+    is_grobid_linked: bool = False
+    conflict_fields: list = field(default_factory=list)
+
     def to_search_query(self) -> str:
         """Ghép chuỗi truy vấn để gọi API theo title + author + year.
 
