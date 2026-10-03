@@ -388,19 +388,40 @@ class DocumentParser:
         sections: list[DocumentSection],
         grobid: Optional[GrobidOutput],
     ) -> list[Citation]:
-        """Trích references — ưu tiên GROBID bibliography, fallback regex."""
-        # Ưu tiên 1: GROBID bibliography (đã chuẩn hoá từ TEI XML)
-        if grobid is not None and grobid.is_available and grobid.bibliography:
-            return self._grobid_to_citations(grobid)
+        """Trích references — GROBID + regex merge với deduplication.
 
-        # Ưu tiên 2: regex parser trên bibliography section
-        # Bug fix: parse_reference_section gọi find_reference_section để tìm ref header,
-        # nhưng Document đã chỉ chứa bibliography text rồi (không tìm thấy header).
-        # Fix: gọi trực tiếp _split_entries và _parse_entry thay vì parse_reference_section.
+        Phase 3 (GROBID adapter): Ưu tiên GROBID bibliography (structured),
+        bổ sung regex entries bị GROBID bỏ sót. Deduplicate theo DOI →
+        title+author+year → raw text similarity.
+
+        Returns:
+            list[Citation] với merged references và provenance tracking.
+        """
+        # Lấy references từ GROBID (primary)
+        grobid_refs: list[Citation] = []
+        if grobid is not None and grobid.is_available and grobid.bibliography:
+            grobid_refs = self._grobid_to_citations(grobid)
+
+        # Lấy references từ regex (secondary/supplemental)
+        regex_refs = self._extract_references_from_sections(sections)
+
+        # Merge: GROBID primary + regex supplemental
+        merged_refs = self._merge_reference_lists(grobid_refs, regex_refs)
+
+        return merged_refs
+
+    def _extract_references_from_sections(
+        self,
+        sections: list[DocumentSection],
+    ) -> list[Citation]:
+        """Trích references từ bibliography section bằng regex.
+
+        Used as secondary/supplemental extraction khi GROBID available
+        nhưng bỏ sót một số entries.
+        """
         for section in sections:
             if section.section_type == SectionType.BIBLIOGRAPHY and section.text:
                 try:
-                    # Light normalize — KHÔNG qua _fix_broken_lines
                     pp = self._citation_extractor.preprocessor
                     section_text = pp._normalize_unicode(pp._fix_ligatures(section.text))
 
@@ -413,13 +434,102 @@ class DocumentParser:
                             entry, order_index=idx, page_num=section.start_page
                         )
                         if citation:
+                            # Mark as regex source
+                            citation.source = "regex"
+                            citation.source_confidence = citation.confidence
                             citations.append(citation)
                     if citations:
-                        logger.info(f"Extracted {len(citations)} references from bibliography section")
+                        logger.info(f"Extracted {len(citations)} references from regex")
                         return citations
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("Reference parser failed: %s", exc)
         return []
+
+    def _merge_reference_lists(
+        self,
+        grobid_refs: list[Citation],
+        regex_refs: list[Citation],
+    ) -> list[Citation]:
+        """Merge GROBID và regex references với deduplication.
+
+        Strategy:
+            1. GROBID refs primary (structured, reliable)
+            2. Regex refs bổ sung entries không trùng
+            3. Mark merged entries với provenance
+
+        Args:
+            grobid_refs: References từ GROBID (primary)
+            regex_refs: References từ regex (secondary)
+
+        Returns:
+            list[Citation] merged với deduplication
+        """
+        from integrity_checker.extraction.grobid_adapter import _is_duplicate_reference
+
+        merged: list[Citation] = []
+
+        # Track GROBID ref IDs để avoid duplicate
+        grobid_doi_set = {c.doi.lower() for c in grobid_refs if c.doi}
+        grobid_keys: set = set()  # (title_norm, year, first_author_last_name)
+
+        for c in grobid_refs:
+            # Track key for deduplication
+            key = self._citation_key(c)
+            grobid_keys.add(key)
+            merged.append(c)
+
+        # Add regex entries không trùng với GROBID
+        for c in regex_refs:
+            key = self._citation_key(c)
+
+            # Check DOI match
+            if c.doi and c.doi.lower() in grobid_doi_set:
+                logger.debug(f"Skipping regex duplicate by DOI: {c.raw_text[:50]}")
+                continue
+
+            # Check key match
+            if key in grobid_keys:
+                logger.debug(f"Skipping regex duplicate by key: {c.raw_text[:50]}")
+                continue
+
+            # Check GROBID refs directly
+            if _is_duplicate_reference(c, grobid_refs):
+                logger.debug(f"Skipping regex duplicate: {c.raw_text[:50]}")
+                continue
+
+            # Mark as merged source
+            c.source = "merged"
+            c.source_confidence = c.confidence
+            merged.append(c)
+
+        # Re-index order_index
+        for idx, c in enumerate(merged, start=1):
+            c.order_index = idx
+
+        logger.info(
+            f"Merged references: {len(grobid_refs)} GROBID + "
+            f"{len(regex_refs)} regex → {len(merged)} unique"
+        )
+        return merged
+
+    @staticmethod
+    def _citation_key(c: Citation) -> tuple:
+        """Tạo deduplication key từ citation."""
+        title_norm = (c.title or "").lower().strip() if c.title else ""
+        year = c.year or ""
+
+        # Handle both string authors and Author objects
+        first_author = ""
+        if c.authors:
+            first = c.authors[0]
+            if isinstance(first, str):
+                first_author = first.split(",")[0].strip().lower()
+            elif hasattr(first, "last_name") and first.last_name:
+                first_author = first.last_name.lower()
+            elif hasattr(first, "full_name") and first.full_name:
+                first_author = first.full_name.split(",")[0].strip().lower()
+
+        return (title_norm, year, first_author)
 
     def _extract_appendix_citations(
         self, sections: list[DocumentSection]

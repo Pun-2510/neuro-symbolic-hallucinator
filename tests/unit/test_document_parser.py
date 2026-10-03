@@ -162,11 +162,19 @@ class TestGrobidOK:
         # Verify GROBID bibliography used
         assert parsed.has_grobid is True
         assert parsed.grobid is not None
-        assert len(parsed.references) == 1
+
+        # Phase 3 merge: GROBID refs primary + regex supplemental merged
+        # GROBID has 1 entry (b0), regex has 1 entry (Doe) → 2 total
+        assert len(parsed.references) == 2
+        # First ref is from GROBID (source='grobid')
+        assert parsed.references[0].source == "grobid"
         assert parsed.references[0].title == "A study of X"
         assert parsed.references[0].year == "2020"
         assert parsed.references[0].doi == "10.1234/abc.001"
         assert parsed.references[0].citation_type.value == "reference_list"
+        # Second ref is from regex merge (source='merged')
+        assert parsed.references[1].source == "merged"
+        assert parsed.references[1].raw_text == "Doe, A. (2021). Another. Journal B."
 
         # Body has citations
         # Note: parsed.body_citations may be 0 nếu regex không match — that's OK

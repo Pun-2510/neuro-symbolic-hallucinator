@@ -191,6 +191,8 @@ class MappingMethod(str, Enum):
     và chấm điểm confidence (mỗi method có confidence mặc định khác nhau).
     """
 
+    # NEW v1.10: GROBID adapter — authoritative TEI link
+    TEI_LINK = "tei_link"               # GROBID xml:id link (highest confidence)
     AUTHOR_YEAR = "author_year"           # APA-like (Smith, 2020)
     NUMERIC_INDEX = "numeric_index"       # IEEE-like [12]
     DOI_EXACT = "doi_exact"               # exact DOI match
@@ -203,6 +205,7 @@ class MappingMethod(str, Enum):
     def default_confidence(self) -> float:
         """Confidence mặc định cho mỗi method (0.0–1.0)."""
         return {
+            MappingMethod.TEI_LINK: 0.98,  # GROBID authoritative link
             MappingMethod.DOI_EXACT: 0.95,
             MappingMethod.ARXIV_EXACT: 0.95,
             MappingMethod.AUTHOR_YEAR: 0.90,

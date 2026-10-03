@@ -173,7 +173,11 @@ class CitationLinker:
         bib_by_author_year_suffix: dict[tuple[str, str, str], list[Citation]],
         bib_citations: list[Citation],
     ) -> Optional[list[CitationLink]]:
-        """Try matching in priority: DOI → NUMERIC → AUTHOR_YEAR → FUZZY.
+        """Try matching in priority: TEI_LINK → DOI → NUMERIC → AUTHOR_YEAR → FUZZY.
+
+        TEI_LINK (v1.10 GROBID adapter): Sử dụng grobid_ref_id từ TEI XML
+        để map trực tiếp in-text → reference. Đây là authoritative link
+        từ GROBID's structured extraction.
 
         Returns a LIST of links: ``None`` when nothing matched, otherwise one
         link per reference the occurrence cites (a single numeric occurrence
@@ -200,6 +204,18 @@ class CitationLinker:
                     method=method,
                 )
             )
+
+        # 0. TEI_LINK (GROBID adapter v1.10) — highest priority
+        # GROBID provides authoritative xml:id links between in-text and bib
+        # e.g. in-text cites "b0" and bib has id="b0" → direct match
+        if hasattr(cit, 'grobid_ref_id') and cit.grobid_ref_id:
+            # Build bib index by grobid_ref_id
+            for bib in bib_citations:
+                bib_grobid_id = getattr(bib, 'grobid_ref_id', None)
+                if bib_grobid_id and bib_grobid_id == cit.grobid_ref_id:
+                    return _bib_link(
+                        bib, 0.98, MappingMethod.TEI_LINK  # type: ignore
+                    )
 
         # 1. DOI exact
         doi = self._extract_doi(cit.raw_text)

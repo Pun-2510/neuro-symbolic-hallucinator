@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader>
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main"></title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability status="unknown"><licence/></availability>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct>
+					<analytic>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date/>
+						</imprint>
+					</monogr>
+					<idno type="MD5">E0C6FF75E63EE9378EF377F8E1FEDF3E</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.8.0" ident="GROBID" when="2026-10-03T04:44+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract/>
+		</profileDesc>
+	</teiHeader>
+	<facsimile>
+		<surface n="1" ulx="0.0" uly="0.0" lrx="595.275" lry="841.889"/>
+		<surface n="2" ulx="0.0" uly="0.0" lrx="595.275" lry="841.889"/>
+	</facsimile>
+	<text>
+		<body/>
+		<back>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct xml:id="b0">
+	<analytic>
+		<title level="a" type="main">A novel framework for hallucination detection in large language models</title>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">Q</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">K</forename><surname>Doe</surname></persName>
+		</author>
+		<idno type="DOI">10.9999/jiar.2024.9999</idno>
+		<ptr target="https://doi.org/10.9999/jiar.2024.9999" />
+	</analytic>
+	<monogr>
+		<title level="j">Journal of Imaginary AI Research</title>
+		<imprint>
+			<biblScope unit="volume">99</biblScope>
+			<biblScope unit="issue">12</biblScope>
+			<biblScope unit="page" from="1" to="25" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Smith, J. Q., &amp; Doe, R. K. (2024). A novel framework for hallucination detection in large language models. Journal of Imaginary AI Research, 99(12), 1-25. https://doi.org/10.9999/jiar.2024.9999</note>
+</biblStruct>
+
+<biblStruct xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Citation integrity in student essays using neuro-symbolic methods</title>
+		<author>
+			<persName><forename type="first">V</forename><forename type="middle">A</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">B</forename><surname>Tran</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">H</forename><surname>Le</surname></persName>
+		</author>
+		<idno type="DOI">10.5555/hcea.2023.5.100</idno>
+		<ptr target="https://doi.org/10.5555/hcea.2023.5.100" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the Hypothetical Conference on Education AI</title>
+		<meeting>the Hypothetical Conference on Education AI</meeting>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="volume">5</biblScope>
+			<biblScope unit="page" from="100" to="110" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Nguyen, V. A., Tran, T. B., &amp; Le, M. H. (2023). Citation integrity in student essays using neuro-symbolic methods. Proceedings of the Hypothetical Conference on Education AI, 5, 100-110. https://doi.org/10.5555/hcea.2023.5.100</note>
+</biblStruct>
+
+<biblStruct xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Reference hallucination: Causes and mitigation strategies</title>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">R</forename><surname>Anderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><forename type="middle">M</forename><surname>Brown</surname></persName>
+		</author>
+		<idno type="DOI">10.0000/njai.2025.001</idno>
+		<ptr target="https://doi.org/10.0000/njai.2025.001" />
+	</analytic>
+	<monogr>
+		<title level="j">Nonexistent Journal of Academic Integrity</title>
+		<imprint>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page" from="1" to="15" />
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Anderson, P. R., &amp; Brown, L. M. (2025). Reference hallucination: Causes and mitigation strategies. Nonexistent Journal of Academic Integrity, 1(1), 1-15. https://doi.org/10.0000/njai.2025.001</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

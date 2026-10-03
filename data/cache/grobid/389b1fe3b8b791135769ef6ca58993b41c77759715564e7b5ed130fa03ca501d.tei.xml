@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Essay 05 -Edge Case (DOI only)</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability status="unknown"><licence/></availability>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct>
+					<analytic>
+						<title level="a" type="main">Essay 05 -Edge Case (DOI only)</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date/>
+						</imprint>
+					</monogr>
+					<idno type="MD5">1E5554C95B7EB06A1CC6465DCBE1D8DA</idno>
+					<idno type="DOI">10.1038/nature14539</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.8.0" ident="GROBID" when="2026-10-03T04:44+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Various studies have explored hallucination detection. See 10.48550/arXiv.1706.03762 for foundational work. Recent literature on the topic has expanded rapidly (</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<facsimile>
+		<surface n="1" ulx="0.0" uly="0.0" lrx="595.275" lry="841.889"/>
+		<surface n="2" ulx="0.0" uly="0.0" lrx="595.275" lry="841.889"/>
+	</facsimile>
+	<text xml:lang="en">
+		<body/>
+		<back>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct xml:id="b0">
+	<monogr>
+		<title level="m" type="main">Attention is all you need</title>
+		<author>
+			<persName><surname>Various</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.1706.03762</idno>
+		<ptr target="https://doi.org/10.48550/arXiv.1706.03762" />
+		<imprint>
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Various (2017). Attention is all you need. arXiv. https://doi.org/10.48550/arXiv.1706.03762</note>
+</biblStruct>
+
+<biblStruct xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Deep learning</title>
+		<author>
+			<persName><surname>Various</surname></persName>
+		</author>
+		<idno type="DOI">10.1038/nature14539</idno>
+		<ptr target="https://doi.org/10.1038/nature14539" />
+	</analytic>
+	<monogr>
+		<title level="j">Nature</title>
+		<imprint>
+			<date type="published" when="2015">2015</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Various (2015). Deep learning. Nature. https://doi.org/10.1038/nature14539</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

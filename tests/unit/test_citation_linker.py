@@ -7,6 +7,7 @@ import pytest
 from integrity_checker.linking import CitationLinker
 from integrity_checker.linking.statuses import CitationMappingStatus
 from integrity_checker.models.citation import Citation, CitationType
+from integrity_checker.models.validation import MappingMethod
 
 
 def cit(
@@ -18,8 +19,9 @@ def cit(
     num_idx=None,
     doi=None,
     ref_id=None,
+    grobid_ref_id=None,
 ):
-    return Citation(
+    c = Citation(
         raw_text=raw,
         citation_type=ctype,
         authors=authors or [],
@@ -29,6 +31,10 @@ def cit(
         doi=doi,
         reference_id=ref_id,
     )
+    # Set grobid_ref_id for TEI link tests (v1.10 GROBID adapter)
+    if grobid_ref_id is not None:
+        c.grobid_ref_id = grobid_ref_id
+    return c
 
 
 class TestMatchedAuthorYear:
@@ -373,3 +379,132 @@ class TestLinkingResultFields:
         assert isinstance(d["status_counts"], dict)
         for k in d["status_counts"]:
             assert isinstance(k, str)
+
+
+# ---------- NEW v1.10: TEI Link Tests (GROBID Adapter) ----------
+
+class TestTeiLink:
+    """GROBID adapter TEI link integration tests."""
+
+    def test_tei_link_direct_match(self):
+        """TEI link b0 → b0 matches with high confidence."""
+        bibs = [
+            cit(
+                "Smith (2020). Deep Learning. Nature.",
+                CitationType.REFERENCE_LIST,
+                authors=["Smith"],
+                year="2020",
+                ref_id="ref-0",
+                grobid_ref_id="b0",
+            ),
+        ]
+        body = [
+            cit("(Smith, 2020)", grobid_ref_id="b0"),
+        ]
+        result = CitationLinker().link(body, bibs)
+
+        assert result.links[0].status == CitationMappingStatus.MATCHED
+        assert result.links[0].method == MappingMethod.TEI_LINK
+        assert result.links[0].confidence == 0.98
+
+    def test_tei_link_ref_id(self):
+        """Bib has grobid_ref_id set correctly."""
+        bibs = [
+            cit(
+                "Smith (2020). Deep Learning.",
+                CitationType.REFERENCE_LIST,
+                authors=["Smith"],
+                year="2020",
+                ref_id="ref-0",
+                grobid_ref_id="b0",
+            ),
+        ]
+        body = [
+            cit("(Smith, 2020)", grobid_ref_id="b0"),
+        ]
+        result = CitationLinker().link(body, bibs)
+
+        assert result.links[0].reference_id == "ref-0"
+
+    def test_tei_link_no_match_different_id(self):
+        """Different grobid_ref_id → falls back to author_year."""
+        bibs = [
+            cit(
+                "Smith (2020). Deep Learning.",
+                CitationType.REFERENCE_LIST,
+                authors=["Smith"],
+                year="2020",
+                ref_id="ref-0",
+                grobid_ref_id="b0",
+            ),
+        ]
+        body = [
+            cit("(Smith, 2020)", grobid_ref_id="b99"),  # Different ref_id
+        ]
+        result = CitationLinker().link(body, bibs)
+
+        # TEI link fails → falls back to author_year
+        assert result.links[0].status == CitationMappingStatus.MATCHED
+        assert result.links[0].method == MappingMethod.AUTHOR_YEAR
+
+    def test_tei_link_missing_bib_ref_id(self):
+        """Bib without grobid_ref_id → falls back to author_year."""
+        bibs = [
+            cit(
+                "Smith (2020). Deep Learning.",
+                CitationType.REFERENCE_LIST,
+                authors=["Smith"],
+                year="2020",
+                ref_id="ref-0",
+                grobid_ref_id=None,  # No GROBID ref ID
+            ),
+        ]
+        body = [
+            cit("(Smith, 2020)", grobid_ref_id="b0"),
+        ]
+        result = CitationLinker().link(body, bibs)
+
+        # No TEI match → falls back to author_year
+        assert result.links[0].status == CitationMappingStatus.MATCHED
+        assert result.links[0].method == MappingMethod.AUTHOR_YEAR
+
+    def test_tei_link_highest_priority(self):
+        """TEI_LINK has higher priority than DOI."""
+        bibs = [
+            cit(
+                "Smith (2020). Deep Learning. DOI: 10.1234/test",
+                CitationType.REFERENCE_LIST,
+                authors=["Smith"],
+                year="2020",
+                ref_id="ref-0",
+                doi="10.1234/test",
+                grobid_ref_id="b0",
+            ),
+        ]
+        body = [
+            cit("(Smith, 2020) DOI: 10.1234/test", grobid_ref_id="b0"),
+        ]
+        result = CitationLinker().link(body, bibs)
+
+        # TEI_LINK should win (higher priority than DOI)
+        assert result.links[0].status == CitationMappingStatus.MATCHED
+        assert result.links[0].method == MappingMethod.TEI_LINK
+
+    def test_multiple_tei_links(self):
+        """Multiple citations with TEI links all match."""
+        bibs = [
+            cit("Smith (2020). Paper A.", CitationType.REFERENCE_LIST,
+                authors=["Smith"], year="2020", ref_id="ref-0", grobid_ref_id="b0"),
+            cit("Doe (2021). Paper B.", CitationType.REFERENCE_LIST,
+                authors=["Doe"], year="2021", ref_id="ref-1", grobid_ref_id="b1"),
+        ]
+        body = [
+            cit("(Smith, 2020)", grobid_ref_id="b0"),
+            cit("(Doe, 2021)", grobid_ref_id="b1"),
+        ]
+        result = CitationLinker().link(body, bibs)
+
+        assert len(result.links) == 2
+        assert all(l.status == CitationMappingStatus.MATCHED for l in result.links)
+        assert all(l.method == MappingMethod.TEI_LINK for l in result.links)
+
