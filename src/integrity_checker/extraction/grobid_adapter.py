@@ -560,8 +560,22 @@ def _title_author_year_match(a: Citation, b: Citation) -> bool:
         return False
 
     # Author must have significant overlap
-    a_authors = set(a.authors) if a.authors else set()
-    b_authors = set(b.authors) if b.authors else set()
+    def _get_author_names(cit) -> set:
+        """Extract author names as strings from citation."""
+        if not cit.authors:
+            return set()
+        first = cit.authors[0]
+        # If it's a string, use it directly
+        if isinstance(first, str):
+            return {auth.split(",")[0].strip().lower() for auth in cit.authors}
+        # If it's an Author object, use last_name
+        if hasattr(first, "last_name") and first.last_name:
+            return {auth.last_name.lower() for auth in cit.authors if hasattr(auth, "last_name") and auth.last_name}
+        return set()
+
+    a_authors = _get_author_names(a)
+    b_authors = _get_author_names(b)
+
     if a_authors and b_authors:
         overlap = len(a_authors & b_authors)
         if overlap == 0:

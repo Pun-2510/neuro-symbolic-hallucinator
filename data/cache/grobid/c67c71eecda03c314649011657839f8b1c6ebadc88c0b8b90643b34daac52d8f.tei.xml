@@ -1,0 +1,1176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main"></title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability status="unknown"><licence/></availability>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct>
+					<analytic>
+						<author>
+							<persName><forename type="first">Nguyen</forename><surname>Duc</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Anh</forename><forename type="middle">Minh</forename><surname>Nguyen</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Bao</forename><surname>Minh</surname></persName>
+						</author>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date/>
+						</imprint>
+					</monogr>
+					<idno type="MD5">053F53FF60A2D233012BF964B8E8B98D</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.8.0" ident="GROBID" when="2026-10-03T05:06+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>We would like to express our sincere gratitude to Ton Duc Thang University for providing us with the opportunity to pursue higher education. This report would not have been possible without the support and resources provided by the university.</p><p>We are especially thankful to the Faculty of Information Technology for fostering an intellectually stimulating environment and providing well-equipped facilities that were crucial for our work. Our heartfelt appreciation goes to Dr. Tran Thanh Phuoc for his guidance, encouragement, and valuable insights throughout our studies. We are honored to have him as our teacher and supervisor. Finally, we acknowledge the administrative staff for their support and our classmates and friends for their camaraderie. The assistance and encouragement we received have been invaluable in the completion of this report.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<facsimile>
+		<surface n="1" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="2" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="3" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="4" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="5" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="6" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="7" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="8" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="9" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="10" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="11" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="12" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="13" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="14" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="15" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="16" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="17" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="18" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="19" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="20" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="21" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="22" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="23" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="24" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="25" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="26" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="27" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="28" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="29" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="30" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="31" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="32" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="33" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="34" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="35" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="36" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="37" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="38" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="39" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="40" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="41" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="42" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="43" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="44" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="45" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="46" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="47" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="48" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="49" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="50" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="51" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="52" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="53" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="54" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="55" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="56" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="57" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="58" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="59" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="60" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="61" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="62" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="63" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="64" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="65" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="66" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="67" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="68" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="69" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="70" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="71" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="72" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="73" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="74" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="75" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="76" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="77" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="78" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="79" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="80" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="81" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="82" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="83" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="84" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="85" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="86" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="87" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="88" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="89" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="90" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="91" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="92" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="93" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="94" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="95" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="96" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="97" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+		<surface n="98" ulx="0.0" uly="0.0" lrx="595.28" lry="841.89"/>
+	</facsimile>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>PHÁT HIỆN DẤU HIỆU TRẦM CẢM TRONG VĂN BẢN TIẾNG VIỆT TRÊN MẠNG XÃ HỘI SỬ DỤNG CÁC MÔ HÌNH HỌC SÂU TÓM TẮT</head><p>Trầm cảm là rối loạn tâm thần phổ biến, ảnh hưởng khoảng 280 triệu người trên thế giới (WHO). Phát hiện sớm dấu hiệu trầm cảm giúp can thiệp kịp thời. YouTube là nơi người dùng Việt Nam thường bày tỏ cảm xúc qua bình luận, nhưng nghiên cứu phát hiện trầm cảm từ dữ liệu tiếng Việt vẫn còn hạn chế.</p><p>Trong Chuyên đề nghiên cứu này, chúng tôi giới thiệu một nghiên cứu về phát hiện dấu hiệu trầm cảm từ bình luận YouTube tiếng Việt sử dụng các phương pháp học sâu (Deep Learning). Đóng góp chính của nghiên cứu bao gồm việc xây dựng bộ dữ liệu VietDepression với 125.329 bình luận YouTube được thu thập từ các kênh Việt Nam, trong đó bộ dữ liệu vàng (gold standard) gồm 9.134 mẫu đã được gán nhãn thủ công thông qua quy trình blind annotation để đảm bảo tính độc lập của đánh giá con người.</p><p>Để giảm thiếu nhãn, hệ thống weak labeling dùng 335 từ khóa liên quan đến trầm cảm, đạt recall 98% và precision 61%. Năm mô hình được so sánh: TF-IDF-LinearSVC, BiLSTM, PhoBERT, BERTopic và PhoBERT-BERTopic.</p><p>PhoBERT đạt kết quả tốt nhất, với F1-macro 0.7187 trên tập in-domain và 0.3608 trên UIT-VSMEC (cross-domain), tương ứng generalization gap 0.3579. Kết quả cho thấy tiềm năng của mô hình ngôn ngữ tiền huấn luyện trong phát hiện trầm cảm tiếng Việt và nghiên cứu chăm sóc sức khỏe tinh thần trên mạng xã hội.      to mental health challenges while also constituting the largest group of social media users in the country <ref type="bibr" target="#b23">[24]</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>TABLE OF CONTENT</head><note type="other">LIST</note></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2.1">Keyword</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>LIST OF TABLES</head><p>While clinical screening tools such as PHQ-9 (Patient Health Questionnaire-9)</p><p>and DSM-5 (Diagnostic and Statistical Manual of Mental Disorders, Fifth Edition) provide standardized methods for depression assessment <ref type="bibr" target="#b0">[1]</ref>, the majority of individuals who need professional help do not receive it. This treatment gap is attributed to multiple factors: social stigma surrounding mental health issues that discourages individuals from seeking help, limited public awareness about depression symptoms and their clinical significance, and a severe shortage of mental health professionals.</p><p>In Vietnam, there are approximately only 200 psychiatrists serving a population of 100 million, yielding a psychiatrist-to-population ratio far below World Health Organization recommendations <ref type="bibr" target="#b23">[24]</ref>.</p><p>Social media platforms, especially YouTube, have emerged as a rich source of naturally occurring Vietnamese text where users openly discuss their emotional states, personal struggles, and mental health concerns without the barriers of stigma or access. These public expressions provide an opportunity to study early signs of depression through language analysis without requiring individuals to actively seek clinical help <ref type="bibr" target="#b3">[4]</ref>. This approach, known as computational psychiatry or social media-based mental health detection, has gained significant research attention over the past decade <ref type="bibr" target="#b8">[9,</ref><ref type="bibr" target="#b9">10]</ref>.</p><p>The Five Depression Signs We Target: In this research, we focus on detecting five core signs of depression as defined by clinical diagnostic criteria:  • Linguistic challenges: Vietnamese is a tonal language with six distinct tones marked by diacritic signs. The language exhibits complex word-compounding structures where most words consist of single syllables combined into compounds. Social media text presents additional challenges: informal language with missing diacritics ("buon" instead of "buồn"), teen slang ("vkl," "vl," and abbreviations "ko," "dc," "j"), mixed code-switching with English, and expressive lengthening ("buồnnnnnn"). These informal patterns differ significantly from the formal Vietnamese text used to pre-train existing language models.</p><p>• Label quality: Creating high-quality labeled datasets for depression detection requires careful annotation protocols that distinguish between clinical depression indicators and normal emotional expressions. This makes data collection both time-consuming and expensive, necessitating semi-supervised approaches such as weak labeling and active learning.</p><p>• Generalization concerns: Models trained on YouTube comments from one demographic may struggle to generalize to other platforms (Facebook, TikTok) or domains (student essays, formal writing), creating a significant generalization gap that limits real-world applicability. This is particularly relevant given the different linguistic registers between social media and clinical text.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.2">Research Gap</head><p>Despite significant advances in depression detection research in English, several critical gaps remain in the literature, particularly for Vietnamese NLP:</p><p>1. Lack of Vietnamese depression-specific datasets: No publicly available Vietnamese dataset exists specifically for depression detection in social media text.</p><p>Existing Vietnamese datasets such as UIT-VSMEC (emotion recognition), NTC-SCV (sentiment analysis), and UIT-VSFC (student feedback) <ref type="bibr" target="#b16">[17]</ref> focus on general sentiment or emotion, not the five specific depression indicators we target:</p><p>prolonged sadness, loss of motivation, hopelessness, social isolation, and negative thoughts. These gaps motivate our research to establish the first Vietnamese depression detection benchmark with comprehensive evaluation protocols.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.3">Our Approach</head><p>To address the identified research gaps, we propose a comprehensive framework for detecting depression signs in Vietnamese YouTube comments using deep learning models. Our approach encompasses four key components:</p><p>• Large-Scale Dataset Construction: We construct the first Vietnamese depression detection dataset by collecting 125,329 Vietnamese YouTube comments (exceeding the 100,000 minimum requirement) using 264 depression-related keywords organized in five thematic groups aligned with our target depression signs. We apply a three-level weighted keyword scoring system for weak labeling and conduct six rounds of active learning with blind annotation protocols to build a high-quality gold standard.</p><p>• Semi-Supervised Learning Pipeline: We develop a comprehensive weak-labeling and active learning pipeline that maximizes the value of limited human annotation resources. Our three-level weighted keyword system (335 entries) achieves 98% recall in identifying depression-related content, enabling us to scale from a small gold set to a larger training corpus.</p><p>•  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.4">Contributions</head><p>In this research, we make the following main contributions:</p><p>1. We construct the first Vietnamese depression detection dataset with both weak labels and human-annotated labels. The VietDepression dataset contains 125,329 YouTube comments with a 9,134-sample gold subset, providing a valuable benchmark for future Vietnamese mental health NLP research.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">We propose a comprehensive weak-labeling and active learning pipeline for</head><p>Vietnamese depression detection, incorporating a three-level weighted keyword system and six rounds of blind human annotation. This pipeline achieves 98% recall and 61% precision in detecting depression-related content.</p><p>3. We conduct extensive experiments with five deep learning models on both indomain and cross-domain test sets, providing the first published benchmark results for Vietnamese depression detection. Our best model, PhoBERT, achieves F1-macro of 0.7187 on in-domain and 0.3608 on cross-domain evaluation.</p><p>4. We provide a detailed analysis of the generalization gap (∆F1 ≈ 0.3579) between in-domain and cross-domain settings, identifying key factors that affect model transferability and suggesting directions for future improvement.</p><p>5. We release a reusable Vietnamese weak-labeling word list (335 entries across three levels) that can be adapted for other Vietnamese mental health text classification tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.5">Scope and Limitations</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.5.1">Scope</head><p>• Platform: We collect data only from YouTube. Other platforms (Facebook, TikTok, Zalo) are not included due to API limitations.</p><p>• Language: The system processes only Vietnamese text. Mixed Vietnamese-English text is handled without special preprocessing.</p><p>• Classification: We treat this as a binary classification problem (depression vs. normal). We do not assess severity levels or provide clinical diagnoses.</p><p>• Ethics: We do not collect usernames or personal information. All comments were publicly available, and our depression labels are research signals onlynot clinical diagnoses.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.5.2">Limitations</head><p>• Our results may not generalize to other social media platforms or communities beyond YouTube.</p><p>• The class imbalance problem (approximately 20% depression vs. 80% normal) affects model training.</p><p>• We do not evaluate large commercial language models (e.g., GPT-4) due to resource constraints.</p><p>• Social media language evolves quickly; our results may degrade on newer data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.6">Structure of This Report</head><p>The remainder of this report is organized as follows:</p><p>• Chapter 2 provides Background and Related Work, covering clinical depression concepts, NLP approaches, and Vietnamese NLP resources.</p><p>• Chapter 3 describes our Data Acquisition and Annotation Pipeline, including YouTube crawling, weak labeling, and human annotation processes.</p><p>• Chapter 4 presents our Experimental Setup, including baseline models, training configurations, and evaluation protocols.</p><p>• Chapter 5 reports Results and Discussion, including model comparisons, ablation studies, error analysis, and the generalization gap analysis.</p><p>• Chapter 6 concludes with a summary of contributions, limitations, and future work directions.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>CHAPTER 2: BACKGROUND AND RELATED WORK</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1">Depression: Clinical Conceptualization and Screening Instruments</head><p>Depression (Major Depressive Disorder) is one of the most prevalent mental health disorders globally, affecting approximately 280 million people according to the World Health Organization (WHO, 2023). In Vietnam, the burden of depression has been steadily increasing, particularly among adolescents and young adults, representing a significant public health concern.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1.1">DSM-5 Diagnostic Criteria</head><p>The The Patient Health Questionnaire-9 (PHQ-9), developed by Kroenke et al. <ref type="bibr" target="#b11">[12]</ref>,</p><p>is the most widely used self-report screening tool for depression in both clinical practice and research settings. The PHQ-9 operationalizes each of the nine DSM-5 symptoms into a single question, scored on a 0-3 Likert scale (0 = not at all, 3 = nearly every day), yielding a total score ranging from 0 to 27.</p><p>A cut-off score of 10 or higher has been shown to correctly identify MDD with approximately 88% sensitivity and 88% specificity. Despite its widespread use, the PHQ-9, like all self-report instruments, relies on individuals' self-awareness of their symptoms and willingness to disclose them.</p><p>This limitation has motivated researchers to explore passive detection methods, such as analyzing language patterns in social media.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1.3">Computational Psychiatry and Social Media Analysis</head><p>Computational psychiatry is an emerging field that applies computational methods, including natural language processing and machine learning, to understand and predict mental health outcomes. A particularly promising direction is the analysis of social media text, where users naturally express their thoughts, feelings, and mental states in publicly accessible content.</p><p>Research by De Choudhury et al. <ref type="bibr" target="#b3">[4]</ref> demonstrated that individuals with depression exhibit distinct linguistic patterns on social media, including increased use of first-person pronouns, higher frequency of negative emotion words, elevated mentions of biological processes (sleep, appetite), and decreased social engagement signals.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2">NLP Approaches to Depression Detection from Social Media Text</head><p>Research on detecting depression from text has evolved through three distinct stages, each representing advances in natural language processing capabilities <ref type="bibr" target="#b8">[9,</ref><ref type="bibr" target="#b24">25]</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2.1">Keyword-Based Methods</head><p>Early studies relied on lexicon-based approaches using validated psychological word lists:</p><p>• LIWC (Linguistic Inquiry and Word Count): A text analysis program developed by Pennebaker et al. <ref type="bibr" target="#b18">[19]</ref> that calculates the percentage of words belonging to various psychological categories.</p><p>• ANEW (Affective Norms for English Words): Provides valence, arousal, and dominance ratings for approximately 2,000 words, enabling emotion analysis.</p><p>However, keyword-based methods suffer from several limitations: lack of contextual understanding, language-specific word lists, and limited semantic coverage.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2.2">Traditional Machine Learning Methods</head><p>The advancement of shared tasks such as CLPsych (Computational Linguistics and Clinical Psychology) and eRisk (from CLEF) has significantly advanced featurebased approaches.</p><p>Common traditional machine learning pipelines combine:</p><p>• TF-IDF features: Bag-of-words representations capturing term frequency Coppersmith et al. <ref type="bibr" target="#b2">[3]</ref> achieved strong results on Twitter depression classification using a combination of word, grammar, and topic features. However, these methods are fundamentally limited by the inability of bag-of-words representations to capture deep semantic meaning.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2.3">Deep Learning Methods</head><p>The advent of deep learning and particularly Transformer models <ref type="bibr" target="#b21">[22]</ref> has revolutionized natural language processing.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Recurrent Neural Networks:</head><p>Bidirectional Long Short-Term Memory (BiLSTM) networks capture sequential dependencies in text by processing sequences in both forward and backward directions.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Transformer-Based Models:</head><p>BERT (Bidirectional Encoder Representations from Transformers) <ref type="bibr" target="#b4">[5]</ref> introduced pre-trained bidirectional language models. BERT variants for depression detection include:</p><p>• RoBERTa: A robustly optimized version of BERT</p><p>• MentalBERT: Domain-specific BERT pre-trained on mental health corpora</p><p>• PsychBERT: A specialized BERT variant incorporating psychological knowledge These models leverage self-attention mechanisms to capture complex semantic relationships and contextual dependencies.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.3">Vietnamese NLP: Language Models and Available Corpora</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.3.1">Characteristics of Vietnamese Language</head><p>Vietnamese has several distinctive linguistic characteristics that present unique challenges for NLP:</p><p>• Tonal language: Vietnamese uses six tones marked by diacritic signs Recent advances in Vietnamese pre-trained language models include:</p><p>• PhoBERT <ref type="bibr" target="#b15">[16]</ref>: The state-of-the-art Vietnamese BERT model  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.3.3">Available Vietnamese Datasets</head><p>These datasets focus on general sentiment or emotion recognition, not specifically on depression detection.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.4">Data Augmentation and Active Learning</head><p>Data augmentation and active learning are complementary techniques that address two fundamental challenges in depression detection from social media text: <ref type="bibr" target="#b0">(1)</ref> the scarcity of labeled training data, and (2) the high cost of expert annotation. This section provides detailed background on both techniques as applied to natural language processing tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.4.1">Data Augmentation in NLP</head><p>Data augmentation refers to the process of generating additional training samples from existing data through controlled transformations. In NLP, augmentation is particularly important for handling class imbalance, improving model robustness, and enhancing generalization to unseen domains.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Back-Translation Augmentation:</head><p>Back-translation involves translating text from the source language to an inter-mediate language and then back to the source language, generating a paraphrased version of the original text. For Vietnamese text augmentation, we translate Vietnamese → English → Vietnamese using neural machine translation models. The key advantage of back-translation is that it preserves the semantic meaning of the original text while generating syntactically different expressions. For depression detection, this means that a comment expressing sadness through different linguistic patterns can be generated, enriching the training data without changing the label.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Synonym Replacement:</head><p>Synonym replacement substitutes words with their semantically similar alternatives from a predefined thesaurus or lexical resource. For Vietnamese, this requires access to Vietnamese synonym dictionaries that account for the language's tonal distinctions. The Easy Data Augmentation (EDA) technique proposed by Wei and Zou (2019) includes synonym replacement as one of its four core operations.</p><p>However, synonym replacement for depression detection must be applied carefully to preserve the emotional signal. Simply replacing any word with a synonym may inadvertently reduce the depression-related signal. Therefore, we focus on replacing non-critical words (adverbs, adjectives) while preserving depression-indicative keywords.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Contextual Augmentation:</head><p>Contextual augmentation uses pre-trained masked language models (MLM) such as BERT or PhoBERT to predict plausible replacements for randomly masked tokens. Unlike synonym replacement, contextual augmentation generates replacements that are grammatically correct and contextually appropriate.</p><p>For Vietnamese text, PhoBERT's masked language modeling capability enables contextual augmentation that respects Vietnamese grammar and word compound-ing rules. This approach was shown to improve text classification performance in low-resource settings by Kobayashi (2018).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>LLM-Based Paraphrase Generation:</head><p>Large language models (LLMs) such as GPT-3 and GPT-4 can generate highquality paraphrases of input text. For depression detection augmentation, we can prompt LLMs to generate alternative expressions of the same emotional content while maintaining the depression signal. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.4.2">Weak Labeling</head><p>Weak labeling is a semi-supervised learning technique where automatic labeling rules are applied to generate labels for unlabeled data. Unlike supervised learning where each sample requires expert annotation, weak labeling leverages domain knowledge to create approximate labels at scale.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Keyword-Based Weak Labeling:</head><p>The simplest form of weak labeling uses keyword matching to assign labels.</p><p>For depression detection, this involves creating a list of depression-related keywords (e.g., trầm cảm, muốn chết, cô đơn) and assigning positive labels to texts containing these keywords.</p><p>However, naive keyword matching suffers from two main problems: (1) false positives where keywords appear in non-depression contexts ("đừng buồn" means "don't be sad" in an encouraging context), and (2) false negatives where depression is expressed implicitly without explicit keywords.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Weighted Scoring Systems:</head><p>To address the limitations of simple keyword matching, weighted scoring sys-  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.4.3">Active Learning</head><p>Active learning is a machine learning paradigm where the algorithm iteratively selects the most informative samples for human annotation, thereby minimizing the annotation effort required to achieve desired model performance.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>The Active Learning Cycle:</head><p>The active learning process follows a cyclical pattern:</p><p>1. Initial Training: Train an initial model on a small seed set of labeled data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">Uncertainty Sampling:</head><p>Apply the trained model to the unlabeled pool and compute prediction confidence scores for each sample. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Query Strategies:</head><p>Various strategies exist for selecting informative samples:</p><p>• Uncertainty Sampling: Select samples where the model's prediction confidence is lowest (e.g., probability closest to 0.5 for binary classification).</p><p>• Least Confidence: Select samples with the lowest maximum prediction probability.</p><p>• Margin Sampling: Select samples where the difference between the top two class probabilities is smallest.</p><p>• Entropy-based Sampling: Select samples with the highest prediction entropy, indicating maximum uncertainty across all classes.</p><p>• Badge Sampling: Select diverse samples using batch-based approaches that maximize coverage of the feature space.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Active Learning for Depression Detection:</head><p>For depression detection, active learning is particularly valuable because:</p><p>• Expert annotation of depression-related content requires clinical knowledge and careful judgment, making it expensive.</p><p>• Most social media comments are clearly "normal," so random sampling wastes annotation budget on obvious samples.</p><p>• The most valuable samples for improving model performance are those near the decision boundary-comments where the depression signal is ambiguous.</p><p>Research by Settles provides comprehensive reviews of active learning for NLP tasks <ref type="bibr" target="#b25">[26,</ref><ref type="bibr" target="#b26">27]</ref>, demonstrating its effectiveness in reducing annotation costs by 50-90% compared to random sampling.  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Generalization Gap:</head><p>The generalization gap is typically measured as the difference in F1-macro between in-domain and cross-domain evaluations:</p><formula xml:id="formula_0">∆F 1 = F 1 in-domain -F 1 cross-domain<label>(2.1)</label></formula><p>A large generalization gap (∆F 1 &gt; 0.2) indicates that the model relies on domain-specific features rather than learning generalizable patterns. This is a common challenge in depression detection where the linguistic expression of depression varies across platforms and demographics.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Mitigation Strategies:</head><p>Several strategies can reduce the generalization gap:</p><p>• Domain-Adaptive Pretraining (DAPT): Further pretraining on target domain text.</p><p>• Data Augmentation: Increasing training data diversity through paraphrasing.</p><p>• Domain-Invariant Features: Learning representations that transfer across domains.</p><p>• Multi-Task Learning: Training on multiple domains simultaneously.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.5">Summary</head><p>This chapter has provided the theoretical and methodological foundation for  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.3">Platform Selection: YouTube as Data Source</head><p>We selected YouTube as our primary data source for three compelling reasons:</p><p>Large Vietnamese User Base: Vietnam ranks among the top 15 countries worldwide for YouTube usage. The platform functions almost like a social network, where users engage in long, personal comment discussions on videos that matter to them personally.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Structured API Access:</head><p>The YouTube Data API v3 <ref type="bibr" target="#b5">[6]</ref> provides structured, programmatic access to public comments with clear quota limits (10,000 units per day per API key), enabling reproducible data collection without login barriers and clear rate limits for ethical scraping.</p><p>High-Quality Personal Text: YouTube comments are typically topic-focused rather than social chit-chat. Users comment on video content rather than on each other, resulting in less small talk and more meaningful, personal text-exactly the language type most relevant for detecting depression.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.4">Search Keyword Design</head><p>We  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.5">YouTube Data API v3 Configuration</head><p>Collection Parameters:</p><p>• Videos per keyword: Up to 100 videos </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.6">Raw Data Schema</head><p>Each collected comment is stored with seven fields: </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.7">Data Preprocessing and Cleaning</head><p>Before entering subsequent pipeline stages, raw comments undergo a multistep cleaning pipeline. Our principle is to modify text as minimally as possible to preserve potentially useful signals.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Text Normalization:</head><p>The normalization function applies:</p><p>• Unicode NFC normalization</p><p>• Whitespace standardization (spaces, tabs, line breaks → single spaces)</p><p>• Preservation of Vietnamese tone marks (diacritics)</p><p>• Preservation of emoji (research shows emoji can signal emotion)</p><p>• No lowercase conversion (preserving case information) </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Spam</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.8">External Dataset Integration</head><p>To address extreme class imbalance in natural social media data, we integrated 8 publicly available Vietnamese datasets from HuggingFace totaling 191,072 texts.  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.9">Unified Corpus Construction</head><p>We combined YouTube crawl and external datasets into a three-tier corpus:</p><p>1. Tier 1 -Full Text Corpus (316,401 documents): Used for BERTopic topic modeling and domain-adaptive PhoBERT pretraining. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.10">Weak Labeling System</head><p>We developed a three-level weighted keyword scoring system: Most FPs (58) came from depression-medium keywords in non-depression contexts.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.11">Human Annotation with Active Learning</head><p>Blind Annotation Protocol: To avoid annotation contamination, we used a blind review method using Label Studio:      </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.13">Final Dataset Construction</head><p>We built the final training dataset by combining labeled data from four sources:</p><p>Rationale: Depression at ∼33% of training (vs. natural ∼3%) forces the classifier to learn real depression patterns instead of just predicting "normal." Final in-domain evaluation</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.14">Data and Code Availability</head><p>To ensure full transparency and enable reproducibility of all experiments reported in this research topic, the complete dataset, augmented training data, and source code are publicly released on GitHub. Table <ref type="table" target="#tab_3">3</ref>.14 summarizes the available resources and their corresponding access links.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Notes:</head><p>• The dataset directory contains all raw, processed, weak-labeled, and goldstandard subsets, together with the augmentation files used in this research.</p><p>• The main dataset file (final_dataset.csv) is the canonical file used as input for training and evaluating all five models reported in Chapter 4.    </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2.1">Model 1: TF-IDF + LinearSVC (Traditional Baseline)</head><p>We implement a TF-IDF + LinearSVC pipeline following the CLPsych shared task baselines <ref type="bibr" target="#b13">[14]</ref>, which consistently demonstrate that linear classifiers with n-gram features remain competitive for depression detection. TF-IDF (Term Frequency-Inverse Document Frequency) represents text as sparse numerical vectors capturing word importance, while LinearSVC (Support Vector Classifier with linear kernel) finds the optimal hyperplane separating depression and normal comments <ref type="bibr" target="#b17">[18]</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Feature Engineering:</head><p>• Word-level TF-IDF: We extract unigrams and bigrams (up to 80,000 features) capturing individual words and common word pairs. This captures both singleword signals (e.g., "trầm cảm") and two-word patterns (e.g., "muốn chết").</p><p>• Character-level TF-IDF: We extract character n-grams of length 3-5 that respect word boundaries, capturing subword patterns including informal spelling variations common in social media text (e.g., "buonn" without diacritics).</p><p>Why LinearSVC? LinearSVC is computationally efficient and performs well on high-dimensional sparse text data. The class_weight="balanced" parameter automatically adjusts weights inversely proportional to class frequencies, compensating for the 1:4 class imbalance in our dataset. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Network Architecture:</head><p>The BiLSTM model consists of the following components:</p><p>1. Embedding Layer: Maps vocabulary of 15,000 tokens to 128-dimensional dense vectors. This layer is trained jointly with the classification head.</p><p>2. First BiLSTM Layer: Processes embedding sequences in both directions, producing 256-dimensional outputs (128 per direction).</p><p>3. Dropout Layer: Applies 50% dropout for regularization, preventing overfitting on the relatively small training set.</p><p>4. Second BiLSTM Layer: Further processes the dropout-regularized representations, again producing 256-dimensional outputs.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.">Classifier Head:</head><p>A feed-forward network with layers of size 256 → 64 with ReLU activation, followed by output layer producing 2 class logits.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Training Configuration:</head><p>We use the Adam optimizer with learning rate 0.001, batch size 32, and train for 8 epochs with maximum sequence length of 100 tokens.</p><p>We do not apply class weighting for this model to represent a pure pre-Transformer deep learning baseline.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2.3">Model 3: PhoBERT (State-of-the-Art Vietnamese Language Model)</head><p>PhoBERT <ref type="bibr" target="#b15">[16]</ref> is the state-of-the-art pre-trained language model for Vietnamese NLP, built on the RoBERTa architecture <ref type="bibr" target="#b12">[13]</ref> with modifications optimized for Vietnamese text processing. PhoBERT was pre-trained on approximately 20GB of Vietnamese text using the masked language modeling (MLM) objective, enabling it to capture rich contextual representations of Vietnamese language.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Why PhoBERT for Vietnamese Depression Detection?</head><p>PhoBERT offers several advantages for our task:  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Fine-tuning Strategy:</head><p>We fine-tune PhoBERT for binary classification following standard practice:</p><p>1. Input Processing: Vietnamese text is first tokenized using underthesea word_tokenize, then encoded using PhoBERT's tokenizer.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">CLS Token Classification:</head><p>The [CLS] token embedding (768 dimensions) is passed through a classification head to produce logits for depression vs. normal.  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2.4">Model 4: BERTopic-Only (Topic-Based Baseline)</head><p>We train a Logistic Regression classifier using features extracted from our pretrained BERTopic model. BERTopic <ref type="bibr" target="#b6">[7]</ref> is a topic modeling technique that combines transformer-based sentence embeddings <ref type="bibr" target="#b19">[20]</ref> with class-based TF-IDF to generate interpretable topics.</p><p>BERTopic Pipeline:</p><p>1. Embedding Generation: Each document is encoded using a pre-trained sentence transformer <ref type="bibr" target="#b19">[20]</ref> (multilingual-MiniLM) to produce 384-dimensional dense embeddings.</p><p>2. Clustering: UMAP <ref type="bibr" target="#b14">[15]</ref> reduces embedding dimensionality, followed by HDB-SCAN clustering <ref type="bibr" target="#b1">[2]</ref> to identify topic groups.</p><p>3. Topic Representation: Each cluster's topic is represented by class-based TF-IDF, extracting the most distinctive words for each topic.</p><p>4. Topic Assignment: New documents are assigned to the nearest topic cluster with associated probability.</p><p>Feature Extraction: For classification, we extract two features from BERTopic:</p><p>• Topic ID: The assigned cluster ID (categorical variable).</p><p>• Topic Probability: The confidence of assignment to the predicted topic.</p><p>Rationale: BERTopic provides a complementary perspective on text classification based on thematic coherence rather than semantic content. Depression-related comments may cluster into topics such as "sleep problems," "loneliness," or "work stress," providing interpretable features.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2.5">Model 5: PhoBERT + BERTopic (Proposed Hybrid Model)</head><p>This hybrid model represents our proposed approach, combining contextual embeddings from PhoBERT with topic features from BERTopic. The intuition is Pre-trained on 316,401 documents that PhoBERT captures fine-grained semantic patterns in the text, while BERTopic provides higher-level thematic information about which depression-related topic the comment belongs to. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Architecture Components:</head><p>1. PhoBERT Encoder: The input text is tokenized and encoded by PhoBERT, producing a 768-dimensional CLS token embedding that captures the overall semantic content of the comment.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">BERTopic Encoder:</head><p>The same text is embedded using sentence-transformers and assigned to a BERTopic cluster. We extract:</p><p>• One-hot encoded Topic ID (one for each of the 456 discovered topics)</p><p>• Topic Probability (continuous value between 0 and 1) 3. Feature Scaling: The 768-dimensional PhoBERT embedding is concatenated with the scaled topic features. StandardScaler is applied to normalize all features to zero mean and unit variance. Hypothesis: We hypothesize that combining PhoBERT's contextual understanding with BERTopic's thematic features will improve depression detection because:</p><p>• Complementary Information: Contextual embeddings capture fine-grained linguistic patterns, while topic features capture higher-level thematic content.</p><p>• Interpretability: Topic assignments provide human-interpretable explanations for predictions (e.g., "This comment was assigned to Topic 33: Clinical Depression and Treatment").</p><p>• Robustness: Topic features may transfer better across domains, providing regularization against domain-specific patterns.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Example: How a Comment Flows Through the Model:</head><p>Consider the Vietnamese comment: "Mình bị trầm cảm mấy tháng nay, không ngủ được, mệt mỏi lắm rồi" ("I've been depressed for months, can't sleep, so exhausted").</p><p>Step-by-step processing:</p><p>1. Input: The comment is tokenized by PhoBERT and encoded to produce a 768-d CLS embedding representing its semantic content.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">PhoBERT Features:</head><p>The model recognizes depression-related patterns: "trầm cảm" (depression), "không ngủ được" (insomnia), "mệt mỏi" (fatigue) -all DSM-5 depression indicators.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">BERTopic Features:</head><p>The comment is assigned to Topic 33 (Clinical Depression and Treatment) with probability 0.87.  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.3">Evaluation Strategy</head><p>We employ a rigorous two-domain evaluation strategy to comprehensively assess both in-domain performance and cross-domain generalization capabilities of our models. This dual evaluation approach is essential for understanding real-world applicability beyond controlled experimental settings.  We quantify the generalization gap using F1-macro difference:  We evaluate model performance using six metrics, each defined below.</p><formula xml:id="formula_1">∆F 1 macro = F 1 in-domain -F 1 cross-domain</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.4">Evaluation Metrics</head><p>Macro F1 is our primary metric, computed as the unweighted mean of the F1 scores of both classes:</p><formula xml:id="formula_2">F 1 macro = F 1 depression + F 1 normal 2<label>(4.2)</label></formula><p>Accuracy measures overall correctness, serving only as a sanity check due to class imbalance:</p><formula xml:id="formula_3">Accuracy = T P + T N T otal (4.3)</formula><p>Macro Precision is the average precision across both classes:</p><formula xml:id="formula_4">P macro = P depression + P normal 2 (4.4)</formula><p>Macro Recall is the average recall across both classes:</p><formula xml:id="formula_5">R macro = R depression + R normal 2<label>(4.5)</label></formula><p>Weighted F1 accounts for class imbalance by weighting each class's F1 score by its sample count:</p><formula xml:id="formula_6">F 1 weighted = N dep • F 1 dep + N norm • F 1 norm T otal (4.6)</formula><p>Depression F1 measures performance on the depression class only, the most critical class for our task:</p><formula xml:id="formula_7">F 1 depression = 2 • T P 2 • T P + F P + F N (4.7)</formula><p>Generalization Gap:</p><formula xml:id="formula_8">∆F 1 = F 1 in-domain -F 1 cross-domain (4.8)</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.5">Class Imbalance Handling</head><p>Our training set has a depression:normal ratio of approximately 1:4. To address this, we apply class weighting during training.</p><p>Class Weight Formula (for PhoBERT): </p><formula xml:id="formula_9">w c = N total 2 • N c (4.9)</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Summary table reference:</head><p>The detailed per-model metrics are reported in Table <ref type="table" target="#tab_27">5</ref>.2.   Key Finding: PhoBERT achieves best in-domain F1-macro of 0.7187 and cross-domain F1-macro of 0.3608, with a generalization gap of 0.3579.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.2">Comparative Model Performance</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.3">Confusion Matrix Analysis</head><p>To gain a deeper understanding of model errors, we examine the confusion matrices for the PhoBERT model on both in-domain and cross-domain test sets.   as normal. This near-zero recall demonstrates that the model's depression-detection capability does not transfer to the formal student-essay domain.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.4">Qualitative Sample Analysis</head><p>While aggregate metrics (F1, precision, recall) summarize overall performance, they often hide the strengths and weaknesses that are most useful for guiding future work. To make the comparison more concrete, we manually inspected a representative subset of the in-domain test set (n=1,371) and the cross-domain UIT-VSMEC test set (n=3,084). For each sample we compared the predictions of all five models and recorded whether the prediction was correct.  On the YouTube comments, BERTopic-only frequently under-predicts depression (it misses 5/9 explicit cases) because topic features alone lack lexical specificity. However, on the cross-domain short sentences BERTopic-only is competitive (it is correct on the VSMEC sample where PhoBERT fails), confirming the observation in Table <ref type="table" target="#tab_27">5</ref>.2 that topic features generalize better across domains while losing in-domain accuracy.</p><p>Pattern 5 -PhoBERT+BERTopic combines strengths. PhoBERT+BERTopic retains PhoBERT's strength on implicit YouTube depression comments while benefiting from topic features on the cross-domain case. It is the only model that correctly handles both the implicit example "cuộc đời thật là thú vị, chán thật đấy nhỉ" and avoids the keyword-overlap false positives, supporting its competitive F1-macro of 0.7153 reported in Table <ref type="table" target="#tab_27">5</ref>.2.</p><p>These qualitative observations complement the aggregate metrics in Table <ref type="table" target="#tab_27">5</ref>. Second: TF-IDF + LogReg performs almost as well in-domain (0.7138 vs 0.7187 for PhoBERT), but with lower variation and faster inference. TF-IDF + Lin-earSVC gets the best cross-domain F1 (0.3798), which suggests that simpler models generalize better across domains.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Third:</head><p>The generalization gap is fairly consistent across the supervised models: 0.3579 (PhoBERT), 0.3227 (TF-IDF + LinearSVC), 0.3043 (BiLSTM). PhoBERT + BERTopic performs about the same as PhoBERT alone.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.6">Performance Ranking</head><p>Based on in-domain F1-macro: Finding: Class weighting improves F1-macro by +6.6 to +12.5 percentage points across models, with the largest benefit for TF-IDF + LogReg (+0.1247).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.7.2">Effect of Weak Labeling Quality</head><p>Finding: Strong weak labels achieve 0.81 F1, while uncertain labels only achieve 0.37 F1. The weak labeler's overall precision is 61%.  As shown in Figure <ref type="figure" target="#fig_36">5</ref>.3, the ablation results confirm that class weighting is essential for handling the natural depression/normal imbalance, while active learning delivers diminishing but real returns as the labeled pool grows (Round 6 reaches 9,134 samples and yields the best F1-macro of 0.7187, as summarized in Table <ref type="table" target="#tab_27">5</ref>.7).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.8">Analysis of the Generalization Gap</head><p>The 0.3579 F1 gap between in-domain (0.7187) and cross-domain (0.3608) results represents the most important finding of this project. We identified four reasons for this gap:</p><p>Different Label Definitions: Our YouTube training labels answer: "Does this comment show personal distress that points to depression?" The VSMEC labels answer: "What is the main emotion in this sentence?" These two questions are related but not the same.   </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Different</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.9">Qualitative Error Analysis</head><p>To gain deeper insights into model behavior, we conducted a qualitative analysis of prediction errors on the in-domain test set. Understanding why models fail is often more valuable than understanding why they succeed, as it reveals actionable directions for improvement.  False positives occur when the model incorrectly predicts depression for genuinely normal comments. These errors typically arise from: (a) "sad" (depression signal) and (b) "sleepy/bored" (normal). Comments like "buồn ngủ quá trời ơi" ("so sleepy") are incorrectly flagged because the model cannot disambiguate without full context.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">Physical vs. Mental Exhaustion:</head><p>Vietnamese expressions like "mệt mỏi quá mn ạ" ("so tired everyone") often refer to physical tiredness rather than mental exhaustion associated with depression. The model conflates these semantically similar but clinically distinct concepts.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">Encouraging Responses:</head><p>Comments like "đừng buồn nữa nhé" ("don't be sad anymore") contain the keyword "buồn" but are actually encouraging others, not expressing personal depression.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Type 2: False Negatives (Depression → Normal)</head><p>False negatives are potentially more concerning as they represent missed depression signals. These errors occur when:</p><p>1. Implicit Depression Expression: Some depression signals are expressed indirectly through tone, implication, or metaphor rather than explicit keywords. For example, "lại một ngày nữa trôi qua" ("another day passes by") conveys hopelessness and anhedonia without using explicit depression vocabulary.</p><p>2. Complex Sentiment Blends: Comments combining multiple emotions (e.g., sadness with humor, irony) confuse the model. "Cuộc đời thật là thú vị, chán thật đấy" ("Life is interesting, really bored") mixes enthusiasm with boredom.</p><p>3. Lack of Sufficient Context: Short comments lacking explicit depression keywords may still express depression through tone. "mình chẳng biết phải làm sao nữa" ("I don't know what to do anymore") conveys helplessness without explicit negative emotion words.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Type 3: Orthographic Noise</head><p>Vietnamese social media text exhibits significant orthographic variation that challenges tokenization and understanding:</p><p>1. Missing Tone Marks: Informal writing often omits diacritics: "buon" instead of "buồn," "tram cam" instead of "trầm cảm."</p><p>2. Abbreviated Forms: Common abbreviations: "ko" = "không," "dc" = "được," "j" = "gì," "vs" = "với." </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.10">BERTopic Analysis</head><p>We trained BERTopic on the full 316,401-document corpus. The model found 456 topics with 48.30% outlier rate. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.11">Domain-Adaptive Pretraining</head><p>We ran a controlled experiment on domain-adaptive pretraining (DAPT) using</p><p>PhoBERT. DAPT gives a small but consistent in-domain gain (+0.0122), but a small cross-domain loss (-0.0107); neither difference is statistically significant.</p><p>The cross-domain gap stays large (-0.50 F1 for both models), and was mostly caused by the data itself, not the model. Adapting the encoder alone cannot fix the data-related bottleneck.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.12">Data Augmentation</head><p>An earlier data augmentation experiment showed:</p><p>• PhoBERT gained +9.38 F1 points in-domain</p><p>• PhoBERT + BERTopic showed the biggest cross-domain improvement (+12.85 </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Contribution 6: Generalization Gap Analysis</head><p>In-depth analysis of the 0.3579 F1 generalization gap.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.2">Key Findings</head><p>PhoBERT is the Best Single Model PhoBERT with majority voting across three seeds achieves the best in-domain F1-macro of 0.7187.</p><p>Traditional Methods are Competitive TF-IDF + LinearSVC achieves competitive in-domain performance (0.7025 F1-macro) and even better cross-domain performance (0.3798 F1-macro).</p><p>The Generalization Gap is the Main Bottleneck The 0.3579 F1 gap is the most significant challenge:</p><p>• Different label definitions (distress vs. emotion)</p><p>• Different text lengths (long comments vs. short sentences)</p><p>• Different writing styles (informal vs. formal Vietnamese)</p><p>• Class imbalance effects on balanced test sets Class Weighting is Essential Class weighting improves F1-macro by +6.6 to +12.5 percentage points across models.</p><p>Topic Features Transfer Well but are Insufficient BERTopic-only achieves 0.5030 F1 cross-domain but only 0.4208 in-domain.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.3">Practical Implications</head><p>For Researchers:</p><p>• Dataset papers are valuable: Our VietDepression dataset provides a foundation for future Vietnamese mental health NLP research.</p><p>• Cross-domain evaluation is essential: In-domain results can be misleading; always evaluate on held-out domains.</p><p>• Active learning works: Selective annotation on uncertain samples is more efficient than random sampling.</p><p>For Practitioners:</p><p>• Deployment considerations: A real-world deployment would need domainspecific fine-tuning.</p><p>• Trade-offs exist: PhoBERT is best for accuracy, but TF-IDF is faster and more generalizable.</p><p>• Human oversight remains essential: Automated screening should augment, not replace, professional assessment.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.4">Limitations</head><p>This research has several limitations:</p><p>• Platform limitation: YouTube comments may not represent the broader Vietnamese population's mental health expressions.</p><p>• Language limitation: Informal Vietnamese spelling variations affect model performance.</p><p>• Annotation limitation: With 9,134 samples annotated and Cohen's Kappa of 0.63, we achieved substantial but not perfect agreement.</p><p>• Generalization limitation: The large cross-domain gap suggests limited transferability.</p><p>• Clinical limitation: This research focuses on text classification, not clinical diagnosis.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.5">Future Work</head><p>Dataset Expansion:</p><p>• Collect data from multiple Vietnamese platforms (Facebook, TikTok, Zalo).</p><p>• Include more demographic diversity in annotated samples.</p><p>• Develop a longitudinal dataset to study depression trajectories.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Model Improvements:</head><p>• Explore domain-adaptive pretraining (DAPT) with more epochs.</p><p>• Investigate large language models (LLMs) like GPT-4 for zero-shot detection.</p><p>• Develop multilingual models for cross-lingual transfer.</p><p>• Implement neural data augmentation using paraphrasing and back-translation.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Clinical Translation:</head><p>• Collaborate with mental health professionals to validate the screening tool.</p><p>• Develop severity estimation beyond binary classification.</p><p>• Implement early warning systems for at-risk individuals.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.6">Conclusion</head><p>This research presents the first comprehensive study on depression detection from Vietnamese social media text using deep learning models. We constructed the VietDepression dataset with 125,329 YouTube comments and 9,134 gold-standard annotated samples, providing a valuable resource for Vietnamese mental health NLP research.</p><p>Our experiments with five model families reveal that PhoBERT achieves the best in-domain performance (F1-macro: 0.7187), while TF-IDF + LinearSVC shows the best cross-domain generalization (F1-macro: 0.3798). The 0.3579 F1 generalization gap highlights the main challenge: the difficulty of transferring models across different platforms and label definitions.</p><p>Despite the challenges, this research demonstrates the feasibility of automated depression detection from Vietnamese social media text, paving the way for early intervention tools and mental health support systems for the Vietnamese population.</p><p>The ultimate goal is not to replace mental health professionals, but to augment their ability to reach and help those in need.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head></head><label></label><figDesc>ABBREVIATIONS . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . v</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>2. 2 NLP</head><label>2</label><figDesc>Approaches to Depression Detection from Social Media Text . . . . . . . . .</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>2. 4 Figure 1 . 1 3 Figure 1 . 2 6 Figure 2 . 1</head><label>411312621</label><figDesc>Figure 1.1 Three-layer conceptual framework linking clinical reality to social media signals and the ML pipeline. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3 Figure 1.2 Proposed framework for Vietnamese depression detection from YouTube comments: from data collection through weak labeling and active learning to model training and evaluation.. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 2 . 2 19 Figure 2 . 3 21 Figure 3 . 1 27 Figure 3 . 2 Figure 4 . 1 Figure 4 . 2 Figure 4 . 3 Figure 5 . 1 Figure 5 . 2 Figure 5 . 3 Figure 5 . 4 Figure 5 . 5</head><label>221923213127324142435152535455</label><figDesc>Figure 2.2 Weak labeling workflow: from raw text through three-level keyword matching and weighted scoring to weak label assignment. Uncertain samples are flagged for human annotation. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19 Figure 2.3 The active learning cycle: initial training, uncertainty sampling, human annotation, quality check, model retraining, and iteration until performance plateau or budget exhaustion over 6 rounds. . . . . . . . . . . . . . . . . . . . . . . . 21</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 1 . 1 :</head><label>11</label><figDesc>Figure 1.1: Three-layer conceptual framework linking clinical reality to social media signals and the ML pipeline.</figDesc><graphic coords="18,121.18,180.55,395.43,222.55" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>2 . 3 . 4 .</head><label>234</label><figDesc>No comprehensive annotation pipelines: While weak labeling and active learning have been successfully applied in other domains such as named entity recognition and sentiment analysis, no study has systematically explored their application for Vietnamese depression detection with blind human annotation protocols that ensure independent annotator judgments. Limited cross-domain evaluation: Most existing depression detection studies evaluate models only on in-domain test sets drawn from the same distribution as training data. The generalization gap when models are applied to different platforms or domains remains underexplored in Vietnamese NLP, limiting our understanding of model transferability. No benchmarking of deep learning models: Although PhoBERT and other deep learning models have shown state-of-the-art performance in Vietnamese NLP tasks, no comprehensive benchmark exists comparing multiple architectures specifically for depression detection, leaving practitioners without guidance on optimal model selection.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head></head><label></label><figDesc>Multi-Architecture Benchmarking: We evaluate five representative deep learning models spanning different paradigms: TF-IDF + LinearSVC (traditional baseline), BiLSTM (pre-Transformer deep learning), PhoBERT (state-of-theart Vietnamese language model), BERTopic (topic-based features), and our proposed PhoBERT + BERTopic hybrid approach. • Cross-Domain Evaluation: We conduct comprehensive evaluation on both indomain test sets and cross-domain test sets using the UIT-VSMEC dataset, enabling us to quantify the generalization gap and identify factors affecting model transferability.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><head>Figure 1 . 2 :</head><label>12</label><figDesc>Figure 1.2: Proposed framework for Vietnamese depression detection from YouTube comments: from data collection through weak labeling and active learning to model training and evaluation.</figDesc><graphic coords="21,110.20,552.04,417.40,145.69" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_8"><head>1 . 2 . 3 . 4 . 5 . 6 .or loss of energy 7 . 8 . 9 .</head><label>123456789</label><figDesc>Diagnostic and Statistical Manual of Mental Disorders, Fifth Edition (DSM-5) published by the American Psychiatric Association (2013) provides the standardized diagnostic criteria for Major Depressive Disorder. According to DSM-5, a diagnosis of MDD requires the presence of at least five out of nine symptoms during the same two-week period, with at least one of the symptoms being either (1) depressed mood or (2) loss of interest or pleasure. The nine symptoms of depression according to DSM-5 are: Depressed mood most of the day, nearly every day Markedly diminished interest or pleasure in all, or almost all, activities Significant weight loss or gain, or decrease or increase in appetite Insomnia or hypersomnia (sleep disturbances) Psychomotor agitation or retardation (observable by others) Fatigue Feelings of worthlessness or excessive guilt Diminished ability to think or concentrate, or indecisiveness Recurrent thoughts of death, recurrent suicidal ideation, or suicide attempts 2.1.2 PHQ-9: The Patient Health Questionnaire</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_9"><head>•</head><label></label><figDesc>viBERT: A Vietnamese BERT variant developed for various downstream tasks • BARTpho: A Vietnamese sequence-to-sequence model based on BART architecture For this project, we select PhoBERT as our primary model due to its state-ofthe-art performance on Vietnamese NLP benchmarks.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_10"><head></head><label></label><figDesc>This technique was popularized by Sennrich et al. (2016) for neural machine translation and subsequently adapted for data augmentation by Yu et al. (2018) for text classification.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_11"><head>Figure 2 . 1 :</head><label>21</label><figDesc>Figure 2.1: Taxonomy of data augmentation techniques for Vietnamese NLP: back-translation (VI→EN→VI), synonym replacement, contextual augmentation via masked language models, and LLM-based paraphrase generation.</figDesc><graphic coords="32,110.20,286.31,417.40,234.91" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_12"><head></head><label></label><figDesc>tems assign different weights to keywords based on their depression relevance. Strong depression indicators (muốn chết, tự tử) receive higher weights (+5) while contextdependent terms (buồn, mệt) receive moderate weights (+3). Conversely, positive context terms (cảm ơn, tuyệt vời) receive negative weights (-2) to reduce false positives. The final weak label is determined by thresholding the cumulative score, with score ≥ 5 indicating depression and score ≤ -2 indicating normal, while intermediate scores are marked as uncertain.Applications in Mental Health NLP:Weak labeling has been successfully applied in mental health NLP research. Losada et al.<ref type="bibr" target="#b13">[14]</ref> used keyword-based weak labels for the CLPsych shared task, while Trotzek et al. demonstrated that weak labels combined with active learning can achieve competitive performance with a fraction of the annotation cost.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_13"><head>Figure 2 . 2 :</head><label>22</label><figDesc>Figure 2.2: Weak labeling workflow: from raw text through three-level keyword matching and weighted scoring to weak label assignment. Uncertain samples are flagged for human annotation.</figDesc><graphic coords="34,110.20,103.19,417.40,166.92" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_14"><head>3 . 4 . 5 . 6 .</head><label>3456</label><figDesc>Selection: Select the k samples with the highest uncertainty (lowest confidence) for human annotation. Annotation: Obtain human labels for the selected samples through expert annotators. Update: Add the newly annotated samples to the training set and retrain the model. Iteration: Repeat steps 2-5 until performance plateau or annotation budget exhaustion.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_15"><head>Figure 2 .</head><label>2</label><figDesc>Figure 2.3 summarizes the six-step active learning cycle used in this research: initial training, uncertainty sampling, human annotation, quality check, model retraining, and iteration until performance plateaus or the annotation budget is exhausted.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_16"><head>Figure 2 . 3 :</head><label>23</label><figDesc>Figure 2.3: The active learning cycle: initial training, uncertainty sampling, human annotation, quality check, model retraining, and iteration until performance plateau or budget exhaustion over 6 rounds.</figDesc><graphic coords="36,132.16,248.94,373.47,210.19" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_17"><head>2 . 3 . 4 . 5 . 6 . 7 .</head><label>234567</label><figDesc>this research. Despite significant advances in depression detection and Vietnamese NLP, a critical gap remains: there is no publicly available Vietnamese dataset specifically designed for depression detection, and no systematic exploration of deep learning models for this task in the Vietnamese context. This research aims to address this gap by constructing the first Vietnamese depression detection dataset and establishing comprehensive benchmark results using state-of-the-art deep learning models. This chapter provides a comprehensive explanation of the data pipeline, which represents the most resource-intensive component of this research, accounting for approximately 70% of the total development effort. The pipeline encompasses seven main stages: 1. YouTube Data Collection: Collecting Vietnamese YouTube comments using the YouTube Data API v3 Data Preprocessing: Multi-step cleaning and filtering External Dataset Integration: Adding Vietnamese datasets from HuggingFace Corpus Construction: Building a unified 316,401-document corpus with data leakage prevention Weak Labeling: Automatic labeling using a custom three-level keyword system Human Annotation: Blind annotation through Label Studio with active learning Final Dataset Construction: Building training, validation, and test sets 3.2 Dataset Overview</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_18"><head>1 . 2 . 3 . 4 . 5 .</head><label>12345</label><figDesc>designed a comprehensive list of 264 Vietnamese search keywords organized into five thematic groups aligned with DSM-5 symptom categories and the wider depression research literature: Group 1 -Depression and Suicidality (30 terms): Keywords directly about clinical depression and suicidal thoughts. Examples: trầm cảm (depression), tự tử (suicide), muốn chết (want to die). Group 2 -Loneliness and Sadness (42 terms): Keywords about being alone, emotional pain, and negative feelings. Examples: cô đơn (lonely), buồn không lý do (sad for no reason). Group 3 -Stress and Burnout (45 terms): Keywords about life stress, which is known to increase the risk of depression. Examples: mệt mỏi cuộc sống (tired of life), stress công việc (work stress). Group 4 -Sleep Disturbance and Overthinking (18 terms): Keywords about sleep problems and thinking patterns linked with depression. Examples: mất ngủ (insomnia), overthinking ban đêm (nighttime overthinking). Group 5 -Help-Seeking and Healing (30 terms): Keywords about getting mental health help and recovery. Examples: tư vấn tâm lý (psychological counseling), chữa lành tâm lý (psychological healing). As shown in Figure 3.1, the 264 keywords are distributed across the threelevel classification and five thematic groups, with the top 10 most frequent keywords accounting for the majority of matched comments.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_19"><head>Figure 3 . 1 :</head><label>31</label><figDesc>Figure 3.1: Keyword distribution: (a) Keywords by three-level classification, (b) Keywords by thematic group, (c) Top 10 most frequent keywords in the dataset.</figDesc><graphic coords="42,110.20,235.39,417.40,278.27" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_20"><head>1 . 4 . 1 .</head><label>141</label><figDesc>Detection and Filtering: The spam detection function uses four rules: URL Detection: Pattern catches promotional comments 2. Blacklisted Phrases: sub4sub, subscribe, đăng ký kênh, kiếm tiền online 3. Repeated Characters: Catches extreme stretching (e.g., "buồnnnnnnnnnnn") Low Variety: ≥8 words AND ≤2 unique words catches repeated emoji rows Deduplication Strategy: Two sequential steps: Primary: comment_id deduplication: Keeps first occurrence 2. Secondary: normalized text deduplication: Keeps first occurrence Minimum Length Filtering: Comments shorter than 5 characters after normalization are removed.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_21"><head></head><label></label><figDesc>Tier 1 = emotion labels closest to depression; Tier 2 = sentiment labels giving extra affect signal; Tier 3 = toxicity or machine-translated text for corpus-level tasks.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_22"><head>2. Tier 2 - 3 .</head><label>23</label><figDesc>Cross-Domain Test Set (3,084 VSMEC sentences): 1,542 distress (Sadness + Fear) → label 1; 1,542 normal (Enjoyment) → label 0. Tier 3 -Hard-Negative Augmentation (42,952 texts): Texts with positive affect signal from non-VSMEC datasets.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_23"><head>Figure 3 .</head><label>3</label><figDesc>Figure 3.2 visualizes the three-tier data leakage prevention strategy, which guarantees that all evaluation numbers reported in Chapter 5 are unbiased estimates of out-of-sample performance.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_24"><head>Figure 3 . 2 :</head><label>32</label><figDesc>Figure 3.2: Three-tier data leakage prevention strategy: video-level separation ensures comments from the same video stay in the same split, dataset-level separation isolates external datasets, and keyword distribution balance maintains proportional representation.</figDesc><graphic coords="49,132.16,282.51,373.47,248.98" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_25"><head></head><label></label><figDesc>This chapter describes the experimental setup for evaluating deep learning models on Vietnamese depression detection. Since this research focuses on dataset construction and benchmarking rather than proposing novel methods, we follow the standard Experimental Setup format commonly used in dataset papers and shared task reports. The model training and evaluation stage covers the final five steps of our fifteenstep research pipeline. We evaluate five representative models spanning different architectural paradigms: • TF-IDF + LinearSVC: Traditional machine learning baseline • BiLSTM: Pre-Transformer deep learning baseline • PhoBERT: State-of-the-art Vietnamese language model • BERTopic-Only: Topic-based feature extraction • PhoBERT + BERTopic: Hybrid approach 4.2 Baseline Models This section provides detailed descriptions of the five models we evaluate, ranging from traditional machine learning baselines to state-of-the-art transformerbased approaches. Each model represents a different architectural paradigm, enabling us to systematically compare their effectiveness for Vietnamese depression detection. Rationale for Model Selection: We selected models spanning three generations of NLP technology: (1) Traditional ML (TF-IDF + LinearSVC) represents the CLPsych shared task baselines; (2) Pre-Transformer DL (BiLSTM) represents recurrent neural network approaches; (3) Transformer-based models (PhoBERT) represent the current state-of-the-art; (4) Topic-based features (BERTopic) represent unsupervised learning approaches; and (5) Hybrid approach (PhoBERT + BERTopic) represents our proposed method combining contextual and topic-based features.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_26"><head>Figure 4 . 1 :</head><label>41</label><figDesc>Figure 4.1: Architecture comparison of five models: TF-IDF + LinearSVC, BiLSTM, PhoBERT, BERTopic-only, and PhoBERT + BERTopic hybrid.</figDesc><graphic coords="53,110.20,181.10,417.40,156.53" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_27"><head>Figure 4 .</head><label>4</label><figDesc>Figure 4.1 presents a side-by-side architectural comparison of the five models used in this study. Each architecture differs in how it represents text (sparse TF-IDF, sequence embeddings, contextual transformers, topic distributions, or hybrid topic + transformer features), which directly explains the behavioural differences we will quantify in Section 5.2.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_28"><head>•</head><label></label><figDesc>Language-Specific Pre-training: Unlike multilingual models (mBERT, XLM-RoBERTa) that must divide their capacity across 100+ languages, PhoBERT is pre-trained exclusively on Vietnamese text, providing deeper representations for Vietnamese linguistic phenomena. • Word Segmentation Integration: PhoBERT is designed to work with Vietnamese word segmentation using tools like underthesea [21], respecting Vietnamese word boundaries defined by the Vietnamese government standard. • Bidirectional Context: Like BERT, PhoBERT processes text bidirectionally, capturing context from both left and right of each token. This is essential for understanding depression signals that may depend on surrounding context. • Robust Vietnamese Text Handling: PhoBERT's pre-training on diverse Vietnamese text sources (news, encyclopedic, web) provides robustness to informal language variations.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_29"><head>3 . 4 .</head><label>34</label><figDesc>Loss Computation: Cross-entropy loss with class weights computed from training data distribution. Optimization: AdamW optimizer with learning rate 2e-5, weight decay 0.01, gradient clipping at 1.0, and linear warmup for 6% of training steps.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_30"><head>Figure 4 . 2 :</head><label>42</label><figDesc>Figure 4.2: PhoBERT + BERTopic hybrid model architecture: input text is processed by PhoBERT for contextual embeddings and BERTopic for topic features. Features are concatenated and passed through a classification head for depression detection.</figDesc><graphic coords="59,209.30,326.07,219.20,328.80" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_31"><head>4 . 5 .</head><label>45</label><figDesc>Feature Concatenation: Final feature vector dimension: 768 (PhoBERT) + 456 (one-hot topic) + 1 (probability) = 1,225 dimensions. Classification Head: Logistic Regression classifier with balanced class weights outputs probability scores for depression vs. normal.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_32"><head>4 .</head><label>4</label><figDesc>Feature Concatenation: 768-d PhoBERT vector + 456-d one-hot topic vector + 0.87 probability = 1,225-d feature vector. 5. Classification: Logistic Regression outputs P(depression) = 0.94, correctly classifying as depression.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_33"><head>Figure 4 . 3 :</head><label>43</label><figDesc>Figure 4.3: Two-domain evaluation strategy: in-domain test (n=1,371, 1:4 class ratio from YouTube comments) and cross-domain test on UIT-VSMEC (n=3,084, 50:50 balanced). The generalization gap (ΔF1 = 0.3579) measures model transferability across domains.</figDesc><graphic coords="62,110.20,239.19,417.40,278.27" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_34"><head>2 . 3 . 4 .</head><label>234</label><figDesc>Demographic Bias: A model trained on YouTube users (typically 18-35 years old) may not generalize to other age groups. Linguistic Register: Informal YouTube language differs from formal writing or clinical terminology. Label Definition Drift: Different datasets may use different criteria for depression labeling. In-Domain Test Set: 1,371 samples from final_test.csv, created through stratified splitting with a 70/15/15 train/validation/test ratio. This test set represents the same distribution as our training data, enabling measurement of within-domain performance. Cross-Domain Test Set: 3,084 samples from the held-out UIT-VSMEC dataset: • 1,542 distress samples (VSMEC Sadness + Fear classes mapped to depression) • 1,542 normal samples (VSMEC Enjoyment class mapped to normal) Key Differences Between Domains: • Source Platform: YouTube comments vs. student essays • Text Length: Long comments (avg. 50-100 tokens) vs. short sentences (avg. 10-20 tokens) • Linguistic Register: Informal social media vs. formal academic writing • Label Criteria: Distress expression vs. emotion classification • Class Balance: 19.8% depression vs. 50% depression Generalization Gap Quantification:</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_35"><head>(4. 1 )</head><label>1</label><figDesc>A positive ∆F 1 indicates in-domain advantage; larger values indicate greater domain sensitivity. In-Domain Test Set: 1,371 samples from final_test.csv, created through stratified splitting with a 70/15/15 train/validation/test ratio. Cross-Domain Test Set: 3,084 samples from the held-out UIT-VSMEC dataset: • 1,542 distress samples (VSMEC Sadness + Fear) • 1,542 normal samples (VSMEC Enjoyment) Important: Cross-domain test set is perfectly balanced 50/50 (depression:normal); in-domain test follows the original ∼1:4 ratio.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_36"><head>Figure 5 .</head><label>5</label><figDesc>Figure 5.1 visualizes the comparative performance of all five models on the indomain and cross-domain test sets, providing a compact overview before we examine each result in detail.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_37"><head>Figure 5 . 1 :</head><label>51</label><figDesc>Figure 5.1: Model performance comparison on in-domain and cross-domain test sets. PhoBERT achieves the best in-domain F1-macro (0.7187), while BiLSTM shows the smallest generalization gap (0.1418).</figDesc><graphic coords="71,121.18,103.19,395.43,263.62" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_38"><head>Figure 5 .</head><label>5</label><figDesc>Figure 5.2 shows the two confusion matrices side by side.Figure 5.2(a) summarizes PhoBERT's predictions on the in-domain test set (n=1,371), where the model can effectively detect depression in YouTube comments.Figure 5.2(b) shows the</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_39"><head>Figure 5 .</head><label>5</label><figDesc>2(b) shows the predictions on the cross-domain UIT-VSMEC test set (n=3,084); the severe class imbalance in cross-domain predictions indicates that the model incorrectly classifies the majority of the depression samples as normal, revealing significant domain shift challenges.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_40"><head>Figure 5 . 2 :</head><label>52</label><figDesc>Figure 5.2: Confusion matrices for PhoBERT on (a) in-domain test set (n=1,371) and (b) cross-domain test set (n=3,084). The severe class imbalance in cross-domain predictions indicates domain shift challenges.</figDesc><graphic coords="72,121.18,274.04,395.43,263.62" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_41"><head>Pattern 2 -Pattern 3 -</head><label>23</label><figDesc>are all correctly classified by PhoBERT and PhoBERT+BERTopic, while classical TF-IDF models and BiLSTM miss at least three of them. This shows that the pre-trained contextual embeddings capture pragmatic cues that bag-of-words features cannot. Classical TF-IDF wins on cross-domain (short, formal sentences). The VSMEC sample "Em cảm thấy rất buồn và không muốn đi học." is a short, formal sentence with a clear depression keyword. All four text-based models (TF-IDF+SVM, TF-IDF+LR, BiLSTM, BERTopic) classify it correctly, but PhoBERT and PhoBERT+BERTopic fail because they overfit to the longer, informal YouTube style. Keyword overlap causes classical baselines to over-predict depression. On the encouraging comment "Đừng buồn nữa nhé, mọi chuyện rồi sẽ ổn thôi.", both TF-IDF+SVM and TF-IDF+LR wrongly predict depression because of the keyword "buồn". PhoBERT and BiLSTM correctly recognize the encouraging intent. Similarly, on "Buồn ngủ quá trời ơi, mai thi rồi." (so sleepy, exam tomorrow), only BiLSTM and the transformer-based models avoid the polysemy trap. Pattern 4 -BERTopic-only is conservative on YouTube but transfers well.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_42"><head>2 and Figure 5 . 1 :First:</head><label>251</label><figDesc>they show that the ranking of models is not just numerical, but reflects qualitatively different decision strategies. The transformer-based models trade some cross-domain robustness for the ability to understand implicit, context-dependent depression cues; classical and topic-based models trade in-domain depth for cross-domain stability. On the Round 6 v2 final dataset, the in-domain ranking is: PhoBERT avg vote (0.7187 F1) &gt; TF-IDF + LogReg (0.7138) &gt; PhoBERT + BERTopic (0.7153) &gt; TF-IDF + LinearSVC (0.7025) &gt; BiLSTM (0.6421). PhoBERT with majority voting across three seeds gives the best F1-macro (0.7187) on the in-domain test.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_43"><head>Figure 5 . 3 :</head><label>53</label><figDesc>Figure 5.3: Ablation study: (a) Effect of class weighting on model performance, showing improvements of 1.1 to 12.5 F1-macro points. (b) Active learning progress over 6 rounds, demonstrating F1-macro improvement from 1,607 to 9,134 gold samples.</figDesc><graphic coords="78,121.18,103.19,395.43,197.72" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_44"><head></head><label></label><figDesc>Text Lengths: YouTube comments are usually longer and give more context. VSMEC sentences are short (5-20 words) and taken out of context from student essays. Different Writing Styles: The YouTube data is written informally: tone marks are often missing, teen slang is common, English words are mixed in. The VSMEC data is written in formal Vietnamese. Class Imbalance During Training: Our final training set has a depression:normal ratio of about 1:4. Even with class weighting, the models learn a cautious pattern that favors the majority class.The consistent generalization gap (0.30-0.36 F1) across all supervised models confirms the main bottleneck is data quality and domain mismatch, not model design.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_45"><head>Figure 5 .</head><label>5</label><figDesc>Figure 5.4 visualizes how the four contributing factors interact to produce the 0.3579 F1-macro drop when moving from in-domain to cross-domain evaluation.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_46"><head>Figure 5 . 4 :</head><label>54</label><figDesc>Figure 5.4: Analysis of the 0.3579 F1-macro generalization gap: four contributing factors including platform differences, linguistic register, label criteria mismatch, and class balance shift.</figDesc><graphic coords="79,121.18,426.78,395.43,263.62" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_47"><head>Figure 5 .</head><label>5</label><figDesc>Figure 5.5 summarizes the four most frequent error patterns observed: false positives from encouraging comments, false negatives from implicit depression expression, cross-domain failure patterns, and key insights for model improvement.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_48"><head>Figure 5 . 5 :Type 1 :</head><label>551</label><figDesc>Figure 5.5: Error analysis: (a) False positives from encouraging comments, (b) False negatives from implicit depression expression, (c) Cross-domain failure patterns, (d) Key insights for model improvement.</figDesc><graphic coords="80,110.20,310.99,417.40,278.27" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_49"><head>3 .</head><label>3</label><figDesc>Expressive Lengthening: Emphasis through character repetition: "buồnnnnnn," "mệttttttttttt." Implications for Future Work: These error patterns suggest several directions for improvement: • Develop disambiguation models that consider full sentence context • Create specialized Vietnamese tokenizers for informal text • Explore implicit depression detection through sentiment analysis • Incorporate emoji and other paralinguistic features</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_50"><head>3 •CHAPTER 6 : CONCLUSION AND FUTURE WORK 6 . 1 Contribution 1 :Contribution 3 :Contribution 4 :Contribution 5 :</head><label>36611345</label><figDesc>only barely changed (+0.03 F1) Data augmentation is highly effective for transformer-based models under minorityclass imbalance. Future work could explore neural paraphrasing (back-translation, LLM-based paraphrasing). 5.13 Summary of Key Findings • Best Model: PhoBERT with majority voting achieves F1-macro of 0.7187 (indomain) and 0.3608 (cross-domain) • Generalization Gap: 0.3579 gap due to different label definitions, text lengths, writing styles, and class imbalance • Ablation Findings: Class weighting improves F1 by +6.6 to +12.5 points; active learning shows diminishing returns after Round TF-IDF Surprising: Traditional methods perform competitively (0.7025-0.7138 in-domain) and even better cross-domain (0.3798 for LinearSVC) • BERTopic Limitation: Topic features alone are insufficient (0.4208 in-domain) but transfer better across domains (0.5030 cross-domain) • DAPT Counter-Experiment: Domain-adaptive pretraining shows small, nonsignificant gains • Data Augmentation: Shows promise for both in-domain (+9.38 F1 points) and cross-domain (+12.85 F1 points for PhoBERT + BERTopic) Summary of Contributions This project makes six main contributions to Vietnamese mental health NLP research: VietDepression-125K Dataset A dataset of 125,329 Vietnamese YouTube comments with depression-related keywords, cleaned and preprocessed according to our multi-step pipeline. Contribution 2: VietDepression-6K Gold Standard A 9,134-sample gold standard dataset with independently verified labels through blind human annotation, achieving Cohen's Kappa of 0.63. Weak Labeling Pipeline A 335-keyword three-level scoring system achieving 98% recall and 61% precision. Active Learning Protocol A six-round active learning protocol with selective annotation on uncertain samples. Comprehensive Benchmarks Benchmark results for five model families on both in-domain and cross-domain test sets.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head></head><label></label><figDesc>-Based Methods . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2.2.2 Traditional Machine Learning Methods . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2.2.3 Deep Learning Methods . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2.3 Vietnamese NLP: Language Models and Available Corpora . . . . . . . . . . . . . . . . .3.3 Available Vietnamese Datasets . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /><note><p>2.3.1 Characteristics of Vietnamese Language . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2.3.2 Pre-trained Vietnamese Language Models . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 2 .</head><label>2</label><figDesc>1 PHQ-9 scoring interpretation and suggested treatment actions . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 2 .</head><label>2</label><figDesc>2 Existing Vietnamese NLP datasets . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 3 .</head><label>3</label><figDesc>1 Overview and statistics of each dataset. Depression percentages apply only to labeled subsets. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_4"><head>Table 3 .</head><label>3</label><figDesc>2 Settings used for the YouTube Search API when collecting data. . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_5"><head>Table 3 .</head><label>3</label><figDesc>3 The raw data schema. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_6"><head>Table 3 .</head><label>3</label><figDesc>4 External Vietnamese datasets with tier system. . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_7"><head>Table 3 .</head><label>3</label><figDesc>5 Weak-labeling keyword list structure. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_8"><head>Table 3 .</head><label>3</label><figDesc>6 Score thresholds for weak label assignment. . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_9"><head>Table 3 .</head><label>3</label><figDesc><ref type="bibr" target="#b6">7</ref> Weak label distribution on 125,329 cleaned YouTube comments. . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_10"><head>Table 3 .</head><label>3</label><figDesc><ref type="bibr" target="#b7">8</ref> Weak-labeler performance on 343 evaluable gold samples. . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_11"><head>Table 3 .</head><label>3</label><figDesc><ref type="bibr" target="#b8">9</ref> Human-machine agreement for two blind annotation batches.. . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_12"><head>Table 3 .</head><label>3</label><figDesc>10 Gold set construction summary. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_13"><head>Table 3 .</head><label>3</label><figDesc>11 Sources and weights for final training data.. . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_14"><head>Table 3 .</head><label>3</label><figDesc>12 Final dataset split (Round 6 v2). . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_15"><head>Table 3 .</head><label>3</label><figDesc>13 Complete dataset statistics showing class distributions. . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_16"><head>Table 3 .</head><label>3</label><figDesc>14 Publicly released resources for reproducibility. . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_17"><head>Table 4 .</head><label>4</label><figDesc>1 TF-IDF + LinearSVC configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_18"><head>Table 4 .</head><label>4</label><figDesc>2 BiLSTM configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_19"><head>Table 4 .</head><label>4</label><figDesc>3 PhoBERT fine-tuning configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_20"><head>Table 4 .</head><label>4</label><figDesc>4 BERTopic-Only configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_21"><head>Table 4 .</head><label>4</label><figDesc>5 PhoBERT + BERTopic hybrid model configuration . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_22"><head>Table 4 .</head><label>4</label><figDesc>6 Confusion matrix value definitions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_23"><head>Table 4 .</head><label>4</label><figDesc>7 Class imbalance handling by model . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_24"><head>Table 4 .</head><label>4</label><figDesc>8 Hardware specifications . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_25"><head>Table 4 .</head><label>4</label><figDesc>9 Software dependencies . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_26"><head>Table 4 .</head><label>4</label><figDesc>10 Hyperparameter comparison across models . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_27"><head>Table 5 .</head><label>5</label><figDesc>1 Dataset distributions across training, validation, and test sets . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_28"><head>Table 5 .</head><label>5</label><figDesc><ref type="bibr" target="#b1">2</ref> Comparative results for all five models (Post Round 6 v2 Dataset) . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_29"><head>Table 5 .</head><label>5</label><figDesc>3 Representative test samples and the prediction of each model. "Gold" is the true label (D = depression, N = normal). Each model cell shows the prediction followed by ✓ (correct) or × (wrong). In-domain samples are YouTube comments; the two VSMEC samples are cross-domain. . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_30"><head>Table 5 .</head><label>5</label><figDesc>4 Qualitative patterns observed across the inspected test samples. Counts are correct predictions on this representative subset. . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_31"><head>Table 5 .</head><label>5</label><figDesc>5 Effect of class weighting on model performance. . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_32"><head>Table 5 .</head><label>5</label><figDesc>6 Weak labeling quality by confidence level. . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_33"><head>Table 5 .</head><label>5</label><figDesc><ref type="bibr" target="#b6">7</ref> Performance improvement across active learning rounds . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_34"><head>Table 5 .</head><label>5</label><figDesc>8 Definitions of the confusion matrix cells for binary depression classification . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_35"><head>Table 5 .</head><label>5</label><figDesc>9 Depression-related topics found by BERTopic . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_36"><head>Table 5 .</head><label>5</label><figDesc>10 BERTopic results on the Round 6 v2 dataset . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_37"><head>Table 6 .</head><label>6</label><figDesc>1 Training and hyperparameter settings for PhoBERT, BiLSTM, and TF-IDF + SVM. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</figDesc><table><row><cell>Table 6.2 Typical error examples. FP = false positive, FN = false negative, TP</cell></row><row><cell>= true positive. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_38"><head>CHAPTER 1: INTRODUCTION 1.1 Motivation and Problem Statement</head><label></label><figDesc></figDesc><table><row><cell>Depression (Major Depressive Disorder) is one of the most prevalent mental</cell></row><row><cell>health disorders globally, affecting approximately 280 million people according to the</cell></row><row><cell>World Health Organization (WHO, 2023). Beyond the personal suffering it causes,</cell></row><row><cell>depression carries substantial economic burden through reduced productivity, health-</cell></row><row><cell>care costs, and in severe cases, suicide-related losses. In Vietnam, the prevalence</cell></row><row><cell>of depressive disorders has been steadily increasing, particularly among adolescents</cell></row><row><cell>and young adults aged 15-24, who represent a demographic particularly vulnerable</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_39"><head>1. Prolonged Sadness (Buồn bã kéo dài): Persistent</head><label></label><figDesc></figDesc><table><row><cell>feelings of sadness, empti-</cell></row><row><cell>ness, or feeling down that persist over time, as manifested in Vietnamese ex-</cell></row><row><cell>pressions such as "buồn quá," "buồn không có lý do," or "nặng trĩu con tim."</cell></row><row><cell>2.</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_40"><head>Loss of Motivation (Mất động lực): Anhedonia</head><label></label><figDesc></figDesc><table><row><cell>or loss of interest in activities</cell></row><row><cell>once enjoyed, reduced drive to engage with work, study, or social activities, as</cell></row><row><cell>seen in comments like "không muốn làm gì cả," "chán mọi thứ," or "không có</cell></row><row><cell>động lực để sống tiếp."</cell></row><row><cell>3. Hopelessness (Tuyệt vọng): Feelings of despair, pessimism about the future, or</cell></row><row><cell>belief that situations will not improve, expressed through phrases such as "cuộc</cell></row><row><cell>đời này vô nghĩa," "không còn gì để mong chờ," or "mọi thứ đều vô ích."</cell></row><row><cell>4.</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_41"><head>Social Isolation (Tự cô lập): Withdrawal</head><label></label><figDesc></figDesc><table><row><cell>from friends, family, and social ac-</cell></row><row><cell>tivities, preferring solitude or expressing feelings of loneliness, as in "muốn ở</cell></row><row><cell>một mình," "không muốn gặp ai," or "cô đơn lắm rồi."</cell></row><row><cell>5.</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_42"><head>Negative Thoughts (Ý nghĩ tiêu cực): Recurrent negative</head><label></label><figDesc></figDesc><table><row><cell>thinking patterns,</cell></row><row><cell>self-criticism, feelings of worthlessness, or excessive guilt, manifesting in com-</cell></row><row><cell>ments like "mình vô dụng," "tội lỗi gì đâu," or "ai cũng giỏi hơn mình."</cell></row><row><cell>These five signs align with the diagnostic criteria for Major Depressive Disor-</cell></row><row><cell>der as defined by DSM-5 [1] and represent the most commonly expressed depression</cell></row><row><cell>indicators in Vietnamese social media text.</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_43"><head>The Opportunity of Vietnamese Social Media: Vietnam</head><label></label><figDesc>has one of the highest social media usage rates globally, with approximately 70 million active social media users as of 2023. YouTube, in particular, functions almost like a social network in Vietnam, where users engage in long, personal comment discussions on videos that resonate with their emotional states. This creates a unique opportunity to analyze authentic expressions of mental health concerns in Vietnamese.</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_44"><head>Table 2 .</head><label>2</label><figDesc></figDesc><table><row><cell>Proposed Treatment Action</cell></row></table><note><p>1: PHQ-9 scoring interpretation and suggested treatment actions PHQ-9 Score Depression Severity</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_47"><head>Table 2 . 2 :</head><label>22</label><figDesc>Existing Vietnamese NLP datasets</figDesc><table><row><cell>Dataset</cell><cell cols="2">Label Type</cell><cell>Size</cell><cell>Description</cell></row><row><cell>UIT-VSMEC</cell><cell cols="2">Emotion (7</cell><cell cols="2">∼11,000 Vietnamese</cell><cell>social</cell></row><row><cell></cell><cell>classes)</cell><cell></cell><cell></cell><cell>media emotion classi-</cell></row><row><cell></cell><cell></cell><cell></cell><cell></cell><cell>fication</cell></row><row><cell>NTC-SCV</cell><cell cols="2">Sentiment</cell><cell cols="2">∼50,000 News title classifica-</cell></row><row><cell></cell><cell>(binary)</cell><cell></cell><cell></cell><cell>tion for sentiment</cell></row><row><cell>UIT-VSFC</cell><cell cols="2">Sentiment (3</cell><cell cols="2">∼16,000 Student feedback sen-</cell></row><row><cell></cell><cell>classes)</cell><cell></cell><cell></cell><cell>timent classification</cell></row><row><cell>Vietnamese</cell><cell>Toxic</cell><cell>(bi-</cell><cell cols="2">∼66,000 Detecting toxic or</cell></row><row><cell>Toxic</cell><cell>nary)</cell><cell></cell><cell></cell><cell>negative content</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_48"><head>Table 3 . 1 :</head><label>31</label><figDesc>Overview and statistics of each dataset. Depression percentages apply only to labeled subsets.</figDesc><table><row><cell>Subset</cell><cell>Size</cell><cell cols="2">Dep (%) Norm (%)</cell><cell>Source</cell><cell>Role</cell></row><row><cell>YouTube</cell><cell>125,329</cell><cell>-</cell><cell>-</cell><cell cols="2">YouTube API v3 Primary</cell></row><row><cell>Crawl (raw)</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell>data</cell></row><row><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell>source</cell></row><row><cell>YouTube</cell><cell>119,649</cell><cell>-</cell><cell>-</cell><cell cols="2">YouTube API v3 After</cell></row><row><cell>Crawl</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell>dedup +</cell></row><row><cell>(cleaned)</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell>filtering</cell></row><row><cell>External</cell><cell>191,072</cell><cell>-</cell><cell>-</cell><cell>HuggingFace</cell><cell>Corpus</cell></row><row><cell>Datasets</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell>text + aug.</cell></row><row><cell>Unified Cor-</cell><cell>316,401</cell><cell>-</cell><cell>-</cell><cell>Mixed</cell><cell>Topic</cell></row><row><cell>pus</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell>modeling,</cell></row><row><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell>MLM</cell></row><row><cell>Gold Review</cell><cell>9,134</cell><cell>19.75</cell><cell>80.25</cell><cell>Blind annot.</cell><cell>Benchmark</cell></row><row><cell>Set</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Training Set</cell><cell>6,392</cell><cell>∼19.8</cell><cell>∼80.2</cell><cell>Mixed</cell><cell>Training</cell></row><row><cell>(R6 v2)</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Validation</cell><cell>1,371</cell><cell>∼19.8</cell><cell>∼80.2</cell><cell>Mixed</cell><cell>Selection</cell></row><row><cell>Set (R6 v2)</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>In-domain</cell><cell>1,371</cell><cell>∼19.8</cell><cell>∼80.2</cell><cell>Mixed</cell><cell>In-domain</cell></row><row><cell>Test</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell>eval</cell></row><row><cell>Cross-</cell><cell>3,084</cell><cell>50.00</cell><cell>50.00</cell><cell>UIT-VSMEC</cell><cell>Cross-</cell></row><row><cell>domain</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell>domain</cell></row><row><cell>(VSMEC)</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_49"><head>Table 3 . 2 :</head><label>32</label><figDesc>Settings used for the YouTube Search API when collecting data.</figDesc><table><row><cell>Parameter</cell><cell>Value</cell><cell></cell><cell>Rationale</cell></row><row><cell>part</cell><cell>snippet</cell><cell></cell><cell>Gets video title, channel, and</cell></row><row><cell></cell><cell></cell><cell></cell><cell>upload info</cell></row><row><cell>type</cell><cell>video</cell><cell></cell><cell>Leaves out channels and</cell></row><row><cell></cell><cell></cell><cell></cell><cell>playlists</cell></row><row><cell>order</cell><cell cols="3">relevance Puts the most relevant con-</cell></row><row><cell></cell><cell></cell><cell></cell><cell>tent first</cell></row><row><cell>regionCode</cell><cell>VN</cell><cell></cell><cell>Focuses on content popular</cell></row><row><cell></cell><cell></cell><cell></cell><cell>in Vietnam</cell></row><row><cell cols="2">relevanceLanguage vi</cell><cell></cell><cell>Focuses on Vietnamese con-</cell></row><row><cell></cell><cell></cell><cell></cell><cell>tent</cell></row><row><cell>maxResults</cell><cell>50</cell><cell>per</cell><cell>API maximum per request</cell></row><row><cell></cell><cell>page</cell><cell></cell><cell></cell></row></table><note><p>• Comments per video: Up to 100 top-level comment threads • Comment format: Plain-text format and relevance order • Theoretical maximum: 264 × 100 × 100 = 2, 650, 000 comments</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_50"><head>Table 3 . 3 :</head><label>33</label><figDesc>The raw data schema.</figDesc><table><row><cell>Column</cell><cell cols="2">Type Description</cell></row><row><cell>comment_id</cell><cell>str</cell><cell>YouTube's comment ID; primary</cell></row><row><cell></cell><cell></cell><cell>duplicate check key</cell></row><row><cell>video_id</cell><cell>str</cell><cell>YouTube video ID; traces com-</cell></row><row><cell></cell><cell></cell><cell>ment origin</cell></row><row><cell>video_title</cell><cell>str</cell><cell>Title of the video the comment</cell></row><row><cell></cell><cell></cell><cell>came from</cell></row><row><cell>keyword</cell><cell>str</cell><cell>The search keyword that led to</cell></row><row><cell></cell><cell></cell><cell>this video</cell></row><row><cell>comment_text</cell><cell>str</cell><cell>Plain-text comment (HTML al-</cell></row><row><cell></cell><cell></cell><cell>ready removed)</cell></row><row><cell>like_count</cell><cell>int</cell><cell>Number of likes when collected</cell></row><row><cell>published_at</cell><cell>str</cell><cell>Date and time posted (ISO 8601</cell></row><row><cell></cell><cell></cell><cell>format)</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_51"><head>Table 3 . 4 :</head><label>34</label><figDesc>External Vietnamese datasets with tier system.</figDesc><table><row><cell>Dataset</cell><cell>HuggingFace</cell><cell>Label</cell><cell cols="2">Tier Role</cell></row><row><cell></cell><cell>ID</cell><cell>Type</cell><cell></cell><cell></cell></row><row><cell>UIT-</cell><cell>duwonline/UIT-</cell><cell>Emotion</cell><cell>1</cell><cell>Cross-</cell></row><row><cell>VSMEC</cell><cell>VSMEC</cell><cell>(7 cls)</cell><cell></cell><cell>domain test</cell></row><row><cell cols="2">NTC-SCV thainq107/ntc-</cell><cell>Sentiment</cell><cell>2</cell><cell>Hard-neg.</cell></row><row><cell></cell><cell>scv</cell><cell>(binary)</cell><cell></cell><cell>aug.</cell></row><row><cell>UIT-</cell><cell>tridm/UIT-</cell><cell>Sentiment</cell><cell>2</cell><cell>Hard-neg.;</cell></row><row><cell>VSFC</cell><cell>VSFC</cell><cell>(3 cls)</cell><cell></cell><cell>corpus</cell></row><row><cell>VN Senti-</cell><cell cols="2">anotherpholbear/...Sentiment</cell><cell>2</cell><cell>Hard-neg.</cell></row><row><cell>ment</cell><cell></cell><cell>(5*)</cell><cell></cell><cell></cell></row><row><cell>VN Sen-</cell><cell>sepidmnorozy/vn-</cell><cell>Sentiment</cell><cell>2</cell><cell>Hard-neg.;</cell></row><row><cell>timent</cell><cell>sent</cell><cell>(binary)</cell><cell></cell><cell>corpus</cell></row><row><cell>(binary)</cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>VN Com-</cell><cell>minhtoan/vn-</cell><cell></cell><cell></cell><cell></cell></row><row><cell>ment Sent.</cell><cell>cmt-sent.</cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_52"><head>Table 3 . 5 :</head><label>35</label><figDesc>Weak-labeling keyword list structure.</figDesc><table><row><cell cols="4">Category Entries Weight Vietnamese</cell><cell>English</cell><cell></cell></row><row><cell></cell><cell></cell><cell></cell><cell>Examples</cell><cell></cell><cell></cell></row><row><cell>Depression-</cell><cell>53</cell><cell>+5</cell><cell>muốn chết, tự</cell><cell cols="2">want to die, sui-</cell></row><row><cell>Strong</cell><cell></cell><cell></cell><cell>tử, trầm cảm</cell><cell cols="2">cide, depression</cell></row><row><cell>Depression-</cell><cell>116</cell><cell>+3</cell><cell>cô đơn, mệt</cell><cell>lonely,</cell><cell>ex-</cell></row><row><cell>Medium</cell><cell></cell><cell></cell><cell>mỏi, mất ngủ,</cell><cell cols="2">hausted, insom-</cell></row><row><cell></cell><cell></cell><cell></cell><cell>burnout</cell><cell>nia</cell><cell></cell></row><row><cell>Normal-</cell><cell>166</cell><cell>-2</cell><cell>video hay, cảm</cell><cell>good</cell><cell>video,</cell></row><row><cell>Context</cell><cell></cell><cell></cell><cell>ơn, tuyệt vời</cell><cell cols="2">thank you, won-</cell></row><row><cell></cell><cell></cell><cell></cell><cell></cell><cell>derful</cell><cell></cell></row><row><cell>Review-</cell><cell>22</cell><cell>-</cell><cell>đừng tự tử, cố</cell><cell cols="2">don't suicide,</cell></row><row><cell>Context</cell><cell></cell><cell></cell><cell>lên, chết cười</cell><cell cols="2">stay strong</cell></row><row><cell>Total:</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_53"><head>335 keyword entries Scoring</head><label></label><figDesc></figDesc><table /><note><p>Function: score = 5 n strong + 3 n medium -2 n normal Key insight: Weak-labeler has high recall (97.87%) but low precision (61.33%).</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_54"><head>Table 3 . 6 :</head><label>36</label><figDesc>Score thresholds for weak label assignment.</figDesc><table><row><cell cols="2">Condition weak_label</cell><cell>confidence</cell></row><row><cell cols="3">score ≥ 5 depression_autohigh if score</cell></row><row><cell></cell><cell></cell><cell>≥ 8; else</cell></row><row><cell></cell><cell></cell><cell>medium</cell></row><row><cell cols="3">score ≤ -2 normal_auto high if score</cell></row><row><cell></cell><cell></cell><cell>≤ -4; else</cell></row><row><cell></cell><cell></cell><cell>medium</cell></row><row><cell>-1 ≤ score</cell><cell>uncertain</cell><cell>low</cell></row><row><cell>≤ 4</cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_55"><head>Table 3 . 7 :</head><label>37</label><figDesc>Weak label distribution on 125,329 cleaned YouTube comments.</figDesc><table><row><cell>weak_label</cell><cell>Count</cell><cell>(%)</cell><cell>Interpretation</cell></row><row><cell>depression_auto</cell><cell>3,223</cell><cell cols="2">2.57% Comments with score</cell></row><row><cell></cell><cell></cell><cell></cell><cell>≥ 5</cell></row><row><cell>normal_auto</cell><cell cols="3">23,695 18.91% Comments with score</cell></row><row><cell></cell><cell></cell><cell></cell><cell>≤ -2</cell></row><row><cell>uncertain</cell><cell cols="3">98,410 78.52% Comments with un-</cell></row><row><cell></cell><cell></cell><cell></cell><cell>clear signals</cell></row><row><cell cols="4">need_review flagged 120,334 96.01% Triggered ≥1 review</cell></row><row><cell></cell><cell></cell><cell></cell><cell>condition</cell></row><row><cell cols="4">• Annotators only saw comment text and row ID-never the machine-suggested</cell></row><row><cell>label</cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="3">• All machine-generated information removed</cell><cell></cell></row><row><cell cols="4">• Ensures independent human judgment and prevents anchoring bias</cell></row><row><cell cols="4">Key insight: Batch 8 Kappa of -0.03 (essentially zero) proves annotators made</cell></row><row><cell cols="4">truly independent decisions on the hardest cases, showing the blind method removed</cell></row><row><cell cols="4">annotation contamination and active learning targets genuinely difficult cases.</cell></row><row><cell cols="4">The 19.75% depression rate reflects both the natural rate on YouTube and care-</cell></row><row><cell>ful annotator judgment.</cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_56"><head>Table 3 . 8 :</head><label>38</label><figDesc>Weak-labeler performance on 343 evaluable gold samples.</figDesc><table><row><cell>Metric</cell><cell>Value</cell></row><row><cell>Accuracy</cell><cell>0.8251</cell></row><row><cell>Precision (depression)</cell><cell>0.6133</cell></row><row><cell>Recall (depression)</cell><cell>0.9787</cell></row><row><cell>F1 (macro)</cell><cell>0.8092</cell></row><row><cell>Confusion matrix</cell><cell>TN=191, FP=58, FN=2, TP=92</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_57"><head>Table 3 . 9 :</head><label>39</label><figDesc>Human-machine agreement for two blind annotation batches.</figDesc><table><row><cell>Metric</cell><cell cols="2">Batch 5 (Regular) Batch 8 (Active Learning)</cell></row><row><cell>Samples</cell><cell>750</cell><cell>1,000</cell></row><row><cell>Human-machine disagreement</cell><cell>17.49%</cell><cell>53.72%</cell></row><row><cell>Cohen's Kappa</cell><cell>0.63</cell><cell>-0.03</cell></row><row><cell>Interpretation</cell><cell>Moderate agreement</cell><cell>Near-random agreement</cell></row></table><note><p><p><p>3.12 Data Leakage Prevention</p>To ensure reliable evaluation, we implemented strict data leakage prevention between training and test sets. The key principle is that no document from the same source can appear in both training and test sets. This is particularly important for YouTube comments where a single video may generate multiple comments that share context.</p>Our data leakage prevention strategy follows a three-tier approach: (1) Videolevel separation for YouTube data, ensuring all comments from one video stay in the same split; (2) External dataset isolation, keeping all samples from external datasets separate from YouTube data; (3) Keyword-based distribution, ensuring depressionrelated keywords are proportionally represented across splits.</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_58"><head>Table 3 . 10 :</head><label>310</label><figDesc>Gold set construction summary.</figDesc><table><row><cell>Metric</cell><cell>Value</cell></row><row><cell>Total reviewed samples</cell><cell>1,750</cell></row><row><cell>Annotator marked uncertain</cell><cell>59</cell></row><row><cell>Annotator marked exclude</cell><cell>82</cell></row><row><cell>Duplicate text removed</cell><cell>2</cell></row><row><cell>Final gold set size</cell><cell>9,134</cell></row><row><cell>depression (label = 1)</cell><cell>1,804 (19.75%)</cell></row><row><cell>normal (label = 0)</cell><cell>7,330 (80.25%)</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_59"><head>Table 3 . 11 :</head><label>311</label><figDesc>Sources and weights for final training data.</figDesc><table><row><cell cols="2">Source</cell><cell>Label Prove-</cell><cell cols="2">Weight Description</cell><cell></cell></row><row><cell></cell><cell></cell><cell>nance</cell><cell></cell><cell></cell><cell></cell></row><row><cell>A:</cell><cell>Human</cell><cell>Blind human</cell><cell>3</cell><cell>9,134</cell><cell>samples;</cell></row><row><cell>Gold</cell><cell></cell><cell>annotation</cell><cell></cell><cell cols="2">highest-quality</cell></row><row><cell></cell><cell></cell><cell></cell><cell></cell><cell>source</cell><cell></cell></row><row><cell>B:</cell><cell>Weak</cell><cell>Keyword</cell><cell>2</cell><cell cols="2">Confidence = high;</cell></row><row><cell cols="2">High-Conf.</cell><cell>scoring</cell><cell></cell><cell cols="2">score ≥8 or ≤-4</cell></row><row><cell cols="2">C: PhoBERT</cell><cell>Model</cell><cell>1</cell><cell>Probability</cell><cell>≥0.9;</cell></row><row><cell>v2</cell><cell></cell><cell>pseudo-</cell><cell></cell><cell cols="2">capped at 20,000</cell></row><row><cell></cell><cell></cell><cell>labeling</cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">D: External</cell><cell>Human senti-</cell><cell>2</cell><cell cols="2">10,000 from augmen-</cell></row><row><cell>Neg.</cell><cell></cell><cell>ment</cell><cell></cell><cell cols="2">tation_negatives.csv</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_60"><head>Table 3 . 12 :</head><label>312</label><figDesc>Final dataset split (Round 6 v2).</figDesc><table><row><cell>Split</cell><cell cols="3">Ratio Samples Purpose</cell></row><row><cell>Train</cell><cell>70%</cell><cell>6,392</cell><cell cols="2">Model parame-</cell></row><row><cell></cell><cell></cell><cell></cell><cell cols="2">ter optimization</cell></row><row><cell>Validation</cell><cell>15%</cell><cell>1,371</cell><cell cols="2">Hyperparameter</cell></row><row><cell></cell><cell></cell><cell></cell><cell>tuning,</cell><cell>early</cell></row><row><cell></cell><cell></cell><cell></cell><cell>stopping</cell></row><row><cell cols="2">Test (in-domain) 15%</cell><cell>1,371</cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_61"><head>Table 3 . 13 :</head><label>313</label><figDesc>Complete dataset statistics showing class distributions.</figDesc><table><row><cell>Subset</cell><cell cols="4">Size Dep (n) Dep (%) Norm (n) Norm (%)</cell></row><row><cell>Gold Review Set</cell><cell>9,134 1,804</cell><cell>19.75</cell><cell>7,330</cell><cell>80.25</cell></row><row><cell>Training Set (R6 v2)</cell><cell>6,392 ∼1,262</cell><cell>∼19.8</cell><cell>∼5,130</cell><cell>∼80.2</cell></row><row><cell>Validation Set (R6 v2)</cell><cell>1,371 ∼271</cell><cell>∼19.8</cell><cell>∼1,100</cell><cell>∼80.2</cell></row><row><cell>In-domain Test</cell><cell>1,371 ∼271</cell><cell>∼19.8</cell><cell>∼1,100</cell><cell>∼80.2</cell></row><row><cell cols="2">Cross-domain (VSMEC) 3,084 1,542</cell><cell>50.00</cell><cell>1,542</cell><cell>50.00</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_62"><head>Table 3 . 14 :</head><label>314</label><figDesc>Publicly released resources for reproducibility.</figDesc><table><row><cell>Resource</cell><cell>Link</cell></row><row><cell>Dataset directory</cell><cell>https://github.com/iannwendy/aitraining/tree/</cell></row><row><cell></cell><cell>main/data</cell></row><row><cell>Main dataset file</cell><cell>https://github.com/iannwendy/aitraining/blob/</cell></row><row><cell></cell><cell>main/data/labeled/final_dataset.csv</cell></row><row><cell>Augmented data</cell><cell>https://github.com/iannwendy/aitraining/tree/</cell></row><row><cell></cell><cell>main/data/augmented_v2</cell></row><row><cell>Source code</cell><cell>https://github.com/iannwendy/aitraining</cell></row></table><note><p><p><p>• The augmented data folder contains the extra positive/negative samples used to balance the training set as described in the corpus construction section.</p>• The source code repository provides the full implementation pipeline: data collection scripts, preprocessing, weak labeling, active-learning annotation helpers, model training notebooks, and evaluation utilities.</p>Readers can clone the source code repository and follow the README to reproduce every experimental result reported in this research topic end-to-end.</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_63"><head>Table 4 .</head><label>4</label><figDesc></figDesc><table><row><cell>Component</cell><cell></cell><cell>Configuration</cell></row><row><cell>Word-level</cell><cell>TF-</cell><cell>Unigrams + bigrams, max</cell></row><row><cell>IDF</cell><cell></cell><cell>80,000 features</cell></row><row><cell>Character-level</cell><cell></cell><cell>3-5 char. groups respecting</cell></row><row><cell>TF-IDF</cell><cell></cell><cell>word boundaries, max 80,000</cell></row><row><cell></cell><cell></cell><cell>features</cell></row><row><cell>Classifier</cell><cell></cell><cell>LinearSVC,</cell></row><row><cell></cell><cell></cell><cell>class_weight="balanced",</cell></row><row><cell></cell><cell></cell><cell>max_iter=2,000</cell></row><row><cell cols="3">4.2.2 Model 2: BiLSTM (Pre-Transformer Baseline)</cell></row><row><cell cols="3">We implement a Bidirectional LSTM to represent pre-Transformer deep learn-</cell></row><row><cell cols="3">ing approaches. Bidirectional Long Short-Term Memory networks [11] extend stan-</cell></row><row><cell cols="3">dard RNNs with memory cells that can capture long-range dependencies while mit-</cell></row><row><cell cols="3">igating the vanishing gradient problem. The bidirectional architecture allows the</cell></row></table><note><p>1: TF-IDF + LinearSVC configuration model to process text sequences in both forward and backward directions, capturing context from both past and future tokens.</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_64"><head>Table 4 . 2 :</head><label>42</label><figDesc>BiLSTM configuration</figDesc><table><row><cell cols="2">Component</cell><cell>Configuration</cell></row><row><cell cols="3">Embedding Layer 128 dimensions, vocabulary</cell></row><row><cell></cell><cell></cell><cell>size 15,000</cell></row><row><cell cols="2">LSTM Layers</cell><cell>2 stacked BiLSTM, hidden</cell></row><row><cell></cell><cell></cell><cell>size 128 per direction</cell></row><row><cell>Dropout</cell><cell></cell><cell>0.5 (applied between LSTM</cell></row><row><cell></cell><cell></cell><cell>layers)</cell></row><row><cell cols="2">Classifier Head</cell><cell>256 → 64 → 2, ReLU activa-</cell></row><row><cell></cell><cell></cell><cell>tion</cell></row><row><cell cols="2">Optimizer</cell><cell>Adam, learning rate 0.001</cell></row><row><cell cols="2">Batch Size</cell><cell>32</cell></row><row><cell>Epochs</cell><cell></cell><cell>8</cell></row><row><cell>Max</cell><cell>Sequence</cell></row><row><cell>Length</cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_65"><head>Table 4 . 3 :</head><label>43</label><figDesc>PhoBERT fine-tuning configuration</figDesc><table><row><cell cols="2">Component</cell><cell>Configuration</cell></row><row><cell cols="3">Pre-trained Model vinai/phobert-base</cell></row><row><cell cols="2">Optimizer</cell><cell>AdamW</cell></row><row><cell cols="2">Learning Rate</cell><cell>2e-5</cell></row><row><cell cols="2">Weight Decay</cell><cell>0.01</cell></row><row><cell cols="3">Gradient Clipping 1.0</cell></row><row><cell cols="2">Warmup Steps</cell><cell>6% of total steps</cell></row><row><cell>Epochs</cell><cell></cell><cell>3 (early stopping: 2 epochs</cell></row><row><cell></cell><cell></cell><cell>patience)</cell></row><row><cell>Batch</cell><cell>Size</cell><cell>8 / 16</cell></row><row><cell cols="2">(train/eval)</cell><cell></cell></row><row><cell>Max</cell><cell>Sequence</cell><cell>128 tokens</cell></row><row><cell>Length</cell><cell></cell><cell></cell></row><row><cell cols="2">Word Segmenta-</cell><cell>underthesea word_tokenize</cell></row><row><cell>tion</cell><cell></cell><cell>(format="text")</cell></row><row><cell cols="2">Class Weighting</cell><cell>Computed from training data</cell></row><row><cell></cell><cell></cell><cell>(inverse-frequency)</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_66"><head>Table 4 . 4 :</head><label>44</label><figDesc>BERTopic-Only configuration</figDesc><table><row><cell>Component</cell><cell>Configuration</cell></row><row><cell>Features</cell><cell>Topic ID (categorical) + Topic</cell></row><row><cell></cell><cell>Probability (continuous)</cell></row><row><cell>Classifier</cell><cell>Logistic Regression</cell></row><row><cell>BERTopic Ver-</cell><cell></cell></row><row><cell>sion</cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_67"><head>Table 4 . 5 :</head><label>45</label><figDesc>PhoBERT + BERTopic hybrid model configuration</figDesc><table><row><cell cols="2">Component</cell><cell>Configuration</cell></row><row><cell cols="2">PhoBERT Em-</cell><cell cols="2">CLS-token (768 dimensions)</cell></row><row><cell>bedding</cell><cell></cell><cell></cell></row><row><cell cols="2">BERTopic Fea-</cell><cell cols="2">Topic ID (one-hot encoded) +</cell></row><row><cell>tures</cell><cell></cell><cell>Topic Probability</cell></row><row><cell cols="3">Feature Scaling StandardScaler</cell></row><row><cell>Feature</cell><cell>Con-</cell><cell cols="2">768 + (num_topics) + 1 dimen-</cell></row><row><cell>catenation</cell><cell></cell><cell>sions</cell></row><row><cell>Classifier</cell><cell></cell><cell>Logistic</cell><cell>Regression</cell></row><row><cell></cell><cell></cell><cell cols="2">(class_weight="balanced")</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_68"><head>Table 4 . 6 :</head><label>46</label><figDesc>Confusion matrix value definitions</figDesc><table><row><cell>Metric</cell><cell cols="2">Symbol Definition</cell></row><row><cell cols="2">True Positive TP</cell><cell>Depression correctly pre-</cell></row><row><cell></cell><cell></cell><cell>dicted as depression</cell></row><row><cell>True Nega-</cell><cell>TN</cell><cell>Normal correctly predicted</cell></row><row><cell>tive</cell><cell></cell><cell>as normal</cell></row><row><cell>False Posi-</cell><cell>FP</cell><cell>Normal wrongly predicted</cell></row><row><cell>tive</cell><cell></cell><cell>as depression</cell></row><row><cell>False Nega-</cell><cell>FN</cell><cell>Depression wrongly pre-</cell></row><row><cell>tive</cell><cell></cell><cell>dicted as normal</cell></row><row><cell cols="3">Why F1-macro? It treats both classes equally-critical for our imbalanced</cell></row><row><cell cols="3">dataset where depression is the minority class.</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_69"><head>Table 4 . 7 :</head><label>47</label><figDesc>Class imbalance handling by model</figDesc><table><row><cell>Model</cell><cell></cell><cell>Class</cell><cell cols="2">Weighting</cell><cell>Notes</cell></row><row><cell></cell><cell></cell><cell>Method</cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">TF-IDF + Lin-</cell><cell cols="4">class_weight="balanced" Uses</cell><cell>scikit-learn's</cell></row><row><cell>earSVC</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell cols="2">inv.-freq. formula</cell></row><row><cell>PhoBERT</cell><cell></cell><cell cols="3">Custom weights ap-</cell><cell>Weights:</cell><cell>w c</cell><cell>=</cell></row><row><cell></cell><cell></cell><cell cols="3">plied to cross-entropy</cell><cell cols="2">N total /(2 • N c )</cell></row><row><cell></cell><cell></cell><cell>loss</cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="6">BERTopic-Only class_weight="balanced" Uses</cell><cell>scikit-learn's</cell></row><row><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell cols="2">inv.-freq. formula</cell></row><row><cell>PhoBERT</cell><cell>+</cell><cell cols="4">class_weight="balanced" Uses</cell><cell>scikit-learn's</cell></row><row><cell>BERTopic</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell cols="2">inv.-freq. formula</cell></row><row><cell>BiLSTM</cell><cell></cell><cell>None</cell><cell>(no</cell><cell>class</cell><cell cols="2">Representing</cell><cell>pre-</cell></row><row><cell></cell><cell></cell><cell cols="2">weighting)</cell><cell></cell><cell cols="2">Transformer DL</cell></row><row><cell cols="3">4.6 Training Configuration</cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_70"><head>Table 4 .8: Hardware specifications</head><label>4</label><figDesc></figDesc><table><row><cell>Component</cell><cell>Specification</cell><cell></cell><cell></cell></row><row><cell>GPU</cell><cell cols="3">NVIDIA GPU with CUDA sup-</cell></row><row><cell></cell><cell>port</cell><cell></cell><cell></cell></row><row><cell>Framework</cell><cell>PyTorch 2.0+</cell><cell></cell><cell></cell></row><row><cell>Transformers</cell><cell cols="3">Hugging Face Transformers li-</cell></row><row><cell></cell><cell>brary</cell><cell></cell><cell></cell></row><row><cell>BERTopic</cell><cell>BERTopic</cell><cell>with</cell><cell>sentence-</cell></row><row><cell></cell><cell cols="2">transformers backend</cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_71"><head>Table 4 .9: Software dependencies</head><label>4</label><figDesc></figDesc><table><row><cell>Library</cell><cell>Version</cell><cell cols="2">Purpose</cell></row><row><cell>transformers</cell><cell>4.30+</cell><cell cols="2">PhoBERT model and</cell></row><row><cell></cell><cell></cell><cell cols="2">tokenizer</cell></row><row><cell>torch</cell><cell>2.0+</cell><cell cols="2">Deep learning frame-</cell></row><row><cell></cell><cell></cell><cell>work</cell><cell></cell></row><row><cell>scikit-learn</cell><cell>1.3+</cell><cell cols="2">TF-IDF, SVM, Logis-</cell></row><row><cell></cell><cell></cell><cell cols="2">tic Regression, class</cell></row><row><cell></cell><cell></cell><cell>weights</cell><cell></cell></row><row><cell>underthesea</cell><cell>1.4+</cell><cell cols="2">Vietnamese word seg-</cell></row><row><cell></cell><cell></cell><cell cols="2">mentation</cell></row><row><cell>bertopic</cell><cell>0.16+</cell><cell cols="2">Topic modeling for</cell></row><row><cell></cell><cell></cell><cell cols="2">feature extraction</cell></row><row><cell>sentence-</cell><cell>2.2+</cell><cell cols="2">Sentence embeddings</cell></row><row><cell>transformers</cell><cell></cell><cell cols="2">for BERTopic</cell></row><row><cell>numpy</cell><cell>1.24+</cell><cell cols="2">Numerical computa-</cell></row><row><cell></cell><cell></cell><cell>tions</cell><cell></cell></row><row><cell>pandas</cell><cell>2.0+</cell><cell>Data</cell><cell>manipulation</cell></row><row><cell></cell><cell></cell><cell cols="2">and CSV handling</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_72"><head>Table 4 . 10 :</head><label>410</label><figDesc>Hyperparameter comparison across models</figDesc><table><row><cell cols="3">Hyperparameter TF-IDF+SVM BiLSTM</cell><cell>PhoBERT</cell></row><row><cell>Learning Rate</cell><cell>N/A</cell><cell>0.001</cell><cell>2e-5</cell></row><row><cell>Batch Size</cell><cell>N/A</cell><cell>32</cell><cell>8 (train) / 16</cell></row><row><cell></cell><cell></cell><cell></cell><cell>(eval)</cell></row><row><cell>Epochs</cell><cell>N/A</cell><cell>8</cell><cell>3 (early stop-</cell></row><row><cell></cell><cell></cell><cell></cell><cell>ping)</cell></row><row><cell>Max Sequence</cell><cell>N/A</cell><cell>100 tokens</cell><cell>128 tokens</cell></row><row><cell>Length</cell><cell></cell><cell></cell><cell></cell></row><row><cell>Optimizer</cell><cell>LIBLINEAR</cell><cell>Adam</cell><cell>AdamW</cell></row><row><cell></cell><cell>(L2)</cell><cell></cell><cell></cell></row><row><cell>Weight Decay</cell><cell>N/A</cell><cell>N/A</cell><cell>0.01</cell></row><row><cell>Dropout</cell><cell>N/A</cell><cell>0.5</cell><cell>0.1 (default)</cell></row><row><cell>Gradient Clip-</cell><cell>N/A</cell><cell>N/A</cell><cell>1.0</cell></row><row><cell>ping</cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="4">Reproducibility: All five models can be retrained using the released source</cell></row><row><cell cols="4">code at https://github.com/iannwendy/aitraining together with the canonical</cell></row><row><cell cols="4">dataset file at https://github.com/iannwendy/aitraining/blob/main/data/</cell></row><row><cell cols="4">labeled/final_dataset.csv. The repository contains the exact configuration files,</cell></row><row><cell cols="4">training scripts, and evaluation utilities that produced every result reported in Chap-</cell></row><row><cell>ter 5.</cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_73"><head>Table 5 . 1 :</head><label>51</label><figDesc>Dataset distributions across training, validation, and test sets</figDesc><table><row><cell>Dataset</cell><cell></cell><cell cols="5">Dep (n) Dep (%) Norm (n) Norm (%) Total</cell></row><row><cell cols="2">Gold Review Set</cell><cell>1,804</cell><cell>19.75%</cell><cell>7,330</cell><cell>80.25%</cell><cell>9,134</cell></row><row><cell>(original)</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Training</cell><cell>Set</cell><cell cols="2">∼1,262 ∼19.8%</cell><cell>∼5,130</cell><cell>∼80.2%</cell><cell>6,392</cell></row><row><cell>(Round 6 v2)</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Validation Set</cell><cell></cell><cell>∼271</cell><cell>∼19.8%</cell><cell>∼1,100</cell><cell>∼80.2%</cell><cell>1,371</cell></row><row><cell cols="3">In-domain Test Set ∼271</cell><cell>∼19.8%</cell><cell>∼1,100</cell><cell>∼80.2%</cell><cell>1,371</cell></row><row><cell>Cross-domain</cell><cell></cell><cell>1,542</cell><cell>50.00%</cell><cell>1,542</cell><cell>50.00%</cell><cell>3,084</cell></row><row><cell>(VSMEC)</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="7">The original gold set has a 1:4 class ratio (19.75% depression vs. 80.25% nor-</cell></row><row><cell cols="7">mal). Our training/test sets maintain approximately this 1:4 ratio. The cross-domain</cell></row><row><cell cols="7">test set is perfectly balanced (50/50) by design. As detailed in Table 5.1, this delib-</cell></row><row><cell cols="7">erate design choice enables both realistic in-domain evaluation under natural class</cell></row><row><cell cols="6">imbalance and unbiased cross-domain assessment under a 50/50 setting.</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_74"><head>Table 5 . 2 :</head><label>52</label><figDesc>Comparative results for all five models (Post Round 6 v2 Dataset)</figDesc><table><row><cell>Model</cell><cell>Acc</cell><cell cols="3">Prec-M Rec-M F1-M (in)</cell><cell>F1-W</cell><cell cols="3">F1-Dep F1-Norm F1-M (cross)</cell></row><row><cell>PhoBERT (avg vote)</cell><cell>0.8038</cell><cell>0.7041</cell><cell>0.7429</cell><cell>0.7187</cell><cell>0.8186</cell><cell>0.5640</cell><cell>0.8729</cell><cell>0.3608</cell></row><row><cell>TF-IDF + LinearSVC</cell><cell>0.8038</cell><cell>0.6956</cell><cell>0.7109</cell><cell>0.7025</cell><cell>0.8075</cell><cell>0.5289</cell><cell>0.8761</cell><cell>0.3798</cell></row><row><cell>TF-IDF + LogReg</cell><cell>0.7936</cell><cell>0.6973</cell><cell>0.7476</cell><cell>0.7138</cell><cell>0.8052</cell><cell>0.5626</cell><cell>0.8650</cell><cell>0.3577</cell></row><row><cell>BiLSTM (avg 3 seeds)</cell><cell>0.8062</cell><cell>0.7334</cell><cell>0.6193</cell><cell>0.6421</cell><cell>0.7965</cell><cell>0.3868</cell><cell>0.3375</cell><cell>0.5003</cell></row><row><cell cols="2">PhoBERT + BERTopic 0.8016</cell><cell>0.7010</cell><cell>0.7387</cell><cell>0.7153</cell><cell>0.8101</cell><cell>0.5584</cell><cell>0.3674</cell><cell>0.5084</cell></row><row><cell cols="9">Note: PhoBERT numbers are averaged over three seeds (42, 123, 2024); clas-</cell></row><row><cell cols="9">sical baselines used one seed. The cross-domain test is VSMEC (3,084 samples).</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_75"><head>Table 5</head><label>5</label><figDesc>.3 lists representative examples that best illustrate each model's behaviour, while Table 5.4 aggregates the qualitative patterns observed across the inspected samples.</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_76"><head>Table 5 . 3 :</head><label>53</label><figDesc>Representative test samples and the prediction of each model. "Gold" is the true label (D = depression, N = normal). Each model cell shows the prediction followed by ✓ (correct) or × (wrong). In-domain samples are YouTube comments; the two VSMEC samples are cross-domain.</figDesc><table><row><cell>Sample</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_77"><head>(Vietnamese) Gold TF-IDF+SVM TF-IDF+LR BiLSTM PhoBERT BERTopic PhoBERT+BERTopic</head><label></label><figDesc></figDesc><table><row><cell>Mình mệt quá rồi, không muốn làm gì</cell><cell>D</cell><cell>D ✓</cell><cell>D ✓</cell><cell>D ✓</cell><cell>D ✓</cell><cell>N×</cell><cell>D ✓</cell></row><row><cell>nữa.</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Có ai giống mình không, mỗi đêm đều</cell><cell>D</cell><cell>D ✓</cell><cell>D ✓</cell><cell>D ✓</cell><cell>D ✓</cell><cell>D ✓</cell><cell>D ✓</cell></row><row><cell>khóc một mình.</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Cuộc đời thật là thú vị, chán thật đấy nhỉ.</cell><cell>D</cell><cell>N×</cell><cell>D ✓</cell><cell>N×</cell><cell>D ✓</cell><cell>N×</cell><cell>D ✓</cell></row><row><cell>Lại một ngày nữa trôi qua, chẳng có gì</cell><cell>D</cell><cell>N×</cell><cell>N×</cell><cell>N×</cell><cell>D ✓</cell><cell>N×</cell><cell>D ✓</cell></row><row><cell>thay đổi.</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Đừng buồn nữa nhé, mọi chuyện rồi sẽ</cell><cell>N</cell><cell>D×</cell><cell>D×</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell></row><row><cell>ổn thôi.</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Buồn ngủ quá trời ơi, mai thi rồi.</cell><cell>N</cell><cell>D×</cell><cell>D×</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell></row><row><cell>Mệt mỏi quá mn ạ, deadline dí sát đầu.</cell><cell>N</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell></row><row><cell>Mình chẳng biết phải làm sao nữa.</cell><cell>D</cell><cell>N×</cell><cell>N×</cell><cell>D ✓</cell><cell>D ✓</cell><cell>N×</cell><cell>D ✓</cell></row><row><cell>Hôm nay trời đẹp quá, mình đi dạo nhé.</cell><cell>N</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell></row><row><cell>[VSMEC] Em cảm thấy rất buồn và</cell><cell>D</cell><cell>D ✓</cell><cell>D ✓</cell><cell>D ✓</cell><cell>N×</cell><cell>D ✓</cell><cell>N×</cell></row><row><cell>không muốn đi học.</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>[VSMEC] Mình rất vui vì được gặp bạn</cell><cell>N</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell><cell>N ✓</cell></row><row><cell>bè.</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_78"><head>Table 5 . 4 :</head><label>54</label><figDesc>Qualitative patterns observed across the inspected test samples. Counts are correct predictions on this representative subset.</figDesc><table><row><cell>Pattern</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_79"><head>Table 5 . 5 :</head><label>55</label><figDesc>Effect of class weighting on model performance</figDesc><table><row><cell cols="2">1. PhoBERT (avg vote): 0.7187 -Best overall</cell><cell></cell><cell></cell></row><row><cell cols="3">2. PhoBERT + BERTopic: 0.7153 -Similar to PhoBERT alone</cell><cell></cell></row><row><cell cols="3">3. TF-IDF + LogReg: 0.7138 -Close second, lower variation</cell><cell></cell></row><row><cell cols="3">4. TF-IDF + LinearSVC: 0.7025 -Best cross-domain (0.3798)</cell><cell></cell></row><row><cell cols="3">5. BiLSTM: 0.6421 -Lowest among supervised models</cell><cell></cell></row><row><cell>5.7 Ablation Study</cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">5.7.1 Effect of Class Weighting</cell><cell></cell><cell></cell></row><row><cell>Model</cell><cell cols="3">With Weighting Without Weighting Delta</cell></row><row><cell>PhoBERT</cell><cell>0.7187</cell><cell>0.6523</cell><cell>+0.0664</cell></row><row><cell>TF-IDF + LogReg</cell><cell>0.7138</cell><cell>0.5891</cell><cell>+0.1247</cell></row><row><cell>BiLSTM</cell><cell>0.6421</cell><cell>0.6312</cell><cell>+0.0109</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_80"><head>Table 5 . 6 :</head><label>56</label><figDesc>Weak labeling quality by confidence level</figDesc><table><row><cell>Category</cell><cell cols="2">Precision Recall F1</cell></row><row><cell>Strong (score ≥ 5)</cell><cell>0.78</cell><cell>0.85 0.81</cell></row><row><cell>Medium (score 3-4)</cell><cell>0.52</cell><cell>0.72 0.60</cell></row><row><cell>Uncertain (score 0-2)</cell><cell>0.31</cell><cell>0.45 0.37</cell></row><row><cell>Normal (score &lt; 0)</cell><cell>0.68</cell><cell>0.82 0.74</cell></row><row><cell>5.7.3 Effect of Active Learning Rounds</cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_81"><head>Table 5 . 7 :</head><label>57</label><figDesc>Performance improvement across active learning rounds</figDesc><table><row><cell>Rounds</cell><cell cols="3">Samples F1-M (in-domain) Improvement</cell></row><row><cell>Round 1</cell><cell>∼200</cell><cell>0.5821</cell><cell>-</cell></row><row><cell>Round 2</cell><cell>∼400</cell><cell>0.6314</cell><cell>+0.0493</cell></row><row><cell>Round 3</cell><cell>∼650</cell><cell>0.6658</cell><cell>+0.0344</cell></row><row><cell>Round 4</cell><cell>∼900</cell><cell>0.6892</cell><cell>+0.0234</cell></row><row><cell>Round 5</cell><cell>∼1,200</cell><cell>0.7015</cell><cell>+0.0123</cell></row><row><cell cols="2">Round 6 (final) ∼9,134</cell><cell>0.7187</cell><cell>+0.0172</cell></row><row><cell cols="4">Finding: Active learning shows diminishing returns: early rounds (1-2) pro-</cell></row><row><cell cols="4">vide +4.9 F1 points per 200 samples, while later rounds (5-6) only provide +1.7 F1</cell></row><row><cell>points.</cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_82"><head>Table 5 . 8 :</head><label>58</label><figDesc>Definitions of the confusion matrix cells for binary depression classificationThe word "buồn" has two distinct meanings:</figDesc><table><row><cell>Cell</cell><cell>Definition</cell><cell></cell><cell>Clinical Interpreta-</cell></row><row><cell></cell><cell></cell><cell></cell><cell>tion</cell></row><row><cell>TP (True</cell><cell cols="2">Predicted depression,</cell><cell>A depression signal</cell></row><row><cell>Positive)</cell><cell cols="2">True label = depres-</cell><cell>correctly identified</cell></row><row><cell></cell><cell>sion</cell><cell></cell><cell></cell></row><row><cell>TN (True</cell><cell>Predicted</cell><cell>normal,</cell><cell>Non-depression cor-</cell></row><row><cell>Negative)</cell><cell cols="2">True label = normal</cell><cell>rectly identified</cell></row><row><cell>FP (False</cell><cell cols="2">Predicted depression,</cell><cell>A normal comment</cell></row><row><cell>Positive)</cell><cell cols="2">True label = normal</cell><cell>wrongly flagged</cell></row><row><cell>FN (False</cell><cell>Predicted</cell><cell>normal,</cell><cell>A missed depression</cell></row><row><cell>Negative)</cell><cell cols="2">True label = depres-</cell><cell>signal</cell></row><row><cell></cell><cell>sion</cell><cell></cell><cell></cell></row><row><cell cols="2">1. Polysemous Vietnamese Words:</cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_83"><head>Table 5 . 9 :</head><label>59</label><figDesc>Depression-related topics found by BERTopic</figDesc><table><row><cell cols="2">Topic ID Top Words</cell><cell>Docs Interpretation</cell></row><row><cell>33</cell><cell>trầm cảm, thuốc,</cell><cell>749 Clinical depression</cell></row><row><cell></cell><cell>bệnh, bs</cell><cell>and treatment</cell></row><row><cell>7</cell><cell>bs, giấc, ngủ, thuốc,</cell><cell>1,687 Sleep disorders and</cell></row><row><cell></cell><cell>bác</cell><cell>medical consultation</cell></row><row><cell>19</cell><cell>burnout, work, stress,</cell><cell>1,052 Workplace burnout</cell></row><row><cell></cell><cell>job, mental</cell><cell></cell></row><row><cell>14</cell><cell>khóc, nghe, buồn, rơi,</cell><cell>1,214 Sadness expression</cell></row><row><cell></cell><cell>mưa</cell><cell>and emotional release</cell></row><row><cell>27</cell><cell>thân, giấc, ai, cô,</cell><cell>844 Loneliness and exis-</cell></row><row><cell></cell><cell>buồn, sống</cell><cell>tential distress</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_84"><head>Table 5 . 10 :</head><label>510</label><figDesc>BERTopic results on the Round 6 v2 dataset</figDesc><table><row><cell>Model</cell><cell cols="4">In Acc In F1-M In F1-Dep X Acc X F1-M X F1-Dep</cell></row><row><cell>BERTopic-only</cell><cell>0.4449 0.4208</cell><cell>0.3025</cell><cell>0.5078 0.5030</cell><cell>0.5520</cell></row><row><cell cols="2">PhoBERT + BERTopic 0.8016 0.7153</cell><cell>0.5584</cell><cell>0.5084 0.3674</cell><cell>0.0688</cell></row><row><cell cols="5">Key Findings: BERTopic-only model shows higher cross-domain F1-macro</cell></row><row><cell cols="5">(0.5030) than in-domain (0.4208), suggesting topic-based features transfer well across</cell></row><row><cell>domains.</cell><cell></cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+		</body>
+		<back>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>APPENDIX Appendix A. YouTube Search Keywords (Thematic Grouping)</head><p>Our 264 search keywords are grouped into five themes, covering a comprehensive range of depression-related topics in Vietnamese: Group 1: Depression and Suicidality (30 terms) trầm cảm (depression), tôi bị trầm cảm (I have depression), dấu hiệu trầm cảm (signs of depression), vượt qua trầm cảm (overcoming depression), sống với trầm cảm (living with depression), muốn chết (want to die), nghĩ đến cái chết (thinking about death), ý định tự tử (suicidal ideation), tự tử (suicide), đừng tự tử (don't commit suicide), phòng chống tự tử (suicide prevention), cứu tôi với (save me), cần được giúp đỡ (need help), trầm cảm sau sinh (postpartum depression), trầm cảm tuổi dậy thì (adolescent depression), trầm cảm ở người trẻ (depression in young people), sinh viên trầm cảm (depressed university student), học sinh trầm cảm (depressed student), người trẻ trầm cảm (depressed youth).</p><p>Group 2: Loneliness and Sadness (42 terms) cô đơn (lonely), cảm thấy cô đơn (feel lonely), nỗi cô đơn (the loneliness), tâm sự đêm khuya (late-night confessions), tâm sự buồn (sad confessions), buồn không lý do (sad for no reason), cảm xúc tiêu cực (negative emotions), năng lượng tiêu cực (negative energy), khóc một mình (crying alone), nước mắt đêm khuya (late-night tears), một mình trong phòng (alone in the room), nụ cười che giấu nỗi buồn (smile hiding sadness).  Group 5: Psychological Help-Seeking and Healing (30 terms) tư vấn tâm lý (psychological counseling), trị liệu tâm lý (psychotherapy), chữa lành tâm lý (psychological healing), chữa lành đứa trẻ bên trong (healing the inner child), yêu bản thân (self-love), vượt qua nỗi đau (overcoming pain), nhạc chữa lành (healing music). "trống rỗng" (empty)</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Appendix B. Detailed Hyperparameter Configurations</head><p>• False Positives often occur when Vietnamese words have multiple meanings (e.g., "buồn" means both "sad" and "sleepy")</p><p>• False Negatives typically involve implicit expressions of distress without explicit depression keywords • True Positives demonstrate that explicit keyword matching works well when the signal is clear</p></div>			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct xml:id="b0">
+	<monogr>
+		<title level="m" type="main">Diagnostic and statistical manual of mental disorders</title>
+		<idno type="DOI">10.1176/appi.books.9780890425787</idno>
+		<ptr target="https://doi.org/10.1176/appi.books.9780890425787" />
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<publisher>American Psychiatric Association Publishing</publisher>
+		</imprint>
+	</monogr>
+	<note>th ed., text rev</note>
+	<note type="raw_reference">American Psychiatric Association. (2022). Diagnostic and statistical manual of mental disorders (5th ed., text rev.). American Psychiatric Association Pub- lishing. https://doi.org/10.1176/appi.books.9780890425787</note>
+</biblStruct>
+
+<biblStruct xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Density-based clustering based on hierarchical density estimates</title>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">J G B</forename><surname>Campello</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Moulavi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Sander</surname></persName>
+		</author>
+		<idno type="DOI">10.1007/978-3-642-37456-2_14</idno>
+		<ptr target="https://doi.org/10.1007/978-3-642-37456-2_14" />
+	</analytic>
+	<monogr>
+		<title level="m">Advances in knowledge discovery and data mining</title>
+		<title level="s">Lecture Notes in Computer Science</title>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2013">2013</date>
+			<biblScope unit="volume">7819</biblScope>
+			<biblScope unit="page" from="160" to="172" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Campello, R. J. G. B., Moulavi, D., &amp; Sander, J. (2013). Density-based clus- tering based on hierarchical density estimates. In Advances in knowledge dis- covery and data mining (Lecture Notes in Computer Science, Vol. 7819, pp. 160-172). Springer. https://doi.org/10.1007/978-3-642-37456-2_14</note>
+</biblStruct>
+
+<biblStruct xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Quantifying mental health signals in Twitter</title>
+		<author>
+			<persName><forename type="first">G</forename><surname>Coppersmith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Dredze</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Harman</surname></persName>
+		</author>
+		<idno type="DOI">10.3115/v1/W14-3207</idno>
+		<ptr target="https://doi.org/10.3115/v1/W14-3207" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the Workshop on Computational Linguistics and Clinical Psychology: From Linguistic Signal to Clinical Reality</title>
+		<meeting>the Workshop on Computational Linguistics and Clinical Psychology: From Linguistic Signal to Clinical Reality</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2014">2014</date>
+			<biblScope unit="page" from="51" to="60" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Coppersmith, G., Dredze, M., &amp; Harman, C. (2014). Quantifying mental health signals in Twitter. In Proceedings of the Workshop on Computational Linguistics and Clinical Psychology: From Linguistic Signal to Clinical Real- ity (pp. 51-60). Association for Computational Linguistics. https://doi.org/ 10.3115/v1/W14-3207</note>
+</biblStruct>
+
+<biblStruct xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Predicting depression via social media</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>De Choudhury</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Gamon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Counts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Horvitz</surname></persName>
+		</author>
+		<idno type="DOI">10.1609/icwsm.v7i1.14432</idno>
+		<ptr target="https://doi.org/10.1609/icwsm" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the International AAAI Conference on Web and Social Media</title>
+		<meeting>the International AAAI Conference on Web and Social Media</meeting>
+		<imprint>
+			<date type="published" when="2013">2013</date>
+			<biblScope unit="volume">7</biblScope>
+			<biblScope unit="page" from="1" to="14432" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">De Choudhury, M., Gamon, M., Counts, S., &amp; Horvitz, E. (2013). Predict- ing depression via social media. Proceedings of the International AAAI Confer- ence on Web and Social Media, 7(1), 128-137. https://doi.org/10.1609/ icwsm.v7i1.14432</note>
+</biblStruct>
+
+<biblStruct xml:id="b4">
+	<analytic>
+		<title level="a" type="main">BERT: Pretraining of deep bidirectional transformers for language understanding</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Devlin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M.-W</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Toutanova</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/N19-1423</idno>
+		<ptr target="https://doi.org/10.18653/v1/N19-1423" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies</title>
+		<meeting>the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="4171" to="4186" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Devlin, J., Chang, M.-W., Lee, K., &amp; Toutanova, K. (2019). BERT: Pre- training of deep bidirectional transformers for language understanding. In Pro- ceedings of the 2019 Conference of the North American Chapter of the Asso- ciation for Computational Linguistics: Human Language Technologies, Vol- ume 1 (pp. 4171-4186). Association for Computational Linguistics. https: //doi.org/10.18653/v1/N19-1423</note>
+</biblStruct>
+
+<biblStruct xml:id="b5">
+	<monogr>
+		<title level="m" type="main">YouTube Data API v3. Google for Developers</title>
+		<author>
+			<persName><surname>Google</surname></persName>
+		</author>
+		<ptr target="https://developers.google.com/youtube/v3" />
+		<imprint>
+			<date type="published" when="2026-07-18">July 18, 2026</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Google. (n.d.). YouTube Data API v3. Google for Developers. Retrieved July 18, 2026, from https://developers.google.com/youtube/v3</note>
+</biblStruct>
+
+<biblStruct xml:id="b6">
+	<monogr>
+		<title level="m" type="main">BERTopic: Neural topic modeling with a classbased TF-IDF procedure</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Grootendorst</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.2203.05794</idno>
+		<ptr target="https://doi.org/10.48550/arXiv.2203.05794" />
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Grootendorst, M. (2022). BERTopic: Neural topic modeling with a class- based TF-IDF procedure. arXiv. https://doi.org/10.48550/arXiv.2203. 05794</note>
+</biblStruct>
+
+<biblStruct xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Don&apos;t stop pretraining: Adapt language models to domains and tasks</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Gururangan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Marasović</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Swayamdipta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Beltagy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Downey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><forename type="middle">A</forename><surname>Smith</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2020.acl-main.740</idno>
+		<ptr target="https://doi.org/10.18653/v1/2020.acl-main.740" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 58th Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="8342" to="8360" />
+		</imprint>
+	</monogr>
+	<note>Association for Computational Linguistics</note>
+	<note type="raw_reference">Gururangan, S., Marasović, A., Swayamdipta, S., Lo, K., Beltagy, I., Downey, D., &amp; Smith, N. A. (2020). Don&apos;t stop pretraining: Adapt language models to domains and tasks. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics (pp. 8342-8360). Associa- tion for Computational Linguistics. https://doi.org/10.18653/v1/2020. acl-main.740</note>
+</biblStruct>
+
+<biblStruct xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Detecting depression and mental illness on social media: An integrative review</title>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">C</forename><surname>Guntuku</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">B</forename><surname>Yaden</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">L</forename><surname>Kern</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><forename type="middle">H</forename><surname>Ungar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">C</forename><surname>Eichstaedt</surname></persName>
+		</author>
+		<idno type="DOI">10.1016/j.cobeha.2017.07.005</idno>
+		<ptr target="https://doi.org/10.1016/j.cobeha.2017.07.005" />
+	</analytic>
+	<monogr>
+		<title level="j">Current Opinion in Behavioral Sciences</title>
+		<imprint>
+			<biblScope unit="volume">18</biblScope>
+			<biblScope unit="page" from="43" to="49" />
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Guntuku, S. C., Yaden, D. B., Kern, M. L., Ungar, L. H., &amp; Eichstaedt, J. C. (2017). Detecting depression and mental illness on social media: An in- tegrative review. Current Opinion in Behavioral Sciences, 18, 43-49. https: //doi.org/10.1016/j.cobeha.2017.07.005</note>
+</biblStruct>
+
+<biblStruct xml:id="b9">
+	<analytic>
+		<title level="a" type="main">What Twitter profile and posted images reveal about depression and anxiety</title>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">C</forename><surname>Guntuku</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Preotiuc-Pietro</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">C</forename><surname>Eichstaedt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><forename type="middle">H</forename><surname>Ungar</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the International AAAI Conference on Web and Social Media</title>
+		<meeting>the International AAAI Conference on Web and Social Media</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="volume">13</biblScope>
+			<biblScope unit="page" from="236" to="246" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Guntuku, S. C., Preotiuc-Pietro, D., Eichstaedt, J. C., &amp; Ungar, L. H. (2019). What Twitter profile and posted images reveal about depression and anxiety. Proceedings of the International AAAI Conference on Web and Social Media, 13, 236-246.</note>
+</biblStruct>
+
+<biblStruct xml:id="b10">
+	<analytic>
+		<title level="a" type="main">Long short-term memory</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Hochreiter</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Schmidhuber</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Neural Computation</title>
+		<imprint>
+			<biblScope unit="volume">9</biblScope>
+			<biblScope unit="issue">8</biblScope>
+			<biblScope unit="page" from="1735" to="1780" />
+			<date type="published" when="1997">1997</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Hochreiter, S., &amp; Schmidhuber, J. (1997). Long short-term memory. Neural Computation, 9(8), 1735-1780.</note>
+</biblStruct>
+
+<biblStruct xml:id="b11">
+	<analytic>
+		<title level="a" type="main">The PHQ-9: Validity of a brief depression severity measure</title>
+		<author>
+			<persName><forename type="first">K</forename><surname>Kroenke</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">L</forename><surname>Spitzer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">B W</forename><surname>Williams</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of General Internal Medicine</title>
+		<imprint>
+			<biblScope unit="volume">16</biblScope>
+			<biblScope unit="issue">9</biblScope>
+			<biblScope unit="page" from="606" to="613" />
+			<date type="published" when="2001">2001</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Kroenke, K., Spitzer, R. L., &amp; Williams, J. B. W. (2001). The PHQ-9: Valid- ity of a brief depression severity measure. Journal of General Internal Medicine, 16(9), 606-613.</note>
+</biblStruct>
+
+<biblStruct xml:id="b12">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Ott</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Joshi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Levy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Lewis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Stoyanov</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.1907.11692</idno>
+		<ptr target="https://doi.org/10.48550/arXiv.1907.11692" />
+		<title level="m">RoBERTa: A robustly optimized BERT pretraining approach</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Liu, Y., Ott, M., Goyal, N., Du, J., Joshi, M., Chen, D., Levy, O., Lewis, M., Zettlemoyer, L., &amp; Stoyanov, V. (2019). RoBERTa: A robustly optimized BERT pretraining approach. arXiv. https://doi.org/10.48550/ arXiv.1907.11692</note>
+</biblStruct>
+
+<biblStruct xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Overview of eRisk 2019: Early risk prediction on the Internet</title>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">E</forename><surname>Losada</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Crestani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Parapar</surname></persName>
+		</author>
+		<idno type="DOI">10.1007/978-3-030-28577-7_27</idno>
+		<ptr target="https://doi.org/10.1007/978-3-030-28577-7_27" />
+	</analytic>
+	<monogr>
+		<title level="m">Experimental IR meets multilinguality, multimodality, and interaction</title>
+		<title level="s">Lecture Notes in Computer Science</title>
+		<editor>
+			<persName><forename type="first">F</forename><surname>Crestani</surname></persName>
+		</editor>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="volume">11696</biblScope>
+			<biblScope unit="page" from="340" to="357" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Losada, D. E., Crestani, F., &amp; Parapar, J. (2019). Overview of eRisk 2019: Early risk prediction on the Internet. In F. Crestani et al. (Eds.), Experimen- tal IR meets multilinguality, multimodality, and interaction (Lecture Notes in Computer Science, Vol. 11696, pp. 340-357). Springer. https://doi.org/10. 1007/978-3-030-28577-7_27</note>
+</biblStruct>
+
+<biblStruct xml:id="b14">
+	<monogr>
+		<title level="m" type="main">UMAP: Uniform manifold approximation and projection for dimension reduction</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Mcinnes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Healy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Melville</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.1802.03426</idno>
+		<ptr target="https://doi.org/10.48550/arXiv.1802.03426" />
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">McInnes, L., Healy, J., &amp; Melville, J. (2018). UMAP: Uniform manifold approximation and projection for dimension reduction. arXiv. https://doi. org/10.48550/arXiv.1802.03426</note>
+</biblStruct>
+
+<biblStruct xml:id="b15">
+	<analytic>
+		<title level="a" type="main">PhoBERT: Pre-trained language models for Vietnamese</title>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">Q</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">T</forename><surname>Nguyen</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2020.findings-emnlp.92</idno>
+		<ptr target="https://doi.org/10.18653/v1/2020.findings-emnlp.92" />
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: EMNLP 2020</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="1037" to="1042" />
+		</imprint>
+	</monogr>
+	<note>Association for Computational Linguistics</note>
+	<note type="raw_reference">Nguyen, D. Q., &amp; Nguyen, A. T. (2020). PhoBERT: Pre-trained language models for Vietnamese. In Findings of the Association for Computational Lin- guistics: EMNLP 2020 (pp. 1037-1042). Association for Computational Lin- guistics. https://doi.org/10.18653/v1/2020.findings-emnlp.92</note>
+</biblStruct>
+
+<biblStruct xml:id="b16">
+	<analytic>
+		<title level="a" type="main">UIT-VSFC: Vietnamese students&apos; feedback corpus for sentiment analysis</title>
+		<author>
+			<persName><forename type="first">K</forename><forename type="middle">V</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><forename type="middle">D</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">X V</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">T H</forename><surname>Truong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><forename type="middle">L</forename><surname>Nguyen</surname></persName>
+		</author>
+		<idno type="DOI">10.1109/KSE.2018.8573337</idno>
+		<ptr target="https://doi.org/10.1109/KSE.2018.8573337" />
+	</analytic>
+	<monogr>
+		<title level="m">2018 10th International Conference on Knowledge and Systems Engineering (KSE)</title>
+		<imprint>
+			<publisher>IEEE</publisher>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page" from="19" to="24" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Nguyen, K. V., Nguyen, V. D., Nguyen, P. X. V., Truong, T. T. H., &amp; Nguyen, N. L. T. (2018). UIT-VSFC: Vietnamese students&apos; feedback corpus for sentiment analysis. In 2018 10th International Conference on Knowledge and Systems Engineering (KSE) (pp. 19-24). IEEE. https://doi.org/10.1109/ KSE.2018.8573337</note>
+</biblStruct>
+
+<biblStruct xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Scikitlearn: Machine learning in Python</title>
+		<author>
+			<persName><forename type="first">F</forename><surname>Pedregosa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Varoquaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Gramfort</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Michel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Thirion</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Grisel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Blondel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Prettenhofer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Weiss</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Dubourg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Vanderplas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Passos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Cournapeau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Brucher</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Perrot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">É</forename><surname>Duchesnay</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of Machine Learning Research</title>
+		<imprint>
+			<biblScope unit="volume">12</biblScope>
+			<biblScope unit="page" from="2825" to="2830" />
+			<date type="published" when="2011">2011</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O., Blondel, M., Prettenhofer, P., Weiss, R., Dubourg, V., Vanderplas, J., Passos, A., Cournapeau, D., Brucher, M., Perrot, M., &amp; Duchesnay, É. (2011). Scikit- learn: Machine learning in Python. Journal of Machine Learning Research, 12, 2825-2830.</note>
+</biblStruct>
+
+<biblStruct xml:id="b18">
+	<analytic>
+		<title level="a" type="main">The development and psychometric properties of LIWC2015</title>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">W</forename><surname>Pennebaker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">L</forename><surname>Boyd</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Jordan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Blackburn</surname></persName>
+		</author>
+		<idno type="DOI">10.15781/T29G6Z</idno>
+		<ptr target="https://doi.org/10.15781/T29G6Z" />
+	</analytic>
+	<monogr>
+		<title level="m">The University of Texas at Austin</title>
+		<imprint>
+			<date type="published" when="2015">2015</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Pennebaker, J. W., Boyd, R. L., Jordan, K., &amp; Blackburn, K. (2015). The de- velopment and psychometric properties of LIWC2015. The University of Texas at Austin. https://doi.org/10.15781/T29G6Z</note>
+</biblStruct>
+
+<biblStruct xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Sentence-BERT: Sentence embeddings using Siamese BERT-networks</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Reimers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Gurevych</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/D19-1410</idno>
+		<ptr target="https://doi.org/10.18653/v1/D19-1410" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of EMNLP-IJCNLP 2019</title>
+		<meeting>EMNLP-IJCNLP 2019</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="3982" to="3992" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Reimers, N., &amp; Gurevych, I. (2019). Sentence-BERT: Sentence embeddings using Siamese BERT-networks. In Proceedings of EMNLP-IJCNLP 2019 (pp. 3982-3992). Association for Computational Linguistics. https://doi.org/ 10.18653/v1/D19-1410</note>
+</biblStruct>
+
+<biblStruct xml:id="b20">
+	<analytic>
+		<title level="a" type="main">Underthesea: Vietnamese natural language processing toolkit [Computer software]</title>
+		<author>
+			<persName><forename type="first">Nlp</forename><surname>Underthesea</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Team</surname></persName>
+		</author>
+		<ptr target="https://github.com/undertheseanlp/underthesea" />
+	</analytic>
+	<monogr>
+		<title level="j">GitHub. Retrieved</title>
+		<imprint>
+			<date type="published" when="2026-07-18">July 18, 2026</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Underthesea NLP Team. (n.d.). Underthesea: Vietnamese natural language processing toolkit [Computer software]. GitHub. Retrieved July 18, 2026, from https://github.com/undertheseanlp/underthesea</note>
+</biblStruct>
+
+<biblStruct xml:id="b21">
+	<analytic>
+		<title level="a" type="main">Attention is all you need</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Vaswani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Parmar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Uszkoreit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">N</forename><surname>Gomez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Kaiser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Polosukhin</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="volume">30</biblScope>
+			<biblScope unit="page" from="5998" to="6008" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., &amp; Polosukhin, I. (2017). Attention is all you need. In Advances in Neural Information Processing Systems 30 (pp. 5998-6008).</note>
+</biblStruct>
+
+<biblStruct xml:id="b22">
+	<analytic>
+		<title level="a" type="main">Transformers: State-of-the-art natural language processing</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Debut</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Sanh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Chaumond</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Delangue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Moi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Cistac</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Rault</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Louf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Funtowicz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Davison</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Shleifer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Von Platen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Jernite</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Plu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Le Scao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Gugger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">M</forename><surname>Rush</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations</title>
+		<meeting>the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="38" to="45" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Wolf, T., Debut, L., Sanh, V., Chaumond, J., Delangue, C., Moi, A., Cistac, P., Rault, T., Louf, R., Funtowicz, M., Davison, J., Shleifer, S., von Platen, P., Ma, C., Jernite, Y., Plu, J., Xu, C., Le Scao, T., Gugger, S., &amp; Rush, A. M. (2020). Transformers: State-of-the-art natural language processing. In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations (pp. 38-45). Association for Computational Linguistics.</note>
+</biblStruct>
+
+<biblStruct xml:id="b23">
+	<monogr>
+		<title level="m" type="main">Depressive disorder (depression)</title>
+		<ptr target="https://www.who.int/news-room/fact-sheets/detail/depression" />
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<publisher>World Health Organization</publisher>
+		</imprint>
+	</monogr>
+	<note>WHO</note>
+	<note type="raw_reference">World Health Organization. (2023). Depressive disorder (depression). WHO. Retrieved from https://www.who.int/news-room/fact-sheets/ detail/depression</note>
+</biblStruct>
+
+<biblStruct xml:id="b24">
+	<analytic>
+		<title level="a" type="main">Depression and self-harm risk assessment in online forums</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Yates</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Cohan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Goharian</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the First Workshop on Computational Linguistics and Clinical Psychology</title>
+		<meeting>the First Workshop on Computational Linguistics and Clinical Psychology</meeting>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="page" from="1" to="10" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Yates, A., Cohan, A., &amp; Goharian, N. (2017). Depression and self-harm risk assessment in online forums. Proceedings of the First Workshop on Computa- tional Linguistics and Clinical Psychology, 1-10.</note>
+</biblStruct>
+
+<biblStruct xml:id="b25">
+	<monogr>
+		<title level="m" type="main">Active learning. Synthesis Lectures on Artificial Intelligence and Machine Learning</title>
+		<author>
+			<persName><forename type="first">B</forename><surname>Settles</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2012">2012</date>
+			<biblScope unit="volume">6</biblScope>
+			<biblScope unit="page" from="1" to="114" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Settles, B. (2012). Active learning. Synthesis Lectures on Artificial Intelli- gence and Machine Learning, 6(1), 1-114.</note>
+</biblStruct>
+
+<biblStruct xml:id="b26">
+	<analytic>
+		<title level="a" type="main">An analysis of active learning strategies for sequence labeling tasks</title>
+		<author>
+			<persName><forename type="first">B</forename><surname>Settles</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Craven</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the Conference on Empirical Methods in Natural Language Processing</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2008">2008</date>
+			<biblScope unit="page" from="1070" to="1079" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Settles, B., &amp; Craven, M. (2008). An analysis of active learning strategies for sequence labeling tasks. In Proceedings of the Conference on Empirical Meth- ods in Natural Language Processing (pp. 1070-1079). Association for Compu- tational Linguistics.</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>
