@@ -1,0 +1,8 @@
+# =====================================================================
+# config.docker.yaml — Docker override configuration
+# Đặt trong configs/ và sẽ được mount vào container
+# =====================================================================
+
+extraction:
+  grobid:
+    url: "http://grobid:8070"  # Docker internal network

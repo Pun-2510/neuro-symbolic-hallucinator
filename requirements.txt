@@ -49,3 +49,4 @@ reportlab>=4.0,<5.0  # dùng cho PDF report export + gen_sample_essays
 # --- Utilities ---
 tenacity>=8.2,<9.0
 loguru>=0.7,<1.0
+defusedxml>=0.7,<1.0

@@ -1,0 +1,76 @@
+# =====================================================================
+# .dockerignore — tránh copy unnecessary files vào Docker image
+# =====================================================================
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual env
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Documentation
+*.md
+!requirements*.txt
+docs/
+
+# Frontend (sẽ được mount hoặc build riêng)
+web/
+design-system/
+
+# Local data (được mount từ host)
+data/
+reports/
+test-results/
+evaluation/
+
+# Logs
+*.log
+*.log.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Confidential
+.env
+.env.local
+*.pem
+*.key
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.docker/
+
+# Temporary
+*.tmp
+*.temp
+*.bak

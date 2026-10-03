@@ -1,33 +1,28 @@
 # =====================================================================
-# docker-compose.yml — local dev: api + frontend + GROBID
-# GROBID: lfoppiano/grobid:0.8.0 (cần 2GB+ RAM)
-# GROBID chỉ expose internal, API kết nối qua Docker internal network
+# docker-compose.yml — Essay Integrity Checker
+# Full Docker setup: API + Frontend + GROBID
+#
+# Usage:
+#   docker-compose up --build        # Start all services
+#   docker-compose up --build -d     # Start in background
+#   docker-compose logs -f api       # Watch API logs
+#   docker-compose exec api pytest   # Run tests in container
+#   docker-compose down              # Stop all services
 # =====================================================================
 
 services:
+  # ---------------------------------------------------------------------------
+  # GROBID — PDF reference extraction service
+  # ---------------------------------------------------------------------------
   grobid:
     image: lfoppiano/grobid:0.8.0
     container_name: essay-check-grobid
-    # Publish the API as well so a backend running on macOS (outside Compose)
-    # can use the same endpoint.  Docker Desktop owns this port; Colima must
-    # never be required for this project.
     ports:
-      - "8070:8070"
-      - "8071:8071"
+      - "8070:8070"  # GROBID API
     environment:
       - JAVA_OPTS=-Xmx2g
     platform: linux/amd64
-    # The upstream image's tini entrypoint is not reliable on macOS VM
-    # backends. Start the service directly, as in grobid_docker_setup.sh.
-    entrypoint: ["/bin/sh", "-c"]
-    command: ["CLASSPATH=/opt/grobid/grobid-service/lib/* && exec java -Xmx2g -XX:+UseG1GC -classpath \"$${CLASSPATH}\" org.grobid.service.main.GrobidServiceApplication --server.port=8070"]
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8070/api/isalive"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
     deploy:
       resources:
         limits:
@@ -35,8 +30,13 @@ services:
         reservations:
           memory: 2G
     networks:
-      - internal
+      - essay-check-net
+    volumes:
+      - grobid-cache:/opt/grobid/grobid-home/cache
 
+  # ---------------------------------------------------------------------------
+  # API — FastAPI backend
+  # ---------------------------------------------------------------------------
   api:
     build:
       context: .
@@ -46,35 +46,64 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
-      - ./configs:/app/configs
+      - ./configs/config.docker.yaml:/app/configs/config.yaml:ro  # Override with Docker config
+      - ./tests:/app/tests:ro  # Read-only tests
     env_file:
       - .env
     restart: unless-stopped
     depends_on:
       grobid:
-        condition: service_healthy
+        condition: service_started
     environment:
-      - GROBID_URL=http://grobid:8070  # Internal Docker network
+      - GROBID_URL=http://grobid:8070  # Docker internal network
+      - DATABASE_URL=sqlite:///./data/app.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     networks:
-      - internal
+      - essay-check-net
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
 
+  # ---------------------------------------------------------------------------
+  # Web — React frontend (Vite dev server)
+  # ---------------------------------------------------------------------------
   web:
     image: node:20-alpine
     container_name: integrity-web
     working_dir: /app/web
     ports:
-      - "5173:5173"
+      - "5173:5173"  # Vite dev server
     volumes:
       - ./web:/app/web
-      - /app/web/node_modules
     environment:
       - VITE_API_BASE_URL=http://localhost:8000
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    command: >
+      sh -c "npm install --legacy-peer-deps &&
+             npm run dev -- --host 0.0.0.0"
     depends_on:
       - api
     restart: unless-stopped
+    networks:
+      - essay-check-net
 
+# ---------------------------------------------------------------------------
+# Networks
+# ---------------------------------------------------------------------------
 networks:
-  internal:
+  essay-check-net:
     driver: bridge
-    internal: false  # Allow external for dev, set to true for production
+
+# ---------------------------------------------------------------------------
+# Volumes (persisted data)
+# ---------------------------------------------------------------------------
+volumes:
+  grobid-cache:
+    driver: local
