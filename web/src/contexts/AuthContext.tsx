@@ -54,15 +54,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (username: string, password: string) => {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+    } catch (networkErr) {
+      throw new Error(
+        networkErr instanceof Error
+          ? `Cannot reach server: ${networkErr.message}`
+          : 'Cannot reach server'
+      );
+    }
 
     if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.detail || 'Login failed');
+      // Parse error body safely — backend may return JSON or plain text/empty
+      let detail = `Login failed (HTTP ${res.status})`;
+      try {
+        const contentType = res.headers.get('content-type') ?? '';
+        if (contentType.includes('application/json')) {
+          const error = await res.json();
+          if (typeof error?.detail === 'string') {
+            detail = error.detail;
+          } else if (Array.isArray(error?.detail)) {
+            // FastAPI validation errors: [{loc, msg, type}, ...]
+            detail = error.detail
+              .map((d: { msg?: string }) => d?.msg)
+              .filter(Boolean)
+              .join('; ') || detail;
+          } else if (typeof error?.message === 'string') {
+            detail = error.message;
+          }
+        } else {
+          const text = (await res.text()).trim();
+          if (text) detail = text;
+        }
+      } catch {
+        // Body wasn't readable as JSON — keep default message
+      }
+      throw new Error(detail);
     }
 
     const data = await res.json();
