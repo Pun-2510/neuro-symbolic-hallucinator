@@ -1,11 +1,16 @@
 import { Page } from '@playwright/test';
 
-// Mock data for authenticated user
+// Mock data for authenticated user (matches User type from api/client.ts)
 const MOCK_USER = {
   id: 1,
   username: 'admin',
   role: 'admin',
   email: 'admin@example.com',
+  full_name: 'Administrator',
+  is_active: true,
+  avatar_url: null,
+  last_login_at: '2024-01-01T00:00:00Z',
+  created_at: '2024-01-01T00:00:00Z',
 };
 
 // Mock essays data (matching DashboardPage Essay interface)
@@ -85,76 +90,6 @@ const MOCK_REPORTS: Record<number, object> = {
         triggered_rules: [],
         mismatched_fields: [],
         matched_sources: [{ source: 'crossref', matched_fields: ['title', 'authors'], checked_at: '2024-01-15T10:30:00Z' }],
-        is_overridden: false,
-      },
-      {
-        citation_id: 'c2',
-        citation_raw: 'Devlin et al. (2019)',
-        mapping_status: 'matched',
-        mapping_confidence: 0.98,
-        citation_link: {
-          occurrence_id: 'o2',
-          reference_id: 'r2',
-          method: 'author_year',
-          confidence: 0.98,
-        },
-        label: 'verified',
-        confidence: 0.99,
-        reasoning: 'Source found in Crossref',
-        triggered_rules: [],
-        mismatched_fields: [],
-        matched_sources: [{ source: 'crossref', matched_fields: ['title', 'authors'], checked_at: '2024-01-15T10:30:00Z' }],
-        is_overridden: false,
-      },
-      {
-        citation_id: 'c3',
-        citation_raw: 'Mikolov et al. (2013)',
-        mapping_status: 'matched',
-        mapping_confidence: 0.92,
-        citation_link: {
-          occurrence_id: 'o3',
-          reference_id: 'r3',
-          method: 'author_year',
-          confidence: 0.92,
-        },
-        label: 'verified',
-        confidence: 0.97,
-        reasoning: 'Source found in Semantic Scholar',
-        triggered_rules: [],
-        mismatched_fields: [],
-        matched_sources: [{ source: 's2', matched_fields: ['title', 'authors'], checked_at: '2024-01-15T10:30:00Z' }],
-        is_overridden: false,
-      },
-      {
-        citation_id: 'c4',
-        citation_raw: 'Kim (2017)',
-        mapping_status: 'matched',
-        mapping_confidence: 0.88,
-        citation_link: {
-          occurrence_id: 'o4',
-          reference_id: 'r4',
-          method: 'author_year',
-          confidence: 0.88,
-        },
-        label: 'metadata_error',
-        confidence: 0.75,
-        reasoning: 'Author name mismatch detected',
-        triggered_rules: ['AUTHOR_NAME_MISMATCH'],
-        mismatched_fields: ['authors'],
-        matched_sources: [{ source: 'crossref', matched_fields: ['title', 'year'], checked_at: '2024-01-15T10:30:00Z' }],
-        is_overridden: false,
-      },
-      {
-        citation_id: 'c5',
-        citation_raw: 'Unknown Author (2020)',
-        mapping_status: 'unresolved',
-        mapping_confidence: 0.30,
-        label: 'suspected_hallucination',
-        confidence: 0.15,
-        reasoning: 'No matching publication found',
-        triggered_rules: ['NO_SOURCE_FOUND', 'LOW_CONFIDENCE'],
-        mismatched_fields: ['title', 'authors'],
-        matched_sources: [],
         is_overridden: false,
       },
     ],
@@ -273,7 +208,7 @@ const MOCK_REPORTS: Record<number, object> = {
       },
       weights_used: {},
       num_citations: 58,
-    num_unresolved: 8,
+      num_unresolved: 8,
       disclaimer: 'This is a decision support tool.',
     },
     disclaimer: 'This is a decision support tool.',
@@ -347,17 +282,18 @@ const MOCK_REPORTS: Record<number, object> = {
 };
 
 /**
- * Set up authenticated page with proper mocking
- * Uses addInitScript to ensure auth state is set before any navigation
+ * Set up authenticated page with proper mocking.
+ * Call this BEFORE any page.goto() calls in the test.
+ * Automatically registers auth mocks for all common endpoints.
  */
 export function setupAuthenticatedPage(page: Page): void {
-  // Set token in localStorage before any network requests
-  page.addInitScript(({ token, user }) => {
+  // Use context-level init script so it survives page reloads
+  page.context().addInitScript(({ token, user }) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
   }, { token: 'mock-token-123', user: MOCK_USER });
 
-  // Mock auth/me endpoint
+  // Intercept auth/me — prevents race conditions
   page.route('**/api/auth/me', (route) => {
     route.fulfill({
       status: 200,
@@ -366,10 +302,29 @@ export function setupAuthenticatedPage(page: Page): void {
     });
   });
 
-  // Mock essays list endpoint
+  // Intercept users/me for all tests
+  page.route('**/api/users/me', (route) => {
+    const req = route.request();
+    if (req.method() === 'PATCH') {
+      const body = JSON.parse(req.postData() || '{}');
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...MOCK_USER, ...body }),
+      });
+    } else {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_USER),
+      });
+    }
+  });
+
+  // Intercept essays list endpoint
   page.route('**/api/essays', (route) => {
-    // GET requests return list
-    if (route.request().method() === 'GET') {
+    const req = route.request();
+    if (req.method() === 'GET') {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -403,28 +358,45 @@ export function setupAuthenticatedPage(page: Page): void {
     });
   });
 
-  // Mock other common API endpoints
-  page.route('**/api/users/me', (route) => {
+  // Mock POST /api/users/me/password (profile password change)
+  page.route('**/api/users/me/password', (route) => {
     route.fulfill({
-      status: 200,
+      status: 400,
       contentType: 'application/json',
-      body: JSON.stringify(MOCK_USER),
+      body: JSON.stringify({ detail: 'Current password is incorrect' }),
     });
+  });
+
+  // Mock PATCH /api/users/me (profile update)
+  page.route('**/api/users/me', (route) => {
+    const req = route.request();
+    if (req.method() === 'PATCH') {
+      const body = JSON.parse(req.postData() || '{}');
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...MOCK_USER, ...body }),
+      });
+    } else {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_USER),
+      });
+    }
   });
 }
 
 /**
- * Wait for auth state to be ready
- * Ensures localStorage is set and auth check has completed
+ * Wait for auth state to be ready.
+ * Call this AFTER page.goto() in the test.
+ * Mocks for auth/me and users/me are already registered by setupAuthenticatedPage().
  */
 export async function waitForAuth(page: Page): Promise<void> {
-  // Wait for localStorage to be set
-  await page.waitForFunction(() => {
-    return localStorage.getItem('token') !== null;
-  }, { timeout: 5000 }).catch(() => {});
-
-  // Wait a bit for React to process auth state
-  await page.waitForLoadState('networkidle').catch(() => {});
+  // Wait for React to render and auth to be processed
+  await page.waitForLoadState('domcontentloaded');
+  // Give React time to initialize and make auth requests
+  await page.waitForTimeout(2000);
 }
 
 /**
@@ -432,7 +404,7 @@ export async function waitForAuth(page: Page): Promise<void> {
  * Prevents auth state leakage between tests
  */
 export function clearAuthState(page: Page): void {
-  page.addInitScript(() => {
+  page.context().addInitScript(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   });

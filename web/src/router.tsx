@@ -14,6 +14,8 @@ import { LogicTracePage } from './pages/LogicTracePage';
 import { DocumentInspectorPage } from './pages/DocumentInspectorPage';
 import { OrphanDetectionPage } from './pages/OrphanDetectionPage';
 import { BatchUploadPage } from './pages/BatchUploadPage';
+import { ProfilePage } from './pages/ProfilePage';
+import { AccountManagementPage } from './pages/AccountManagementPage';
 
 /* ============================================================
    SourceLogic — Router Configuration
@@ -108,6 +110,14 @@ export const router = createBrowserRouter([
       {
         path: '/history',
         element: <HistoryPage />,
+      },
+      {
+        path: '/profile',
+        element: <ProfilePage />,
+      },
+      {
+        path: '/admin/users',
+        element: <AccountManagementPage />,
       },
       // Legacy route redirects
       {

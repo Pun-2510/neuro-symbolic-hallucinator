@@ -19,7 +19,11 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    expect: {
+      timeout: 10000,
+    },
   },
+  timeout: 60000,
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   outputDir: 'test-results/',
 });

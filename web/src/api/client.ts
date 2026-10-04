@@ -268,8 +268,91 @@ async function getReportOrNull(id: number): Promise<AnalysisReport | null> {
 
 // --- Endpoints ---
 
+// --- User types ---
+
+export interface User {
+  id: number;
+  username: string;
+  email: string | null;
+  full_name: string | null;
+  role: 'admin' | 'user';
+  is_active: boolean;
+  avatar_url: string | null;
+  last_login_at: string | null;
+  created_at: string | null;
+}
+
+export interface UserCreate {
+  username: string;
+  password: string;
+  email?: string | null;
+  full_name?: string | null;
+  role?: string;
+  is_active?: boolean;
+}
+
+export interface UserUpdate {
+  username?: string | null;
+  password?: string | null;
+  email?: string | null;
+  full_name?: string | null;
+  role?: string | null;
+  is_active?: boolean | null;
+}
+
+export interface UserSelfUpdate {
+  email?: string | null;
+  full_name?: string | null;
+}
+
+export interface PasswordChange {
+  current_password: string;
+  new_password: string;
+}
+
+// --- Endpoints ---
+
 export const api = {
   health: () => request<HealthResponse>('/health'),
+
+  // User management (admin)
+  listUsers: () => request<User[]>('/users'),
+  createUser: (data: UserCreate) =>
+    request<User>('/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  updateUser: (id: number, data: UserUpdate) =>
+    request<User>(`/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  deleteUser: (id: number) =>
+    request<{ message: string }>(`/users/${id}`, { method: 'DELETE' }),
+
+  // Self-service
+  getMe: () => request<User>('/users/me'),
+  updateMe: (data: UserSelfUpdate) =>
+    request<User>('/users/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  uploadMyAvatar: (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return request<User>('/users/me/avatar', { method: 'POST', body: fd });
+  },
+  deleteMyAvatar: () => request<User>('/users/me/avatar', { method: 'DELETE' }),
+  changeMyPassword: (data: PasswordChange) =>
+    request<{ message: string }>('/users/me/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+
 
   uploadEssay: (file: File) => {
     const fd = new FormData();

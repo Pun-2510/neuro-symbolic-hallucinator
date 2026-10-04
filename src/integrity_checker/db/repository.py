@@ -215,8 +215,29 @@ class Repository:
     def get_user_by_username(self, username: str) -> User | None:
         return self.session.query(User).filter(User.username == username).first()
 
-    def create_user(self, username: str, password_hash: str, role: str) -> User:
-        user = User(username=username, password_hash=password_hash, role=role)
+    def get_user_by_email(self, email: str) -> User | None:
+        return self.session.query(User).filter(User.email == email).first()
+
+    def get_user_by_id(self, user_id: int) -> User | None:
+        return self.session.get(User, user_id)
+
+    def create_user(
+        self,
+        username: str,
+        password_hash: str,
+        role: str,
+        email: str | None = None,
+        full_name: str | None = None,
+        is_active: bool = True,
+    ) -> User:
+        user = User(
+            username=username,
+            password_hash=password_hash,
+            role=role,
+            email=email,
+            full_name=full_name,
+            is_active=1 if is_active else 0,
+        )
         self.session.add(user)
         self.session.flush()
         return user
@@ -226,10 +247,23 @@ class Repository:
         if not user:
             return None
         for key, value in kwargs.items():
-            if value is not None and hasattr(user, key):
+            if value is None and key not in ("avatar_path",):
+                # Skip None values to keep partial-update semantics; avatar_path
+                # may be set to None to clear.
+                continue
+            if key == "is_active" and isinstance(value, bool):
+                value = 1 if value else 0
+            if hasattr(user, key):
                 setattr(user, key, value)
         self.session.flush()
         return user
+
+    def update_last_login(self, user_id: int) -> None:
+        from datetime import datetime, timezone
+        user = self.session.get(User, user_id)
+        if user:
+            user.last_login_at = datetime.now(timezone.utc)
+            self.session.flush()
 
     def delete_user(self, user_id: int) -> bool:
         user = self.session.get(User, user_id)

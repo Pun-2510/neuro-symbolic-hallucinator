@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from integrity_checker.api.routes import auth, cache, essays, export, health, report, users, verdicts
 from integrity_checker.config import get_settings
@@ -39,6 +40,21 @@ def create_app() -> FastAPI:
     # Init DB (MVP)
     init_db()
     logger.info("Database initialized")
+
+    # Ensure avatars directory exists before mounting
+    from pathlib import Path
+
+    avatars_dir = Path("data/avatars")
+    avatars_dir.mkdir(parents=True, exist_ok=True)
+
+    # Serve uploaded avatars (user-uploaded profile pictures)
+    # Use HTML5Mode fallback so 404s return index.html instead of error
+    app.mount(
+        "/api/avatars",
+        StaticFiles(directory=str(avatars_dir), html=True),
+        name="avatars",
+    )
+    logger.info("Avatar static mount registered at /api/avatars")
 
     # Mount routes
     app.include_router(health.router, prefix="/api", tags=["health"])

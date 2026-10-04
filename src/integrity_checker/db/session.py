@@ -46,24 +46,48 @@ def _run_inline_migrations(engine: Engine) -> None:
             mapping_confidence, citation_link_json so the UI Citations tab can
             show the real linking verdict for each in-text occurrence (these
             fields were previously attached in-memory only).
+        2026-10-03 (v1.10) — users table gained email, full_name, avatar_path,
+            is_active, last_login_at to support account management (admin CRUD,
+            self-profile edit, avatar upload).
     """
     with engine.begin() as conn:
-        cols = {
+        # --- citations ---
+        cit_cols = {
             row[1]
             for row in conn.exec_driver_sql("PRAGMA table_info(citations)").fetchall()
         }
-        if "mapping_status" not in cols:
+        if "mapping_status" not in cit_cols:
             conn.exec_driver_sql(
                 "ALTER TABLE citations ADD COLUMN mapping_status VARCHAR"
             )
-        if "mapping_confidence" not in cols:
+        if "mapping_confidence" not in cit_cols:
             conn.exec_driver_sql(
                 "ALTER TABLE citations ADD COLUMN mapping_confidence FLOAT DEFAULT 0"
             )
-        if "citation_link_json" not in cols:
+        if "citation_link_json" not in cit_cols:
             conn.exec_driver_sql(
                 "ALTER TABLE citations ADD COLUMN citation_link_json TEXT"
             )
+
+        # --- users (v1.10 account management) ---
+        user_cols = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()
+        }
+        if "email" not in user_cols:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN email VARCHAR(255)")
+            # Unique index (separate from column unique=True so existing DBs migrate)
+            conn.exec_driver_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL"
+            )
+        if "full_name" not in user_cols:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN full_name VARCHAR(120)")
+        if "avatar_path" not in user_cols:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN avatar_path VARCHAR(500)")
+        if "is_active" not in user_cols:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1")
+        if "last_login_at" not in user_cols:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN last_login_at DATETIME")
 
 
 def _ensure_db_initialized() -> None:

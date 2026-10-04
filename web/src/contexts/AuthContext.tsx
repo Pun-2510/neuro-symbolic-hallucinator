@@ -1,10 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-
-interface User {
-  id: number;
-  username: string;
-  role: 'admin' | 'user';
-}
+import type { User } from '@/api/client';
 
 interface AuthContextType {
   user: User | null;
@@ -13,6 +8,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAdmin: boolean;
   isLoading: boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { Authorization: `Bearer ${tokenToValidate}` },
       });
       if (res.ok) {
-        const userData = await res.json();
+        const userData: User = await res.json();
         setToken(tokenToValidate);
         setUser(userData);
       } else {
@@ -119,6 +115,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const userData: User = await res.json();
+        setUser(userData);
+      }
+    } catch {
+      // Silently ignore refresh errors
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -126,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     isAdmin: user?.role === 'admin',
     isLoading,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -13,7 +13,7 @@ class Base(DeclarativeBase):
 
 
 class User(Base):
-    """User model for authentication."""
+    """User model for authentication + account management."""
 
     __tablename__ = "users"
 
@@ -21,6 +21,12 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(20), default="user")
+    # Account management fields (added v1.10 — see db/session.py migrations)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
+    full_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    avatar_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Integer, default=1)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,

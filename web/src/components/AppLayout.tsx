@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FileSearch, Upload, History, Menu, X, BookOpen, LogOut, User, Layers } from 'lucide-react';
+import { FileSearch, Upload, History, Menu, X, BookOpen, LogOut, User, Layers, Users, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -9,11 +9,25 @@ import { useAuth } from '@/contexts/AuthContext';
    Based on UX/UI Concept Section 19: Global Navigation
    ============================================================ */
 
-const navItems = [
+type NavItem = {
+  path: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+type NavDivider = {
+  divider: 'admin';
+};
+
+const navItems: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: FileSearch },
   { path: '/upload', label: 'New Check', icon: Upload },
   { path: '/batch-upload', label: 'Batch Check', icon: Layers },
   { path: '/history', label: 'History', icon: History },
+];
+
+const adminNavItems: NavItem[] = [
+  { path: '/admin/users', label: 'Account Management', icon: Users },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -166,22 +180,72 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+
+            {user?.role === 'admin' && (
+              <>
+                <div className="pt-4 pb-1">
+                  <p className="px-4 py-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    Administration
+                  </p>
+                </div>
+                {adminNavItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setMobileOpen(false)}
+                      className={`
+                        flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
+                        transition-all duration-200
+                        ${isActive(item.path)
+                          ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }
+                      `}
+                    >
+                      <Icon className="h-5 w-5" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </>
+            )}
           </nav>
 
           {/* User Info & Logout */}
           <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
             {/* User Info */}
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-              <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0">
-                <User className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
-                  {user?.username || 'User'}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">
-                  {user?.role || 'user'}
-                </p>
+            <div className="flex flex-col gap-1 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0 border-2 border-indigo-200 dark:border-indigo-800">
+                  {user?.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt={user?.username}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                    {user?.full_name || user?.username || 'User'}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 capitalize flex items-center gap-1">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                    {user?.role || 'user'}
+                  </p>
+                </div>
+                <Link
+                  to="/profile"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
+                  aria-label="View profile"
+                >
+                  View profile
+                </Link>
               </div>
             </div>
 
