@@ -149,7 +149,12 @@ class GrobidServiceManager:
 
     @property
     def is_available(self) -> bool:
-        """True nếu GROBID đang available."""
+        """True nếu GROBID đang available.
+
+        Refreshes status by calling check_health() to ensure we detect
+        if GROBID became available after initialization.
+        """
+        self.check_health()  # Refresh status
         return self._status == GROBID_STATUS.AVAILABLE
 
     @property

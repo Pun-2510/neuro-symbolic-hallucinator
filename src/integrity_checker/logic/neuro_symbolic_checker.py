@@ -126,6 +126,63 @@ class NeuroSymbolicChecker:
                 triggered_rules=["R-URL-RESOURCE"],
                 mismatched_fields=[],
             )
+
+        # --- Check 2: Web resource/API citations (không bắt đầu bằng URL) ---
+        # Ví dụ: "Google, 'YouTube Data API v3,' Google for Developers."
+        # Hoặc: "Google YouTube Data API v3" (GROBID short form)
+        # Nhận diện: organization name + product/service name + developer/API keyword
+        web_resource_patterns = [
+            # Company, "Product/Service Name," Company
+            re.compile(
+                r'^(Google|Microsoft|Amazon|Apple|Facebook|Meta|Twitter|GitHub|IBM|Intel|'
+                r'Nvidia|Adobe|Atlassian|Oracle|Salesforce|'
+                r'OpenAI|Anthropic|Hugging\s*Face|Replicate|Cohere),?\s*["“]',
+                re.IGNORECASE
+            ),
+            # "Product/Service Name," Organization (title-first pattern)
+            re.compile(
+                r'^["“](YouTube\s*Data\s*API|Google\s*API|AWS\s*SDK|'
+                r'Rest\s*API|GraphQL|Webhook|Twilio|Stripe|OpenAI|Anthropic)\b',
+                re.IGNORECASE
+            ),
+            # Developer/Documentation keyword sau citation
+            re.compile(
+                r'(Google\s+for\s+Developers|Developer\s+Documentation|'
+                r'API\s+Reference|Getting\s+Started|REST\s+API)\s*[.,]',
+                re.IGNORECASE
+            ),
+            # Company name + API/SDK/Tool keyword (short form từ GROBID)
+            # Ví dụ: "Google YouTube Data API v3", "Google Maps API", "AWS SDK"
+            re.compile(
+                r'^(Google|Amazon|Microsoft|GitHub|IBM|Intel|Nvidia)\s+'
+                r'(YouTube|Maps|AWS|Vertex|TensorFlow|BERT|Cloud|Compute|S3|'
+                r'Data\s*API|API|SDK|Tool)\b',
+                re.IGNORECASE
+            ),
+            # Common API/SDK patterns: "X API v3" hoặc "X Data API"
+            re.compile(
+                r'^(Google\s+YouTube\s+Data\s*API|YouTube\s+Data\s*API|'
+                r'Google\s+API|Vertex\s+AI|Google\s+Cloud)',
+                re.IGNORECASE
+            ),
+        ]
+        for pattern in web_resource_patterns:
+            if pattern.search(raw_text):
+                logger.debug(
+                    f"Web resource/API detected: raw='{raw_text[:80]}' "
+                    f"matched pattern: {pattern.pattern[:50]}"
+                )
+                return CitationVerdict(
+                    citation=citation,
+                    label=ValidationLabel.RESOURCE,
+                    confidence=0.95,
+                    matched_source=source,
+                    features=None,
+                    reasoning=f"Web resource/API citation detected: {raw_text[:60]}... (not an academic paper)",
+                    triggered_rules=["R-WEB-RESOURCE"],
+                    mismatched_fields=[],
+                )
+
         # Debug aid: if raw_text starts with URL scheme but didn't match, log it.
         if re.match(r'^(https?://|www\.)', stripped_text, re.IGNORECASE):
             logger.debug(

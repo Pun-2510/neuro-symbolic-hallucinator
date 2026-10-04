@@ -72,9 +72,26 @@ class SourceResult:
         return max(found, key=lambda c: c.confidence)
 
     def consensus_count(self) -> int:
-        """Số nguồn đã tìm ra candidate trùng DOI/title (≥1)."""
-        seen: set[str] = set()
+        """Số nguồn đồng thuận trên cùng một paper.
+
+        Đếm số nguồn TRÙNG NHAU trên cùng fingerprint (DOI hoặc title).
+        - 3 nguồn cùng trả về DOI giống nhau → consensus = 3
+        - 3 nguồn trả về 3 papers khác nhau → consensus = 1
+        - Không có nguồn nào → consensus = 0
+        """
+        from collections import Counter
+
+        fingerprints: list[str] = []
         for c in self.candidates:
             if c.found and (c.doi or c.title):
-                seen.add(c.fingerprint())
-        return len(seen)
+                fingerprints.append(c.fingerprint())
+
+        if not fingerprints:
+            return 0
+
+        # Đếm số nguồn trùng nhau trên mỗi fingerprint
+        count_by_fp: Counter[str] = Counter(fingerprints)
+
+        # Consensus = số nguồn đồng thuận trên paper được nhiều nguồn nhất
+        # Nếu tất cả đều khác nhau → max count = 1
+        return max(count_by_fp.values())

@@ -196,6 +196,111 @@ class SymbolicRules:
         # FIX v1.4: FuzzyMatcher for title similarity checks
         self.fuzzy = FuzzyMatcher()
 
+    def _rule_local_db_verified(
+        self,
+        source: SourceResult,
+        features: MatchFeatures,
+        style_penalty: float = 0.0,
+    ) -> RuleOutcome | None:
+        """Rule: LOCAL_DB only with perfect match → VERIFIED.
+
+        When local_db is the only source that found a match with:
+        - title_sim >= 0.95
+        - author_sim >= 0.8
+        - year_distance == 0
+
+        This is a trusted match because local_db is a curated knowledge base.
+        """
+        # Chỉ apply nếu source chỉ từ local_db
+        if source.sources_succeeded != ["local_db"]:
+            return None
+
+        best = source.best_candidate()
+        if not best:
+            return None
+
+        # Check thresholds
+        title_sim = max(features.title_sim_fuzzy, features.title_sim_semantic)
+        author_sim = features.author_jaccard
+        year_dist = features.year_distance
+
+        # Perfect match: title >= 0.95 AND author >= 0.8 AND year match
+        if title_sim >= 0.95 and author_sim >= 0.8 and year_dist == 0:
+            # Calculate confidence
+            if features.doi_exact_match:
+                confidence = 0.90
+            else:
+                confidence = 0.80
+
+            confidence = max(0.0, confidence - style_penalty)
+
+            mismatched = []
+            if not features.doi_exact_match:
+                mismatched.append("doi")
+
+            return RuleOutcome(
+                label=ValidationLabel.VERIFIED,
+                confidence=confidence,
+                reasoning=(
+                    f"Verified via local knowledge base: "
+                    f"title={title_sim:.2f}, author={author_sim:.2f}, year match."
+                    + (f" DOI not present in citation." if mismatched else "")
+                ),
+                triggered_rules=["R-LOCAL_DB_VERIFIED"],
+                mismatched_fields=mismatched,
+                style_penalty=style_penalty,
+            )
+
+        return None
+
+    def _rule_local_db_good_match(
+        self,
+        source: SourceResult,
+        features: MatchFeatures,
+        style_penalty: float = 0.0,
+    ) -> RuleOutcome | None:
+        """Rule: LOCAL_DB only with good match → VERIFIED.
+
+        When local_db is the only source that found a match with:
+        - title_sim >= 0.95
+        - author_sim >= 0.5
+        - year_distance == 0
+
+        Lower confidence because author_sim is lower.
+        """
+        if source.sources_succeeded != ["local_db"]:
+            return None
+
+        best = source.best_candidate()
+        if not best:
+            return None
+
+        title_sim = max(features.title_sim_fuzzy, features.title_sim_semantic)
+        author_sim = features.author_jaccard
+        year_dist = features.year_distance
+
+        # Good match: title >= 0.95 AND author >= 0.5 AND year match
+        if title_sim >= 0.95 and author_sim >= 0.5 and year_dist == 0:
+            confidence = max(0.0, 0.75 - style_penalty)
+
+            mismatched = ["author"]
+            if not features.doi_exact_match:
+                mismatched.append("doi")
+
+            return RuleOutcome(
+                label=ValidationLabel.VERIFIED,
+                confidence=confidence,
+                reasoning=(
+                    f"Verified via local knowledge base (partial author match): "
+                    f"title={title_sim:.2f}, author={author_sim:.2f}."
+                ),
+                triggered_rules=["R-LOCAL_DB_GOOD_MATCH"],
+                mismatched_fields=mismatched,
+                style_penalty=style_penalty,
+            )
+
+        return None
+
     def _is_fabricated_doi(self, citation_doi: str | None) -> bool:
         """Check if DOI matches known fabricated patterns.
 
@@ -633,7 +738,11 @@ class SymbolicRules:
             )
 
         # --- Rule 1c (NEW): Well-linked with moderate title similarity → VERIFIED ---
-        if mapping_is_matched and 0.5 <= title_sim < 0.7:
+        if (
+            mapping_is_matched
+            and 0.5 <= title_sim < 0.7
+            and (doi_match or consensus >= 2)
+        ):
             triggered_rules.append("R-WELL-LINKED-MODERATE")
             return RuleOutcome(
                 label=ValidationLabel.VERIFIED,
@@ -911,6 +1020,18 @@ class SymbolicRules:
                     mismatched_fields=mismatched,
                     style_penalty=style_penalty,
                 )
+
+        # === FIX v1.7: LOCAL_DB Perfect Match → VERIFIED ===
+        # When local_db is the only source that found a match with perfect title+author
+        # This is a trusted match because local_db is a curated knowledge base.
+        if self._rule_local_db_verified(source, features, style_penalty):
+            return self._rule_local_db_verified(source, features, style_penalty)
+
+        # === FIX v1.7: LOCAL_DB Good Match → VERIFIED ===
+        # When local_db found a match with good title but partial author match
+        if self._rule_local_db_good_match(source, features, style_penalty):
+            return self._rule_local_db_good_match(source, features, style_penalty)
+
         return RuleOutcome(
             label=ValidationLabel.UNRESOLVED,  # Changed from SUSPECTED_HALLUCINATION
             confidence=max(0.0, 0.4 - style_penalty),
