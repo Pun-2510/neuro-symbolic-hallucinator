@@ -423,3 +423,12 @@ export function getMockEssays() {
 export function getMockReports() {
   return MOCK_REPORTS;
 }
+
+/**
+ * Login helper - sets up authenticated page
+ */
+export async function login(page: Page): Promise<void> {
+  setupAuthenticatedPage(page);
+  await page.goto('/dashboard');
+  await waitForAuth(page);
+}

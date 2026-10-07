@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FileSearch, Upload, History, Menu, X, BookOpen, LogOut, User, Layers, Users, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { ThemeToggle } from '@/contexts/ThemeContext';
 
 /* ============================================================
    SourceLogic — App Layout Component
@@ -25,6 +26,8 @@ const navItems: NavItem[] = [
   { path: '/batch-upload', label: 'Batch Check', icon: Layers },
   { path: '/history', label: 'History', icon: History },
 ];
+
+const settingsNavItem: NavItem = { path: '/settings', label: 'Settings', icon: Settings };
 
 const adminNavItems: NavItem[] = [
   { path: '/admin/users', label: 'Account Management', icon: Users },
@@ -211,9 +214,37 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 })}
               </>
             )}
+
+            {/* Settings Link */}
+            <div className="pt-4 pb-1">
+              <p className="px-4 py-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                Preferences
+              </p>
+            </div>
+            <Link
+              to={settingsNavItem.path}
+              onClick={() => setMobileOpen(false)}
+              className={`
+                flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
+                transition-all duration-200
+                ${isActive(settingsNavItem.path)
+                  ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                }
+              `}
+            >
+              <Settings className="h-5 w-5" />
+              {settingsNavItem.label}
+            </Link>
           </nav>
 
-          {/* User Info & Logout */}
+          {/* Theme Toggle */}
+            <div className="flex items-center justify-between px-4 py-2">
+              <span className="text-xs text-slate-500 dark:text-slate-400">Theme</span>
+              <ThemeToggle size="sm" showLabel />
+            </div>
+
+            {/* User Info & Logout */}
           <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
             {/* User Info */}
             <div className="flex flex-col gap-1 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">

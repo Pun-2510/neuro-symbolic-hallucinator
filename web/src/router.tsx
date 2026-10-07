@@ -16,6 +16,7 @@ import { OrphanDetectionPage } from './pages/OrphanDetectionPage';
 import { BatchUploadPage } from './pages/BatchUploadPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AccountManagementPage } from './pages/AccountManagementPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 /* ============================================================
    SourceLogic — Router Configuration
@@ -118,6 +119,10 @@ export const router = createBrowserRouter([
       {
         path: '/admin/users',
         element: <AccountManagementPage />,
+      },
+      {
+        path: '/settings',
+        element: <SettingsPage />,
       },
       // Legacy route redirects
       {

@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { useCallback, useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, FileText, X, Loader2, CheckCircle2, AlertCircle, Clock, RefreshCw, ExternalLink, Trash2 } from 'lucide-react';
 import { api } from '../api/client';
@@ -26,6 +26,7 @@ interface BatchFileItem {
 interface QueueState {
   isProcessing: boolean;
   currentIndex: number;
+  hasAutoNavigated: boolean;
 }
 
 function formatBytes(bytes: number): string {
@@ -80,17 +81,44 @@ function getStatusText(status: FileStatus, progress: number): string {
 export function BatchUploadPage() {
   const [files, setFiles] = useState<BatchFileItem[]>([]);
   const [dragActive, setDragActive] = useState(false);
-  const [queueState, setQueueState] = useState<QueueState>({ isProcessing: false, currentIndex: -1 });
+  const [queueState, setQueueState] = useState<QueueState>({ isProcessing: false, currentIndex: -1, hasAutoNavigated: false });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
 
   // Calculate summary stats
-  const stats = {
+  const stats = useMemo(() => ({
     pending: files.filter(f => f.status === 'pending').length,
     processing: files.filter(f => f.status === 'uploading' || f.status === 'processing').length,
     completed: files.filter(f => f.status === 'completed').length,
     failed: files.filter(f => f.status === 'failed').length,
-  };
+  }), [files]);
+
+  // Auto-navigate to report when batch finishes (only if at least one succeeded)
+  useEffect(() => {
+    if (queueState.hasAutoNavigated) return;
+    if (queueState.isProcessing) return;
+    if (files.length === 0) return;
+    if (stats.processing > 0 || stats.pending > 0) return;
+
+    const firstCompleted = files.find(f => f.status === 'completed' && f.essayId);
+    if (!firstCompleted || !firstCompleted.essayId) return;
+
+    // Mark before scheduling so re-renders don't reschedule/clear the timer
+    setQueueState(prev => (prev.hasAutoNavigated ? prev : { ...prev, hasAutoNavigated: true }));
+
+    if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current);
+    navigateTimerRef.current = setTimeout(() => {
+      navigate(`/verification/report/${firstCompleted.essayId}`);
+    }, 600);
+  }, [stats, queueState.isProcessing, queueState.hasAutoNavigated, files, navigate]);
+
+  // Cleanup pending navigate timer on unmount
+  useEffect(() => {
+    return () => {
+      if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current);
+    };
+  }, []);
 
   // Poll for status updates of processing files
   useEffect(() => {
@@ -131,11 +159,11 @@ export function BatchUploadPage() {
   const processQueue = useCallback(async () => {
     const pendingFiles = files.filter(f => f.status === 'pending');
     if (pendingFiles.length === 0) {
-      setQueueState({ isProcessing: false, currentIndex: -1 });
+      setQueueState({ isProcessing: false, currentIndex: -1, hasAutoNavigated: false });
       return;
     }
 
-    setQueueState({ isProcessing: true, currentIndex: 0 });
+    setQueueState({ isProcessing: true, currentIndex: 0, hasAutoNavigated: false });
 
     for (let i = 0; i < pendingFiles.length; i++) {
       const fileItem = pendingFiles[i];
@@ -198,7 +226,7 @@ export function BatchUploadPage() {
       }
     }
 
-    setQueueState({ isProcessing: false, currentIndex: -1 });
+    setQueueState({ isProcessing: false, currentIndex: -1, hasAutoNavigated: false });
   }, [files]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -236,6 +264,11 @@ export function BatchUploadPage() {
       progress: 0,
     }));
     setFiles(prev => [...prev, ...batchFiles]);
+    if (navigateTimerRef.current) {
+      clearTimeout(navigateTimerRef.current);
+      navigateTimerRef.current = null;
+    }
+    setQueueState(prev => ({ ...prev, hasAutoNavigated: false }));
   };
 
   const removeFile = (id: string) => {
@@ -244,17 +277,31 @@ export function BatchUploadPage() {
 
   const clearAll = () => {
     setFiles([]);
-    setQueueState({ isProcessing: false, currentIndex: -1 });
+    if (navigateTimerRef.current) {
+      clearTimeout(navigateTimerRef.current);
+      navigateTimerRef.current = null;
+    }
+    setQueueState({ isProcessing: false, currentIndex: -1, hasAutoNavigated: false });
   };
 
   const retryFile = (id: string) => {
     setFiles(prev => prev.map(f =>
       f.id === id ? { ...f, status: 'pending', progress: 0, error: undefined } : f
     ));
+    if (navigateTimerRef.current) {
+      clearTimeout(navigateTimerRef.current);
+      navigateTimerRef.current = null;
+    }
+    setQueueState(prev => ({ ...prev, hasAutoNavigated: false }));
   };
 
   const handleStartVerification = () => {
     if (files.length === 0 || queueState.isProcessing) return;
+    if (navigateTimerRef.current) {
+      clearTimeout(navigateTimerRef.current);
+      navigateTimerRef.current = null;
+    }
+    setQueueState(prev => ({ ...prev, hasAutoNavigated: false }));
     processQueue();
   };
 
@@ -436,7 +483,7 @@ export function BatchUploadPage() {
       )}
 
       {/* Start Button */}
-      <div className="mt-8 flex justify-center">
+      <div className="mt-8 flex flex-col items-center gap-3">
         <button
           onClick={handleStartVerification}
           disabled={pendingCount === 0 || queueState.isProcessing}
@@ -460,6 +507,22 @@ export function BatchUploadPage() {
             </>
           )}
         </button>
+
+        {/* Auto-navigate hint / all-failed notice */}
+        {!queueState.isProcessing && files.length > 0 && stats.pending === 0 && stats.processing === 0 && (
+          <>
+            {stats.completed > 0 ? (
+              <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                All files processed — opening report…
+              </p>
+            ) : (
+              <p className="text-sm text-red-600 dark:text-red-400">
+                All files failed to process. Check the errors above and retry.
+              </p>
+            )}
+          </>
+        )}
       </div>
 
       {/* Disclaimer */}
