@@ -758,11 +758,26 @@ class SymbolicRules:
                 style_penalty=style_penalty,
             )
 
+        # === FIX v1.7: LOCAL_DB Perfect Match → VERIFIED ===
+        # When local_db is the only source that found a match with perfect title+author
+        # This is a trusted match because local_db is a curated knowledge base.
+        # LOCAL_DB rules are checked BEFORE other rules to ensure they fire correctly
+        # even with moderate title_sim values.
+        if self._rule_local_db_verified(source, features, style_penalty):
+            return self._rule_local_db_verified(source, features, style_penalty)
+
+        # === FIX v1.7: LOCAL_DB Good Match → VERIFIED ===
+        # When local_db found a match with good title but partial author match
+        if self._rule_local_db_good_match(source, features, style_penalty):
+            return self._rule_local_db_good_match(source, features, style_penalty)
+
         # --- Rule 2: DOI + title similarity trung bình → METADATA_ERROR ---
+        # Only apply for live sources, not for local_db (which is handled above)
         if (
             not mapping_is_matched  # Only apply if not already well-linked
             and doi_match
             and self.title_sim_metadata_error <= title_sim < self.title_sim_verified
+            and "local_db" not in source.sources_succeeded  # Skip if local_db matched
         ):
             mismatched.append("title")
             if year_dist > self.year_tolerance:
@@ -1020,17 +1035,6 @@ class SymbolicRules:
                     mismatched_fields=mismatched,
                     style_penalty=style_penalty,
                 )
-
-        # === FIX v1.7: LOCAL_DB Perfect Match → VERIFIED ===
-        # When local_db is the only source that found a match with perfect title+author
-        # This is a trusted match because local_db is a curated knowledge base.
-        if self._rule_local_db_verified(source, features, style_penalty):
-            return self._rule_local_db_verified(source, features, style_penalty)
-
-        # === FIX v1.7: LOCAL_DB Good Match → VERIFIED ===
-        # When local_db found a match with good title but partial author match
-        if self._rule_local_db_good_match(source, features, style_penalty):
-            return self._rule_local_db_good_match(source, features, style_penalty)
 
         return RuleOutcome(
             label=ValidationLabel.UNRESOLVED,  # Changed from SUSPECTED_HALLUCINATION

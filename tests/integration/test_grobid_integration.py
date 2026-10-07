@@ -7,11 +7,9 @@ Có 2 chế độ:
 Chạy mock mode:
     pytest tests/integration/test_grobid_integration.py -v
 
-Chạy real mode:
-    ./scripts/grobid_docker_setup.sh start
-    export GROBID_URL=http://localhost:8070
-    export GROBID_TEST_MODE=real
-    pytest tests/integration/test_grobid_integration.py -v -k "real"
+Chạy real mode (auto-detect when GROBID is available):
+    pytest tests/integration/test_grobid_integration.py -v
+    # Tests tự động chạy khi GROBID Docker available
 
 Reference: v1.2 §3.4, §5.2 (GROBID Docker setup)
 """
@@ -26,11 +24,25 @@ from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 # Configuration
 GROBID_URL = os.environ.get("GROBID_URL", "http://localhost:8070")
 GROBID_TEST_MODE = os.environ.get("GROBID_TEST_MODE", "mock").lower()
 ESSAYS_DIR = Path("data/essays")
+
+
+def _is_grobid_available() -> bool:
+    """Check if GROBID Docker is running and healthy."""
+    try:
+        response = requests.get(f"{GROBID_URL}/api/isalive", timeout=5)
+        return response.status_code == 200
+    except Exception:
+        return False
+
+
+# Auto-detect GROBID availability: skip only if GROBID is not available AND mode is not forced
+_SKIP_REAL_TESTS = GROBID_TEST_MODE != "real" and not _is_grobid_available()
 
 # Sample TEI XML responses for mocking
 SAMPLE_TEI_BASIC = """<?xml version="1.0" encoding="UTF-8"?>
@@ -497,8 +509,8 @@ class TestPipelineWithMockGrobid:
 
 
 @pytest.mark.skipif(
-    GROBID_TEST_MODE != "real",
-    reason="Set GROBID_TEST_MODE=real to run with actual GROBID Docker"
+    _SKIP_REAL_TESTS,
+    reason="GROBID Docker not available. Start with: docker-compose up grobid"
 )
 class TestRealGrobidDocker:
     """Test with real GROBID Docker - requires container running."""
