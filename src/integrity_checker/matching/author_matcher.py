@@ -181,7 +181,7 @@ def author_match_score(
     if len(cited_set) == 1:
         cited_author = list(cited_set)[0]
         if cited_author in cand_set:
-            return 0.9  # High score for first author match
+            return 1.0  # Exact match
 
     intersect = len(cited_set & cand_set)
     if intersect == 0:
