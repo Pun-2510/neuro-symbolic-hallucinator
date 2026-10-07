@@ -408,7 +408,20 @@ class DocumentParser:
         # Merge: GROBID primary + regex supplemental
         merged_refs = self._merge_reference_lists(grobid_refs, regex_refs)
 
-        return merged_refs
+        # FIX v1.11: Filter out fake/non-citation entries from merged references
+        # This catches entries from GROBID that look like method descriptions
+        from integrity_checker.extraction.reference_parser import _is_fake_entry
+        filtered_refs = []
+        for ref in merged_refs:
+            if not _is_fake_entry(ref.raw_text):
+                filtered_refs.append(ref)
+            else:
+                logger.debug(f"Filtered fake entry from merged refs: {ref.raw_text[:50]}...")
+
+        if len(filtered_refs) < len(merged_refs):
+            logger.info(f"Filtered {len(merged_refs) - len(filtered_refs)} fake entries from merged references")
+
+        return filtered_refs
 
     def _extract_references_from_sections(
         self,

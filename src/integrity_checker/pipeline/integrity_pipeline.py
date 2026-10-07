@@ -667,10 +667,17 @@ class IntegrityPipeline:
         for citation, source in zip(unique_list, unique_sources):
             # NEW v1.2 §3.2.2 (task #33) — compute mapping_status TRƯỚC rules
             # để SymbolicRules có input cho AMBIGUOUS_MAPPING rule.
-            # Reference list entries are the reference entries themselves — they're "matched" by definition
             if citation.citation_type.value == "reference_list":
-                mapping_status = CitationMappingStatus.MATCHED
-                mapping_confidence = 0.95
+                # Do not treat every bibliography entry as a verified mapping.
+                # A reference-list entry has no in-text edge by itself; only an
+                # exact DOI match provides strong mapping evidence here.
+                best = source.best_candidate()
+                if best and best.doi and citation.doi and best.doi.lower() == citation.doi.lower():
+                    mapping_status = CitationMappingStatus.MATCHED
+                    mapping_confidence = 0.95
+                else:
+                    mapping_status = CitationMappingStatus.UNRESOLVED
+                    mapping_confidence = 0.5
                 citation_link = None
                 # v1.7 — reference entries are matched by definition, so they
                 # carry no in-text link edges. Still initialise the name here:
@@ -1680,9 +1687,14 @@ def main() -> None:
         # Add warnings indicator
         warn_indicator = " ⚠" if v.api_exhausted or v.used_local_db else ""
 
+        # FIX v1.11: Show citation index if available
+        cit = v.citation
+        index_str = f"[{cit.numeric_index}] " if cit.numeric_index is not None else ""
+        raw_display = v.citation.raw_text[:80 - len(index_str)]
+
         print(
             f"  {marker} [{v.label.value:25s}] conf={v.confidence:.0%}{prov_str}{warn_indicator}  "
-            f"raw={v.citation.raw_text[:80]}"
+            f"{index_str}raw={raw_display}"
         )
 
     # Show parser info if verbose

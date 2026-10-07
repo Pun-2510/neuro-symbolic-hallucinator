@@ -61,7 +61,9 @@ class FeatureCalculator:
         c_title = (citation.title or citation.raw_text).lower().strip()
         cand_title = (best.title or "").lower().strip()
 
-        fuzzy_sim = self.fuzzy.token_set_ratio(c_title, cand_title)
+        # FIX v1.11: Improved title matching for partial matches
+        # Check for prefix/substring match first (common for short titles)
+        fuzzy_sim = self._compute_title_similarity(c_title, cand_title)
         semantic_sim = self.semantic.similarity(citation.title or citation.raw_text, best.title or "")
 
         # Author Jaccard -- upgraded to author_matcher (task #29)
@@ -129,3 +131,50 @@ class FeatureCalculator:
         if not m1 or not m2:
             return 999
         return abs(int(m1.group(0)) - int(m2.group(0)))
+
+    def _compute_title_similarity(self, citation_title: str, candidate_title: str) -> float:
+        """Compute title similarity with improved partial match support.
+
+        FIX v1.11: Handles short titles like "Active learning" that should match
+        "Active learning. Synthesis Lectures on Artificial Intelligence..."
+
+        Strategy:
+        1. Exact match (case-insensitive) → 1.0
+        2. Prefix/suffix match (one is prefix of other) → 0.95
+        3. Substring match → 0.9
+        4. Word-order match (all words appear in order) → 0.85
+        5. Fallback to fuzzy token_set_ratio
+        """
+        if not citation_title or not candidate_title:
+            return 0.0
+
+        # 1. Direct match
+        if citation_title == candidate_title:
+            return 1.0
+
+        # 2. Prefix/suffix match - one is prefix of other
+        if len(citation_title) >= 5 and (citation_title.startswith(candidate_title) or candidate_title.startswith(citation_title)):
+            return 0.95
+
+        # 3. Substring match - citation is contained in candidate (or vice versa)
+        if len(citation_title) >= 5 and citation_title in candidate_title:
+            return 0.9
+        if len(candidate_title) >= 5 and candidate_title in citation_title:
+            return 0.9
+
+        # 4. Word-order match - all citation words appear in candidate in same order
+        cit_words = citation_title.split()
+        cand_words = candidate_title.split()
+        if len(cit_words) >= 2:
+            word_positions = []
+            for word in cit_words:
+                for i, cw in enumerate(cand_words):
+                    if word in cw or cw in word:
+                        word_positions.append(i)
+                        break
+            if len(word_positions) == len(cit_words):
+                # All words found - high score
+                return 0.85
+
+        # 5. Fallback to fuzzy matching
+        return self.fuzzy.token_set_ratio(citation_title, candidate_title)

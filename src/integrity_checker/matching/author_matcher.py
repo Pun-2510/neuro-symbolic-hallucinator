@@ -156,6 +156,11 @@ def author_match_score(
 ) -> float:
     """Tính similarity score giữa 2 author lists.
 
+    FIX v1.11: Improved handling for first-author-only citations.
+    When citation has 1 author but candidate has many, we check if the
+    first author matches any candidate author (common in short citations
+    like "Settles, B (2012)").
+
     Args:
         cited: Citation.authors (list[Author] or list[str]).
         candidate: SourceCandidate.authors (list[str]).
@@ -170,6 +175,14 @@ def author_match_score(
     cand_set = _to_last_name_set(candidate)
     if not cited_set or not cand_set:
         return 0.0
+
+    # FIX v1.11: If citation has only 1 author, check if it matches any candidate author
+    # This handles cases like "Settles, B" matching "Settles" in a 3-author paper
+    if len(cited_set) == 1:
+        cited_author = list(cited_set)[0]
+        if cited_author in cand_set:
+            return 0.9  # High score for first author match
+
     intersect = len(cited_set & cand_set)
     if intersect == 0:
         return 0.0

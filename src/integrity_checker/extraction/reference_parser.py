@@ -66,11 +66,12 @@ _APA_ENTRY_RE = re.compile(
 
 # IEEE entry: [N] authors, "title," venue, ...
 # Tách theo dấu phẩy: phần trước quote-title là authors+initials, sau là venue.
+# Support straight and curly double/single quotes emitted by PDF extractors.
 _IEEE_ENTRY_RE = re.compile(
     r"""
     ^\[\s*(?P<index>\d+)\s*\]\s*      # [N]
     (?P<authors>[^"]+?),\s*           # authors (everything until quote)
-    ["“](?P<title>[^"”]+)["”]\s*,\s*   # "title,"
+    ["“‘](?P<title>[^"”’]+)["”’]\s*,\s*   # "title," / ''title,''
     (?P<venue>.+?)$                   # venue (rest of line)
     """,
     re.VERBOSE,
@@ -148,6 +149,79 @@ def _is_essay_title_entry(entry: str) -> bool:
     return False
 
 
+# FIX v1.11: Fake/non-citation entry patterns - filter out method descriptions
+_FAKE_ENTRY_PATTERNS = [
+    # Pattern: Methodology-related headings that are not citations
+    # Also matches when preceded by [N] (e.g., "[1] Context from...")
+    re.compile(r'^\[\s*\d+\s*\]\s*(Context|Input\s*Processing|Classification|Loss|Computation|Optimization|'
+              r'Model\s*\d*:|Embedding\s*Generation|Group\s*\d*:|'
+              r'Robust\s*Vietnamese|Robustness|Fine-tuning|'
+              r'Architecture|Training|Evaluation|Methodology)'
+              r'[:\s]', re.IGNORECASE),
+    # Pattern without [N] prefix
+    re.compile(r'^(Context|Input\s*Processing|Classification|Loss|Computation|Optimization|'
+              r'Model\s*\d*:|Embedding\s*Generation|Group\s*\d*:|'
+              r'Robust\s*Vietnamese|Robustness|Fine-tuning|'
+              r'Architecture|Training|Evaluation|Methodology)'
+              r'[:\s]', re.IGNORECASE),
+    # Pattern: Multi-word headings ending with colon
+    re.compile(r'^\[\s*\d+\s*\]\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+){2,}:'),
+    re.compile(r'^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){2,}:'),
+    # Pattern: Entries starting with verbs (method descriptions)
+    re.compile(r'^\[\s*\d+\s*\]\s*(Predicting|Training|Using|Applying|Extracting|Computing|'
+              r'Encoding|Decoding|Processing|Analyzing|Evaluating)'
+              r'\s+[a-z]', re.IGNORECASE),
+    re.compile(r'^(Predicting|Training|Using|Applying|Extracting|Computing|'
+              r'Encoding|Decoding|Processing|Analyzing|Evaluating)'
+              r'\s+[a-z]', re.IGNORECASE),
+]
+
+_METHOD_INDICATORS = [
+    'is first tokenized', 'is encoded using', 'is passed through',
+    'is computed from', 'token embedding', 'classification head',
+    'cross-entropy loss', 'learning rate', 'weight decay',
+    'gradient clipping', 'linear warmup', 'class-based tf-idf',
+    'sentence embeddings', 'topic modeling', 'pre-trained', 'fine-tune',
+]
+
+
+def _is_fake_entry(entry: str) -> bool:
+    """Check if an entry looks like a method description, not a citation.
+
+    FIX v1.11: Filter out entries that are methodology descriptions,
+    not actual citations (e.g., "[1] Context from both left and right of each token...").
+
+    Returns True if the entry should be filtered out as fake/non-citation.
+    """
+    text_stripped = entry.strip()
+
+    # Skip very short entries
+    if len(text_stripped) < 30:
+        return True
+
+    # FIX v1.11: Remove [N] prefix for pattern matching
+    text_without_index = re.sub(r'^\[\s*\d+\s*\]\s*', '', text_stripped)
+
+    # Check against fake entry patterns (both with and without [N] prefix)
+    for pattern in _FAKE_ENTRY_PATTERNS:
+        if pattern.search(text_stripped) or pattern.search(text_without_index):
+            return True
+
+    # Check for method description indicators
+    lower_entry = text_without_index.lower()
+    indicator_count = sum(1 for ind in _METHOD_INDICATORS if ind in lower_entry)
+
+    # Check for basic citation structure (author + year)
+    has_year = bool(re.search(r'\b(19|20)\d{2}\b', text_stripped))
+    has_author_pattern = bool(re.search(r'[A-Z][a-z]+,\s*[A-Z]', text_stripped))
+
+    # If many method indicators but no year or author pattern, it's fake
+    if indicator_count >= 2 and not has_year and not has_author_pattern:
+        return True
+
+    return False
+
+
 def _normalize_title(title: str) -> str:
     """Chuẩn hoá title: lowercase, bỏ punctuation, gộp spaces."""
     if not title:
@@ -218,8 +292,17 @@ class ReferenceListParser:
             if _is_essay_title_entry(entry):
                 logger.debug(f"Skipping essay title entry: {entry[:50]}...")
                 continue
+            # FIX v1.11: Filter out fake/non-citation entries (method descriptions)
+            if _is_fake_entry(entry):
+                logger.debug(f"Skipping fake entry: {entry[:50]}...")
+                continue
             citation = self._parse_entry(entry, order_index=idx, page_num=start)
             if citation:
+                # FIX v1.11: Double-check parsed citation is not fake
+                # Some entries pass _is_fake_entry but get parsed anyway
+                if _is_fake_entry(citation.raw_text):
+                    logger.debug(f"Skipping parsed fake entry: {citation.raw_text[:50]}...")
+                    continue
                 citations.append(citation)
         return citations
 
@@ -482,6 +565,7 @@ class ReferenceListParser:
         """
         # Normalize: replace newlines with spaces (wrapped lines)
         entry = entry.replace("\n", " ").replace("  ", " ")
+        entry = entry.replace("\u2018\u2018", "\u201c").replace("\u2019\u2019", "\u201d")
 
         # FIX: Extract numeric_index first if entry starts with [N] prefix
         numeric_index = None
@@ -596,9 +680,9 @@ class ReferenceListParser:
             return None
         remainder = entry[idx_m.end():]
 
-        # Tìm cặp quote đầu tiên (mở + đóng) — hỗ trợ " và unicode “”
-        quote_chars_open = '"“'
-        quote_chars_close = '"”'
+        # Support both straight and curly quotes from PDF extractors
+        quote_chars_open = '"\u201c\u2018'
+        quote_chars_close = '"\u201d\u2019'
 
         first_q: int | None = None
         for i, c in enumerate(remainder):
@@ -617,13 +701,29 @@ class ReferenceListParser:
             return None
 
         authors_part = remainder[:first_q].strip().rstrip(",").rstrip()
-        title_raw = remainder[first_q + 1:close_q].strip().rstrip(",").rstrip()
+        title_raw = remainder[first_q + 1:close_q].strip().rstrip(",").rstrip().lstrip('\u2018\u2019"\'')
         venue_year = remainder[close_q + 1:].strip().lstrip(",").strip()
 
-        # Year thường ở cuối venue_year
-        year_m = _YEAR_RE.search(venue_year)
+        # Extract year: for arXiv entries (e.g., arXiv:1911.09339, 2019), prefer the
+        # publication year (after comma) over the arXiv ID year or access year.
+        year_matches = list(_YEAR_RE.finditer(venue_year))
+        pub_after_arxiv = re.search(
+            r'arxiv:\s*\d{4}\.\d+[^\d]+((?:19|20)\d{2})\b',
+            venue_year,
+            re.IGNORECASE,
+        )
+        if pub_after_arxiv:
+            year_m = pub_after_arxiv
+        elif year_matches:
+            year_m = year_matches[0]
+        else:
+            year_m = None
         year = year_m.group(1) if year_m else None
-        suffix = year_m.group(2) if year_m and year_m.group(2) else None
+        suffix = (
+            year_m.group(2)
+            if year_m and year_m.lastindex and year_m.lastindex >= 2 and year_m.group(2)
+            else None
+        )
 
         citation = Citation(
             raw_text=entry.strip(),
@@ -707,6 +807,18 @@ class ReferenceListParser:
 
             # STRATEGY 1: For entries like "[N] Authors. Title." (title after period)
             # Look for period followed by space and capitalized word (title)
+            if not title_raw:
+                # Unquoted IEEE book entries: ``[N] B. Settles, Active Learning.``
+                # Keep the author initials out of the title by using the comma
+                # immediately before the first sentence-ending period.
+                book_title_m = re.match(
+                    r"^.+?,\s+(?P<title>[^.]{5,})\.\s+",
+                    remaining,
+                )
+                if book_title_m:
+                    title_raw = book_title_m.group("title").strip()
+                    authors_part = remaining[: book_title_m.start("title")].rstrip(", ")
+
             if not title_raw:
                 period_title_m = re.search(r"\.\s+(?=[A-Z][a-z])", remaining)
                 if period_title_m:
