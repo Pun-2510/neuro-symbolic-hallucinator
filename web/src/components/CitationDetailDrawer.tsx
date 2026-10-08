@@ -1,4 +1,5 @@
 import { X, ExternalLink, CheckCircle, AlertTriangle, XCircle, HelpCircle, Database, Quote, FileText, GitBranch, ArrowRight, Search, Shield, Network, Link2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import type { Verdict, MatchedSource, ValidationLabel, OverrideRequest } from '@/api/client';
 import { VerdictBadge } from './VerdictBadge';
 import { MappingStatusBadge } from './MappingStatusBadge';
@@ -119,6 +120,19 @@ export function CitationDetailDrawer({
   onClose: () => void;
   onOverride?: (req: OverrideRequest) => Promise<void>;
 }) {
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Close on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   // Defensive: ensure arrays are always defined
   const triggeredRules = verdict.triggered_rules ?? [];
   const mismatchedFields = verdict.mismatched_fields ?? [];
@@ -136,8 +150,10 @@ export function CitationDetailDrawer({
       onClick={onClose}
     >
       <div
+        ref={drawerRef}
         className="absolute right-0 top-0 h-full w-full md:max-w-2xl bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 shadow-2xl overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        tabIndex={-1}
       >
         {/* Header - Section 10: Reference Inspector */}
         <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-start justify-between gap-4 z-10">
