@@ -9,7 +9,12 @@ from typing import Iterable
 from integrity_checker.extraction.base import Document
 from integrity_checker.extraction.patterns import get_in_text_patterns
 from integrity_checker.extraction.patterns.base import CompiledPattern
-from integrity_checker.extraction.regex_patterns import CITATION_PATTERNS, CitationPattern
+
+# Suppress deprecation warning for legacy import (regex_patterns.py is deprecated)
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    from integrity_checker.extraction.regex_patterns import CITATION_PATTERNS, CitationPattern
+
 from integrity_checker.extraction.text_preprocessor import TextPreprocessor
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 

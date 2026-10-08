@@ -12,6 +12,9 @@ version = "0.1.0"
 description = "Neuro-Symbolic system for citation integrity scoring and hallucinated reference detection in student essays"
 readme = "README.md"
 requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27,<1.0",  # Required for FastAPI TestClient
+]
 license = { text = "MIT" }
 authors = [
     { name = "Nguyễn Bảo Minh", email = "523H0054@student.tdtu.edu.vn" },
