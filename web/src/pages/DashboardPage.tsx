@@ -200,20 +200,18 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Overview - Hidden per user request */}
-      {false && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {statCards.map((card) => (
-            <div key={card.label} className={`card p-5 ${card.bg}`}>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm text-slate-600 dark:text-slate-400">{card.label}</p>
-                <card.icon className={`h-5 w-5 ${card.color}`} />
-              </div>
-              <p className={`text-2xl font-bold font-display ${card.color}`}>{card.value}</p>
+      {/* Stats Overview */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {statCards.map((card) => (
+          <div key={card.label} className={`card p-5 ${card.bg}`}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-slate-600 dark:text-slate-400">{card.label}</p>
+              <card.icon className={`h-5 w-5 ${card.color}`} />
             </div>
-          ))}
-        </div>
-      )}
+            <p className={`text-2xl font-bold font-display ${card.color}`}>{card.value}</p>
+          </div>
+        ))}
+      </div>
 
       {/* Search */}
       <div className="relative">
