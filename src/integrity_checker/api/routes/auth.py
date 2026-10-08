@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
 from integrity_checker.api.deps import get_current_user, get_db, get_token_from_header
@@ -153,12 +153,21 @@ def login(request: LoginRequest, db=Depends(get_db)):
 
 @router.post("/logout", response_model=MessageResponse)
 def logout(
-    token: str = Depends(get_token_from_header),
+    authorization: str | None = Header(None),
     db=Depends(get_db),
 ):
-    """Logout current user."""
+    """Logout current user.
+
+    Gracefully handles missing/invalid/expired tokens by just deleting the session
+    if it exists. This ensures the client-side logout always succeeds.
+    """
     repo = Repository(db)
-    repo.delete_session(token)
+
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+        # Try to delete session - will silently succeed if session doesn't exist
+        repo.delete_session(token)
+
     repo.commit()
     return MessageResponse(message="Logged out successfully")
 

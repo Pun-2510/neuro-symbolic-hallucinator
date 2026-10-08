@@ -100,14 +100,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    if (token) {
+    const currentToken = localStorage.getItem('token');
+    if (currentToken) {
       try {
         await fetch(`${API_BASE}/auth/logout`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${currentToken}` },
         });
       } catch {
-        // Ignore logout errors
+        // Ignore logout errors - local state still cleared
       }
     }
     localStorage.removeItem('token');
