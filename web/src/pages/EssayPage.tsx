@@ -385,6 +385,14 @@ export function EssayPage() {
             <Download className="h-3.5 w-3.5" />
             PDF
           </a>
+          <a
+            href={api.downloadReport(report.essay_id, 'docx')}
+            className="btn-ghost btn-sm"
+            download
+          >
+            <Download className="h-3.5 w-3.5" />
+            DOCX
+          </a>
         </div>
       </div>
 

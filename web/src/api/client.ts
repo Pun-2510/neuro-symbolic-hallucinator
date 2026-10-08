@@ -378,7 +378,7 @@ export const api = {
 
   getVerdicts: (id: number) => request<Verdict[]>(`/essays/${id}/verdicts`),
 
-  downloadReport: (id: number, format: 'json' | 'csv' | 'pdf' = 'json') =>
+  downloadReport: (id: number, format: 'json' | 'csv' | 'pdf' | 'docx' = 'json') =>
     `${BASE_URL}/essays/${id}/report?format=${format}`,
 
   overrideVerdict: (id: number, body: OverrideRequest) =>

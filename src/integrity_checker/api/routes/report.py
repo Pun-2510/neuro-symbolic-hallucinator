@@ -1,4 +1,4 @@
-"""Report endpoint — export JSON / CSV / PDF (v1.2 schema)."""
+"""Report endpoint — export JSON / CSV / PDF / DOCX (v1.2 schema)."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ from integrity_checker.api.deps import get_db, get_current_user
 from integrity_checker.api.progress import get_tracker
 from integrity_checker.config import get_settings
 from integrity_checker.db.repository import Repository
+from integrity_checker.export.docx_exporter import export_report_to_docx
 from integrity_checker.pipeline.integrity_pipeline import _serialize_citation_link
 
 router = APIRouter()
@@ -69,6 +70,8 @@ async def get_report(
         return _json_response(essay.filename, essay, verdicts, repo.get_citations(essay_id))
     if format == "pdf":
         return _pdf_response(essay.filename, essay, verdicts)
+    if format == "docx":
+        return _docx_response(essay.filename, essay, verdicts)
     raise HTTPException(status_code=400, detail=f"Unsupported format: {format}")
 
 
@@ -542,6 +545,62 @@ def _pdf_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         media_type="application/pdf",
         headers={
             "Content-Disposition": f'attachment; filename="{filename}.report.pdf"'
+        },
+    )
+
+
+def _docx_response(filename: str, essay, verdicts: list) -> StreamingResponse:
+    """Generate DOCX report with 2-layer analysis."""
+    import json
+
+    # Compute statistics
+    total = len(verdicts)
+    verified = sum(1 for v in verdicts if v.label == "verified")
+    metadata_error = sum(1 for v in verdicts if v.label == "metadata_error")
+    suspected = sum(1 for v in verdicts if v.label == "suspected_hallucination")
+    unresolved = sum(1 for v in verdicts if v.label == "unresolved")
+    resource = sum(1 for v in verdicts if v.label == "resource")
+
+    # Get CIS score from essay
+    cis_score = 0.0
+    if essay.cis_json:
+        try:
+            cis_dict = json.loads(essay.cis_json)
+            cis_score = cis_dict.get("score", 0.0)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Build verdict list
+    verdict_list = []
+    for v in verdicts:
+        features_dict = json.loads(v.features or "{}")
+        verdict_list.append({
+            "citation_raw": v.citation_raw,
+            "citation_type": v.citation_type or "unknown",
+            "label": v.label,
+            "confidence": v.confidence,
+            "reasoning": v.reasoning,
+            "matched_sources": features_dict.get("matched_sources", []),
+        })
+
+    docx_bytes = export_report_to_docx(
+        filename=filename,
+        cis_score=cis_score,
+        num_citations=total,
+        num_verified=verified,
+        num_metadata_error=metadata_error,
+        num_suspected=suspected,
+        num_unresolved=unresolved,
+        num_resource=resource,
+        verdicts=verdict_list,
+        generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+    )
+
+    return StreamingResponse(
+        iter([docx_bytes]),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}.report.docx"'
         },
     )
 

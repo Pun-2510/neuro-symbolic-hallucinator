@@ -585,51 +585,59 @@ class SymbolicRules:
         # --- Pre-flight: FUTURE YEAR detection (NEW v1.4) ---
         # Check if citation year is in the future (beyond current year)
         # IMPORTANT: Distinguish between real paper with wrong year vs. fabricated paper
-        current_year = 2026
+        # FIX: Use dynamic year instead of hardcoded value
+        from datetime import datetime as _dt
+        current_year = _dt.now().year
 
         if citation_year:
             try:
-                cited_year = int(re.search(r'\d{4}', citation_year).group())
-                if cited_year > current_year:
-                    # Future year detected - check if author is known
-                    is_known_author = self._is_known_academic_author_pattern(
-                        citation_authors=citation_authors,
-                        citation_year=citation_year,
-                        citation_raw=citation_raw,
-                    )
+                year_match = re.search(r'\d{4}', citation_year)
+                if not year_match:
+                    # No 4-digit year found in citation_year
+                    pass
+                else:
+                    cited_year = int(year_match.group())
+                    if cited_year > current_year:
+                        # Future year detected - check if author is known
+                        is_known_author = self._is_known_academic_author_pattern(
+                            citation_authors=citation_authors,
+                            citation_year=citation_year,
+                            citation_raw=citation_raw,
+                        )
 
-                    if is_known_author:
-                        # Known author + future year → likely METADATA_ERROR (wrong year)
-                        # Example: "Velickovic et al. (2027)" → real paper but wrong year
-                        triggered_rules = ["R-FUTURE-YEAR-KNOWN-AUTHOR"]
-                        return RuleOutcome(
-                            label=ValidationLabel.METADATA_ERROR,
-                            confidence=0.65,
-                            reasoning=(
-                                f"Known academic author '{citation_authors[0] if citation_authors else 'unknown'}' "
-                                f"with year {cited_year} (future). This appears to be a real paper "
-                                f"with wrong year (METADATA_ERROR), not a fabrication."
-                            ),
-                            triggered_rules=triggered_rules,
-                            mismatched_fields=["year"],
-                            style_penalty=style_penalty,
-                        )
-                    else:
-                        # Unknown author + future year → SUSPECTED_HALLUCINATION
-                        triggered_rules = ["R-FUTURE-YEAR"]
-                        return RuleOutcome(
-                            label=ValidationLabel.SUSPECTED_HALLUCINATION,
-                            confidence=0.95,
-                            reasoning=(
-                                f"Citation year {cited_year} is in the future (current year: {current_year}). "
-                                f"Unknown author with impossible year → fabricated citation."
-                            ),
-                            triggered_rules=triggered_rules,
-                            mismatched_fields=["year"],
-                            style_penalty=style_penalty,
-                        )
-            except (ValueError, AttributeError):
-                pass
+                        if is_known_author:
+                            # Known author + future year → likely METADATA_ERROR (wrong year)
+                            # Example: "Velickovic et al. (2027)" → real paper but wrong year
+                            triggered_rules = ["R-FUTURE-YEAR-KNOWN-AUTHOR"]
+                            return RuleOutcome(
+                                label=ValidationLabel.METADATA_ERROR,
+                                confidence=0.65,
+                                reasoning=(
+                                    f"Known academic author '{citation_authors[0] if citation_authors else 'unknown'}' "
+                                    f"with year {cited_year} (future). This appears to be a real paper "
+                                    f"with wrong year (METADATA_ERROR), not a fabrication."
+                                ),
+                                triggered_rules=triggered_rules,
+                                mismatched_fields=["year"],
+                                style_penalty=style_penalty,
+                            )
+                        else:
+                            # Unknown author + future year → SUSPECTED_HALLUCINATION
+                            triggered_rules = ["R-FUTURE-YEAR"]
+                            return RuleOutcome(
+                                label=ValidationLabel.SUSPECTED_HALLUCINATION,
+                                confidence=0.95,
+                                reasoning=(
+                                    f"Citation year {cited_year} is in the future (current year: {current_year}). "
+                                    f"Unknown author with impossible year → fabricated citation."
+                                ),
+                                triggered_rules=triggered_rules,
+                                mismatched_fields=["year"],
+                                style_penalty=style_penalty,
+                            )
+            except (ValueError, AttributeError) as exc:
+                # FIX: Log exceptions instead of silent pass
+                logger.debug(f"Error parsing year from '{citation_year}': {exc}")
 
         # --- Rule 5 (default): không có gì để quyết định ---
         if not source.candidates or not source.best_candidate():

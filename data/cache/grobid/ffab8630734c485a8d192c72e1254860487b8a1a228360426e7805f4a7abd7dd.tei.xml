@@ -1,0 +1,579 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">VietDepression for Detecting Depression Related Language in Vietnamese YouTube Comments</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability status="unknown"><licence/></availability>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct>
+					<analytic>
+						<author>
+							<persName><forename type="first">Nguyen</forename><surname>Duc</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="department">Faculty of Information Technology</orgName>
+								<orgName type="institution">Ton Duc Thang University</orgName>
+								<address>
+									<settlement>Ho Chi Minh City</settlement>
+									<country key="VN">Vietnam</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Anh</forename><surname>Nguyen</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="department">Faculty of Information Technology</orgName>
+								<orgName type="institution">Ton Duc Thang University</orgName>
+								<address>
+									<settlement>Ho Chi Minh City</settlement>
+									<country key="VN">Vietnam</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Bao</forename><surname>Minh</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="department">Faculty of Information Technology</orgName>
+								<orgName type="institution">Ton Duc Thang University</orgName>
+								<address>
+									<settlement>Ho Chi Minh City</settlement>
+									<country key="VN">Vietnam</country>
+								</address>
+							</affiliation>
+						</author>
+						<title level="a" type="main">VietDepression for Detecting Depression Related Language in Vietnamese YouTube Comments</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date/>
+						</imprint>
+					</monogr>
+					<idno type="MD5">516666E74B041DD931039CF29ABFBD52</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.8.0" ident="GROBID" when="2026-10-07T05:12+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<textClass>
+				<keywords>
+					<term>Vietnamese natural language processing</term>
+					<term>depression-related language</term>
+					<term>weak labeling</term>
+					<term>active learning</term>
+					<term>PhoBERT</term>
+					<term>BERTopic</term>
+					<term>transfer evaluation</term>
+				</keywords>
+			</textClass>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Vietnamese social media contains personal accounts of distress, but developing reliable text classifiers requires task-specific annotation and careful separation between emotional expression and clinical diagnosis. This study presents VietDepression, a data construction and benchmarking framework based on 125,329 collected YouTube comments and a final human-labeled subset of 9,134 texts. A weighted lexicon with 335 scoring entries supports candidate selection, while blind annotation and six rounds of active learning address label scarcity. On 343 evaluable human-labeled examples, the weak labeler achieves 0.9787 positive-class recall and 0.6133 precision, demonstrating its value for retrieval but also the need for contextual review. We compare sparse lexical classifiers, a bidirectional long short-term memory network, PhoBERT, topic-based classification, and a PhoBERT-BERTopic feature combination. On the 1,371-example in-domain test set, the reported macro F1 is 0.7187 for PhoBERT, 0.7153 for the hybrid model, and 0.7138 for TF-IDF with logistic regression. Evaluation on a balanced 3,084example subset derived from UIT-VSMEC yields a reported PhoBERT macro F1 of 0.3608. This transfer experiment changes both data source and label definition because sadness and fear are used as proxies for distress. The resulting 0.3579 macro-F1 difference therefore measures a combined transfer difficulty rather than a pure domain effect. Class-weighting comparisons and qualitative analysis identify class imbalance, contextual ambiguity, and implicit expression as important challenges. The findings support Vietnamese language models as useful in-domain baselines, while emphasizing that annotation validity, evaluation provenance, and aligned external labels are necessary before broader claims of generalization or clinical utility.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<facsimile>
+		<surface n="1" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="2" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="3" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="4" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="5" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="6" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="7" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="8" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="9" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="10" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="11" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="12" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="13" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="14" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="15" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="16" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="17" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="18" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+		<surface n="19" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0"/>
+	</facsimile>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>Public social media provides a setting in which people describe emotional difficulties in their own words. These descriptions can include exhaustion, loneliness, hopelessness, and loss of interest, but they also include jokes, quotations, encouragement, and discussion of other people. A language model must distinguish these uses if its predictions are to support meaningful research. Earlier studies of mental-health signals on Twitter and online forums established the relevance of computational language analysis to this problem <ref type="bibr" target="#b0">[1]</ref><ref type="bibr" target="#b1">[2]</ref><ref type="bibr" target="#b2">[3]</ref>. They also motivate a careful distinction between the unit that is classified and the person whose language produced it. A label attached to a comment does not establish the mental-health status of its author.</p><p>Vietnamese presents a useful and challenging setting for this research. Social-media writing commonly contains omitted diacritics, abbreviations, code-switching, expressive repetition, and context-dependent phrases. Whitespace alone does not consistently identify lexical word boundaries. A phrase such as "buồn ngủ" refers to sleepiness, whereas "buồn" in another context can describe sadness. Similarly, encouragement directed toward someone else can contain the same vocabulary as a first-person account of distress. A classifier that primarily associates isolated words with positive labels can therefore achieve high recall while generating many false positives.</p><p>Pretrained language models offer contextual representations that may help resolve such ambiguity. PhoBERT provides a Vietnamese-specific encoder and has demonstrated strong performance on several Vietnamese languageprocessing tasks <ref type="bibr" target="#b3">[4]</ref>. However, an effective encoder cannot substitute for a valid target definition or a suitable evaluation set. Vietnamese sentiment and emotion resources provide useful text, but their labels describe related constructs rather than the particular depression-related language studied here. UIT-VSMEC, for example, is a social-media emotion corpus <ref type="bibr" target="#b4">[5]</ref>, not a set of clinically assessed individuals. Mapping its emotions into two classes creates an auxiliary transfer task whose limitations must remain explicit.</p><p>This study addresses the practical problem of constructing a Vietnamese comment-level benchmark under limited annotation resources. We collect YouTube comments, apply a transparent keyword-based scoring system, and use blind human annotation with iterative uncertainty-based selection. The resulting corpus supports comparisons between lexical, recurrent, contextual, and topic-based representations. Our contribution is primarily a dataset and evaluation workflow. The hybrid representation is examined as a complementary feature combination; the experiments do not establish a new state-of-the-art architecture or a diagnostic system.</p><p>Three research questions organize the study. First, can a high-recall weak labeler assist the construction of a human-labeled corpus without being treated as a source of definitive labels? Second, how do sparse lexical models, BiLSTM, PhoBERT, and topic features compare on the same in-domain benchmark? Third, what happens when the resulting classifiers are applied to an external emotion-derived task with a different class balance and annotation target? These questions link dataset design to model behavior rather than treating data preparation as a preliminary implementation detail.</p><p>The study contributes a collection of 125,329 Vietnamese YouTube comments and a final 9,134-example labeled benchmark; a weighted lexicon and blind-review procedure for prioritizing annotation; a comparison of six classifier configurations across five representation families; and an analysis of transfer limitations, class weighting, and contextual errors. We report numerical differences descriptively and retain the distinction between aggregate benchmark scores and the separately recorded confusion matrices. This distinction is necessary because the evaluation records do not establish that all reported statistics were produced by the same prediction artifact.</p><p>The remainder of the paper reviews related work, defines the task, describes corpus construction and the modeling framework, presents the evaluation protocol and results, and discusses limitations and future validation. The central finding is that contextual encoding provides the highest reported in-domain macro F1, but its advantage over a lexical baseline is small and does not carry over to the emotion-derived transfer task.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Related work</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1">Social media language and mental health</head><p>De Choudhury et al. investigated depression-related information in social-media activity <ref type="bibr" target="#b0">[1]</ref>, while Coppersmith et al. examined mental-health signals in Twitter language <ref type="bibr" target="#b1">[2]</ref>. Yates et al. studied depression and self-harm risk in online forums <ref type="bibr" target="#b2">[3]</ref>. These studies establish several relevant directions: language can contain useful signals, the data source affects the available evidence, and evaluation depends on how the target labels were obtained. Their results do not directly establish the performance of a Vietnamese comment-level classifier, because languages, platforms, annotation procedures, and units of analysis differ. This distinction shapes the present task. User-level studies may aggregate many posts, whereas a comment-level system receives a single text. Temporal persistence, personal history, and the relationship between comments are then unavailable. A phrase can be compatible with distress without providing enough evidence to infer a persistent condition. We therefore use depression-related language as an operational text label. Broader clinical concepts motivate the subject matter but are not converted into diagnostic claims about individual users.</p><p>Lexical features remain relevant in this setting because many explicit expressions are recognizable through words or short phrases. Their transparency also makes them useful for identifying failure cases and checking whether a more complex model offers meaningful gains. However, a high score on a lexically enriched dataset can partly reflect overlap between collection queries, annotation cues, and the features learned by the classifier. Including a strong lexical comparator is consequently necessary for interpreting the benefit of contextual modeling.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2">Contextual models for Vietnamese text</head><p>The Transformer architecture introduced attention-based sequence modeling <ref type="bibr" target="#b5">[6]</ref>. BERT demonstrated the value of bidirectional pretraining for downstream language understanding <ref type="bibr" target="#b6">[7]</ref>, and RoBERTa examined improvements to that training approach <ref type="bibr" target="#b7">[8]</ref>. PhoBERT adapts this general modeling family to Vietnamese <ref type="bibr" target="#b3">[4]</ref>. In our experiments, its contextual representation serves both a fine-tuned classifier and the contextual branch of a hybrid model.</p><p>Contextual encoding is relevant because the same Vietnamese term can appear in self-disclosure, figurative language, or supportive speech. The expected benefit is not simply better keyword recognition; it is improved use of surrounding information. Nevertheless, representations learned from pretraining and subsequent task adaptation can remain sensitive to source-specific language. We evaluate PhoBERT against a BiLSTM and sparse lexical models to separate the practical value of contextual pretraining from the assumption that a larger architecture will always perform better.</p><p>Vietnamese emotion and sentiment resources occupy a related but distinct position. UIT-VSMEC contains emotionannotated social-media sentences <ref type="bibr" target="#b4">[5]</ref>, whereas UIT-VSFC concerns student feedback <ref type="bibr" target="#b8">[9]</ref>. These resources should not be conflated. They can support auxiliary representation learning, negative-example construction, or transfer experiments, but their original labels do not directly establish the target label used in VietDepression. The mapping applied to an external resource is therefore part of the experimental definition rather than an inherent property of that resource.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.3">Weak supervision and selective annotation</head><p>Weak labeling offers a way to prioritize an otherwise large unlabeled collection. In a rule-based system, candidate phrases contribute positive or negative evidence, and thresholds produce provisional classes or abstentions. The rules are inexpensive to apply and easy to inspect, but they encode only a partial account of meaning. A rule matching "mệt mỏi" can retrieve relevant material while also identifying routine physical fatigue. Weak labels are therefore most useful when their error profile is measured and their provenance remains distinct from human judgments.</p><p>Active learning selects examples for annotation using information from the current model. Settles describes the general framework and its alternatives <ref type="bibr" target="#b9">[10]</ref>. Uncertainty sampling is attractive for binary classification because examples close to a decision boundary may reveal distinctions that the model has not learned. However, increased performance over successive rounds does not, by itself, establish annotation efficiency. A matched randomsampling comparison is needed to determine whether uncertainty-based selection yields more benefit for the same annotation budget.</p><p>Blind annotation addresses a different issue. Hiding machine labels and confidence values reduces an obvious source of anchoring during review. This interface design is compatible with active learning because examples can be selected using a model without showing its predictions to annotators. Agreement between the model and a human then measures correspondence between their decisions; it does not measure agreement between independent human annotators. This distinction is maintained throughout the present study.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.4">Topic representations and adaptation</head><p>BERTopic combines document embeddings, dimensionality reduction, clustering, and class-based TF-IDF to produce interpretable topic descriptors <ref type="bibr" target="#b10">[11]</ref>. Sentence-BERT provides a widely used approach to sentence representation <ref type="bibr" target="#b11">[12]</ref>, while UMAP and density-based clustering support the dimensionality reduction and grouping stages <ref type="bibr" target="#b12">[13,</ref><ref type="bibr" target="#b13">14]</ref>. In this study, topics provide information about the broad subject of a comment, potentially complementing its contextual representation.</p><p>Topical relevance and the target label are nevertheless different. A discussion of treatment may concern the writer, another person, or general advice. A music-related topic may contain both emotional self-disclosure and comments about the performance. We consequently evaluate topic-only classification separately from the hybrid representation. Topic names are used for corpus exploration, not as evidence that a classifier has identified a clinical state or a causal explanation for a prediction. Domain-adaptive pretraining provides another way to use unlabeled text. <ref type="bibr">Gururangan et al.</ref> show that additional pretraining on domain and task data can improve downstream models <ref type="bibr" target="#b14">[15]</ref>. Such adaptation is relevant to informal Vietnamese, but it also raises an evaluation question: which documents were available during representation learning? Keeping external labels out of supervised training is insufficient to establish a strictly inductive test if the external texts were included in topic fitting or language-model adaptation. We return to this issue when defining the scope of the transfer results.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Task definition and corpus construction</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">Prediction target and unit of analysis</head><p>Let x denote the normalized text of one comment and y belong to {0,1}. The positive class represents language annotated as expressing depression-related distress, while the negative class represents text not assigned that label. The classifier estimates a score p(y=1 | x), or a decision function in the case of a linear support-vector classifier. The target is a text judgment under an annotation scheme. The negative class does not certify an absence of depression in the author, and the positive class does not certify its presence.</p><p>The annotation focus includes sadness, loss of motivation, hopelessness, isolation, and negative self-evaluation. These themes guide retrieval and review rather than acting as independently diagnosed symptoms. Their interpretation depends on context: a supportive reply can mention sadness without expressing the writer's own distress, and a brief statement of uncertainty can remain ambiguous. The corpus construction process allows uncertain and excluded examples during review rather than requiring every collected comment to receive a definitive binary label.</p><p>The unit of analysis also determines the scope of conclusions. This work does not predict severity, estimate onset, or link repeated comments to an individual trajectory. Video identifiers are retained for grouping, but author profiles and behavioral histories are not model inputs. Any relationship between comment-level classification and person-level assessment requires a separate study with an appropriate reference standard.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">Collection strategy</head><p>YouTube was selected because public comments provide naturally occurring Vietnamese text associated with identifiable video contexts. Collection used the YouTube Data API v3 <ref type="bibr" target="#b15">[16]</ref>. The search configuration targeted videos using Vietnamese relevance settings and the VN region code, ordered results by relevance, and requested up to 50 results per search page. The collection design allowed up to 100 videos per query and up to 100 top-level comment threads per video. These bounds describe the collection procedure rather than a complete sample of YouTube activity.</p><p>The search vocabulary contained a reported total of 264 queries covering depression and suicidality, loneliness and sadness, stress and burnout, sleep disturbance and overthinking, and help-seeking or healing. These retrieval themes were designed to increase the proportion of relevant material in the pool. They should be distinguished from the 335 scoring entries used later for weak labeling. The retrieval vocabulary determines which discussions can enter the sample; the scoring vocabulary determines how their comments are provisionally categorized.</p><p>The collected schema comprised comment identifier, video identifier, video title, retrieval keyword, comment text, like count, and publication timestamp. Identifiers and source fields support deduplication and split auditing. They are not included as predictive features in the text classifiers. The availability of publication timestamps enables later temporal analysis, but no prospective temporal evaluation is established by the experiments reported here.</p><p>The collection produced 125,329 comments. The processing inventory additionally records 119,649 comments after deduplication and filtering. We retain these as separate stages rather than describing both counts as the same cleaned corpus. Keyword-driven retrieval introduces selection bias toward discussions of distress and related themes; neither the weak-positive fraction nor the labeled-positive fraction estimates population prevalence. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.3">Text normalization and filtering</head><p>Preprocessing was designed to preserve potentially meaningful linguistic information. Unicode NFC normalization and whitespace standardization were applied, while Vietnamese diacritics, emoji, and original case were retained. This choice avoids automatically removing emotional or orthographic cues before their relevance can be evaluated. The model-specific processing stage subsequently determines how the normalized text is segmented or encoded.</p><p>The filtering rules targeted promotional URLs, selected advertising phrases, extreme character repetition, and comments with very low lexical variety. A minimum length of five characters was imposed after normalization. Deduplication first used comment identifiers and then normalized text, retaining the first occurrence. The two checks address repeated API retrieval and repeated content, respectively. Exact text deduplication does not remove every paraphrase or shared quotation, so it cannot alone establish complete independence between splits.</p><p>Cleaning involves a trade-off. Repeated characters can be spam, but they can also express emphasis; links can advertise a service, but they can also accompany help-seeking or support. The resulting benchmark is therefore conditional on the filtering rules. Future dataset revisions should retain exclusion reasons and inspect samples near rule boundaries, allowing researchers to assess whether cleaning disproportionately removes particular forms of distress-related expression.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.4">External resources and corpus roles</head><p>Eight external Vietnamese resources contributed 191,072 texts to the wider corpus inventory. They include emotion, sentiment, and toxicity data with different annotation schemes. The recorded unified corpus contains 316,401 documents, equal to the collected YouTube count plus the external inventory. It is used for exploratory topic modeling and described as a source for language-model adaptation. Because this accounting is based on the collected count, it should not be interpreted as the size of a separately verified, fully deduplicated modeling pool.</p><p>External data have three conceptually different roles. UIT-VSMEC supplies an emotion-derived transfer evaluation.</p><p>Positive-affect examples from other resources form a candidate hard-negative pool of 42,952 texts. The remaining material contributes text for corpus-level representation learning. These roles must remain distinguishable because supervised labels, pseudo-labels, and unlabeled exposure have different implications for model evaluation.</p><p>The construction record also describes a weighted training expansion with human labels, high-confidence rule labels, model pseudo-labels, and external negative examples. Those records are not interchangeable with the final 6,392-example benchmark training partition. Without a model-specific manifest, the final comparison cannot establish the independent effect of each expanded source. We therefore report the stable benchmark split explicitly and discuss the augmentation inventory as a separate component of the overall workflow.</p><p>4 Weak labeling and human annotation</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">Weighted lexical scoring</head><p>The weak labeler uses three sets of scoring entries: 53 strong positive indicators, 116 context-dependent positive indicators, and 166 normal-context indicators. The total of 335 refers to these scoring entries. A further set of 22 review-context phrases flags cases that require contextual inspection; it is not added to the scoring total. Table <ref type="table" target="#tab_1">2</ref> summarizes the groups and their intended roles. For a comment x, let ns(x), nm(x), and nn(x) denote the matches in the strong, medium, and normal-context groups.</p><p>The score is defined as</p><formula xml:id="formula_0">s( x ) = 5 n s ( x ) + 3 n m ( x ) -2 n n ( x )(1)</formula><p>The system assigns a provisional positive label when s(x) ≥ 5, a provisional negative label when s(x) ≤ -2, and an uncertain status when -1 ≤ s(x) ≤ 4. Positive labels are considered high-confidence when s(x) ≥ 8, while negative labels are considered high-confidence when s(x) ≤ -4. The thresholds encode a practical retrieval policy. They do not represent calibrated probabilities or clinical severity levels.</p><p>The subtraction of normal-context evidence helps reduce some obvious false positives, but additive scoring cannot fully model compositional meaning. For example, a supportive sentence can contain several positive indicators while remaining directed toward another person. Conversely, an implicit expression may receive a low score despite being judged relevant by a human. The uncertain category is therefore central to the pipeline: it prevents an absence of strong lexical evidence from being treated automatically as a reliable negative label.</p><p>The weak-label distribution records 3,223 provisional positives, 23,695 provisional negatives, and 98,410 uncertain examples. The counts total 125,328, one below the collected inventory. We preserve the category counts without assigning the residual record to a class. Approximately 78.52% of the scored inventory is uncertain, indicating that the rules provide confident coverage for only a minority of the collection. A separate review flag occurs on 120,334 records and overlaps the provisional classes; it is not a fourth mutually exclusive class.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">Validation of the weak labeler</head><p>The weak labeler was evaluated on 343 examples with human labels and evaluable binary predictions. The recorded confusion counts are 92 true positives, 191 true negatives, 58 false positives, and two false negatives. These counts yield positive-class precision of 0.6133, recall of 0.9787, accuracy of 0.8251, and macro F1 of 0.8092. Table <ref type="table" target="#tab_2">3</ref> reports the metrics together with the denominator so that the high recall is not mistaken for performance on the full collection. The asymmetry between precision and recall is consistent with a retrieval-oriented rule set. Only two positive examples were missed within this evaluable subset, but 58 negative examples were flagged as positive. The resulting positive-class F1 is 0.7541, which differs from macro F1 because the latter averages the scores of both classes. In practice, the rules can reduce the effort required to locate candidate material, while a contextual review step remains necessary to distinguish personal distress from other uses of the same phrases.</p><p>These estimates also depend on how the 343 examples were selected and how uncertain outputs were handled. They do not quantify recall over every implicit expression in the unlabeled pool. A complete validation should include both confident and abstained examples sampled under a documented design. The current results support weak labeling as an annotation aid, rather than as an automatic replacement for human labels.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.3">Blind annotation and iterative selection</head><p>Annotation was conducted through Label Studio. The review interface displayed comment text and a row identifier while excluding machine labels, scores, and confidence values. This separation allows model-based selection of examples without presenting the model's proposed answer to the annotator. Uncertain and excluded judgments were retained during review, and the final benchmark contains binary labels after the dataset-construction process.</p><p>The active-learning workflow alternates model fitting, scoring of an unlabeled pool, selection of uncertain examples, blind review, and incorporation of newly labeled data. For a binary model with probability p(x), a leastconfidence score can be expressed as</p><formula xml:id="formula_1">u( x ) = 1 -max { p( x ), 1 -p( x )}( 2)</formula><p>Larger values correspond to predictions closer to 0.5. Equation (2) describes the uncertainty principle used by the workflow; the records do not provide a complete per-round selection manifest or a fixed batch size covering every stage. Six rounds were completed, with stopping linked to performance and annotation budget. Figure <ref type="figure" target="#fig_0">1</ref> summarizes the relation between weak labeling, human review, and evaluation.</p><p>Two documented batches provide information about human-machine correspondence. Batch 5 contains 750 reviewed samples, a disagreement rate of 17.49%, and Cohen's κ of 0.63. Batch 8 contains 1,000 samples, a disagreement rate of 53.72%, and κ of -0.03. These are human-machine agreement statistics. They cannot be used as estimates of inter-annotator reliability, because the comparison is not between two independently labeling humans.</p><p>The lower agreement on the active-learning batch is compatible with the selection of difficult cases, but it does not prove that the interface eliminated bias or that the human labels are correct. The batch identifiers also should not be equated with the six active-learning rounds: annotation batches and training rounds represent different organizational units. A complete reliability analysis would require overlapping human annotations, a defined adjudication procedure, and agreement estimates calculated on that overlap. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.4">Final benchmark and split integrity</head><p>The The split design combines class stratification with video-level separation, so comments associated with the same video are intended to remain within one partition. The rationale is to reduce shared contextual information across training and evaluation. External resources are assigned separate roles, and keyword distributions are considered during partitioning. These design choices reduce obvious leakage risks, but a claim of verified independence requires the actual identifiers, text hashes, and assignment files.</p><p>There is an additional distinction between supervised separation and representation-learning separation. A model trained on topic features can have indirect access to evaluation text if the topic model was fitted on the complete corpus. The same issue applies to domain-adaptive pretraining. The corpus inventory does not establish a strict exclusion list for these stages. Accordingly, the topic and adaptation results are treated as exploratory, and the external experiment is not presented as a fully audited inductive benchmark.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Modeling framework and experimental protocol</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.1">Lexical classifiers</head><p>The lexical representation combines word-level TF-IDF unigrams and bigrams with character-level n-grams of length three to five. Each branch allows up to 80,000 features. Character features are restricted to within-word boundary patterns and are intended to capture spelling variation, including omitted diacritics and informal character sequences. Concatenating the two branches combines short lexical phrases with subword evidence without requiring pretrained contextual embeddings.</p><p>Two linear classifiers are evaluated on sparse representations. LinearSVC uses balanced class weights and a maximum of 2,000 optimization iterations. Logistic regression provides an additional lexical comparator and is also evaluated with class weighting. The support-vector classifier supplies a margin-based decision, whereas logistic regression produces a probabilistic score through its link function. Their inclusion tests whether the principal distinctions in the benchmark can be learned from recurring lexical patterns.</p><p>The TF-IDF vocabulary and document-frequency statistics belong to the fitted model and should be estimated from training data. Applying the fitted transformation to validation and test data then preserves the separation between feature fitting and evaluation. Exact regularization settings for the logistic-regression comparator are not available in the numerical configuration summary, so its score is reported as a benchmark result without claiming a complete reproduction from the manuscript alone.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.2">Bidirectional recurrent baseline</head><p>The BiLSTM uses a vocabulary of 15,000 tokens and a trainable 128-dimensional embedding layer. Two bidirectional layers use 128 hidden units per direction, yielding a 256-dimensional representation. Dropout of 0.5 is applied between recurrent layers. The classification head maps the representation through a 64-unit ReLU layer to two logits. This architecture provides a sequential baseline whose embeddings are learned within the task rather than supplied by a large pretrained language model.</p><p>The recorded training configuration uses Adam with learning rate 0.001, batch size 32, eight epochs, and a maximum sequence length of 100 tokens. The main configuration describes an unweighted loss, whereas the classweighting comparison also reports a weighted BiLSTM result. Because the aggregate benchmark does not unambiguously identify which variant generated its score, we retain the reported aggregate result and treat the weighting comparison as a separate experimental record.</p><p>This distinction matters when interpreting a lower score. The comparison does not isolate recurrence from all other factors: pretraining, loss weighting, tokenization, maximum length, and optimization budget also differ. The experiment addresses which implemented configuration performs best on the benchmark, rather than establishing an architecture-only causal explanation.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.3">PhoBERT fine tuning</head><p>PhoBERT-base is fine-tuned for binary classification <ref type="bibr" target="#b3">[4]</ref>. Text is segmented using underthesea before being encoded by the model tokenizer. </p><formula xml:id="formula_2">w c = N / ( 2 N c )(<label>3</label></formula><formula xml:id="formula_3">)</formula><p>A corresponding weighted cross-entropy objective for a minibatch B is</p><formula xml:id="formula_4">L = -(1 / | B |) Σ i ∈ B w yᵢ log p( yᵢ | xᵢ )(<label>4</label></formula><formula xml:id="formula_5">)</formula><p>The recorded optimizer is AdamW with learning rate 2 × 10 ⁵ and weight decay 0.01. Training uses a batch size of ⁻ eight, an evaluation batch size of 16, a maximum length of 128 tokens, gradient clipping at 1.0, and a linear warmup ratio of 0.06. The configuration allows three epochs with early-stopping patience of two. Model selection uses validation data, while the test partition serves final evaluation.</p><p>The PhoBERT benchmark records three seeds, 42, 123, and 2024. Its aggregate output is described using both voting and averaging terminology. Averaging scores over runs, averaging predicted probabilities, and majority voting are different operations; they can produce different confusion matrices and F1 values. We therefore identify the main score as the reported aggregate PhoBERT result and analyze the recorded confusion matrix separately. No standard deviation or significance claim is inferred from the existence of three seeds alone.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.4">Topic model and topic only classification</head><p>The topic pipeline uses multilingual MiniLM sentence embeddings, UMAP dimensionality reduction, and HDBSCAN clustering, followed by class-based TF-IDF descriptors <ref type="bibr" target="#b10">[11]</ref><ref type="bibr" target="#b11">[12]</ref><ref type="bibr" target="#b12">[13]</ref><ref type="bibr" target="#b13">[14]</ref>. The fitted corpus inventory contains 316,401 texts. The recorded model discovers 456 topics and assigns 48.30% of documents to the outlier category. This substantial outlier fraction is relevant to classification because topic membership is unavailable or weak for a large portion of the corpus.</p><p>The topic-only classifier uses the assigned topic identifier and its probability as features for logistic regression. A topic identifier is categorical, not an ordered numerical quantity: adjacent identifiers do not imply similar topics. The available configuration does not fully specify the encoding or handling of outliers for this baseline. Its results should consequently be understood as an exploratory check of topical features rather than a complete test of every topic-based representation.</p><p>Topical descriptions provide a useful way to inspect the collection. They can reveal whether retrieval concentrated on treatment, sleep, work stress, music, or loneliness. However, an interpretable cluster label does not establish that every member expresses the positive target. Topic-only classification is expected to lose distinctions involving speaker perspective, negation, and implicit meaning that are expressed within otherwise similar subject matter.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.5">Combining contextual and topical information</head><p>The hybrid model concatenates a 768-dimensional PhoBERT representation h(x), a 456-dimensional one-hot topic vector, and one topic-assignment probability. Its feature vector is</p><formula xml:id="formula_6">z ( x ) = [ h( x ); onehot ( t ( x )); q ( x )] ∈ ℝ ¹²²⁵(5 )</formula><p>Here t(x) is the assigned topic and q(x) is the assignment probability. StandardScaler normalizes the concatenated features before a logistic-regression classifier with balanced class weights estimates the binary outcome. The stated dimension describes the discovered non-outlier topics; the outlier encoding must be specified in an executable release. Figure <ref type="figure" target="#fig_3">2</ref> shows the feature combination without assuming that cluster membership explains the model's decision. The underlying hypothesis is that contextual and topical information capture complementary aspects of the text. PhoBERT represents local and sentence-level meaning, while topic membership represents a broad thematic position within the corpus. The hybrid changes more than feature dimensionality: it also uses a logistic-regression head rather than the end-to-end classification head of the fine-tuned PhoBERT model. Therefore, a comparison between the two does not isolate the effect of adding topics unless the remaining components are controlled.</p><p>The source record does not specify all details of checkpoint selection, encoder freezing, or feature-fitting partitions for the hybrid. Its in-domain score is nonetheless useful as a descriptive result. The comparison can establish whether the implemented combination exceeded the reported PhoBERT aggregate, but cannot establish a general benefit or disadvantage of topic augmentation across other fitting protocols.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.6">Evaluation sets and label mapping</head><p>The primary test contains 1,371 YouTube comments. It evaluates the operational annotation target within the collection setting and retains a positive fraction of approximately 19.8%. The external experiment contains 3,084 examples derived from UIT-VSMEC, balanced between 1,542 sadness-or-fear examples and 1,542 enjoyment examples. Sadness and fear are mapped to the positive proxy class, while enjoyment is mapped to the negative proxy class. Other emotion categories are not part of the stated binary mapping.</p><p>UIT-VSMEC is a social-media emotion resource <ref type="bibr" target="#b4">[5]</ref>. The transfer experiment changes dataset and label meaning simultaneously. Even a model that perfectly captures the original comment-level annotation policy may disagree with a mapping that treats every sadness or fear example as positive. Conversely, good performance on the proxy mapping would not validate depression detection. The construction of the balanced subset, including sampling, deduplication, and original split membership, requires a retained selection manifest for exact reproduction.</p><p>Macro F1 is the primary metric because the in-domain class distribution is imbalanced. For the positive class, precision, recall, and F1 are calculated as</p><formula xml:id="formula_7">P 1 = TP / (TP + FP ), R 1 = TP / (TP + FN ), F 1 1 = 2TP / ( 2 TP + FP + FN )( 6 )</formula><p>The negative-class F1 is calculated symmetrically, and macro F1 is</p><formula xml:id="formula_8">F 1 macro = ( F 1 1 + F 1 0 ) / 2(7 )</formula><p>Accuracy is (TP + TN) / N. Class-specific recall is reported when a confusion matrix is available, because a model can achieve moderate accuracy by predicting almost every example as negative. We also calculate the difference between in-domain and external macro F1. Since the external labels are proxies, this difference is described as a transfer gap rather than an isolated measure of covariate shift.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.7">Implementation and comparison scope</head><p>Table <ref type="table" target="#tab_3">4</ref> summarizes the main settings. The implementation uses a CUDA-capable NVIDIA GPU with PyTorch and Hugging Face Transformers <ref type="bibr" target="#b16">[17]</ref>, together with scikit-learn <ref type="bibr" target="#b17">[18]</ref>, underthesea, BERTopic, and sentencetransformers. The environment inventory gives lower-bound library versions rather than a fully pinned software environment and does not identify an exact GPU model. Consequently, computational cost and hardwarenormalized efficiency cannot be compared from the present records.</p><p>The recurrent and contextual models differ in training duration, input length, and pretraining. Classical classifiers use a single recorded seed, while PhoBERT and BiLSTM have aggregate results associated with multiple seeds. These are comparisons of practical configurations, not equal-compute experiments. Neither inference-time superiority nor lower variance is claimed without corresponding measurements. The same restraint applies to small differences in macro F1: they describe the reported scores but do not establish statistical significance. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.1">Comparative performance</head><p>Table <ref type="table" target="#tab_4">5</ref> presents the available macro-F1 results. The six rows include two lexical classifiers and one classifier for each of the recurrent, contextual, topic-only, and hybrid settings. This distinction resolves the difference between five representation families and six evaluated classifier configurations. For the hybrid external result, the dedicated topic-results record distinguishes accuracy of 0.5084 from macro F1 of 0.3674; the latter is used here. PhoBERT has the highest reported in-domain macro F1, 0.7187. The hybrid follows at 0.7153, and TF-IDF with logistic regression obtains 0.7138. The differences from PhoBERT are only 0.0034 and 0.0049, respectively, equivalent to 0.34 and 0.49 percentage points. LinearSVC scores 0.7025, BiLSTM 0.6421, and the topic-only classifier 0.4208. These results show that the contextual model is competitive, while also demonstrating that a sparse lexical baseline captures much of the available in-domain signal.</p><p>The hybrid does not improve the reported in-domain score over PhoBERT. One possible explanation is redundancy between thematic information and the contextual representation; another is that coarse topics do not encode the distinction between personal distress and discussion of distress. The current experiment does not isolate these mechanisms. The result supports retaining topic modeling for corpus interpretation, but does not support claiming that topic concatenation improves the classifier.</p><p>On the external proxy task, BERTopic-only obtains 0.5030 and BiLSTM 0.5003. LinearSVC scores 0.3798, the hybrid 0.3674, PhoBERT 0.3608, and TF-IDF with logistic regression 0.3577. Thus, LinearSVC is not the best external model across all configurations. It does exceed the reported PhoBERT result, but the highest external scores belong to topic-only classification and BiLSTM. Figure <ref type="figure" target="#fig_4">3</ref> displays the complete comparison. Scores near 0.50 macro F1 on a balanced task indicate limited discrimination and should not be described as successful transfer without further context. For reference, always predicting one class on a balanced binary set gives macro F1 of one third; independent, equally likely random predictions have an expected large-sample macro F1 near one half. These analytical reference points are not measured additional baselines. They clarify why outperforming a collapsed one-class predictor is insufficient evidence of robust generalization.</p><p>The reported transfer gap is 0.3579 for PhoBERT, 0.3561 for TF-IDF with logistic regression, 0.3479 for the hybrid, 0.3227 for LinearSVC, and 0.1418 for BiLSTM. BERTopic-only has a negative gap of -0.0822 because its external score exceeds its in-domain score. A smaller gap is not automatically preferable: a weak model can perform poorly in both settings. Absolute scores and the meaning of each label set must be considered alongside the difference.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.2">Confusion matrix analysis</head><p>The recorded PhoBERT confusion matrices reveal a marked change in positive predictions. In-domain, 182 of 271 positive comments are correctly identified, while 89 are missed. Among 1,100 negative comments, 194 are incorrectly flagged and 906 are correctly classified. In the external set, only 49 of 1,542 positive proxy examples are identified, while 1,493 are predicted negative. The model produces 11 false positives and 1,531 true negatives. Figure <ref type="figure" target="#fig_5">4</ref> shows the counts using rows for reference labels and columns for predictions.  <ref type="table" target="#tab_5">6</ref>.</p><p>Metrics calculated directly from these counts are listed in Table <ref type="table" target="#tab_5">6</ref>. In-domain positive precision is 0.4840 and recall is 0.6716; external positive precision is 0.8167 and recall is only 0.0318. The higher external precision reflects a very small set of positive predictions: just 60 of 3,084 examples, or 1.95%. It should not obscure the failure to retrieve most positive proxy examples. The matrix therefore supports a specific conclusion of negative-class prediction collapse under the external mapping. The matrix-derived macro F1 values are 0.7138 in-domain and 0.3659 externally, rather than the aggregate values 0.7187 and 0.3608 in Table <ref type="table" target="#tab_4">5</ref>. Similarly, the in-domain matrix yields accuracy 0.7936. We do not combine these statistics into a single purported run. Different checkpoints, seeds, or aggregation procedures could produce distinct outputs, but the present records do not identify which explanation applies. The macro-F1 comparison and the countbased error analysis consequently remain separate evidence streams.</p><p>The in-domain negative-only accuracy reference is 1,100/1,371 = 0.8023, but its macro F1 is only 0.4452. This demonstrates why accuracy alone is inadequate. The recorded classifier matrix has slightly lower accuracy than the negative-only rule while achieving substantially higher macro F1 through nonzero positive recall. Model selection should therefore reflect the desired error trade-off rather than a single overall correctness percentage.  These results are consistent with class weighting being useful under the benchmark imbalance, especially for logistic regression. They do not establish that weighting is optimal for every deployment distribution or that all improvements arise from the same error changes. Per-class confusion matrices for the ablation variants would be needed to determine whether gains reflect better positive recall, fewer false positives, or both. The BiLSTM configuration ambiguity described earlier also limits direct correspondence between its ablation and aggregate rows.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.3">Class weighting and annotation rounds</head><p>The active-learning record shows in-domain macro F1 of 0.5821, 0.6314, 0.6658, 0.6892, 0.7015, and 0.7187 across six rounds. The overall increase is 0.1366. Gains between consecutive rounds are 0.0493, 0.0344, 0.0234, 0.0123, and 0.0172. Progress generally slows after the early rounds, but the final increment is larger than the preceding increment, so the trajectory is not strictly diminishing.</p><p>The sample counts associated with early rounds are approximate, and the final round incorporates the much larger 9,134-example benchmark. Consequently, the curve is evidence of development progress rather than a controlled label-efficiency experiment. It does not establish how many annotations active learning saved compared with random sampling. Such a claim would require equal budgets, identical model configurations, and a fixed evaluation set across sampling strategies.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.4">Qualitative errors and topical structure</head><p>Qualitative examples reveal three recurring ambiguities. First, a comment such as "đừng buồn nữa nhé" is directed toward another person and may be supportive, despite containing a sadness term. Second, "buồn ngủ" denotes sleepiness and illustrates how phrase-level meaning can differ from the isolated word "buồn." Third, expressions such as "mình chẳng biết phải làm sao nữa" can communicate helplessness without explicitly naming a condition. The last example is also intrinsically underspecified: interpretation depends on context and should not be treated as a universal diagnostic cue.</p><p>These examples motivate contextual modeling, but they do not prove that PhoBERT always resolves the ambiguity. The recorded in-domain false positives and false negatives show that substantial errors remain. A few selected examples can illustrate mechanisms, whereas their frequency in the population requires a systematic sample with consistent coding. We therefore use the examples as an error taxonomy and avoid converting them into unsupported rates of success on implicit language.</p><p>The topic model identifies clusters associated with treatment, sleep, workplace stress, sadness, and loneliness. The recorded counts include 749 documents in the treatment-related topic, 1,687 in the sleep-related topic, 1,052 in the work-stress topic, 1,214 in the sadness-related topic, and 844 in the loneliness-related topic. These are cluster sizes within the broader corpus, not counts of clinically depressed users or verified positive examples.</p><p>The 48.30% outlier rate further limits reliance on topics as complete semantic coverage. Topic features may be useful for selecting material for review and understanding retrieval bias, yet their low in-domain macro F1 of 0.4208 shows that broad subject matter alone is insufficient in the evaluated implementation. The hybrid result suggests that simply appending topic membership does not resolve the distinction between talking about distress and expressing it.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7">Discussion</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7.1">What the benchmark establishes</head><p>The strongest supported conclusion is that a Vietnamese contextual encoder provides a useful baseline for the constructed comment-level task. Its reported macro F1 is higher than the other evaluated configurations, but the lead over logistic regression and the hybrid is small. The study therefore supports comparative benchmarking rather than a claim that a sophisticated architecture is necessary for every instance. A strong lexical model is a meaningful reference for both predictive performance and inspection of label-keyword associations.</p><p>The data workflow is equally important. The weak labeler retrieves positive examples with high recall on its evaluated subset, but its precision demonstrates why human review is required. Blind presentation separates annotation from the machine's proposed answer, while active selection directs review toward uncertain cases. Together these components provide a practical route from a large collected pool to a smaller labeled benchmark. Their utility should not be confused with proof that every final label is reliable or that selection is optimal.</p><p>Several observations caution against using the term "normal" as a clinical category. The negative text class includes supportive replies, ordinary fatigue, and emotionally positive material, but it may also contain short comments with insufficient evidence. A more precise operational name is "not annotated as depression-related distress." This wording preserves the classification task while avoiding an inference about the author's mental-health status that the data cannot support.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7.2">Interpreting the transfer gap</head><p>The external experiment exposes an important weakness: predictions that identify many positive YouTube examples become predominantly negative under the emotion-derived evaluation. This is evidence that the trained decision policy does not align well with the external proxy labels. It is not, by itself, evidence that a formal writing style causes the failure, since UIT-VSMEC is a social-media corpus and the study does not measure register differences in a controlled way.</p><p>At least three changes occur together. The source collection and its selection process differ; the positive label changes from contextual distress annotation to sadness-or-fear membership; and the class balance changes from about one fifth positive to one half positive. Any or all of these can affect the observed metrics. Their individual contributions cannot be identified from one comparison. Describing the gap as entirely a model-generalization failure would therefore overstate what the design isolates.</p><p>A more informative future transfer evaluation would annotate multiple platforms under the same rubric and include an external sample with an appropriate reference standard. A separate emotion experiment could then assess whether the classifier captures affective content. This separation would make it possible to distinguish failure to recognize distress-related language from disagreement with a broad emotion-to-distress mapping. It would also clarify whether a model benefits from threshold adjustment or requires new labels and representations.</p><p>The relative success of BiLSTM and topic-only classification on the proxy task should be interpreted with similar restraint. Their scores near 0.50 do not demonstrate reliable cross-platform detection. The topic model may also have been exposed to external texts during unsupervised fitting. A valid comparison between inductive and transductive settings requires explicit exposure records, rather than assuming that the absence of external supervised labels means that the test data were completely unseen.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7.3">Sampling and annotation validity</head><p>Keyword-based collection is efficient but changes the sampling frame. Videos retrieved through distress-related searches can attract people discussing recovery, supporting others, or reacting to music. Their comments need not have the same distribution as general Vietnamese YouTube text. The final positive fraction of 19.75% also reflects annotation and selection, so it cannot be used to estimate the rate of depression or even the rate of distress-related language across the platform.</p><p>Human-label quality is a separate uncertainty. The available κ values compare humans with machine predictions. A moderate κ in one batch and a near-zero κ in another neither quantify human consensus nor establish that difficult cases were resolved correctly. A stronger annotation study would document annotator preparation, an operational rubric, independent overlap, adjudication, and disagreement categories. In particular, guidelines should separate first-person expression, quotation, third-person discussion, metaphor, and supportive replies.</p><p>The final gold inventory cannot be reconstructed from the two documented annotation batches alone. Those batches total 1,750 reviewed records, with exclusions and uncertain cases, whereas the final labeled benchmark has 9,134 examples. This does not invalidate the final inventory, but it leaves the provenance of the remainder insufficiently documented for a complete audit. A versioned ledger connecting each final label to its review history is needed to establish the degree of human verification throughout the benchmark.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7.4">Reproducibility and statistical limitations</head><p>The numerical results support descriptive comparisons, not significance claims. The smallest leading-model differences are below one macro-F1 percentage point, and the records do not provide paired prediction files, confidence intervals, or a complete per-seed table. Bootstrap intervals over a fixed test set and variability across independently trained runs would answer different questions and should both be considered. Repeating only the training seeds does not account for uncertainty in the sample or the labels.</p><p>Evaluation provenance is especially important because aggregate metrics and confusion matrices differ. Retaining a prediction file with its split identifier, seed, checkpoint, threshold, and aggregation method would make every table reproducible from the same artifact. It would also resolve whether the reported "average vote" refers to probability averaging, majority voting, or averaging of metrics. Until that correspondence is established, the separate numerical records should not be merged into a single model-performance claim.</p><p>The auxiliary experiments on domain-adaptive pretraining and augmentation are not used as central quantitative evidence here. Their summarized improvements are not accompanied by sufficient baseline scores, aligned partitions, or complete uncertainty estimates to connect them to the final benchmark. This treatment does not imply that the methods are ineffective; it prevents preliminary experiments from being presented as controlled extensions of the principal comparison.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7.5">Responsible interpretation and next steps</head><p>The research concerns public text, but public availability does not eliminate sensitivity. Comment identifiers and verbatim text can permit retrieval of the original post, even when usernames are excluded. The collection should therefore be handled as potentially identifiable material. Data sharing and downstream use need to account for platform conditions, sensitive content, and the possibility that model outputs could be wrongly attached to individuals.</p><p>The present classifier is not validated for clinical decision-making, crisis detection, or automatic intervention. No diagnosis, individual outreach, or treatment decision follows from these experiments. Appropriate near-term uses are methodological research, aggregate error analysis, and carefully governed annotation studies. Claims about person-level risk require a separate evaluation with consent, an appropriate reference standard, and relevant professional oversight.</p><p>The most useful next experiments follow directly from the limitations. An annotation audit should establish independent human agreement and reconcile the label ledger. A reproducibility audit should regenerate all metrics from versioned predictions and confirm split separation through identifiers and normalized-text checks. A matched sampling experiment should compare active learning with random selection at equal budgets. Finally, an external dataset annotated under the same target definition should test whether improvements reflect genuine transfer rather than alignment with a proxy mapping.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="8">Conclusion</head><p>This study presents VietDepression, a workflow for constructing and evaluating a Vietnamese comment-level benchmark for depression-related language. The collection contains 125,329 YouTube comments, and the final labeled subset contains 9,134 examples. A 335-entry weighted lexicon supports candidate selection, while blind annotation and iterative active learning address the cost of contextual review. The weak labeler's high recall and moderate precision on 343 evaluable examples support its role as a retrieval aid rather than a final label source.</p><p>The reported in-domain comparison favors PhoBERT at 0.7187 macro F1, followed closely by the PhoBERT-BERTopic hybrid at 0.7153 and TF-IDF with logistic regression at 0.7138. Topic features do not improve the reported contextual-model score in the evaluated configuration. The external emotion-derived task produces substantially different behavior, including very low positive recall in the recorded PhoBERT confusion matrix.</p><p>Because the evaluation changes source, labels, and class balance, its large gap should be interpreted as combined transfer difficulty.</p><p>The findings place data validity and evaluation design at the center of future work. Stronger annotation evidence, reconciled prediction artifacts, explicit representation-learning boundaries, and aligned external labels are necessary to extend the present benchmark. Within these limits, the study offers a concrete foundation for investigating Vietnamese distress-related language while preserving the distinction between text classification and clinical assessment.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 .</head><label>1</label><figDesc>Figure 1. Data and annotation workflow. Model-based selection is separated from the blind annotation interface. The external set evaluates an emotion-derived proxy target.</figDesc><graphic coords="8,70.95,56.10,478.80,201.15" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head></head><label></label><figDesc>final labeled benchmark contains 9,134 examples: 1,804 positive and 7,330 negative. The stated partition is 70% training, 15% validation, and 15% testing, corresponding to 6,392, 1,371, and 1,371 examples. The in-domain confusion matrix supplies test supports of 271 positive and 1,100 negative comments. Training and validation class counts are described approximately in the inventory and are not presented here as exact audited totals.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head></head><label></label><figDesc>A 768-dimensional sequence-level representation is passed to a classification head. The classification loss uses inverse-frequency weights computed from the training labels. For class c with N c examples among N training examples, the weight is</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 2 .</head><label>2</label><figDesc>Figure 2. Hybrid feature representation. Contextual features and categorical topic membership are combined before classification; topic assignment is not a clinical explanation.</figDesc><graphic coords="10,70.95,292.25,478.80,189.85" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 3 .</head><label>3</label><figDesc>Figure 3. Reported macro F1 across six configurations. External labels use sadness and fear as positive proxies and enjoyment as negative. Differences therefore include both source and target changes.</figDesc><graphic coords="13,70.95,56.10,478.80,209.95" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 4 .</head><label>4</label><figDesc>Figure 4. Recorded PhoBERT confusion matrices. Positive denotes the comment-level distress label in-domain and the emotion proxy externally. Metrics derived from these counts are listed in Table6.</figDesc><graphic coords="14,73.80,56.10,464.40,205.15" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 .</head><label>1</label><figDesc>Dataset inventory and distinct analytical roles.</figDesc><table><row><cell>Resource or partition</cell><cell>Size</cell><cell>Role</cell></row><row><cell>Collected YouTube comments</cell><cell>125,329</cell><cell>Retrieval inventory</cell></row><row><cell>Filtered YouTube comments</cell><cell>119,649</cell><cell>Postprocessing inventory</cell></row><row><cell>External text inventory</cell><cell>191,072</cell><cell>Auxiliary resources</cell></row><row><cell>Unified corpus inventory</cell><cell>316,401</cell><cell>Topic modeling and adaptation pool</cell></row><row><cell>Final labeled benchmark</cell><cell>9,134</cell><cell>1,804 positive; 7,330 negative</cell></row><row><cell>Training partition</cell><cell>6,392</cell><cell>Supervised fitting</cell></row><row><cell>Validation partition</cell><cell>1,371</cell><cell>Model selection</cell></row><row><cell>In-domain test</cell><cell>1,371</cell><cell>271 positive; 1,100 negative</cell></row><row><cell>UIT-VSMEC derived test</cell><cell>3,084</cell><cell>1,542 positive proxies; 1,542 negatives</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 2 .</head><label>2</label><figDesc>Weak-labeling entries and review-context flags.</figDesc><table><row><cell>Group</cell><cell>Entries</cell><cell>Weight</cell><cell>Illustrative phrases</cell></row><row><cell>Strong positive</cell><cell>53</cell><cell>+5</cell><cell>muốn chết; tự tử; trầm cảm</cell></row><row><cell>Medium positive</cell><cell>116</cell><cell>+3</cell><cell>cô đơn; mệt mỏi; mất ngủ</cell></row><row><cell>Normal context</cell><cell>166</cell><cell>-2</cell><cell>video hay; cảm ơn; tuyệt vời</cell></row><row><cell>Review context</cell><cell>22</cell><cell>Flag only</cell><cell>đừng tự tử; cố lên; chết cười</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 3 .</head><label>3</label><figDesc>Weak-labeler validation on 343 evaluable examples.</figDesc><table><row><cell>Statistic</cell><cell>Value</cell><cell>Interpretation</cell></row><row><cell>TP / FP / FN / TN</cell><cell>92 / 58 / 2 / 191</cell><cell>Counts against human labels</cell></row><row><cell>Positive precision</cell><cell>0.6133</cell><cell>92 / 150 positive predictions</cell></row><row><cell>Positive recall</cell><cell>0.9787</cell><cell>92 / 94 reference positives</cell></row><row><cell>Positive F1</cell><cell>0.7541</cell><cell>Calculated from the counts</cell></row><row><cell>Macro F1</cell><cell>0.8092</cell><cell>Equal class weighting</cell></row><row><cell>Accuracy</cell><cell>0.8251</cell><cell>283 / 343 correct predictions</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 4 .</head><label>4</label><figDesc>Recorded model settings for the benchmark configurations.</figDesc><table><row><cell>Setting</cell><cell>TF-IDF + SVC</cell><cell>BiLSTM</cell><cell>PhoBERT</cell></row><row><cell>Representation</cell><cell>Word 1-2 grams; character 3-5 grams</cell><cell>128-d embedding; 15,000 tokens</cell><cell>768-d contextual encoder</cell></row><row><cell>Model size setting</cell><cell>80,000 features per branch</cell><cell>2 layers; 128 units per direction</cell><cell>vinai/phobert-base</cell></row><row><cell>Optimizer</cell><cell>LIBLINEAR</cell><cell>Adam</cell><cell>AdamW</cell></row><row><cell>Learning rate</cell><cell>Not applicable</cell><cell>0.001</cell><cell>0.00002</cell></row><row><cell>Training batch size</cell><cell>Not applicable</cell><cell>32</cell><cell>8</cell></row><row><cell>Training duration</cell><cell>Max. 2,000 iterations</cell><cell>8 epochs</cell><cell>3 epochs; patience 2</cell></row><row><cell>Maximum sequence length</cell><cell>Not applicable</cell><cell>100 tokens</cell><cell>128 tokens</cell></row><row><cell>Imbalance handling</cell><cell>Balanced weights</cell><cell>Configuration-dependent</cell><cell>Inverse-frequency weights</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_4"><head>Table 5 .</head><label>5</label><figDesc>Reported macro F1 by configuration. Hybrid external F1 follows the dedicated topic-results record; aggregate scores are distinct from matrix-derived metrics.</figDesc><table><row><cell>Configuration</cell><cell>In-domain</cell><cell>External proxy</cell><cell>Difference</cell></row><row><cell>PhoBERT aggregate</cell><cell>0.7187</cell><cell>0.3608</cell><cell>0.3579</cell></row><row><cell>PhoBERT + BERTopic</cell><cell>0.7153</cell><cell>0.3674</cell><cell>0.3479</cell></row><row><cell>TF-IDF + LogReg</cell><cell>0.7138</cell><cell>0.3577</cell><cell>0.3561</cell></row><row><cell>TF-IDF + LinearSVC</cell><cell>0.7025</cell><cell>0.3798</cell><cell>0.3227</cell></row><row><cell>BiLSTM aggregate</cell><cell>0.6421</cell><cell>0.5003</cell><cell>0.1418</cell></row><row><cell>BERTopic-only</cell><cell>0.4208</cell><cell>0.5030</cell><cell>-0.0822</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_5"><head>Table 6 .</head><label>6</label><figDesc>Metrics recalculated from the two recorded PhoBERT confusion matrices. These are not assumed to describe the aggregate outputs in Table5.</figDesc><table><row><cell>Metric</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_6"><head>Table 7</head><label>7</label><figDesc>summarizes the recorded class-weighting comparison. PhoBERT increases from 0.6523 without weighting to 0.7187 with weighting, a gain of 0.0664. TF-IDF with logistic regression increases from 0.5891 to 0.7138, a gain of 0.1247. BiLSTM increases from 0.6312 to 0.6421, a gain of 0.0109. The observed range is therefore 1.09 to 12.47 macro-F1 percentage points, rather than a range that excludes the smaller recurrent-model gain.</figDesc><table /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_7"><head>Table 7 .</head><label>7</label><figDesc>Recorded class-weighting comparison using in-domain macro F1. BiLSTM configuration correspondence requires reconciliation.</figDesc><table><row><cell>Model</cell><cell>Without weights</cell><cell>With weights</cell><cell>Absolute gain</cell></row><row><cell>PhoBERT</cell><cell>0.6523</cell><cell>0.7187</cell><cell>0.0664</cell></row><row><cell>TF-IDF + LogReg</cell><cell>0.5891</cell><cell>0.7138</cell><cell>0.1247</cell></row><row><cell>BiLSTM</cell><cell>0.6312</cell><cell>0.6421</cell><cell>0.0109</cell></row></table></figure>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head>Acknowledgments</head><p>The authors thank <rs type="person">Dr. Tran Thanh Phuoc</rs> for academic guidance and the <rs type="institution">Faculty of Information Technology at Ton Duc Thang University</rs> for supporting the research.</p></div>
+			</div>			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Data and code availability</head><p>The project repository is identified as https://github.com/iannwendy/aitraining. The recorded canonical dataset path is data/labeled/final_dataset.csv, and the augmentation directory is data/augmented_v2. Reproduction should use a versioned snapshot with split assignments and prediction artifacts, since the present numerical summaries do not uniquely identify all model outputs. Access and reuse of source texts remain subject to the applicable dataset and platform conditions.</p></div>			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct xml:id="b0">
+	<analytic>
+		<title level="a" type="main">Predicting depression via social media</title>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">De</forename><surname>Choudhury</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Gamon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Counts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Horvitz</surname></persName>
+		</author>
+		<idno type="DOI">10.1609/icwsm.v7i1.14432</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the International AAAI Conference on Web and Social Media</title>
+		<meeting>the International AAAI Conference on Web and Social Media</meeting>
+		<imprint>
+			<date type="published" when="2013">2013</date>
+			<biblScope unit="volume">7</biblScope>
+			<biblScope unit="page" from="128" to="137" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">M. De Choudhury, M. Gamon, S. Counts, and E. Horvitz, &quot;Predicting depression via social media,&quot; Proceedings of the International AAAI Conference on Web and Social Media, vol. 7, no. 1, pp. 128-137, 2013. doi: 10.1609/icwsm.v7i1.14432.</note>
+</biblStruct>
+
+<biblStruct xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Quantifying mental health signals in Twitter</title>
+		<author>
+			<persName><forename type="first">G</forename><surname>Coppersmith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Dredze</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Harman</surname></persName>
+		</author>
+		<idno type="DOI">10.3115/v1/W14-3207</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the Workshop on Computational Linguistics and Clinical Psychology</title>
+		<meeting>the Workshop on Computational Linguistics and Clinical Psychology</meeting>
+		<imprint>
+			<date type="published" when="2014">2014</date>
+			<biblScope unit="page" from="51" to="60" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">G. Coppersmith, M. Dredze, and C. Harman, &quot;Quantifying mental health signals in Twitter,&quot; Proceedings of the Workshop on Computational Linguistics and Clinical Psychology, pp. 51-60, 2014. doi: 10.3115/v1/W14-3207.</note>
+</biblStruct>
+
+<biblStruct xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Depression and self-harm risk assessment in online forums</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Yates</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Cohan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Goharian</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/D17-1322</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2017 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2017 Conference on Empirical Methods in Natural Language Processing</meeting>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="page" from="2968" to="2978" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">A. Yates, A. Cohan, and N. Goharian, &quot;Depression and self-harm risk assessment in online forums,&quot; Proceedings of the 2017 Conference on Empirical Methods in Natural Language Processing, pp. 2968-2978, 2017. doi: 10.18653/v1/D17-1322.</note>
+</biblStruct>
+
+<biblStruct xml:id="b3">
+	<analytic>
+		<title level="a" type="main">PhoBERT: Pre-trained language models for Vietnamese</title>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">Q</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">T</forename><surname>Nguyen</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2020.findings-emnlp.92</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: EMNLP 2020</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="1037" to="1042" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">D. Q. Nguyen and A. T. Nguyen, &quot;PhoBERT: Pre-trained language models for Vietnamese,&quot; Findings of the Association for Computational Linguistics: EMNLP 2020, pp. 1037-1042, 2020. doi: 10.18653/v1/2020.findings- emnlp.92.</note>
+</biblStruct>
+
+<biblStruct xml:id="b4">
+	<monogr>
+		<author>
+			<persName><forename type="first">V</forename><forename type="middle">A</forename><surname>Ho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">H</forename><surname>.-C. Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">H</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><forename type="middle">T</forename></persName>
+		</author>
+		<author>
+			<persName><forename type="first">-V</forename><surname>Pham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D.-V</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><forename type="middle">V</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><forename type="middle">L</forename></persName>
+		</author>
+		<author>
+			<persName><forename type="first">-T</forename><surname>Nguyen</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1911.09339</idno>
+		<ptr target="https://arxiv.org/abs/1911.09339" />
+		<title level="m">Emotion recognition for Vietnamese social media text</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">V. A. Ho, D. H.-C. Nguyen, D. H. Nguyen, L. T.-V. Pham, D.-V. Nguyen, K. V. Nguyen, and N. L.-T. Nguyen, &quot;Emotion recognition for Vietnamese social media text,&quot; arXiv:1911.09339, 2019. https://arxiv.org/abs/1911.09339.</note>
+</biblStruct>
+
+<biblStruct xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Attention is all you need</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Vaswani</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="volume">30</biblScope>
+			<biblScope unit="page" from="5998" to="6008" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">A. Vaswani et al., &quot;Attention is all you need,&quot; Advances in Neural Information Processing Systems, vol. 30, pp. 5998 -6008, 2017.</note>
+</biblStruct>
+
+<biblStruct xml:id="b6">
+	<analytic>
+		<title level="a" type="main">BERT: Pre-training of deep bidirectional transformers for language understanding</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Devlin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M.-W</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Toutanova</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/N19-1423</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of NAACL-HLT</title>
+		<meeting>NAACL-HLT</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="4171" to="4186" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, &quot;BERT: Pre-training of deep bidirectional transformers for language understanding,&quot; Proceedings of NAACL-HLT, vol. 1, pp. 4171-4186, 2019. doi: 10.18653/v1/N19-1423.</note>
+</biblStruct>
+
+<biblStruct xml:id="b7">
+	<monogr>
+		<title level="m" type="main">RoBERTa: A robustly optimized BERT pretraining approach</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Liu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1907.11692</idno>
+		<ptr target="https://arxiv.org/abs/1907.11692" />
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">Y. Liu et al., &quot;RoBERTa: A robustly optimized BERT pretraining approach,&quot; arXiv:1907.11692, 2019. https://arxiv.org/abs/1907.11692.</note>
+</biblStruct>
+
+<biblStruct xml:id="b8">
+	<analytic>
+		<title level="a" type="main">UIT-VSFC: Vietnamese students&apos; feedback corpus for sentiment analysis</title>
+		<author>
+			<persName><forename type="first">K</forename><forename type="middle">V</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><forename type="middle">D</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">X V</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">T H</forename><surname>Truong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><forename type="middle">L</forename></persName>
+		</author>
+		<author>
+			<persName><forename type="first">-T</forename><surname>Nguyen</surname></persName>
+		</author>
+		<idno type="DOI">10.1109/KSE.2018.8573337</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 10th International Conference on Knowledge and Systems Engineering</title>
+		<meeting>the 10th International Conference on Knowledge and Systems Engineering</meeting>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page" from="19" to="24" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">K. V. Nguyen, V. D. Nguyen, P. X. V. Nguyen, T. T. H. Truong, and N. L.-T. Nguyen, &quot;UIT-VSFC: Vietnamese students&apos; feedback corpus for sentiment analysis,&quot; Proceedings of the 10th International Conference on Knowledge and Systems Engineering, pp. 19-24, 2018. doi: 10.1109/KSE.2018.8573337.</note>
+</biblStruct>
+
+<biblStruct xml:id="b9">
+	<monogr>
+		<author>
+			<persName><forename type="first">B</forename><surname>Settles</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Active</forename><surname>Learning</surname></persName>
+		</author>
+		<title level="m">Synthesis Lectures on Artificial Intelligence and Machine Learning</title>
+		<imprint>
+			<date type="published" when="2012">2012</date>
+			<biblScope unit="volume">6</biblScope>
+			<biblScope unit="page" from="1" to="114" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">B. Settles, Active Learning. Synthesis Lectures on Artificial Intelligence and Machine Learning, vol. 6, no. 1, pp. 1- 114, 2012.</note>
+</biblStruct>
+
+<biblStruct xml:id="b10">
+	<monogr>
+		<title level="m" type="main">BERTopic: Neural topic modeling with a class-based TF-IDF procedure</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Grootendorst</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2203.05794</idno>
+		<ptr target="https://arxiv.org/abs/2203.05794" />
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">M. Grootendorst, &quot;BERTopic: Neural topic modeling with a class-based TF-IDF procedure,&quot; arXiv:2203.05794, 2022. https://arxiv.org/abs/2203.05794.</note>
+</biblStruct>
+
+<biblStruct xml:id="b11">
+	<analytic>
+		<title level="a" type="main">Sentence-BERT: Sentence embeddings using Siamese BERT-networks</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Reimers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Gurevych</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/D19-1410</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of EMNLP-IJCNLP</title>
+		<meeting>EMNLP-IJCNLP</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="3982" to="3992" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">N. Reimers and I. Gurevych, &quot;Sentence-BERT: Sentence embeddings using Siamese BERT-networks,&quot; Proceedings of EMNLP-IJCNLP, pp. 3982-3992, 2019. doi: 10.18653/v1/D19-1410.</note>
+</biblStruct>
+
+<biblStruct xml:id="b12">
+	<monogr>
+		<title level="m" type="main">UMAP: Uniform manifold approximation and projection for dimension reduction</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Mcinnes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Healy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Melville</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1802.03426</idno>
+		<ptr target="https://arxiv.org/abs/1802.03426" />
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">L. McInnes, J. Healy, and J. Melville, &quot;UMAP: Uniform manifold approximation and projection for dimension reduction,&quot; arXiv:1802.03426, 2018. https://arxiv.org/abs/1802.03426.</note>
+</biblStruct>
+
+<biblStruct xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Density-based clustering based on hierarchical density estimates</title>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">J G B</forename><surname>Campello</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Moulavi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Sander</surname></persName>
+		</author>
+		<idno type="DOI">10.1007/978-3-642-37456-2_14</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Knowledge Discovery and Data Mining</title>
+		<imprint>
+			<date type="published" when="2013">2013</date>
+			<biblScope unit="volume">7819</biblScope>
+			<biblScope unit="page" from="160" to="172" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">R. J. G. B. Campello, D. Moulavi, and J. Sander, &quot;Density-based clustering based on hierarchical density estimates,&quot; Advances in Knowledge Discovery and Data Mining, LNCS 7819, pp. 160-172, 2013. doi: 10.1007/978-3-642-37456- 2_14.</note>
+</biblStruct>
+
+<biblStruct xml:id="b14">
+	<analytic>
+		<title level="a" type="main">Don&apos;t stop pretraining: Adapt language models to domains and tasks</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Gururangan</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2020.acl-main.740</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 58th Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="8342" to="8360" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">S. Gururangan et al., &quot;Don&apos;t stop pretraining: Adapt language models to domains and tasks,&quot; Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics, pp. 8342-8360, 2020. doi: 10.18653/v1/2020.acl- main.740.</note>
+</biblStruct>
+
+<biblStruct xml:id="b15">
+	<analytic>
+		<title level="a" type="main">YouTube Data API v3</title>
+		<author>
+			<persName><surname>Google</surname></persName>
+		</author>
+		<ptr target="https://developers.google.com/youtube/v3" />
+	</analytic>
+	<monogr>
+		<title level="m">Google for Developers</title>
+		<imprint/>
+	</monogr>
+	<note type="raw_reference">Google, &quot;YouTube Data API v3,&quot; Google for Developers. https://developers.google.com/youtube/v3.</note>
+</biblStruct>
+
+<biblStruct xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Transformers: State-of-the-art natural language processing</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Wolf</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2020.emnlp-demos.6</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of EMNLP 2020: System Demonstrations</title>
+		<meeting>EMNLP 2020: System Demonstrations</meeting>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="38" to="45" />
+		</imprint>
+	</monogr>
+	<note type="raw_reference">T. Wolf et al., &quot;Transformers: State-of-the-art natural language processing,&quot; Proceedings of EMNLP 2020: System Demonstrations, pp. 38-45, 2020. doi: 10.18653/v1/2020.emnlp-demos.6.</note>
+</biblStruct>
+
+<biblStruct xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Scikit-learn: Machine learning in Python</title>
+		<author>
+			<persName><forename type="first">F</forename><surname>Pedregosa</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of Machine Learning Research</title>
+		<imprint>
+			<biblScope unit="volume">12</biblScope>
+			<biblScope unit="page" from="2825" to="2830" />
+			<date type="published" when="2011">2011</date>
+		</imprint>
+	</monogr>
+	<note type="raw_reference">F. Pedregosa et al., &quot;Scikit-learn: Machine learning in Python,&quot; Journal of Machine Learning Research, vol. 12, pp. 2825-2830, 2011.</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

@@ -137,6 +137,7 @@ class SemanticScholarClient(BaseScholarClient):
         Backoff config từ settings: initial=5s, max=60s, multiplier=2.0
         """
         url = f"{self.BASE_URL}{path}"
+        # FIX: Use correct httpx timeout exception types
         retry = AsyncRetrying(
             stop=stop_after_attempt(self.max_retries),
             wait=wait_exponential(
@@ -144,9 +145,13 @@ class SemanticScholarClient(BaseScholarClient):
                 min=self._backoff.initial_seconds,
                 max=self._backoff.max_seconds,
             ),
-            retry=retry_if_exception_type(
-                (httpx.HTTPError, httpx.TimeoutException)
-            ),
+            retry=retry_if_exception_type((
+                httpx.HTTPError,
+                httpx.ConnectTimeout,
+                httpx.ReadTimeout,
+                httpx.WriteTimeout,
+                httpx.PoolTimeout,
+            )),
             reraise=False,
         )
         try:

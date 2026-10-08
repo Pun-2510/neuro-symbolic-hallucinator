@@ -1249,12 +1249,23 @@ class RetrievalOrchestrator:
         client: BaseScholarClient,
         citation: Citation,
     ) -> SourceCandidate:
-        """Apply rate limit then call API."""
+        """Apply rate limit then call API.
+
+        FIX: Now reports rate limit status to the limiter so it can adjust
+        backoff timing based on 429 responses.
+        """
         limiter = self._rate_limiters.get(client.name)
         if limiter:
             await limiter.wait()
 
         cand = await client.lookup(citation)
+
+        # FIX: Report rate limit status so limiter can adjust backoff
+        if limiter:
+            if cand.error and '429' in cand.error:
+                limiter.report_rate_limited()
+            else:
+                limiter.report_success()
 
         return cand
 

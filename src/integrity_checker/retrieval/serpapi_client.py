@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import re
 
+import httpx
 from tenacity import (
     AsyncRetrying,
     RetryError,
@@ -140,6 +141,8 @@ class SerpApiClient(BaseScholarClient):
         import asyncio
         from serpapi import GoogleScholarSearch
 
+        # FIX: Be explicit about which exceptions to retry
+        # Don't catch KeyboardInterrupt, SystemExit, MemoryError, etc.
         retry = AsyncRetrying(
             stop=stop_after_attempt(self.max_retries),
             wait=wait_exponential(
@@ -147,7 +150,16 @@ class SerpApiClient(BaseScholarClient):
                 min=self._backoff.initial_seconds,
                 max=self._backoff.max_seconds,
             ),
-            retry=retry_if_exception_type((Exception,)),
+            retry=retry_if_exception_type((
+                httpx.HTTPError,
+                httpx.TimeoutException,
+                httpx.ConnectTimeout,
+                httpx.ReadTimeout,
+                httpx.WriteTimeout,
+                httpx.PoolTimeout,
+                ConnectionError,
+                OSError,
+            )),
             reraise=False,
         )
 

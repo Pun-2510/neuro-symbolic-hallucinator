@@ -39,6 +39,35 @@ class AuthConfig(BaseModel):
     jwt_secret: str = "change-me-in-production-use-env-var"
     token_expire_hours: int = 24
 
+    @field_validator("jwt_secret")
+    @classmethod
+    def _validate_jwt_secret(cls, v: str) -> str:
+        """Reject default/weak JWT secrets in production."""
+        # Allow if explicitly set via environment (non-default value)
+        if v == "change-me-in-production-use-env-var":
+            import os
+            # Check if we're in production mode
+            app_env = os.getenv("APP_ENV", "").lower()
+            if app_env in ("production", "prod", "live"):
+                raise ValueError(
+                    "JWT_SECRET must be set via environment variable in production. "
+                    "Generate a secure random secret: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                )
+            # Warn in non-production but allow for development
+            import logging
+            logging.getLogger(__name__).warning(
+                "Using default JWT secret. Set JWT_SECRET in .env for production."
+            )
+        # Reject obviously weak secrets
+        if len(v) < 32:
+            import os
+            app_env = os.getenv("APP_ENV", "").lower()
+            if app_env in ("production", "prod", "live"):
+                raise ValueError(
+                    f"JWT_SECRET must be at least 32 characters. Got {len(v)} characters."
+                )
+        return v
+
 
 class PathsConfig(BaseModel):
     data_dir: Path = Path("./data")

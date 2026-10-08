@@ -1,8 +1,9 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FileSearch, Upload, History, Menu, X, BookOpen, LogOut, User, Layers, Users, Settings } from 'lucide-react';
-import { useState } from 'react';
+import { FileSearch, Upload, History, Menu, X, BookOpen, LogOut, User, Layers, Users, Settings, HelpCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/contexts/ThemeContext';
+import { HelpModal } from './HelpModal';
 
 /* ============================================================
    SourceLogic — App Layout Component
@@ -39,6 +40,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  // Keyboard shortcut: Ctrl+/ to open help
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        setHelpOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -244,6 +258,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <ThemeToggle size="sm" showLabel />
             </div>
 
+            {/* Help Button */}
+            <div className="px-4 py-2">
+              <button
+                onClick={() => setHelpOpen(true)}
+                className="w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <HelpCircle className="h-4 w-4" />
+                Help & Shortcuts
+              </button>
+            </div>
+
             {/* User Info & Logout */}
           <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
             {/* User Info */}
@@ -316,6 +341,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </footer>
       </div>
+
+      {/* Help Modal */}
+      <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

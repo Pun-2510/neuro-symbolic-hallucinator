@@ -44,6 +44,21 @@ def _is_grobid_available() -> bool:
 # Auto-detect GROBID availability: skip only if GROBID is not available AND mode is not forced
 _SKIP_REAL_TESTS = GROBID_TEST_MODE != "real" and not _is_grobid_available()
 
+# Auto-detect production environment: use Docker internal network
+_PRODUCTION_GROBID_URL = "http://grobid:8070"  # Docker internal network
+_LOCAL_GROBID_URL = "http://localhost:8070"    # Local development
+
+def _get_grobid_url() -> str:
+    """Get appropriate GROBID URL based on environment."""
+    import os
+    # Check if running in Docker
+    if os.path.exists("/.dockerenv"):
+        return _PRODUCTION_GROBID_URL
+    # Check if GROBID_URL env is set to production URL
+    if "grobid:8070" in GROBID_URL or "grobid:8070" in os.environ.get("GROBID_URL", ""):
+        return _PRODUCTION_GROBID_URL
+    return GROBID_URL
+
 # Sample TEI XML responses for mocking
 SAMPLE_TEI_BASIC = """<?xml version="1.0" encoding="UTF-8"?>
 <TEI xmlns="http://www.tei-c.org/ns/1.0">
@@ -520,8 +535,9 @@ class TestRealGrobidDocker:
         """Skip if GROBID Docker not running."""
         import requests
 
+        grobid_url = _get_grobid_url()
         try:
-            response = requests.get(f"{GROBID_URL}/api/isalive", timeout=5)
+            response = requests.get(f"{grobid_url}/api/isalive", timeout=5)
             if response.status_code != 200:
                 pytest.skip("GROBID Docker not healthy")
         except Exception:
@@ -531,7 +547,8 @@ class TestRealGrobidDocker:
         """GROBID /api/isalive should return 200."""
         import requests
 
-        response = requests.get(f"{GROBID_URL}/api/isalive", timeout=10)
+        grobid_url = _get_grobid_url()
+        response = requests.get(f"{grobid_url}/api/isalive", timeout=10)
         assert response.status_code == 200
         assert "true" in response.text.lower()
 
@@ -540,7 +557,8 @@ class TestRealGrobidDocker:
         from integrity_checker.extraction.grobid_parser import call_grobid_fulltext, parse_tei
         from integrity_checker.config import GrobidConfig
 
-        config = GrobidConfig(url=GROBID_URL, timeout_seconds=60)
+        grobid_url = _get_grobid_url()
+        config = GrobidConfig(url=grobid_url, timeout_seconds=60)
         tei_xml = call_grobid_fulltext(str(sample_essay_path), config)
 
         assert tei_xml, "GROBID returned empty response"
@@ -554,8 +572,9 @@ class TestRealGrobidDocker:
         from integrity_checker.extraction.document_parser import DocumentParser
         from integrity_checker.config import Settings
 
+        grobid_url = _get_grobid_url()
         settings = Settings(
-            extraction={"grobid": {"enabled": True, "url": GROBID_URL}}
+            extraction={"grobid": {"enabled": True, "url": grobid_url}}
         )
 
         parser = DocumentParser(config=settings)
@@ -573,6 +592,8 @@ class TestRealGrobidDocker:
         from integrity_checker.models.source import SourceCandidate, SourceResult
         from integrity_checker.pipeline.integrity_pipeline import IntegrityPipeline
 
+        grobid_url = _get_grobid_url()
+
         # Mock orchestrator
         mock_orch = MagicMock()
 
@@ -588,7 +609,7 @@ class TestRealGrobidDocker:
         mock_orch.retrieve = mock_retrieve
 
         settings = Settings(
-            extraction={"grobid": {"enabled": True, "url": GROBID_URL}}
+            extraction={"grobid": {"enabled": True, "url": grobid_url}}
         )
 
         parser = DocumentParser(config=settings)

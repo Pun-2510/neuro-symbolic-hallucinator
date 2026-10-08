@@ -28,14 +28,30 @@ def create_app() -> FastAPI:
         version=settings.app.version,
     )
 
-    # CORS
+    # CORS configuration
+    # FIX: Don't use allow_credentials=True with allow_origins=["*"] (browsers reject this)
+    # Use environment-based allowed origins for production
+    import os
+    allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    if allowed_origins:
+        # Split by comma and strip whitespace
+        origins = [o.strip() for o in allowed_origins.split(",") if o.strip()]
+    else:
+        # Default to localhost for development
+        origins = ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"]
+
+    # Determine if credentials are allowed based on origins
+    # If using wildcard origins, don't allow credentials
+    allow_credentials = "*" not in ",".join(origins) if origins else False
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
+        allow_origins=origins,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    logger.info(f"CORS configured with origins: {origins}, credentials: {allow_credentials}")
 
     # Init DB (MVP)
     init_db()

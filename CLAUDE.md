@@ -8,8 +8,8 @@
 
 **Essay Integrity Checker** - Hệ thống kiểm tra tính toàn vẹn trích dẫn trong tiểu luận học thuật.
 
-- **Version:** v1.9 (2026-10-07)
-- **Tests:** 982 passed, 4 skipped
+- **Version:** v1.12 (2026-10-08)
+- **Tests:** 993 passed, 4 skipped
 - **Status:** MVP Ready
 
 ## Cấu trúc quan trọng
@@ -20,13 +20,14 @@ essay-integrity-checker/
 │   ├── api/              # FastAPI routes
 │   ├── config.py         # Settings (YAML + env)
 │   ├── database/         # Local SQLite + FTS5
+│   ├── export/           # Report export (JSON, CSV, PDF, DOCX)
 │   ├── extraction/       # PDF parsing (PyMuPDF + GROBID)
 │   ├── linking/         # Citation-Reference linking
 │   ├── logic/           # Neuro-symbolic rules, CIS
 │   ├── matching/        # Author/Title/Venue matching
 │   ├── models/          # Pydantic models
 │   ├── pipeline/        # Main pipeline
-│   └── retrieval/       # Multi-source retrieval
+│   └── retrieval/        # Multi-source retrieval
 ├── tests/
 │   └── unit/           # Unit tests
 ├── web/                # React frontend
@@ -91,7 +92,7 @@ Papers được auto-verify dù APIs fail:
 - Brown et al. (2020) - GPT-3
 - (xem `_KNOWN_PAPERS` trong `retrieval_orchestrator.py`)
 
-## Bug Fixes & Features (2026-10-07)
+## Bug Fixes & Features (2026-10-08)
 
 | ID | Description | Files Changed |
 |----|-------------|---------------|
@@ -107,6 +108,11 @@ Papers được auto-verify dù APIs fail:
 | Fix 10 | GROBID Docker auto-detect | grobid_service.py, docker-compose.yml |
 | Fix 11 | Security checks (ownership) | verdicts.py, report.py |
 | Fix 12 | Verdict override persistence | repository.py, verdicts.py |
+| Fix 13 | SerpAPI httpx import | serpapi_client.py |
+| Fix 14 | Auth test isolation (env check runtime) | auth.py |
+| Feat 1 | DOCX Export | export/docx_exporter.py, api/routes/report.py, EssayPage.tsx |
+| Feat 2 | Help Modal System | components/HelpModal.tsx, AppLayout.tsx |
+| Feat 3 | Keyboard shortcuts (Ctrl+/) | AppLayout.tsx |
 
 ## Test Commands
 

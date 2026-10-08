@@ -82,6 +82,7 @@ class GrobidServiceManager:
     stats: GrobidStats = field(default_factory=GrobidStats)
     _status: GROBID_STATUS = field(default=GROBID_STATUS.UNKNOWN, repr=False)
     _started_automatically: bool = field(default=False, repr=False)
+    _in_docker: bool = field(default=False, repr=False)
 
     # Docker container settings
     _container_name: str = "essay-check-grobid"
@@ -93,6 +94,34 @@ class GrobidServiceManager:
         """Validate dependencies sau khi khởi tạo."""
         self._check_docker_available()
         self._check_docker_sdk()
+        # Auto-detect Docker environment and adjust settings
+        self._detect_environment()
+
+    def _detect_environment(self) -> None:
+        """Detect if running in Docker and adjust settings accordingly."""
+        import os as _os
+
+        # Check if running in Docker container
+        if _os.path.exists("/.dockerenv"):
+            self._in_docker = True
+            logger.debug("Running inside Docker container")
+            # In Docker, use the internal network URL
+            if self.config.url == "http://localhost:8070":
+                self.config.url = "http://grobid:8070"
+                logger.info("Auto-switched GROBID_URL to Docker internal network: http://grobid:8070")
+        else:
+            self._in_docker = False
+            logger.debug("Running outside Docker container")
+
+        # Check for Docker Compose service name resolution
+        try:
+            import socket
+            socket.gethostbyname("grobid")
+            if not self._in_docker:
+                # Can resolve grobid hostname but not in docker - might be Docker network
+                logger.debug("'grobid' hostname resolves - assuming Docker network")
+        except socket.gaierror:
+            pass
 
     def _check_docker_available(self) -> None:
         """Check nếu Docker CLI available."""

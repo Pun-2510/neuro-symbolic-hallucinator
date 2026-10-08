@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -17,11 +18,40 @@ from integrity_checker.db.repository import Repository
 router = APIRouter()
 
 
-# Hardcoded credentials (MVP demo only)
-HARDCODED_USERS = {
-    "admin": ("admin123", "admin"),
-    "user": ("user123", "user"),
-}
+def _is_demo_enabled() -> bool:
+    """Check if demo users should be enabled at runtime."""
+    app_env = os.getenv("APP_ENV", "").lower()
+    demo_enabled = os.getenv("DEMO_USERS_ENABLED", "").lower()
+
+    # Disabled explicitly
+    if demo_enabled in ("false", "0", "no"):
+        return False
+
+    # Enabled explicitly
+    if demo_enabled in ("true", "1", "yes"):
+        return True
+
+    # Auto-enable in test/dev environments
+    if app_env in ("test", "development", "dev"):
+        return True
+
+    return False
+
+
+def _get_hardcoded_users() -> dict[str, tuple[str, str]]:
+    """Load hardcoded credentials if demo mode is enabled."""
+    if not _is_demo_enabled():
+        return {}
+
+    return {
+        "admin": ("admin123", "admin"),
+        "user": ("user123", "user"),
+    }
+
+
+# Load hardcoded users - this is checked at runtime via _is_demo_enabled()
+# Keeping this for backwards compatibility, but login should use _get_hardcoded_users()
+HARDCODED_USERS: dict[str, tuple[str, str]] = {}  # Will be checked via _is_demo_enabled() in login
 
 # Default emails for the hardcoded demo users (assigned on first login)
 HARDCODED_USER_EMAILS = {
@@ -125,9 +155,10 @@ def login(request: LoginRequest, db=Depends(get_db)):
             raise HTTPException(status_code=401, detail="Invalid username or password")
     else:
         # No DB user — check hardcoded credentials (for demo/admin accounts)
-        if request.username not in HARDCODED_USERS:
+        hardcoded_users = _get_hardcoded_users()
+        if request.username not in hardcoded_users:
             raise HTTPException(status_code=401, detail="Invalid username or password")
-        expected_password, role = HARDCODED_USERS[request.username]
+        expected_password, role = hardcoded_users[request.username]
         if request.password != expected_password:
             raise HTTPException(status_code=401, detail="Invalid username or password")
         # Create DB entry on first login for hardcoded users

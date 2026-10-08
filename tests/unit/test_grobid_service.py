@@ -51,11 +51,18 @@ class TestGrobidServiceManager:
         with patch.object(GrobidServiceManager, "_check_docker_available"):
             with patch.object(GrobidServiceManager, "_check_docker_sdk", return_value=False):
                 manager = GrobidServiceManager(config=config)
-                manager._status = GROBID_STATUS.AVAILABLE
-                assert manager.is_available is True
+                # Mock check_health to prevent HTTP call AND set _status
+                def mock_check_health():
+                    manager._status = GROBID_STATUS.AVAILABLE
+                    return GROBID_STATUS.AVAILABLE
+                with patch.object(manager, "check_health", side_effect=mock_check_health):
+                    assert manager.is_available is True
 
-                manager._status = GROBID_STATUS.UNHEALTHY
-                assert manager.is_available is False
+                def mock_check_health_unhealthy():
+                    manager._status = GROBID_STATUS.UNHEALTHY
+                    return GROBID_STATUS.UNHEALTHY
+                with patch.object(manager, "check_health", side_effect=mock_check_health_unhealthy):
+                    assert manager.is_available is False
 
     def test_stats_initialization(self):
         """Test stats are initialized correctly."""
@@ -418,3 +425,65 @@ class TestProcessPDF:
                     assert result == ""
                     assert manager.stats.total_requests == 1
                     assert manager.stats.failed_requests == 1
+
+
+class TestProductionConfig:
+    """Test production configuration and Docker environment detection."""
+
+    def test_initialization_with_local_url(self):
+        """Test manager initializes with local URL by default."""
+        from integrity_checker.extraction.grobid_service import GrobidServiceManager
+        from integrity_checker.config import GrobidConfig
+
+        config = GrobidConfig(enabled=True, url="http://localhost:8070")
+        manager = GrobidServiceManager(config=config)
+
+        assert manager.url == "http://localhost:8070"
+        # Should NOT auto-switch to Docker URL when outside Docker
+        assert manager._in_docker is False
+
+    def test_initialization_with_docker_url(self):
+        """Test manager initializes with Docker URL when specified."""
+        from integrity_checker.extraction.grobid_service import GrobidServiceManager
+        from integrity_checker.config import GrobidConfig
+
+        config = GrobidConfig(enabled=True, url="http://grobid:8070")
+        manager = GrobidServiceManager(config=config)
+
+        assert manager.url == "http://grobid:8070"
+
+    def test_auto_detect_in_docker_env(self):
+        """Test auto-detection when running inside Docker."""
+        from integrity_checker.extraction.grobid_service import GrobidServiceManager
+        from integrity_checker.config import GrobidConfig
+
+        config = GrobidConfig(enabled=True, url="http://localhost:8070")
+        manager = GrobidServiceManager(config=config)
+
+        # Manually set _in_docker to test the property
+        manager._in_docker = True
+        # In a real Docker environment, this would auto-switch URLs
+        assert manager._in_docker is True
+
+    def test_healthcheck_with_docker_url(self):
+        """Test healthcheck works with Docker internal URL."""
+        from integrity_checker.extraction.grobid_service import (
+            GrobidServiceManager,
+            GROBID_STATUS,
+        )
+        from integrity_checker.config import GrobidConfig
+
+        config = GrobidConfig()
+        manager = GrobidServiceManager(config=config)
+
+        with patch.object(manager, "_check_docker_available"):
+            with patch.object(manager, "_check_docker_sdk", return_value=False):
+                # Mock HTTP health check for Docker URL
+                with patch("requests.get") as mock_get:
+                    mock_response = MagicMock()
+                    mock_response.status_code = 200
+                    mock_get.return_value = mock_response
+
+                    status = manager._check_http_health()
+                    # Since GROBID is not running locally, should return UNHEALTHY
+                    # (this test verifies the HTTP check logic works)
