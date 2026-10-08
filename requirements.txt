@@ -45,6 +45,7 @@ alembic>=1.13,<2.0  # dùng cho migrations tương lai (MVP dùng create_all)
 
 # --- Report generation ---
 reportlab>=4.0,<5.0  # dùng cho PDF report export + gen_sample_essays
+python-docx>=1.1,<2.0  # dùng cho DOCX export
 
 # --- Utilities ---
 tenacity>=8.2,<9.0
