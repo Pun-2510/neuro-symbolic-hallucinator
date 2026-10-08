@@ -807,7 +807,7 @@ class RetrievalOrchestrator:
                     paper_id=next(
                         (
                             candidate.paper_id
-                            for candidate in deduped
+                            for candidate in quality_candidates
                             if candidate.found and candidate.source_name == src
                         ),
                         None,
@@ -816,7 +816,7 @@ class RetrievalOrchestrator:
 
         return SourceResult(
             citation_raw=citation.raw_text,
-            candidates=deduped,
+            candidates=quality_candidates,
             sources_queried=sources_queried,
             sources_succeeded=succeeded,
             sources_failed=failed,

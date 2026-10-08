@@ -208,6 +208,9 @@ class IEEEFormat:
         """
         # Normalize whitespace
         text = re.sub(r'\s+', ' ', text.strip())
+        # Some PDF extractors represent double curly quotes as two single
+        # curly marks: ‘‘title,’’ → “title,”.
+        text = text.replace('\u2018\u2018', '\u201c').replace('\u2019\u2019', '\u201d')
 
         # Extract numeric index first
         numeric_index = None
@@ -259,7 +262,8 @@ class IEEEFormat:
         remainder = text[idx_m.end():]
 
         # Find first quote pair (supports " and unicode "")
-        quote_chars_open = ['"', '"', '"']
+        # PDF text extraction may turn paired curly quotes into apostrophes.
+        quote_chars_open = ['"', '\u201c', '\u2018']
 
         first_q = None
         for i, c in enumerate(remainder):
@@ -271,7 +275,14 @@ class IEEEFormat:
             return None
 
         close_q = None
-        quote_close_chars = ['"', '"', '"']
+        # Match the paired quote type so an apostrophe inside a title
+        # (e.g. "Don’t stop pretraining") is not read as the delimiter.
+        if remainder[first_q] == '\u2018':
+            quote_close_chars = ['\u2019']
+        elif remainder[first_q] == '\u201c':
+            quote_close_chars = ['\u201d']
+        else:
+            quote_close_chars = [remainder[first_q]]
         for j in range(first_q + 1, len(remainder)):
             if remainder[j] in quote_close_chars:
                 close_q = j
@@ -281,13 +292,42 @@ class IEEEFormat:
             return None
 
         authors_part = remainder[:first_q].strip().rstrip(',').rstrip()
-        title_raw = remainder[first_q + 1:close_q].strip().rstrip(',').rstrip()
+        title_raw = remainder[first_q + 1:close_q].strip().rstrip(',').rstrip().lstrip('\u2018\u2019"\'')
+        # PDF extractors may emit paired curly single quotes (''Title'').
+        if not title_raw and first_q + 1 < len(remainder):
+            # The title follows the first quote; find the matching second quote.
+            second_open = remainder.find(remainder[first_q], first_q + 1)
+            if second_open != -1:
+                second_close = remainder.find(
+                    '\u2019' if remainder[first_q] == '\u2018' else remainder[first_q],
+                    second_open + 1,
+                )
+                if second_close != -1:
+                    title_raw = remainder[second_open + 1:second_close].strip().rstrip(',').rstrip()
         venue_year = remainder[close_q + 1:].strip().lstrip(',').strip()
 
-        # Year usually at end of venue_year
-        year_m = re.search(r'\b((?:19|20)\d{2})([a-z]?)\b', venue_year)
+        # Extract year: prefer the arXiv/publication year (YYYY after arXiv:XXXX),
+        # not the access year (Accessed: ... YYYY).
+        # Pattern: arXiv:1911.09339, 2019 → year=2019, not the trailing access year.
+        years = list(re.finditer(r'\b((?:19|20)\d{2})([a-z]?)\b', venue_year))
+        # Explicit publication year immediately following an arXiv identifier.
+        pub_after_arxiv = re.search(
+            r'arxiv:\s*\d{4}\.\d+[^\d]+((?:19|20)\d{2})\b',
+            venue_year,
+            re.IGNORECASE,
+        )
+        if pub_after_arxiv:
+            year_m = pub_after_arxiv
+        elif years:
+            year_m = years[0]
+        else:
+            year_m = None
         year = year_m.group(1) if year_m else None
-        year_suffix = year_m.group(2) if year_m and year_m.group(2) else None
+        year_suffix = (
+            year_m.group(2)
+            if year_m and year_m.lastindex and year_m.lastindex >= 2 and year_m.group(2)
+            else None
+        )
 
         citation = Citation(
             raw_text=text.strip(),
@@ -576,6 +616,15 @@ class IEEEFormat:
             title = quote_m.group(1).strip()
             citation.title = title
             citation.title_normalized = self._normalize_title(title)
+        else:
+            # Unquoted book references: [N] B. Settles, Active Learning. Synthesis...
+            book_m = re.match(
+                r'^\[\s*\d+\s*\]\s*.+?,\s+(?P<title>[^.]{5,})\.\s+',
+                text,
+            )
+            if book_m:
+                citation.title = book_m.group('title').strip()
+                citation.title_normalized = self._normalize_title(citation.title)
 
         # Extract DOI
         doi_m = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', text)

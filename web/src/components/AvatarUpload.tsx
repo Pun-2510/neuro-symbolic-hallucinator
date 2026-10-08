@@ -130,7 +130,7 @@ export function AvatarUpload({ currentAvatarUrl, onSuccess, size = 'md' }: Avata
             <button
               onClick={(e) => { e.stopPropagation(); handleUpload(); }}
               disabled={uploading}
-              className="btn-primary text-xs py-1 px-3"
+              className="btn-primary btn-sm"
             >
               {uploading ? (
                 <>

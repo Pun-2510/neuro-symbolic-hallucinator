@@ -204,16 +204,20 @@ class SymbolicRules:
     ) -> RuleOutcome | None:
         """Rule: LOCAL_DB only with perfect match → VERIFIED.
 
-        When local_db is the only source that found a match with:
+        When local_db (optionally with known_papers) is the only source that found
+        a match with:
         - title_sim >= 0.95
         - author_sim >= 0.8
         - year_distance == 0
 
-        This is a trusted match because local_db is a curated knowledge base.
+        This is a trusted match because local_db/known_papers are curated knowledge bases.
         """
-        # Chỉ apply nếu source chỉ từ local_db
-        if source.sources_succeeded != ["local_db"]:
+        # Chỉ apply nếu TẤT CẢ sources đều là local sources (local_db hoặc known_papers)
+        if not source.sources_succeeded:
             return None
+        for s in source.sources_succeeded:
+            if s not in _NON_LIVE_SOURCES:
+                return None
 
         best = source.best_candidate()
         if not best:
@@ -261,15 +265,20 @@ class SymbolicRules:
     ) -> RuleOutcome | None:
         """Rule: LOCAL_DB only with good match → VERIFIED.
 
-        When local_db is the only source that found a match with:
+        When local_db (optionally with known_papers) is the only source that found
+        a match with:
         - title_sim >= 0.95
         - author_sim >= 0.5
         - year_distance == 0
 
         Lower confidence because author_sim is lower.
         """
-        if source.sources_succeeded != ["local_db"]:
+        # Chỉ apply nếu TẤT CẢ sources đều là local sources
+        if not source.sources_succeeded:
             return None
+        for s in source.sources_succeeded:
+            if s not in _NON_LIVE_SOURCES:
+                return None
 
         best = source.best_candidate()
         if not best:

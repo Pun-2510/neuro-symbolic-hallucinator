@@ -210,7 +210,12 @@ def test_dedupe_never_folds_title_only_known_paper(tmp_path) -> None:
 # --- rules provenance ---
 
 
-def test_local_db_only_doi_match_is_not_verified() -> None:
+def test_local_db_only_perfect_match_is_verified() -> None:
+    """LOCAL_DB only with perfect match (title>=0.95, author>=0.8, year=0) → VERIFIED.
+
+    This is the new expected behavior: local_db is a curated knowledge base,
+    so perfect matches are trusted.
+    """
     rules = SymbolicRules()
     source = SourceResult(
         citation_raw="x",
@@ -219,8 +224,35 @@ def test_local_db_only_doi_match_is_not_verified() -> None:
         sources_succeeded=["local_db"],
     )
     outcome = rules.apply(_features(), source, used_local_db=True)
+    assert outcome.label == ValidationLabel.VERIFIED
+    assert "R-LOCAL_DB_VERIFIED" in outcome.triggered_rules
+
+
+def test_local_db_only_partial_match_is_unresolved() -> None:
+    """LOCAL_DB only with partial author match should not be VERIFIED.
+
+    When author similarity is low (<0.8), even with perfect title/year,
+    we should NOT return VERIFIED without live source confirmation.
+    """
+    rules = SymbolicRules()
+    source = SourceResult(
+        citation_raw="x",
+        candidates=[_candidate("local_db")],
+        sources_queried=["local_db"],
+        sources_succeeded=["local_db"],
+    )
+    # Lower author similarity (0.3) - should NOT trigger R-LOCAL_DB_VERIFIED
+    features_partial = MatchFeatures(
+        title_sim_fuzzy=0.96,
+        title_sim_semantic=0.96,
+        author_jaccard=0.3,  # Low author similarity
+        year_distance=0,
+        doi_exact_match=True,
+        source_consensus=1,
+    )
+    outcome = rules.apply(features_partial, source, used_local_db=True)
+    # Should not be VERIFIED with low author similarity
     assert outcome.label != ValidationLabel.VERIFIED
-    assert "R-LOCAL_DB_ONLY" in outcome.triggered_rules
 
 
 def test_live_source_doi_match_is_verified() -> None:
@@ -246,6 +278,41 @@ def test_local_db_plus_live_source_is_verified() -> None:
     )
     outcome = rules.apply(_features(), source, used_local_db=True)
     assert outcome.label == ValidationLabel.VERIFIED
+
+
+def test_local_db_plus_known_papers_is_verified() -> None:
+    """LOCAL_DB + known_papers (both local sources) with perfect match → VERIFIED.
+
+    Both local_db and known_papers are curated knowledge bases,
+    so their combined result should be trusted.
+    """
+    rules = SymbolicRules()
+    source = SourceResult(
+        citation_raw="x",
+        candidates=[_candidate("local_db"), _candidate("known_papers")],
+        sources_queried=["local_db", "known_papers"],
+        sources_succeeded=["local_db", "known_papers"],
+    )
+    outcome = rules.apply(_features(), source, used_local_db=True)
+    assert outcome.label == ValidationLabel.VERIFIED
+    assert "R-LOCAL_DB_VERIFIED" in outcome.triggered_rules
+
+
+def test_known_papers_only_perfect_match_is_verified() -> None:
+    """known_papers only with perfect match → VERIFIED.
+
+    known_papers is a curated knowledge base of seminal papers.
+    """
+    rules = SymbolicRules()
+    source = SourceResult(
+        citation_raw="x",
+        candidates=[_candidate("known_papers")],
+        sources_queried=["known_papers"],
+        sources_succeeded=["known_papers"],
+    )
+    outcome = rules.apply(_features(), source)
+    assert outcome.label == ValidationLabel.VERIFIED
+    assert "R-LOCAL_DB_VERIFIED" in outcome.triggered_rules
 
 
 # --- reference-list parse confidence (handoff § 5 P5) ---

@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from html import escape
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.responses import StreamingResponse, JSONResponse
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -24,7 +24,7 @@ from reportlab.platypus import (
 )
 from sqlalchemy.orm import Session
 
-from integrity_checker.api.deps import get_db
+from integrity_checker.api.deps import get_db, get_current_user
 from integrity_checker.api.progress import get_tracker
 from integrity_checker.config import get_settings
 from integrity_checker.db.repository import Repository
@@ -37,19 +37,19 @@ router = APIRouter()
 async def get_report(
     essay_id: int,
     format: str = "json",
+    authorization: str | None = Header(None),
     db: Session = Depends(get_db),
-    # SECURITY: Add authentication dependency when available
 ) -> StreamingResponse:
     """Export report theo format: json | csv | pdf."""
     repo = Repository(db)
     essay = repo.get_essay(essay_id)
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
-    # SECURITY: Ownership check - uncomment when auth is implemented
-    # from integrity_checker.api.deps import get_current_user
-    # current_user = get_current_user() if has_auth else None
-    # if current_user and current_user.role != 'admin' and essay.user_id != current_user.id:
-    #     raise HTTPException(status_code=403, detail="Access denied")
+
+    # SECURITY: Ownership check
+    current_user = get_current_user(authorization, db) if authorization else None
+    if current_user and current_user.role != "admin" and essay.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     # If the pipeline is still running, return 425 so the frontend knows to keep polling.
     tracker = get_tracker()

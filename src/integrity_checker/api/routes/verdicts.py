@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from integrity_checker.api.deps import get_db
+from integrity_checker.api.deps import get_db, get_current_user
 from integrity_checker.db.repository import Repository
 from integrity_checker.models.api_schemas import VerdictSchema
 
@@ -26,17 +26,18 @@ class OverrideRequest(BaseModel):
 @router.get("/{essay_id}/verdicts")
 async def get_verdicts(
     essay_id: int,
+    authorization: str | None = Header(None),
     db: Session = Depends(get_db),
 ) -> list[VerdictSchema]:
     repo = Repository(db)
     essay = repo.get_essay(essay_id)
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
-    # SECURITY: Ownership check - uncomment when auth is implemented
-    # from integrity_checker.api.deps import get_current_user
-    # current_user = get_current_user() if has_auth else None
-    # if current_user and current_user.role != 'admin' and essay.user_id != current_user.id:
-    #     raise HTTPException(status_code=403, detail="Access denied")
+
+    # SECURITY: Ownership check
+    current_user = get_current_user(authorization, db) if authorization else None
+    if current_user and current_user.role != "admin" and essay.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     records = repo.get_verdicts(essay_id)
     citation_types = {c.raw_text: c.citation_type for c in repo.get_citations(essay_id)}
@@ -93,41 +94,56 @@ async def override_verdict(
     essay_id: int,
     verdict_id: str,
     body: OverrideRequest,
+    authorization: str = Header(...),
     db: Session = Depends(get_db),
 ) -> VerdictSchema:
-    """Override a verdict's label/status (v1.2).
+    """Override a verdict's label/status.
 
-    Logs the override to audit trail. Returns updated verdict.
+    Persists the override to DB and returns updated verdict.
     """
     repo = Repository(db)
+
+    # SECURITY: Ownership check
+    current_user = get_current_user(authorization, db)
     essay = repo.get_essay(essay_id)
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
-    # SECURITY: Ownership check - uncomment when auth is implemented
-    # from integrity_checker.api.deps import get_current_user
-    # current_user = get_current_user() if has_auth else None
-    # if current_user and current_user.role != 'admin' and essay.user_id != current_user.id:
-    #     raise HTTPException(status_code=403, detail="Access denied")
+    if current_user.role != "admin" and essay.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
-    # Build override record
-    override_record = {
-        "overridden_at": datetime.now(timezone.utc).isoformat(),
-        "previous_label": body.new_label,  # simplified — real impl reads from current verdict
-        "new_label": body.new_label,
-        "reason": body.reason,
-    }
+    # Parse verdict_id from string
+    try:
+        v_id = int(verdict_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid verdict_id")
 
-    # Return updated verdict (simplified — real impl updates DB)
+    # Update DB
+    updated = repo.update_verdict(
+        verdict_id=v_id,
+        new_label=body.new_label,
+        override_note=body.reason,
+        new_mapping_status=body.new_mapping_status,
+    )
+
+    if not updated:
+        raise HTTPException(status_code=404, detail="Verdict not found")
+
+    # Commit
+    repo.commit()
+
+    # Return updated verdict
     return VerdictSchema(
-        citation_id=verdict_id,
-        citation_raw=f"Citation {verdict_id}",
-        label=body.new_label,
-        confidence=0.5,
-        reasoning=f"Override: {body.reason or 'No reason'}",
-        triggered_rules=[],
-        mismatched_fields=[],
+        citation_id=str(updated.id),
+        citation_raw=updated.citation_raw,
+        label=updated.label,
+        confidence=updated.confidence,
+        reasoning=updated.reasoning,
+        triggered_rules=json.loads(updated.triggered_rules or "[]"),
+        mismatched_fields=json.loads(updated.mismatched_fields or "[]"),
         matched_sources=[],
-        mapping_status=body.new_mapping_status or "matched",
-        mapping_confidence=0.0,
-        is_overridden=True,
+        mapping_status=updated.mapping_status or "matched",
+        mapping_confidence=updated.mapping_confidence or 0.0,
+        style_penalty=updated.style_penalty,
+        domain_exception=bool(updated.domain_exception),
+        is_overridden=bool(updated.is_overridden),
     )

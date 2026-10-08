@@ -3,6 +3,23 @@
 # Đặt trong configs/ và sẽ được mount vào container
 # =====================================================================
 
+app:
+  env: production
+  debug: false
+  log_level: WARNING
+
 extraction:
   grobid:
     url: "http://grobid:8070"  # Docker internal network
+    timeout_seconds: 120  # Increase timeout for large PDFs
+    cache_by_file_sha256: true
+
+paths:
+  data_dir: "/app/data"
+  essays_dir: "/app/data/essays"
+  cache_dir: "/app/data/cache"
+  grobid_output_dir: "/app/data/cache/grobid"
+
+database:
+  url: "sqlite:///./data/app.db"
+  echo: false

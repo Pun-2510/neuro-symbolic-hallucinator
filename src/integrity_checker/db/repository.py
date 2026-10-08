@@ -193,6 +193,27 @@ class Repository:
             .all()
         )
 
+    def update_verdict(
+        self,
+        verdict_id: int,
+        new_label: str,
+        is_overridden: bool = True,
+        override_note: str | None = None,
+        new_mapping_status: str | None = None,
+    ) -> VerdictRecord | None:
+        """Update verdict (override by user)."""
+        verdict = self.session.get(VerdictRecord, verdict_id)
+        if not verdict:
+            return None
+        verdict.label = new_label
+        verdict.is_overridden = 1 if is_overridden else 0
+        if override_note is not None:
+            verdict.override_note = override_note
+        if new_mapping_status is not None:
+            verdict.mapping_status = new_mapping_status
+        self.session.flush()
+        return verdict
+
     def get_citations(self, essay_id: int) -> list[CitationRecord]:
         """Return extracted citations in insertion order."""
         return list(

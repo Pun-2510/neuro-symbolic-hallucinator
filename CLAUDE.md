@@ -8,9 +8,9 @@
 
 **Essay Integrity Checker** - Hệ thống kiểm tra tính toàn vẹn trích dẫn trong tiểu luận học thuật.
 
-- **Version:** v1.6 (2026-09-28)
-- **Tests:** 619 passed, 4 skipped
-- **Status:** MVP Near Completion
+- **Version:** v1.9 (2026-10-07)
+- **Tests:** 982 passed, 4 skipped
+- **Status:** MVP Ready
 
 ## Cấu trúc quan trọng
 
@@ -91,7 +91,7 @@ Papers được auto-verify dù APIs fail:
 - Brown et al. (2020) - GPT-3
 - (xem `_KNOWN_PAPERS` trong `retrieval_orchestrator.py`)
 
-## Bug Fixes & Features (2026-09-24)
+## Bug Fixes & Features (2026-10-07)
 
 | ID | Description | Files Changed |
 |----|-------------|---------------|
@@ -103,6 +103,10 @@ Papers được auto-verify dù APIs fail:
 | Fix 6 | Add known papers (Parikh, Taylor, etc.) | retrieval_orchestrator |
 | Fix 7 | to_dict() None features crash | pipeline/integrity_pipeline.py |
 | Fix 8 | Replace arXiv với CORE API | coreapi_client, retrieval_orchestrator, config, tests |
+| Fix 9 | LOCAL_DB perfect match rule ordering | rules.py |
+| Fix 10 | GROBID Docker auto-detect | grobid_service.py, docker-compose.yml |
+| Fix 11 | Security checks (ownership) | verdicts.py, report.py |
+| Fix 12 | Verdict override persistence | repository.py, verdicts.py |
 
 ## Test Commands
 

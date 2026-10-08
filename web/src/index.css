@@ -273,6 +273,7 @@
     @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold;
     @apply bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white;
     @apply transition-all duration-200 shadow-sm;
+    @apply text-sm py-2 px-4 whitespace-nowrap;
   }
 
   .btn-primary:hover {
@@ -307,11 +308,11 @@
   }
 
   .btn-sm {
-    @apply px-3 py-1.5 text-sm;
+    @apply px-3 py-1.5 text-sm whitespace-nowrap;
   }
 
   .btn-lg {
-    @apply px-8 py-4 text-lg;
+    @apply px-8 py-4 text-lg whitespace-nowrap;
   }
 
   /* ============================================================

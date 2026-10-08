@@ -94,3 +94,9 @@ web/playwright-report/
 
 # Bản nháp/duplicate của agent, không commit
 .claude-plan-fix.md
+
+# Playwright MCP state (generated)
+.playwright-mcp/
+
+# User avatars (uploaded images)
+data/avatars/

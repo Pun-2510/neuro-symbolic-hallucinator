@@ -160,7 +160,7 @@ export function ProfilePage() {
               <button
                 onClick={handleProfileSave}
                 disabled={profileLoading}
-                className="btn-primary text-sm py-2 px-4"
+                className="btn-primary"
               >
                 {profileLoading ? (
                   <>
