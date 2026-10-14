@@ -120,9 +120,14 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
           </div>
 
           {/* Filter chips */}
-          <div className="flex flex-wrap gap-2">
+          <div
+            role="group"
+            aria-label="Filter verdicts by label"
+            className="flex flex-wrap gap-2"
+          >
             <button
               onClick={() => setVerdictFilter(null)}
+              aria-pressed={!verdictFilter}
               className={cn(
                 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
                 !verdictFilter
@@ -139,6 +144,7 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
                 <button
                   key={label}
                   onClick={() => setVerdictFilter(label)}
+                  aria-pressed={verdictFilter === label}
                   className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
                     verdictFilter === label

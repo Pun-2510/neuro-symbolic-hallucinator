@@ -97,7 +97,8 @@ export function HistoryPage() {
           <button
             onClick={() => loadEssays()}
             disabled={loading}
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
+            aria-label="Refresh history"
+            className="p-2 min-h-11 min-w-11 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
             title="Refresh"
           >
             <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
@@ -119,7 +120,8 @@ export function HistoryPage() {
         {searchQuery && (
           <button
             onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            aria-label="Clear search"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 min-h-11 min-w-11 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           >
             <XCircle className="h-5 w-5" />
           </button>
@@ -223,7 +225,7 @@ export function HistoryPage() {
                       setConfirmDeleteId(essay.id);
                     }}
                     disabled={deletingId === essay.id}
-                    className="p-2.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
+                    className="p-2.5 min-h-11 min-w-11 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
                     title="Delete"
                     aria-label={`Delete ${essay.filename}`}
                   >
