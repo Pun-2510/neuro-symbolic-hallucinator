@@ -121,17 +121,54 @@ export function CitationDetailDrawer({
   onOverride?: (req: OverrideRequest) => Promise<void>;
 }) {
   const drawerRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   // Close on Escape key press
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
+        return;
+      }
+      // Focus trap: cycle Tab/Shift+Tab inside the drawer so screen-reader
+      // and keyboard users can't escape into the inert page behind.
+      if (e.key === 'Tab' && drawerRef.current) {
+        const focusable = drawerRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input, select, textarea'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
+
+  // Move focus into the drawer on open; restore the previous focus on close.
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    // Focus the close button so keyboard users land in a sensible spot.
+    const closeBtn = drawerRef.current?.querySelector<HTMLButtonElement>(
+      'button[aria-label="Close"]'
+    );
+    closeBtn?.focus();
+    // Lock body scroll while the drawer is open
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      previousFocusRef.current?.focus();
+    };
+  }, []);
 
   // Defensive: ensure arrays are always defined
   const triggeredRules = verdict.triggered_rules ?? [];
@@ -151,6 +188,9 @@ export function CitationDetailDrawer({
     >
       <div
         ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="citation-detail-title"
         className="absolute right-0 top-0 h-full w-full md:max-w-2xl bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 shadow-2xl overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
@@ -162,7 +202,10 @@ export function CitationDetailDrawer({
               <Quote className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div>
-              <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+              <h2
+                id="citation-detail-title"
+                className="font-display text-lg font-bold text-slate-900 dark:text-white"
+              >
                 Citation Detail
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -173,7 +216,7 @@ export function CitationDetailDrawer({
           <button
             onClick={onClose}
             className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-            aria-label="Close"
+            aria-label="Close citation detail"
           >
             <X className="h-5 w-5 text-slate-500" />
           </button>
