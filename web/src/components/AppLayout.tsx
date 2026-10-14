@@ -71,6 +71,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
+      {/* Skip-to-content — visually hidden until focused. WCAG 2.1 Level A
+          (Bypass Blocks) requires a way to jump past repeated navigation. */}
+      <a
+        href="#main-content"
+        className="
+          sr-only focus:not-sr-only
+          focus:absolute focus:top-4 focus:left-4 focus:z-[60]
+          focus:px-4 focus:py-2 focus:rounded-lg
+          focus:bg-indigo-600 focus:text-white focus:font-medium
+          focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-300
+        "
+      >
+        Skip to main content
+      </a>
+
       {/* Mobile menu button */}
       <button
         onClick={() => setMobileOpen(true)}
@@ -324,7 +339,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-6 lg:p-10 pt-16 lg:pt-6">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto p-6 lg:p-10 pt-16 lg:pt-6 focus:outline-none"
+        >
           <div className="max-w-6xl mx-auto">
             {children}
           </div>
