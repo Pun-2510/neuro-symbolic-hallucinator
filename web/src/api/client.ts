@@ -227,6 +227,30 @@ export interface OverrideRequest {
   reason?: string;
 }
 
+// --- Essay list (matches backend /api/essays response) ---
+
+export interface EssaySummary {
+  id: number;
+  filename: string;
+  num_pages: number;
+  uploaded_at: string;
+  user_id: number;
+  duplicate_ids?: number[];
+}
+
+// --- Cache stats (admin) ---
+
+export interface CacheStats {
+  total: number;
+  by_source: Record<string, number>;
+  total_hits: number;
+  avg_hit_count: number;
+}
+
+export interface CacheClearResponse {
+  deleted_count: number;
+}
+
 // --- Helpers ---
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -377,6 +401,17 @@ export const api = {
   getEssayStatus: (id: number) => request<EssayStatus>(`/essays/${id}/status`),
 
   getVerdicts: (id: number) => request<Verdict[]>(`/essays/${id}/verdicts`),
+
+  // Essay list & delete (used by Dashboard, History)
+  listEssays: () => request<EssaySummary[]>('/essays'),
+  listAllEssays: () => request<EssaySummary[]>('/essays/all'),
+  deleteEssay: (id: number) =>
+    request<{ message: string }>(`/essays/${id}`, { method: 'DELETE' }),
+
+  // Cache management (admin)
+  getCacheStats: () => request<CacheStats>('/cache/stats'),
+  clearCache: () =>
+    request<CacheClearResponse>('/cache', { method: 'DELETE' }),
 
   downloadReport: (id: number, format: 'json' | 'csv' | 'pdf' | 'docx' = 'json') =>
     `${BASE_URL}/essays/${id}/report?format=${format}`,
