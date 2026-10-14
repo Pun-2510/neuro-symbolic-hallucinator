@@ -453,25 +453,33 @@ export function IssuesPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 flex-wrap">
-        {(['all', 'critical', 'warning', 'info'] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              filter === f
-                ? 'bg-indigo-600 text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-            {f !== 'all' && (
-              <span className="ml-2 opacity-75">
-                ({issuesBySeverity[f as keyof typeof issuesBySeverity].length})
-              </span>
-            )}
-          </button>
-        ))}
+      <div
+        role="group"
+        aria-label="Filter issues by severity"
+        className="flex gap-2 flex-wrap"
+      >
+        {(['all', 'critical', 'warning', 'info'] as const).map((f) => {
+          const isActive = filter === f;
+          return (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              aria-pressed={isActive}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {f !== 'all' && (
+                <span className="ml-2 opacity-75">
+                  ({issuesBySeverity[f as keyof typeof issuesBySeverity].length})
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Issues sections */}
