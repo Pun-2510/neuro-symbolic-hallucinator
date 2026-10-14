@@ -3,6 +3,7 @@
  * Central configuration hub for user preferences
  */
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Settings,
   Palette,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
+import { ConfirmationModal } from '@/components/ConfirmationModal';
 
 // ============================================================
 // Types
@@ -39,6 +41,8 @@ const STORAGE_KEY_COMPACT_VIEW = 'settings_compact_view';
 
 export function SettingsPage(): JSX.Element {
   const toast = useToast();
+  const { i18n } = useTranslation();
+  const [confirmClear, setConfirmClear] = useState(false);
 
   // Load saved settings
   const [settings, setSettings] = useState<SettingsState>(() => ({
@@ -53,8 +57,8 @@ export function SettingsPage(): JSX.Element {
     { code: 'en', label: 'English', flag: '🇺🇸' },
   ];
 
-  // Get current language
-  const currentLang = localStorage.getItem('language') || 'vi';
+  // Get current language from i18n (reactive) — no reload needed
+  const currentLang = (i18n.resolvedLanguage || i18n.language || 'vi').split('-')[0];
 
   // Toggle setting
   const toggleSetting = (key: keyof SettingsState): void => {
@@ -76,11 +80,17 @@ export function SettingsPage(): JSX.Element {
     });
   };
 
-  // Change language
+  // Change language — uses i18n.changeLanguage() for SPA navigation (no reload)
   const changeLanguage = (langCode: string): void => {
-    localStorage.setItem('language', langCode);
-    // Force page reload to apply i18n changes
-    window.location.reload();
+    void i18n.changeLanguage(langCode);
+    toast.success('Language updated', langCode === 'vi' ? 'Tiếng Việt' : 'English');
+  };
+
+  // Clear local cache (only after explicit user confirmation)
+  const handleClearCache = (): void => {
+    localStorage.removeItem('theme');
+    localStorage.removeItem('language');
+    toast.success('Cache cleared successfully');
   };
 
   return (
@@ -233,14 +243,9 @@ export function SettingsPage(): JSX.Element {
 
           <div className="space-y-3">
             <button
-              onClick={() => {
-                if (confirm('Are you sure you want to clear the cache? This will reset your preferences.')) {
-                  localStorage.removeItem('theme');
-                  localStorage.removeItem('language');
-                  toast.success('Cache cleared successfully');
-                }
-              }}
+              onClick={() => setConfirmClear(true)}
               className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              aria-label="Clear local cache"
             >
               <span className="text-slate-700 dark:text-slate-300">
                 Clear Local Cache
@@ -250,6 +255,19 @@ export function SettingsPage(): JSX.Element {
           </div>
         </section>
       </div>
+
+      <ConfirmationModal
+        isOpen={confirmClear}
+        title="Clear local cache?"
+        message="This will reset your theme and language preferences. You will not be signed out."
+        confirmLabel="Clear cache"
+        variant="danger"
+        onConfirm={() => {
+          setConfirmClear(false);
+          handleClearCache();
+        }}
+        onCancel={() => setConfirmClear(false)}
+      />
     </div>
   );
 }
