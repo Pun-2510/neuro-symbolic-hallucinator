@@ -18,20 +18,15 @@ import {
   FileCheck,
   AlertCircle,
 } from 'lucide-react';
+import { api, type EssaySummary, type AnalysisReport } from '@/api/client';
+import { useToast } from '@/contexts/ToastContext';
+import { ConfirmationModal } from '@/components/ConfirmationModal';
 
 /* ============================================================
    SourceLogic — Dashboard Page Component
    Shows overview of all uploaded documents + aggregate stats
    Academic Source Verification Workspace
    ============================================================ */
-
-interface Essay {
-  id: number;
-  filename: string;
-  num_pages: number;
-  uploaded_at: string;
-  user_id: number;
-}
 
 interface DashboardStats {
   total_documents: number;
@@ -43,7 +38,8 @@ interface DashboardStats {
 const REFRESH_INTERVAL_MS = 10_000;
 
 export function DashboardPage() {
-  const [essays, setEssays] = useState<Essay[]>([]);
+  const toast = useToast();
+  const [essays, setEssays] = useState<EssaySummary[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     total_documents: 0,
     total_citations: 0,
@@ -54,52 +50,52 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const loadEssays = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/essays', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setEssays(data);
+      const data = await api.listEssays();
+      setEssays(data);
 
-        // Calculate aggregate stats from essays
-        let totalCitations = 0;
-        let totalCIS = 0;
-        let cisCount = 0;
+      // Calculate aggregate stats from essays (fetch each report to count verdicts)
+      let totalCitations = 0;
+      let totalCIS = 0;
+      let cisCount = 0;
+      let totalVerified = 0;
+      let totalVerdicts = 0;
 
-        for (const essay of data) {
-          try {
-            const reportRes = await fetch(`/api/essays/${essay.id}/report`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (reportRes.ok) {
-              const report = await reportRes.json();
-              totalCitations += report.num_citations || 0;
-              if (report.cis?.score) {
-                totalCIS += report.cis.score;
-                cisCount++;
-              }
+      for (const essay of data) {
+        try {
+          const report: AnalysisReport | null = await api.getEssay(essay.id);
+          if (report) {
+            totalCitations += report.num_citations || 0;
+            if (report.cis?.score) {
+              totalCIS += report.cis.score;
+              cisCount++;
             }
-          } catch {
-            // Skip failed report fetches
+            // Compute verified rate from verdicts (single source of truth)
+            if (Array.isArray(report.verdicts)) {
+              totalVerdicts += report.verdicts.length;
+              totalVerified += report.verdicts.filter(
+                (v) => v.label === 'verified' || v.is_overridden
+              ).length;
+            }
           }
+        } catch {
+          // Skip failed report fetches (e.g. essay still processing → 425)
         }
-
-        setStats({
-          total_documents: data.length,
-          total_citations: totalCitations,
-          avg_cis_score: cisCount > 0 ? Math.round((totalCIS / cisCount) * 100) / 100 : null,
-          verified_rate: 0, // Would need to calculate from verdicts
-        });
-
-        setError(null);
-      } else {
-        setError(`Error loading documents: ${res.status}`);
       }
+
+      setStats({
+        total_documents: data.length,
+        total_citations: totalCitations,
+        avg_cis_score: cisCount > 0 ? Math.round((totalCIS / cisCount) * 100) / 100 : null,
+        verified_rate:
+          totalVerdicts > 0 ? Math.round((totalVerified / totalVerdicts) * 100) : 0,
+      });
+
+      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Connection error');
     } finally {
@@ -113,23 +109,18 @@ export function DashboardPage() {
     return () => clearInterval(interval);
   }, [loadEssays]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Delete this document?')) return;
+  const handleDelete = async () => {
+    const id = confirmDeleteId;
+    if (id == null) return;
+    setConfirmDeleteId(null);
     setDeletingId(id);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/essays/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setEssays((prev) => prev.filter((e) => e.id !== id));
-        setStats((prev) => ({ ...prev, total_documents: prev.total_documents - 1 }));
-      } else {
-        alert('Delete failed');
-      }
-    } catch {
-      alert('Delete failed');
+      await api.deleteEssay(id);
+      setEssays((prev) => prev.filter((e) => e.id !== id));
+      setStats((prev) => ({ ...prev, total_documents: prev.total_documents - 1 }));
+      toast.success('Document deleted');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Delete failed');
     } finally {
       setDeletingId(null);
     }
@@ -215,12 +206,13 @@ export function DashboardPage() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-slate-500" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-slate-500" aria-hidden="true" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search documents..."
+          aria-label="Search documents"
           className="input pl-12 pr-10"
         />
         {searchQuery && (
@@ -351,11 +343,12 @@ export function DashboardPage() {
                           onClickCapture={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            handleDelete(essay.id);
+                            setConfirmDeleteId(essay.id);
                           }}
                           disabled={deletingId === essay.id}
                           className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
                           title="Delete"
+                          aria-label={`Delete ${essay.filename}`}
                         >
                           {deletingId === essay.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -381,6 +374,16 @@ export function DashboardPage() {
           </p>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={confirmDeleteId !== null}
+        title="Delete this document?"
+        message="This will permanently remove the document and its analysis. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }
