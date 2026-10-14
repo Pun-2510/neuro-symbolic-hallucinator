@@ -275,11 +275,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 /**
  * Fetch the analysis report, tolerating HTTP 425 (pipeline still running).
  * Returns null when the backend returns 425 so callers can detect "not ready yet".
+ *
+ * Accepts an optional `signal` (from AbortController) so polling callers can
+ * cancel in-flight fetches on unmount or essayId change.
  */
-async function getReportOrNull(id: number): Promise<AnalysisReport | null> {
+async function getReportOrNull(
+  id: number,
+  options?: { signal?: AbortSignal },
+): Promise<AnalysisReport | null> {
   const token = localStorage.getItem('token');
   const resp = await fetch(`${BASE_URL}/essays/${id}/report`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
+    signal: options?.signal,
   });
   if (resp.status === 425) {
     return null;  // still processing
@@ -392,13 +399,15 @@ export const api = {
    * (HTTP 425) — callers should poll via getEssayStatus until this returns a
    * non-null value, then navigate to the report page.
    */
-  getEssay: (id: number) => getReportOrNull(id),
+  getEssay: (id: number, options?: { signal?: AbortSignal }) =>
+    getReportOrNull(id, options),
 
   /**
    * Real-time pipeline progress snapshot. Use this to drive the ProcessingScreen
    * stepper and per-source status tiles while the analysis runs.
    */
-  getEssayStatus: (id: number) => request<EssayStatus>(`/essays/${id}/status`),
+  getEssayStatus: (id: number, options?: { signal?: AbortSignal }) =>
+    request<EssayStatus>(`/essays/${id}/status`, { signal: options?.signal }),
 
   getVerdicts: (id: number) => request<Verdict[]>(`/essays/${id}/verdicts`),
 

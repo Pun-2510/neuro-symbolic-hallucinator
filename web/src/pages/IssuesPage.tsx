@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api, type AnalysisReport, type Verdict, type ValidationLabel } from '@/api/client';
+import { type AnalysisReport, type Verdict, type ValidationLabel } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { getSourceDisplayName, getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
+import { useEssayPolling } from '@/hooks/useEssayPolling';
 import {
   AlertTriangle,
   AlertCircle,
@@ -341,61 +342,13 @@ function SeveritySection({
 
 export function IssuesPage() {
   const { id } = useParams<{ id: string }>();
-  const [report, setReport] = useState<AnalysisReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'critical' | 'warning' | 'info'>('all');
 
-  useEffect(() => {
-    if (!id) return;
-    // Validate essay ID - security: prevent NaN or invalid IDs
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId) || numericId <= 0) {
-      setError('Invalid essay ID');
-      return;
-    }
-
-    let cancelled = false;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-    const tryFetch = async () => {
-      try {
-        const data = await api.getEssay(numericId);
-        if (cancelled) return;
-        if (data) {
-          setReport(data);
-          setError(null);
-          if (pollTimer) clearInterval(pollTimer);
-        } else {
-          // Pipeline still running — poll status until complete.
-          const status = await api.getEssayStatus(numericId);
-          if (cancelled) return;
-          if (status.status === 'failed') {
-            setError(status.error ?? 'Pipeline failed.');
-            if (pollTimer) clearInterval(pollTimer);
-            return;
-          }
-          if (status.status === 'completed') {
-            const retry = await api.getEssay(numericId);
-            if (retry) {
-              setReport(retry);
-              setError(null);
-              if (pollTimer) clearInterval(pollTimer);
-              return;
-            }
-          }
-          if (!pollTimer) pollTimer = setInterval(tryFetch, 2000);
-        }
-      } catch {
-        if (!cancelled) setError('Failed to load report. Please try again.');
-      }
-    };
-
-    tryFetch();
-    return () => {
-      cancelled = true;
-      if (pollTimer) clearInterval(pollTimer);
-    };
-  }, [id]);
+  // SECURITY: parseInt guard retained — useEssayPolling báo error khi id không hợp lệ
+  const numericId = id ? parseInt(id, 10) : null;
+  const { report, error } = useEssayPolling(
+    numericId !== null && !Number.isNaN(numericId) && numericId > 0 ? numericId : null,
+  );
 
   // Filter and group verdicts by severity
   const issuesBySeverity = useMemo(() => {

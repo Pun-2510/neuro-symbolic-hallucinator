@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api, type AnalysisReport, type Verdict } from '@/api/client';
+import { type AnalysisReport, type Verdict } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { MappingStatusBadge } from '@/components/MappingStatusBadge';
 import { getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
+import { useEssayPolling } from '@/hooks/useEssayPolling';
 import {
   ArrowLeft,
   Loader2,
@@ -332,62 +333,16 @@ function CitationPopup({
 
 export function DocumentInspectorPage() {
   const { id } = useParams<{ id: string }>();
-  const [report, setReport] = useState<AnalysisReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [selectedCitation, setSelectedCitation] = useState<InlineCitation | null>(null);
   const [selectedVerdict, setSelectedVerdict] = useState<Verdict | null>(null);
   const [filterLabel, setFilterLabel] = useState<string>('all');
 
-  useEffect(() => {
-    if (!id) return;
-    // SECURITY: Validate essay ID - prevent NaN or invalid IDs
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId) || numericId <= 0) {
-      setError('Invalid essay ID');
-      return;
-    }
-
-    let cancelled = false;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-    const tryFetch = async () => {
-      try {
-        const data = await api.getEssay(numericId);
-        if (cancelled) return;
-        if (data) {
-          setReport(data);
-          setError(null);
-          if (pollTimer) clearInterval(pollTimer);
-        } else {
-          const status = await api.getEssayStatus(numericId);
-          if (cancelled) return;
-          if (status.status === 'failed') {
-            setError(status.error ?? 'Pipeline failed.');
-            if (pollTimer) clearInterval(pollTimer);
-            return;
-          }
-          if (status.status === 'completed') {
-            const retry = await api.getEssay(numericId);
-            if (retry) {
-              setReport(retry);
-              setError(null);
-              if (pollTimer) clearInterval(pollTimer);
-              return;
-            }
-          }
-          if (!pollTimer) pollTimer = setInterval(tryFetch, 2000);
-        }
-      } catch {
-        if (!cancelled) setError('Failed to load document. Please try again.');
-      }
-    };
-
-    tryFetch();
-    return () => {
-      cancelled = true;
-      if (pollTimer) clearInterval(pollTimer);
-    };
-  }, [id]);
+  // SECURITY: parseInt guard retained — useEssayPolling báo error khi id không hợp lệ
+  const numericId = id ? parseInt(id, 10) : null;
+  const { report, error } = useEssayPolling(
+    numericId !== null && !Number.isNaN(numericId) && numericId > 0 ? numericId : null,
+    { errorMessage: 'Failed to load document. Please try again.' },
+  );
 
   // Build inline citations
   const inlineCitations = report ? buildInlineCitations(report.verdicts) : [];

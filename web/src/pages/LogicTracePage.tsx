@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api, type AnalysisReport, type Verdict } from '@/api/client';
+import { type AnalysisReport, type Verdict } from '@/api/client';
 import { RuleInspector, RuleInspectorCompact } from '@/components/RuleInspector';
 import { getSearchStepDescription, getVerdictDisplayName, getVerdictExplanation } from '@/lib/verdictExplanation';
+import { useEssayPolling } from '@/hooks/useEssayPolling';
 import {
   ArrowLeft,
   Loader2,
@@ -307,60 +308,14 @@ function VerdictTrace({
 
 export function LogicTracePage() {
   const { id } = useParams<{ id: string }>();
-  const [report, setReport] = useState<AnalysisReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [selectedVerdict, setSelectedVerdict] = useState<Verdict | null>(null);
 
-  useEffect(() => {
-    if (!id) return;
-    // SECURITY: Validate essay ID - prevent NaN or invalid IDs
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId) || numericId <= 0) {
-      setError('Invalid essay ID');
-      return;
-    }
-
-    let cancelled = false;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-    const tryFetch = async () => {
-      try {
-        const data = await api.getEssay(numericId);
-        if (cancelled) return;
-        if (data) {
-          setReport(data);
-          setError(null);
-          if (pollTimer) clearInterval(pollTimer);
-        } else {
-          const status = await api.getEssayStatus(numericId);
-          if (cancelled) return;
-          if (status.status === 'failed') {
-            setError(status.error ?? 'Pipeline failed.');
-            if (pollTimer) clearInterval(pollTimer);
-            return;
-          }
-          if (status.status === 'completed') {
-            const retry = await api.getEssay(numericId);
-            if (retry) {
-              setReport(retry);
-              setError(null);
-              if (pollTimer) clearInterval(pollTimer);
-              return;
-            }
-          }
-          if (!pollTimer) pollTimer = setInterval(tryFetch, 2000);
-        }
-      } catch {
-        if (!cancelled) setError('Failed to load verification trace. Please try again.');
-      }
-    };
-
-    tryFetch();
-    return () => {
-      cancelled = true;
-      if (pollTimer) clearInterval(pollTimer);
-    };
-  }, [id]);
+  // SECURITY: parseInt guard retained — useEssayPolling báo error khi id không hợp lệ
+  const numericId = id ? parseInt(id, 10) : null;
+  const { report, error } = useEssayPolling(
+    numericId !== null && !Number.isNaN(numericId) && numericId > 0 ? numericId : null,
+    { errorMessage: 'Failed to load verification trace. Please try again.' },
+  );
 
   // Filter verdicts with issues (show non-verified first)
   const sortedVerdicts = report?.verdicts
