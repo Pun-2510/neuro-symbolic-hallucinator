@@ -237,6 +237,18 @@ export function ProfilePage() {
         </div>
 
         <form onSubmit={handlePasswordChange} className="space-y-4">
+          {/* Hidden username field for accessibility (WCAG 1.3.5) */}
+          <input
+            type="text"
+            name="username"
+            autoComplete="username"
+            value={authUser?.username ?? ''}
+            readOnly
+            tabIndex={-1}
+            style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px' }}
+            aria-hidden="true"
+          />
+
           {passwordSuccess && (
             <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-start gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
@@ -255,6 +267,7 @@ export function ProfilePage() {
             <label className="input-label">Current Password</label>
             <input
               type="password"
+              autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               required
@@ -268,6 +281,7 @@ export function ProfilePage() {
               <label className="input-label">New Password</label>
               <input
                 type="password"
+                autoComplete="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
@@ -282,6 +296,7 @@ export function ProfilePage() {
               <label className="input-label">Confirm New Password</label>
               <input
                 type="password"
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
