@@ -168,26 +168,26 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
               <th className="px-4 py-3 text-left">
                 <button
                   onClick={() => handleSort('citation_num')}
-                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
                 >
                   #
                   <SortIcon sorted={sortField === 'citation_num'} direction={sortDirection} />
                 </button>
               </th>
               <th className="px-4 py-3 text-left">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                   Citation
                 </span>
               </th>
               <th className="px-4 py-3 text-left">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                    What we found
                 </span>
               </th>
               <th className="px-4 py-3 text-left">
                 <button
                   onClick={() => handleSort('label')}
-                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
                 >
                   Status
                   <SortIcon sorted={sortField === 'label'} direction={sortDirection} />
@@ -203,7 +203,7 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
                 className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
               >
                 <td className="px-4 py-3">
-                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
                     [{idx + 1}]
                   </span>
                 </td>
@@ -228,7 +228,7 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
           Showing {filteredVerdicts.length} of {verdicts.length} citations
         </p>
       </div>

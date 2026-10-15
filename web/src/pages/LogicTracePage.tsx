@@ -179,7 +179,7 @@ function TraceStepCard({ step, isLast }: { step: TraceStep; isLast: boolean }) {
             <div className="mt-3 space-y-2">
               {Object.entries(step.data).map(([key, value]) => (
                 <div key={key} className="flex items-center gap-2 text-sm">
-                  <span className="text-slate-500 dark:text-slate-400 capitalize">
+                  <span className="text-slate-600 dark:text-slate-300 capitalize">
                     {key.replace(/_/g, ' ')}:
                   </span>
                   {Array.isArray(value) ? (
@@ -235,7 +235,7 @@ function VerdictTrace({
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center gap-4 p-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
       >
-        <span className="text-sm font-mono text-slate-500 dark:text-slate-400 w-8">
+        <span className="text-sm font-mono text-slate-600 dark:text-slate-300 w-8">
           #{index + 1}
         </span>
         <div className="flex-1 min-w-0">
@@ -260,7 +260,7 @@ function VerdictTrace({
         <div className="border-t border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-900">
           {/* Trace steps */}
           <div className="mb-6">
-            <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">
+            <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-4">
               How the result was reached
             </h5>
             <div>
@@ -276,7 +276,7 @@ function VerdictTrace({
 
           {/* Reasoning */}
           <div className="mb-4">
-            <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+            <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">
               What we found
             </h5>
             <p className="text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -287,7 +287,7 @@ function VerdictTrace({
           {/* Triggered rules */}
           {verdict.triggered_rules.length > 0 && (
             <div>
-              <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+              <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">
                 Triggered Rules
               </h5>
               <RuleInspector
@@ -359,7 +359,7 @@ export function LogicTracePage() {
       <div>
         <Link
           to={`/verification/report/${id}`}
-          className="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-3 transition-colors"
+          className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 mb-3 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Report
@@ -369,7 +369,7 @@ export function LogicTracePage() {
             <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
               Logic Trace
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 truncate" title={report.filename}>
+            <p className="text-slate-600 dark:text-slate-300 mt-1 truncate" title={report.filename}>
               {report.filename}
             </p>
           </div>
@@ -384,7 +384,7 @@ export function LogicTracePage() {
 
       {/* Legend */}
       <div className="card p-4 bg-slate-50 dark:bg-slate-800/50">
-        <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
+        <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-3">
           Trace Legend
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
@@ -421,25 +421,25 @@ export function LogicTracePage() {
           <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
             {report.verdicts.length}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Total</p>
         </div>
         <div className="stat-card text-center border-emerald-200 dark:border-emerald-800">
           <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
             {report.verdicts.filter((v) => v.label === 'verified').length}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Verified</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Verified</p>
         </div>
         <div className="stat-card text-center border-amber-200 dark:border-amber-800">
           <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
             {report.verdicts.filter((v) => v.label === 'metadata_error').length}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Meta Errors</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Meta Errors</p>
         </div>
         <div className="stat-card text-center border-red-200 dark:border-red-800">
           <p className="text-2xl font-bold text-red-600 dark:text-red-400">
             {report.verdicts.filter((v) => v.label === 'suspected_hallucination').length}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Suspected</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Suspected</p>
         </div>
       </div>
 
@@ -465,7 +465,7 @@ export function LogicTracePage() {
             <div className="p-6">
               <button
                 onClick={() => setSelectedVerdict(null)}
-                className="mb-4 text-sm text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                className="mb-4 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
               >
                 ← Close
               </button>
