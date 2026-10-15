@@ -73,7 +73,7 @@ function getStepStatusColor(status: TraceStepStatus): {
         bg: 'bg-slate-50 dark:bg-slate-800',
         border: 'border-slate-200 dark:border-slate-700',
         icon: <HelpCircle className="h-5 w-5 text-slate-400" />,
-        text: 'text-slate-500 dark:text-slate-400',
+        text: 'text-slate-600 dark:text-slate-300',
       };
   }
 }
@@ -226,7 +226,7 @@ function VerdictTrace({
       ? 'text-red-600 dark:text-red-400'
       : verdict.label === 'metadata_error'
       ? 'text-amber-600 dark:text-amber-400'
-      : 'text-slate-500 dark:text-slate-400';
+      : 'text-slate-600 dark:text-slate-300';
 
   return (
     <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">

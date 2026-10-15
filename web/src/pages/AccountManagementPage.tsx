@@ -262,7 +262,7 @@ export function AccountManagementPage() {
                     <td className="py-3 px-4">
                       <StatusBadge active={u.is_active} />
                     </td>
-                    <td className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400">
+                    <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">
                       {u.last_login_at
                         ? new Date(u.last_login_at).toLocaleDateString('en-US', {
                             month: 'short',
@@ -271,7 +271,7 @@ export function AccountManagementPage() {
                           })
                         : '—'}
                     </td>
-                    <td className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400">
+                    <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">
                       {u.created_at
                         ? new Date(u.created_at).toLocaleDateString('en-US', {
                             month: 'short',
@@ -309,7 +309,7 @@ export function AccountManagementPage() {
 
       {/* Footer count */}
       {!loading && (
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
           Showing {filtered.length} of {users.length} users
         </p>
       )}
