@@ -17,11 +17,12 @@ import { BatchUploadPage } from './pages/BatchUploadPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AccountManagementPage } from './pages/AccountManagementPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { MyClassesPage } from './pages/MyClassesPage';
+import { PendingReviewsPage } from './pages/PendingReviewsPage';
 
 /* ============================================================
    SourceLogic — Router Configuration
    Academic Source Verification Workspace
-   Based on UX/UI Concept Section 19: Global Navigation
    ============================================================ */
 
 // Public route that redirects to dashboard if already authenticated
@@ -74,7 +75,11 @@ export const router = createBrowserRouter([
       },
       {
         path: '/batch-upload',
-        element: <BatchUploadPage />,
+        element: (
+          <ProtectedRoute requiredCapabilities={['view_class_history']}>
+            <BatchUploadPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: '/verification/processing',
@@ -94,15 +99,27 @@ export const router = createBrowserRouter([
       },
       {
         path: '/verification/report/:id/trace',
-        element: <LogicTracePage />,
+        element: (
+          <ProtectedRoute requiredCapabilities={['view_logic_trace']}>
+            <LogicTracePage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: '/verification/report/:id/document',
-        element: <DocumentInspectorPage />,
+        element: (
+          <ProtectedRoute requiredCapabilities={['view_document_inspector']}>
+            <DocumentInspectorPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: '/verification/report/:id/consistency',
-        element: <OrphanDetectionPage />,
+        element: (
+          <ProtectedRoute requiredCapabilities={['view_orphan_detection']}>
+            <OrphanDetectionPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: '/essay/:id',
@@ -118,11 +135,32 @@ export const router = createBrowserRouter([
       },
       {
         path: '/admin/users',
-        element: <AccountManagementPage />,
+        element: (
+          <ProtectedRoute requiredCapabilities={['manage_users']}>
+            <AccountManagementPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: '/settings',
         element: <SettingsPage />,
+      },
+      // Teacher (v1.15 / Phase 3) — gated by view_class_history capability
+      {
+        path: '/teacher/classes',
+        element: (
+          <ProtectedRoute requiredCapabilities={['view_class_history']}>
+            <MyClassesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/teacher/reviews',
+        element: (
+          <ProtectedRoute requiredCapabilities={['override_verdict']}>
+            <PendingReviewsPage />
+          </ProtectedRoute>
+        ),
       },
       // Legacy route redirects
       {
