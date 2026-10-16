@@ -236,6 +236,18 @@ class Repository:
         self.session.add(row)
         return row
 
+    def list_audit_log(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        user_filter: str | None = None,
+    ) -> list[AuditLog]:
+        """Return audit rows newest-first, optionally filtered by user."""
+        q = self.session.query(AuditLog)
+        if user_filter:
+            q = q.filter(AuditLog.user == user_filter)
+        return q.order_by(AuditLog.logged_at.desc()).limit(limit).offset(offset).all()
+
     def get_citations(self, essay_id: int) -> list[CitationRecord]:
         """Return extracted citations in insertion order."""
         return list(

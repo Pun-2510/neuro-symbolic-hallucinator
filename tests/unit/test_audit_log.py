@@ -149,6 +149,68 @@ def test_override_writes_audit_log(clean_db):
         session.close()
 
 
+def test_list_audit_log_requires_admin(clean_db):
+    """Non-admin (teacher) calling GET /api/audit/log must be rejected (403)."""
+    from integrity_checker.db.session import get_session
+    from integrity_checker.db.repository import Repository
+
+    # Seed one audit row so the test would pass if auth were bypassed.
+    session = get_session()
+    repo = Repository(session)
+    repo.log_audit(
+        verdict_id=1, original_label="metadata_error", new_label="verified",
+        user="admin", note="seed",
+    )
+    session.commit()
+    session.close()
+
+    # Log in as teacher (not admin) and try to read the audit log.
+    token = get_teacher_token()
+    client = TestClient(app)
+    resp = client.get("/api/audit/log", headers=auth_header(token))
+    assert resp.status_code == 403, resp.text
+
+
+def test_list_audit_log_returns_recent_first(clean_db):
+    """GET /api/audit/log must return rows ordered by logged_at DESC."""
+    from datetime import datetime, timedelta, timezone
+
+    from integrity_checker.db.session import get_session
+    from integrity_checker.db.repository import Repository
+
+    # Seed three audit rows with explicit, distinct logged_at values.
+    session = get_session()
+    base = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    repo = Repository(session)
+    repo.session.add(AuditLog(
+        verdict_id=1, original_label="metadata_error", new_label="verified",
+        user="admin", note="oldest", logged_at=base,
+    ))
+    repo.session.add(AuditLog(
+        verdict_id=2, original_label="suspected_hallucination", new_label="verified",
+        user="admin", note="middle", logged_at=base + timedelta(minutes=10),
+    ))
+    repo.session.add(AuditLog(
+        verdict_id=3, original_label="metadata_error", new_label="suspected_hallucination",
+        user="teacher1", note="newest", logged_at=base + timedelta(minutes=20),
+    ))
+    session.commit()
+    session.close()
+
+    token = get_admin_token()
+    client = TestClient(app)
+    resp = client.get("/api/audit/log", headers=auth_header(token))
+    assert resp.status_code == 200, resp.text
+
+    rows = resp.json()
+    assert len(rows) == 3
+    # Newest first
+    assert rows[0]["note"] == "newest"
+    assert rows[0]["user"] == "teacher1"
+    assert rows[1]["note"] == "middle"
+    assert rows[2]["note"] == "oldest"
+
+
 # ---------------------------------------------------------------------------
 # Fixture — extends clean_db to also wipe VerdictRecord + AuditLog
 # ---------------------------------------------------------------------------
