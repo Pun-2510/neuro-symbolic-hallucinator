@@ -615,3 +615,29 @@ class Repository:
             )
             .count()
         )
+
+    def list_pending_reviews_for_class(self, class_id: int) -> list[VerdictRecord]:
+        """Verdicts trong essays của students trong class này, limited to
+        labels that need review (``metadata_error`` or
+        ``suspected_hallucination``) and not yet overridden. Dùng cho
+        teacher pending-reviews UI.
+        """
+        student_ids = [
+            row[0]
+            for row in self.session.query(ClassMembership.student_id)
+            .filter(ClassMembership.class_id == class_id)
+            .all()
+        ]
+        if not student_ids:
+            return []
+        return list(
+            self.session.query(VerdictRecord)
+            .join(EssayRecord, EssayRecord.id == VerdictRecord.essay_id)
+            .filter(
+                EssayRecord.user_id.in_(student_ids),
+                VerdictRecord.label.in_(["metadata_error", "suspected_hallucination"]),
+                VerdictRecord.is_overridden == 0,
+            )
+            .order_by(VerdictRecord.validated_at.desc())
+            .all()
+        )

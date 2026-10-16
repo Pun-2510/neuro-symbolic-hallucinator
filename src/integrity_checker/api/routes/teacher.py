@@ -74,6 +74,17 @@ class MessageResponse(BaseModel):
     message: str
 
 
+class PendingVerdictItem(BaseModel):
+    verdict_id: int
+    essay_id: int
+    filename: str
+    student_username: str | None
+    label: str
+    confidence: float
+    reasoning: str
+    validated_at: str
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -287,3 +298,38 @@ def teacher_dashboard(
             for c in classes
         ],
     )
+
+
+@router.get("/classes/{class_id}/pending-reviews", response_model=list[PendingVerdictItem])
+def list_pending_reviews(
+    class_id: int,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """List non-overridden verdicts (``metadata_error`` or
+    ``suspected_hallucination``) across all essays owned by students
+    enrolled in this class. Used by the teacher pending-reviews UI.
+    """
+    repo = Repository(db)
+    cls = repo.get_class(class_id)
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+    _ensure_teacher_owns_class(teacher, cls)
+    verdicts = repo.list_pending_reviews_for_class(class_id)
+    out: list[PendingVerdictItem] = []
+    for v in verdicts:
+        essay = repo.get_essay(v.essay_id)
+        student = repo.get_user_by_id(essay.user_id) if essay and essay.user_id else None
+        out.append(
+            PendingVerdictItem(
+                verdict_id=v.id,
+                essay_id=v.essay_id,
+                filename=essay.filename if essay else "",
+                student_username=student.username if student else None,
+                label=v.label,
+                confidence=v.confidence,
+                reasoning=v.reasoning or "",
+                validated_at=v.validated_at.isoformat() if v.validated_at else "",
+            )
+        )
+    return out
