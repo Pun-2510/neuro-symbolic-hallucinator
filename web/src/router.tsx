@@ -48,6 +48,7 @@ const AccountManagementPage = lazy(() => import('./pages/AccountManagementPage')
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const MyClassesPage = lazy(() => import('./pages/MyClassesPage').then((m) => ({ default: m.MyClassesPage })));
 const PendingReviewsPage = lazy(() => import('./pages/PendingReviewsPage').then((m) => ({ default: m.PendingReviewsPage })));
+const SystemHealthPage = lazy(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 
 // Wrap any lazy component in a Suspense boundary using PageSkeleton as fallback
 function withSuspense(LazyComponent: React.ComponentType) {
@@ -138,6 +139,16 @@ export const router = createBrowserRouter([
           <ProtectedRoute requiredCapabilities={['manage_users']}>
             <Suspense fallback={<PageSkeleton />}>
               <AccountManagementPage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/admin/system',
+        element: (
+          <ProtectedRoute requiredCapabilities={['view_system_health']}>
+            <Suspense fallback={<PageSkeleton />}>
+              <SystemHealthPage />
             </Suspense>
           </ProtectedRoute>
         ),
