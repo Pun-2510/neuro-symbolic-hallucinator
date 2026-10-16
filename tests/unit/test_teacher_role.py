@@ -674,6 +674,34 @@ class TestRoleValidation:
         # Should fail — but this is self-demote which is checked first
         assert resp.status_code == 400
 
+    def test_admin_can_demote_other_admin_when_multiple_exist(self, clean_db):
+        """Regression: with 2+ active admins, demoting one of them must
+        succeed (regression catches the bug where repo.list_users() was
+        called instead of repo.get_all_users(), which would 500)."""
+        token = get_admin_token()
+        client = TestClient(app)
+        # Create a 2nd admin
+        resp = client.post(
+            "/api/users",
+            json={
+                "username": "admin2",
+                "password": "securepass123",
+                "role": "admin",
+            },
+            headers=auth_header(token),
+        )
+        assert resp.status_code == 200, resp.text
+        admin2_id = resp.json()["id"]
+        # Demote admin2 — must succeed (admin and admin2 both active, so
+        # last-admin guard should NOT trigger)
+        resp = client.put(
+            f"/api/users/{admin2_id}",
+            json={"role": "user"},
+            headers=auth_header(token),
+        )
+        assert resp.status_code == 200, f"Got {resp.status_code}: {resp.text}"
+        assert resp.json()["role"] == "user"
+
     def test_update_role_accepts_teacher(self, clean_db):
         """After Phase 3, role='teacher' must be valid for PUT /users/{id}."""
         token = get_admin_token()

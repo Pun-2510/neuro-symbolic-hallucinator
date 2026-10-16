@@ -203,7 +203,7 @@ def update_user(
                 )
             # Count remaining active admins; if this would be the last one, refuse.
             active_admins = [
-                u for u in repo.list_users() if u.role == "admin" and u.is_active
+                u for u in repo.get_all_users() if u.role == "admin" and u.is_active
             ]
             if len(active_admins) <= 1:
                 raise HTTPException(
