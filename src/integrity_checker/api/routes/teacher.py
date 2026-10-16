@@ -79,9 +79,11 @@ class MessageResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _class_to_response(cls: Class, repo: Repository) -> ClassResponse:
+def _class_to_response(cls: Class, repo: Repository, *, essay_count: int | None = None) -> ClassResponse:
     student_count = repo.count_students_in_class(cls.id)
-    essay_count = len(repo.get_class_essays(cls.id))
+    # If caller already computed essay_count (to avoid duplicate query), reuse it.
+    if essay_count is None:
+        essay_count = len(repo.get_class_essays(cls.id))
     teacher = repo.get_user_by_id(cls.teacher_id)
     return ClassResponse(
         id=cls.id,
@@ -255,8 +257,13 @@ def teacher_dashboard(
         classes = repo.list_all_classes()
     else:
         classes = repo.list_classes_for_teacher(teacher.id)
+    # Compute essay lists ONCE per class to avoid duplicate query in
+    # _class_to_response (otherwise total_essays is inflated by 2x or 3x).
+    essays_per_class: dict[int, list] = {
+        c.id: repo.get_class_essays(c.id) for c in classes
+    }
     total_students = sum(repo.count_students_in_class(c.id) for c in classes)
-    total_essays = sum(len(repo.get_class_essays(c.id)) for c in classes)
+    total_essays = sum(len(essays_per_class[c.id]) for c in classes)
     pending_reviews = (
         repo.count_pending_reviews_for_teacher(teacher.id)
         if teacher.role == "teacher"
@@ -267,5 +274,8 @@ def teacher_dashboard(
         total_students=total_students,
         total_essays=total_essays,
         pending_reviews=pending_reviews,
-        classes=[_class_to_response(c, repo) for c in classes],
+        classes=[
+            _class_to_response(c, repo, essay_count=len(essays_per_class[c.id]))
+            for c in classes
+        ],
     )
