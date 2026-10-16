@@ -188,8 +188,28 @@ def update_user(
         update_data["full_name"] = request.full_name
 
     if request.role is not None:
-        if request.role not in ("admin", "user"):
-            raise HTTPException(status_code=400, detail="Role must be 'admin' or 'user'")
+        if request.role not in VALID_USER_ROLES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Role must be one of {list(VALID_USER_ROLES)}",
+            )
+        # Prevent admin from demoting themselves or another admin away from
+        # the only admin account — would lock them out of the system.
+        if existing.role == "admin" and request.role != "admin":
+            if existing.id == admin.id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot demote yourself from admin",
+                )
+            # Count remaining active admins; if this would be the last one, refuse.
+            active_admins = [
+                u for u in repo.list_users() if u.role == "admin" and u.is_active
+            ]
+            if len(active_admins) <= 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot demote the last active admin",
+                )
         update_data["role"] = request.role
 
     if request.is_active is not None:

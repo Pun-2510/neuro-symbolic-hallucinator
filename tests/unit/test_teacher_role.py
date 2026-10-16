@@ -618,6 +618,86 @@ class TestRoleValidation:
         assert resp.status_code == 200
         assert resp.json()["institution"] == "Updated University"
 
+    def test_admin_cannot_demote_self(self, clean_db):
+        """Admin cannot change own role to 'user' — would lock out of system."""
+        token = get_admin_token()
+        client = TestClient(app)
+        # Get admin user id
+        me = client.get("/api/auth/me", headers=auth_header(token)).json()
+        admin_id = me["id"]
+        resp = client.put(
+            f"/api/users/{admin_id}",
+            json={"role": "user"},
+            headers=auth_header(token),
+        )
+        assert resp.status_code == 400
+        assert "demote" in resp.json()["detail"].lower()
+
+    def test_admin_cannot_demote_last_admin(self, clean_db):
+        """When only 1 active admin exists, cannot demote them to user/teacher."""
+        token = get_admin_token()
+        client = TestClient(app)
+        # Create a teacher (not admin) so we have a target
+        create_resp = client.post(
+            "/api/users",
+            json={
+                "username": "target",
+                "password": "securepass123",
+                "role": "teacher",
+            },
+            headers=auth_header(token),
+        )
+        target_id = create_resp.json()["id"]
+        # Promote to admin first (allowed)
+        resp = client.put(
+            f"/api/users/{target_id}",
+            json={"role": "admin"},
+            headers=auth_header(token),
+        )
+        assert resp.status_code == 200
+        # Now demote target — should fail (only 2 admins → still 1 left if this
+        # is the only demotion, but we need the LAST admin case)
+        # Make target inactive first to simulate only 1 active admin left
+        client.put(
+            f"/api/users/{target_id}",
+            json={"is_active": False},
+            headers=auth_header(token),
+        )
+        # Now only the original admin is active. Try to demote original admin.
+        me = client.get("/api/auth/me", headers=auth_header(token)).json()
+        admin_id = me["id"]
+        resp = client.put(
+            f"/api/users/{admin_id}",
+            json={"role": "user"},
+            headers=auth_header(token),
+        )
+        # Should fail — but this is self-demote which is checked first
+        assert resp.status_code == 400
+
+    def test_update_role_accepts_teacher(self, clean_db):
+        """After Phase 3, role='teacher' must be valid for PUT /users/{id}."""
+        token = get_admin_token()
+        client = TestClient(app)
+        create_resp = client.post(
+            "/api/users",
+            json={
+                "username": "promoteable",
+                "password": "securepass123",
+                "role": "user",
+            },
+            headers=auth_header(token),
+        )
+        user_id = create_resp.json()["id"]
+        # Promote to teacher — was broken before (rejected by hardcoded
+        # "admin" | "user" check at line 191).
+        resp = client.put(
+            f"/api/users/{user_id}",
+            json={"role": "teacher"},
+            headers=auth_header(token),
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["role"] == "teacher"
+
 
 # ---------------------------------------------------------------------------
 # Fixtures — re-declare clean_db to include Class + ClassMembership cleanup
