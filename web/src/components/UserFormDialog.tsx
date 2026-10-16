@@ -23,7 +23,7 @@ export function UserFormDialog({
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'user'>('user');
+  const [role, setRole] = useState<'user' | 'teacher' | 'admin'>('user');
   const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,7 +36,7 @@ export function UserFormDialog({
         setEmail(user.email ?? '');
         setFullName(user.full_name ?? '');
         setPassword('');
-        setRole(user.role as 'admin' | 'user');
+        setRole(user.role as 'user' | 'teacher' | 'admin');
         setIsActive(user.is_active);
       } else {
         setUsername('');
@@ -179,11 +179,12 @@ export function UserFormDialog({
                 <label className="input-label">Role</label>
                 <select
                   value={role}
-                  onChange={(e) => setRole(e.target.value as 'admin' | 'user')}
+                  onChange={(e) => setRole(e.target.value as 'user' | 'teacher' | 'admin')}
                   disabled={loading}
                   className="input"
                 >
                   <option value="user">User</option>
+                  <option value="teacher">Teacher</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
