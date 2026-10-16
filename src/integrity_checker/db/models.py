@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Literal
 
 from sqlalchemy import Index, JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+# Role literals (v1.15 — Phase 3 teacher role).
+# Backward compat: giữ "user" cho student, thêm "teacher" mới.
+UserRoleLiteral = Literal["user", "teacher", "admin"]
+VALID_USER_ROLES: tuple[str, ...] = ("user", "teacher", "admin")
 
 
 class Base(DeclarativeBase):
@@ -33,9 +40,19 @@ class User(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+    # v1.15 (Phase 3) — teacher-specific fields
+    institution: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    can_override_verdicts: Mapped[bool] = mapped_column(Integer, default=0)
 
     sessions: Mapped[list["Session"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     essays: Mapped[list["EssayRecord"]] = relationship(back_populates="user")
+    taught_classes: Mapped[list["Class"]] = relationship(
+        "Class", back_populates="teacher", foreign_keys="Class.teacher_id"
+    )
+    memberships: Mapped[list["ClassMembership"]] = relationship(
+        "ClassMembership", back_populates="student", foreign_keys="ClassMembership.student_id",
+        cascade="all, delete-orphan",
+    )
 
 
 class Session(Base):
@@ -162,3 +179,44 @@ class AuditLog(Base):
     user: Mapped[str] = mapped_column(String, nullable=False)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     logged_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+# ---------------------------------------------------------------------------
+# v1.15 (Phase 3) — Teacher / Class models
+# ---------------------------------------------------------------------------
+
+
+class Class(Base):
+    """Một lớp học do 1 teacher phụ trách, có nhiều students (qua ClassMembership)."""
+
+    __tablename__ = "classes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    teacher: Mapped["User"] = relationship("User", foreign_keys=[teacher_id], back_populates="taught_classes")
+    memberships: Mapped[list["ClassMembership"]] = relationship(
+        back_populates="class_", cascade="all, delete-orphan"
+    )
+
+
+class ClassMembership(Base):
+    """Many-to-many User ↔ Class. Student enrolled in N classes."""
+
+    __tablename__ = "class_memberships"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    class_id: Mapped[int] = mapped_column(ForeignKey("classes.id"), nullable=False)
+    student_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    class_: Mapped["Class"] = relationship(back_populates="memberships")
+    student: Mapped["User"] = relationship("User", foreign_keys=[student_id], back_populates="memberships")
