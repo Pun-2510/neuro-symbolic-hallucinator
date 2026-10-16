@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from integrity_checker.api.deps import get_db, get_current_user
+from integrity_checker.db.models import ClassMembership
 from integrity_checker.db.repository import Repository
 from integrity_checker.models.api_schemas import VerdictSchema
 
@@ -108,7 +109,25 @@ async def override_verdict(
     essay = repo.get_essay(essay_id)
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
-    if current_user.role != "admin" and essay.user_id != current_user.id:
+    if current_user.role == "admin":
+        pass  # admins override anything
+    elif essay.user_id == current_user.id:
+        pass  # student owns the essay
+    elif current_user.role == "teacher":
+        # Teacher may override if essay belongs to a student in one of
+        # their classes. Intersection of class IDs (owner of essay.user_id
+        # is enrolled in a class the teacher owns).
+        teacher_class_ids = {c.id for c in repo.list_classes_for_teacher(current_user.id)}
+        student_class_ids = {
+            m.class_id for m in repo.session.query(ClassMembership).filter(
+                ClassMembership.student_id == essay.user_id,
+            ).all()
+        } if essay.user_id else set()
+        if teacher_class_ids & student_class_ids:
+            pass
+        else:
+            raise HTTPException(status_code=403, detail="Access denied")
+    else:
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Parse verdict_id from string
