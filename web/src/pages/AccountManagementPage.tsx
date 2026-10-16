@@ -2,13 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserPlus, Search, Loader2, UserCog, Shield, ShieldCheck, ShieldAlert, ImageIcon, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRole } from '@/hooks/useRole';
 import { UserFormDialog } from '@/components/UserFormDialog';
 import { DeleteUserDialog } from '@/components/DeleteUserDialog';
 import type { User } from '@/api/client';
 import { api } from '@/api/client';
 
 export function AccountManagementPage() {
-  const { user: currentUser, isAdmin } = useAuth();
+  const { user: currentUser } = useAuth();
+  const { isAdmin } = useRole();
   const navigate = useNavigate();
 
   const [users, setUsers] = useState<User[]>([]);

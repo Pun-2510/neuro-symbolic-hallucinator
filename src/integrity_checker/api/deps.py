@@ -109,3 +109,14 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
+
+
+def require_teacher(user: User = Depends(get_current_user)) -> User:
+    """Raise 403 if user is not teacher or admin.
+
+    Both teacher and admin can hit /api/teacher/* endpoints — admin acts
+    as a global teacher with no class ownership restrictions.
+    """
+    if user.role not in ("teacher", "admin"):
+        raise HTTPException(status_code=403, detail="Teacher access required")
+    return user

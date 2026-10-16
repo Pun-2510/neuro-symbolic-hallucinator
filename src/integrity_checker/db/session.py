@@ -49,6 +49,9 @@ def _run_inline_migrations(engine: Engine) -> None:
         2026-10-03 (v1.10) — users table gained email, full_name, avatar_path,
             is_active, last_login_at to support account management (admin CRUD,
             self-profile edit, avatar upload).
+        2026-10-15 (v1.15) — users table gained institution, can_override_verdicts
+            for teacher support. classes + class_memberships tables are created
+            by Base.metadata.create_all (no ALTER needed — fresh tables).
     """
     with engine.begin() as conn:
         # --- citations ---
@@ -89,12 +92,25 @@ def _run_inline_migrations(engine: Engine) -> None:
         if "last_login_at" not in user_cols:
             conn.exec_driver_sql("ALTER TABLE users ADD COLUMN last_login_at DATETIME")
 
+        # --- users (v1.15 — teacher support) ---
+        if "institution" not in user_cols:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN institution VARCHAR(255)")
+        if "can_override_verdicts" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN can_override_verdicts INTEGER DEFAULT 0"
+            )
+
 
 def _ensure_db_initialized() -> None:
-    """Ensure all migrations have run and tables exist."""
+    """Ensure all migrations have run and tables exist.
+
+    Order matters: create_all FIRST so that any ALTER TABLE for fresh DBs
+    (where tables don't exist yet) can find their target tables. Skipping
+    this order causes "no such table: X" on first run with a clean DB.
+    """
     engine = get_engine()
-    _run_inline_migrations(engine)
     Base.metadata.create_all(bind=engine)
+    _run_inline_migrations(engine)
 
 
 def init_db() -> None:

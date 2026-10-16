@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from integrity_checker.db.models import (
     CitationCache,
     CitationRecord,
+    Class,
+    ClassMembership,
     EssayRecord,
     Session,
     User,
@@ -250,6 +252,8 @@ class Repository:
         email: str | None = None,
         full_name: str | None = None,
         is_active: bool = True,
+        institution: str | None = None,
+        can_override_verdicts: bool = False,
     ) -> User:
         user = User(
             username=username,
@@ -258,6 +262,8 @@ class Repository:
             email=email,
             full_name=full_name,
             is_active=1 if is_active else 0,
+            institution=institution,
+            can_override_verdicts=1 if can_override_verdicts else 0,
         )
         self.session.add(user)
         self.session.flush()
@@ -272,7 +278,7 @@ class Repository:
                 # Skip None values to keep partial-update semantics; avatar_path
                 # may be set to None to clear.
                 continue
-            if key == "is_active" and isinstance(value, bool):
+            if key in ("is_active", "can_override_verdicts") and isinstance(value, bool):
                 value = 1 if value else 0
             if hasattr(user, key):
                 setattr(user, key, value)
@@ -457,3 +463,135 @@ class Repository:
         count = self.session.query(CitationCache).delete()
         self.session.flush()
         return count
+
+    # -- Classes (v1.15 — Phase 3) --
+
+    def create_class(
+        self, name: str, teacher_id: int, description: str | None = None,
+    ) -> Class:
+        cls = Class(name=name, teacher_id=teacher_id, description=description)
+        self.session.add(cls)
+        self.session.flush()
+        return cls
+
+    def get_class(self, class_id: int) -> Class | None:
+        return self.session.get(Class, class_id)
+
+    def get_class_by_name(self, name: str) -> Class | None:
+        return self.session.query(Class).filter(Class.name == name).first()
+
+    def list_all_classes(self) -> list[Class]:
+        return list(self.session.query(Class).order_by(Class.created_at.desc()).all())
+
+    def list_classes_for_teacher(self, teacher_id: int) -> list[Class]:
+        return list(
+            self.session.query(Class)
+            .filter(Class.teacher_id == teacher_id)
+            .order_by(Class.created_at.desc())
+            .all()
+        )
+
+    def list_classes_for_student(self, student_id: int) -> list[Class]:
+        """Classes mà student là thành viên (qua ClassMembership)."""
+        return list(
+            self.session.query(Class)
+            .join(ClassMembership, ClassMembership.class_id == Class.id)
+            .filter(ClassMembership.student_id == student_id)
+            .order_by(Class.created_at.desc())
+            .all()
+        )
+
+    def add_student_to_class(self, class_id: int, student_id: int) -> ClassMembership:
+        """Idempotent — if membership already exists, return existing row."""
+        existing = (
+            self.session.query(ClassMembership)
+            .filter(
+                ClassMembership.class_id == class_id,
+                ClassMembership.student_id == student_id,
+            )
+            .first()
+        )
+        if existing:
+            return existing
+        membership = ClassMembership(class_id=class_id, student_id=student_id)
+        self.session.add(membership)
+        self.session.flush()
+        return membership
+
+    def remove_student_from_class(self, class_id: int, student_id: int) -> bool:
+        membership = (
+            self.session.query(ClassMembership)
+            .filter(
+                ClassMembership.class_id == class_id,
+                ClassMembership.student_id == student_id,
+            )
+            .first()
+        )
+        if not membership:
+            return False
+        self.session.delete(membership)
+        self.session.flush()
+        return True
+
+    def list_students_in_class(self, class_id: int) -> list[User]:
+        return list(
+            self.session.query(User)
+            .join(ClassMembership, ClassMembership.student_id == User.id)
+            .filter(ClassMembership.class_id == class_id)
+            .order_by(User.username.asc())
+            .all()
+        )
+
+    def count_students_in_class(self, class_id: int) -> int:
+        return (
+            self.session.query(ClassMembership)
+            .filter(ClassMembership.class_id == class_id)
+            .count()
+        )
+
+    def get_class_essays(self, class_id: int) -> list[EssayRecord]:
+        """Essays của tất cả students trong class, mới nhất trước."""
+        student_ids = [
+            row[0]
+            for row in self.session.query(ClassMembership.student_id)
+            .filter(ClassMembership.class_id == class_id)
+            .all()
+        ]
+        if not student_ids:
+            return []
+        return list(
+            self.session.query(EssayRecord)
+            .filter(EssayRecord.user_id.in_(student_ids))
+            .order_by(EssayRecord.uploaded_at.desc())
+            .all()
+        )
+
+    def count_pending_reviews_for_teacher(self, teacher_id: int) -> int:
+        """Essays của students trong các class teacher phụ trách mà có verdicts
+        chưa được override. Dùng cho teacher dashboard.
+        """
+        class_ids = [
+            row[0]
+            for row in self.session.query(Class.id).filter(Class.teacher_id == teacher_id).all()
+        ]
+        if not class_ids:
+            return 0
+        student_ids = [
+            row[0]
+            for row in self.session.query(ClassMembership.student_id)
+            .filter(ClassMembership.class_id.in_(class_ids))
+            .all()
+        ]
+        if not student_ids:
+            return 0
+        from integrity_checker.db.models import VerdictRecord
+        return (
+            self.session.query(VerdictRecord)
+            .join(EssayRecord, EssayRecord.id == VerdictRecord.essay_id)
+            .filter(
+                EssayRecord.user_id.in_(student_ids),
+                VerdictRecord.is_overridden == 0,
+                VerdictRecord.label.in_(["metadata_error", "suspected_hallucination"]),
+            )
+            .count()
+        )

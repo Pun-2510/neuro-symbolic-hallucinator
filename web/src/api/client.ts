@@ -275,11 +275,13 @@ export interface User {
   username: string;
   email: string | null;
   full_name: string | null;
-  role: 'admin' | 'user';
+  role: 'user' | 'teacher' | 'admin';
   is_active: boolean;
   avatar_url: string | null;
   last_login_at: string | null;
   created_at: string | null;
+  institution: string | null;
+  can_override_verdicts: boolean;
 }
 
 export interface UserCreate {
@@ -287,8 +289,10 @@ export interface UserCreate {
   password: string;
   email?: string | null;
   full_name?: string | null;
-  role?: string;
+  role?: 'user' | 'teacher' | 'admin';
   is_active?: boolean;
+  institution?: string | null;
+  can_override_verdicts?: boolean;
 }
 
 export interface UserUpdate {
@@ -296,8 +300,10 @@ export interface UserUpdate {
   password?: string | null;
   email?: string | null;
   full_name?: string | null;
-  role?: string | null;
+  role?: 'user' | 'teacher' | 'admin' | null;
   is_active?: boolean | null;
+  institution?: string | null;
+  can_override_verdicts?: boolean | null;
 }
 
 export interface UserSelfUpdate {
@@ -308,6 +314,49 @@ export interface UserSelfUpdate {
 export interface PasswordChange {
   current_password: string;
   new_password: string;
+}
+
+// --- Class types (v1.15 / Phase 3) ---
+
+export interface Class {
+  id: number;
+  name: string;
+  description: string | null;
+  teacher_id: number;
+  teacher_username: string;
+  created_at: string;
+  student_count: number;
+  essay_count: number;
+}
+
+export interface ClassCreate {
+  name: string;
+  description?: string;
+}
+
+export interface ClassStudent {
+  id: number;
+  username: string;
+  email: string | null;
+  full_name: string | null;
+  is_active: boolean;
+}
+
+export interface ClassEssay {
+  id: number;
+  filename: string;
+  uploaded_at: string;
+  user_id: number | null;
+  username: string | null;
+  num_pages: number;
+}
+
+export interface TeacherDashboard {
+  total_classes: number;
+  total_students: number;
+  total_essays: number;
+  pending_reviews: number;
+  classes: Class[];
 }
 
 // --- Endpoints ---
@@ -352,6 +401,31 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
+
+  // Teacher (v1.15 / Phase 3) — requires teacher or admin role
+  listMyClasses: () => request<Class[]>('/teacher/classes'),
+  createClass: (data: ClassCreate) =>
+    request<Class>('/teacher/classes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  listClassStudents: (classId: number) =>
+    request<ClassStudent[]>(`/teacher/classes/${classId}/students`),
+  addStudentToClass: (classId: number, studentId: number) =>
+    request<{ message: string }>(`/teacher/classes/${classId}/students`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_id: studentId }),
+    }),
+  removeStudentFromClass: (classId: number, studentId: number) =>
+    request<{ message: string }>(
+      `/teacher/classes/${classId}/students/${studentId}`,
+      { method: 'DELETE' },
+    ),
+  listClassEssays: (classId: number) =>
+    request<ClassEssay[]>(`/teacher/classes/${classId}/essays`),
+  getTeacherDashboard: () => request<TeacherDashboard>('/teacher/dashboard'),
 
 
   uploadEssay: (file: File) => {

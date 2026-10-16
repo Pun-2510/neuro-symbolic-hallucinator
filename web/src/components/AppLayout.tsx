@@ -1,7 +1,8 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FileSearch, Upload, History, Menu, X, BookOpen, LogOut, User, Layers, Users, Settings, HelpCircle } from 'lucide-react';
+import { FileSearch, Upload, History, Menu, X, BookOpen, LogOut, User, Layers, Users, Settings, HelpCircle, GraduationCap, ClipboardCheck, Activity, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRole, type UserCapability, type UserRole } from '@/hooks/useRole';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import { HelpModal } from './HelpModal';
 
@@ -11,33 +12,61 @@ import { HelpModal } from './HelpModal';
    Based on UX/UI Concept Section 19: Global Navigation
    ============================================================ */
 
-type NavItem = {
+interface NavItem {
   path: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-};
+  /** If set, item is only visible when user has this capability. */
+  capability?: UserCapability;
+}
 
-type NavDivider = {
-  divider: 'admin';
-};
+interface NavGroup {
+  label: string;
+  /** If set, group is only visible when user role is in this list. */
+  roles?: UserRole[];
+  items: NavItem[];
+}
 
-const navItems: NavItem[] = [
-  { path: '/dashboard', label: 'Dashboard', icon: FileSearch },
-  { path: '/upload', label: 'New Check', icon: Upload },
-  { path: '/batch-upload', label: 'Batch Check', icon: Layers },
-  { path: '/history', label: 'History', icon: History },
-];
-
-const settingsNavItem: NavItem = { path: '/settings', label: 'Settings', icon: Settings };
-
-const adminNavItems: NavItem[] = [
-  { path: '/admin/users', label: 'Account Management', icon: Users },
+const SIDEBAR_GROUPS: NavGroup[] = [
+  {
+    label: 'Workspace',
+    items: [
+      { path: '/dashboard', label: 'Dashboard', icon: FileSearch, capability: 'upload_essay' },
+      { path: '/upload', label: 'New Check', icon: Upload, capability: 'upload_essay' },
+      { path: '/batch-upload', label: 'Batch Check', icon: Layers, capability: 'view_class_history' },
+      { path: '/history', label: 'History', icon: History, capability: 'view_own_history' },
+    ],
+  },
+  {
+    label: 'Teaching',
+    roles: ['teacher', 'admin'],
+    items: [
+      { path: '/teacher/classes', label: 'My Classes', icon: GraduationCap, capability: 'view_class_history' },
+      { path: '/teacher/reviews', label: 'Pending Reviews', icon: ClipboardCheck, capability: 'override_verdict' },
+    ],
+  },
+  {
+    label: 'Administration',
+    roles: ['admin'],
+    items: [
+      { path: '/admin/users', label: 'Accounts', icon: Users, capability: 'manage_users' },
+      { path: '/admin/system', label: 'System Health', icon: Activity, capability: 'view_system_health' },
+      { path: '/admin/audit', label: 'Audit Log', icon: FileText, capability: 'view_audit_log' },
+    ],
+  },
+  {
+    label: 'Preferences',
+    items: [
+      { path: '/settings', label: 'Settings', icon: Settings },
+    ],
+  },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { has, role } = useRole();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -171,85 +200,45 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          {/* Navigation */}
+          {/* Navigation — capability-driven (v1.15 / Phase 3) */}
           <nav className="flex-1 p-4 space-y-1">
-            <p className="px-4 py-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              Workspace
-            </p>
-            {navItems.map((item) => {
-              const Icon = item.icon;
+            {SIDEBAR_GROUPS.map((group) => {
+              // Hide whole group if role-restricted and user doesn't match
+              if (group.roles && !group.roles.includes(role)) return null;
+              // Hide items lacking required capability
+              const visibleItems = group.items.filter(
+                (item) => !item.capability || has(item.capability),
+              );
+              if (visibleItems.length === 0) return null;
               return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setMobileOpen(false)}
-                  className={`
-                    flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
-                    transition-all duration-200
-                    ${isActive(item.path)
-                      ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }
-                  `}
-                >
-                  <Icon className="h-5 w-5" />
-                  {item.label}
-                </Link>
+                <div key={group.label} className={group.roles ? 'pt-2' : ''}>
+                  <p className="px-4 py-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    {group.label}
+                  </p>
+                  {visibleItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`
+                          flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
+                          transition-all duration-200
+                          ${isActive(item.path)
+                            ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }
+                        `}
+                      >
+                        <Icon className="h-5 w-5" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
               );
             })}
-
-            {user?.role === 'admin' && (
-              <>
-                <div className="pt-4 pb-1">
-                  <p className="px-4 py-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                    Administration
-                  </p>
-                </div>
-                {adminNavItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setMobileOpen(false)}
-                      className={`
-                        flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
-                        transition-all duration-200
-                        ${isActive(item.path)
-                          ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }
-                      `}
-                    >
-                      <Icon className="h-5 w-5" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </>
-            )}
-
-            {/* Settings Link */}
-            <div className="pt-4 pb-1">
-              <p className="px-4 py-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                Preferences
-              </p>
-            </div>
-            <Link
-              to={settingsNavItem.path}
-              onClick={() => setMobileOpen(false)}
-              className={`
-                flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
-                transition-all duration-200
-                ${isActive(settingsNavItem.path)
-                  ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-                }
-              `}
-            >
-              <Settings className="h-5 w-5" />
-              {settingsNavItem.label}
-            </Link>
           </nav>
 
           {/* Theme Toggle */}
