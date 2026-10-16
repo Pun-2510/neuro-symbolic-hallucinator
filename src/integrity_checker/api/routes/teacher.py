@@ -131,7 +131,15 @@ def list_my_classes(
         classes = repo.list_all_classes()
     else:
         classes = repo.list_classes_for_teacher(teacher.id)
-    return [_class_to_response(c, repo) for c in classes]
+    # Compute essay lists ONCE per class (avoids N+1 — without caching,
+    # _class_to_response would re-query get_class_essays for each class,
+    # making the endpoint O(N²) in queries).
+    return [
+        _class_to_response(
+            c, repo, essay_count=len(repo.get_class_essays(c.id))
+        )
+        for c in classes
+    ]
 
 
 @router.post("/classes", response_model=ClassResponse, status_code=201)
