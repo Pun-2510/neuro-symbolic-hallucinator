@@ -726,3 +726,56 @@ def clean_db():
     session.query(User).delete()
     session.commit()
     session.close()
+
+
+# ---------------------------------------------------------------------------
+# Migration: fresh DB
+# ---------------------------------------------------------------------------
+
+
+class TestFreshDbMigration:
+    """Regression: _ensure_db_initialized must create tables BEFORE running
+    ALTER TABLE migrations, or a fresh DB throws 'no such table: citations'."""
+
+    def test_fresh_db_init_does_not_raise(self, tmp_path, monkeypatch):
+        """Simulate a fresh DB by running the migration block directly on
+        a new engine. Regression for the migration-order bug where ALTER
+        TABLE ran before Base.metadata.create_all, breaking first-time setup.
+        """
+        import sqlite3
+        from sqlalchemy import create_engine as sa_create_engine
+        from integrity_checker.db.models import Base
+        from integrity_checker.db.session import _run_inline_migrations
+
+        db_path = tmp_path / "fresh.db"
+        engine = sa_create_engine(f"sqlite:///{db_path}")
+        # Test the actual fixed order
+        try:
+            Base.metadata.create_all(bind=engine)
+            _run_inline_migrations(engine)
+        except Exception as e:
+            pytest.fail(f"init sequence raised on fresh DB: {e}")
+
+        # Verify all expected tables exist
+        conn = sqlite3.connect(str(db_path))
+        tables = {row[0] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        conn.close()
+
+        # Core tables that should exist after init_db
+        for required in ("users", "essays", "citations", "classes",
+                         "class_memberships", "verdicts"):
+            assert required in tables, f"missing table: {required}"
+
+    def test_old_migration_order_would_fail(self, tmp_path):
+        """Demonstrates the bug: if ALTER ran before create_all, fresh DB fails."""
+        import sqlite3
+        from sqlalchemy import create_engine as sa_create_engine
+        from integrity_checker.db.session import _run_inline_migrations
+
+        db_path = tmp_path / "fresh_bug.db"
+        engine = sa_create_engine(f"sqlite:///{db_path}")
+        # Run ONLY migrations (without create_all) on fresh DB — must fail
+        with pytest.raises(Exception, match="no such table"):
+            _run_inline_migrations(engine)

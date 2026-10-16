@@ -102,10 +102,15 @@ def _run_inline_migrations(engine: Engine) -> None:
 
 
 def _ensure_db_initialized() -> None:
-    """Ensure all migrations have run and tables exist."""
+    """Ensure all migrations have run and tables exist.
+
+    Order matters: create_all FIRST so that any ALTER TABLE for fresh DBs
+    (where tables don't exist yet) can find their target tables. Skipping
+    this order causes "no such table: X" on first run with a clean DB.
+    """
     engine = get_engine()
-    _run_inline_migrations(engine)
     Base.metadata.create_all(bind=engine)
+    _run_inline_migrations(engine)
 
 
 def init_db() -> None:
