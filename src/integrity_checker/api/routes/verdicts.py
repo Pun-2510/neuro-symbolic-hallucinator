@@ -117,6 +117,14 @@ async def override_verdict(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid verdict_id")
 
+    # Capture original label BEFORE update so the audit log records the
+    # pre-override value (otherwise ``update_verdict`` mutates the row in
+    # the session and we'd write the new label twice).
+    original_label = next(
+        (r.label for r in repo.get_verdicts(essay_id) if r.id == v_id),
+        None,
+    )
+
     # Update DB
     updated = repo.update_verdict(
         verdict_id=v_id,
@@ -127,6 +135,16 @@ async def override_verdict(
 
     if not updated:
         raise HTTPException(status_code=404, detail="Verdict not found")
+
+    # AuditLog: capture original label so the override trail is auditable.
+    if original_label is not None and original_label != body.new_label:
+        repo.log_audit(
+            verdict_id=v_id,
+            original_label=original_label,
+            new_label=body.new_label,
+            user=current_user.username,
+            note=body.reason,
+        )
 
     # Commit
     repo.commit()

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from integrity_checker.db.models import (
+    AuditLog,
     CitationCache,
     CitationRecord,
     Class,
@@ -215,6 +216,25 @@ class Repository:
             verdict.mapping_status = new_mapping_status
         self.session.flush()
         return verdict
+
+    def log_audit(
+        self,
+        verdict_id: int,
+        original_label: str,
+        new_label: str,
+        user: str,
+        note: str | None = None,
+    ) -> AuditLog:
+        """Append-only audit row. Never update or delete via repository."""
+        row = AuditLog(
+            verdict_id=verdict_id,
+            original_label=original_label,
+            new_label=new_label,
+            user=user,
+            note=note,
+        )
+        self.session.add(row)
+        return row
 
     def get_citations(self, essay_id: int) -> list[CitationRecord]:
         """Return extracted citations in insertion order."""
