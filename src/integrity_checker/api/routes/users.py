@@ -13,7 +13,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from integrity_checker.api.deps import get_current_user, get_db, require_admin
 from integrity_checker.api.services.avatar_service import get_avatar_service
-from integrity_checker.db.models import User
+from integrity_checker.db.models import VALID_USER_ROLES, User
 from integrity_checker.db.repository import Repository
 
 router = APIRouter()
@@ -29,6 +29,8 @@ class UserCreate(BaseModel):
     full_name: str | None = Field(default=None, max_length=120)
     role: str = "user"
     is_active: bool = True
+    institution: str | None = Field(default=None, max_length=255)
+    can_override_verdicts: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -40,6 +42,8 @@ class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, max_length=120)
     role: str | None = None
     is_active: bool | None = None
+    institution: str | None = Field(default=None, max_length=255)
+    can_override_verdicts: bool | None = None
 
 
 class UserSelfUpdate(BaseModel):
@@ -64,6 +68,8 @@ class UserResponse(BaseModel):
     avatar_url: str | None
     last_login_at: str | None
     created_at: str | None
+    institution: str | None = None
+    can_override_verdicts: bool = False
 
 
 class MessageResponse(BaseModel):
@@ -95,6 +101,8 @@ def _to_response(user: User) -> UserResponse:
         avatar_url=user.avatar_path,
         last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
         created_at=user.created_at.isoformat() if user.created_at else None,
+        institution=user.institution,
+        can_override_verdicts=bool(user.can_override_verdicts),
     )
 
 
@@ -127,8 +135,11 @@ def create_user(
     if request.email and repo.get_user_by_email(request.email):
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    if request.role not in ("admin", "user"):
-        raise HTTPException(status_code=400, detail="Role must be 'admin' or 'user'")
+    if request.role not in VALID_USER_ROLES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Role must be one of {list(VALID_USER_ROLES)}",
+        )
 
     password_hash = _hash_password(request.password)
     user = repo.create_user(
@@ -138,6 +149,8 @@ def create_user(
         email=request.email,
         full_name=request.full_name,
         is_active=request.is_active,
+        institution=request.institution,
+        can_override_verdicts=request.can_override_verdicts,
     )
     repo.commit()
     return _to_response(user)
@@ -181,6 +194,12 @@ def update_user(
 
     if request.is_active is not None:
         update_data["is_active"] = request.is_active
+
+    if request.institution is not None:
+        update_data["institution"] = request.institution
+
+    if request.can_override_verdicts is not None:
+        update_data["can_override_verdicts"] = request.can_override_verdicts
 
     if request.password is not None:
         update_data["password_hash"] = _hash_password(request.password)

@@ -45,6 +45,7 @@ def _get_hardcoded_users() -> dict[str, tuple[str, str]]:
 
     return {
         "admin": ("admin123", "admin"),
+        "teacher": ("teacher123", "teacher"),
         "user": ("user123", "user"),
     }
 
@@ -56,12 +57,14 @@ HARDCODED_USERS: dict[str, tuple[str, str]] = {}  # Will be checked via _is_demo
 # Default emails for the hardcoded demo users (assigned on first login)
 HARDCODED_USER_EMAILS = {
     "admin": "admin@example.com",
+    "teacher": "teacher@example.com",
     "user": "user@example.com",
 }
 
 # Default full names for the hardcoded demo users
 HARDCODED_USER_FULL_NAMES = {
     "admin": "Administrator",
+    "teacher": "Demo Teacher",
     "user": "Demo User",
 }
 
@@ -86,6 +89,8 @@ class UserResponse(BaseModel):
     avatar_url: str | None = None
     last_login_at: str | None = None
     created_at: str | None = None
+    institution: str | None = None
+    can_override_verdicts: bool = False
 
 
 class MessageResponse(BaseModel):
@@ -114,6 +119,8 @@ def _to_response_dict(user: User) -> dict:
         "avatar_url": user.avatar_path,
         "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
         "created_at": user.created_at.isoformat() if user.created_at else None,
+        "institution": user.institution,
+        "can_override_verdicts": bool(user.can_override_verdicts),
     }
 
 
@@ -216,4 +223,6 @@ def get_me(current_user: User = Depends(get_current_user)):
         avatar_url=current_user.avatar_path,
         last_login_at=current_user.last_login_at.isoformat() if current_user.last_login_at else None,
         created_at=current_user.created_at.isoformat() if current_user.created_at else None,
+        institution=current_user.institution,
+        can_override_verdicts=bool(current_user.can_override_verdicts),
     )

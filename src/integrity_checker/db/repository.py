@@ -250,6 +250,8 @@ class Repository:
         email: str | None = None,
         full_name: str | None = None,
         is_active: bool = True,
+        institution: str | None = None,
+        can_override_verdicts: bool = False,
     ) -> User:
         user = User(
             username=username,
@@ -258,6 +260,8 @@ class Repository:
             email=email,
             full_name=full_name,
             is_active=1 if is_active else 0,
+            institution=institution,
+            can_override_verdicts=1 if can_override_verdicts else 0,
         )
         self.session.add(user)
         self.session.flush()
@@ -272,7 +276,7 @@ class Repository:
                 # Skip None values to keep partial-update semantics; avatar_path
                 # may be set to None to clear.
                 continue
-            if key == "is_active" and isinstance(value, bool):
+            if key in ("is_active", "can_override_verdicts") and isinstance(value, bool):
                 value = 1 if value else 0
             if hasattr(user, key):
                 setattr(user, key, value)
