@@ -13,6 +13,9 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from 'lucide-react';
+import { api, type EssaySummary } from '@/api/client';
+import { useToast } from '@/contexts/ToastContext';
+import { ConfirmationModal } from '@/components/ConfirmationModal';
 
 /* ============================================================
    SourceLogic — History Page Component
@@ -23,37 +26,23 @@ import {
    - Reports = compilation output history
    ============================================================ */
 
-interface HistoryItem {
-  id: number;
-  filename: string;
-  num_pages: number;
-  uploaded_at: string;
-  user_id: number;
-}
-
 const REFRESH_INTERVAL_MS = 10_000;
 
 export function HistoryPage() {
-  const [items, setItems] = useState<HistoryItem[]>([]);
+  const toast = useToast();
+  const [items, setItems] = useState<EssaySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const loadEssays = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/essays', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data);
-        setError(null);
-      } else {
-        setError(`Error loading history: ${res.status}`);
-      }
+      const data = await api.listEssays();
+      setItems(data);
+      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Connection error');
     } finally {
@@ -67,22 +56,17 @@ export function HistoryPage() {
     return () => clearInterval(interval);
   }, [loadEssays]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Delete this document?')) return;
+  const handleDelete = async () => {
+    const id = confirmDeleteId;
+    if (id == null) return;
+    setConfirmDeleteId(null);
     setDeletingId(id);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/essays/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setItems((prev) => prev.filter((e) => e.id !== id));
-      } else {
-        alert('Delete failed');
-      }
-    } catch {
-      alert('Delete failed');
+      await api.deleteEssay(id);
+      setItems((prev) => prev.filter((e) => e.id !== id));
+      toast.success('Document deleted');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Delete failed');
     } finally {
       setDeletingId(null);
     }
@@ -123,12 +107,13 @@ export function HistoryPage() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-slate-500" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-slate-500" aria-hidden="true" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search documents..."
+          aria-label="Search documents"
           className="input pl-12 pr-10"
         />
         {searchQuery && (
@@ -235,11 +220,12 @@ export function HistoryPage() {
                     onClickCapture={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      handleDelete(essay.id);
+                      setConfirmDeleteId(essay.id);
                     }}
                     disabled={deletingId === essay.id}
                     className="p-2.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
                     title="Delete"
+                    aria-label={`Delete ${essay.filename}`}
                   >
                     {deletingId === essay.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -267,6 +253,16 @@ export function HistoryPage() {
           </p>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={confirmDeleteId !== null}
+        title="Delete this document?"
+        message="This will permanently remove the document and its analysis. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }
