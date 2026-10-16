@@ -9,7 +9,11 @@ Phase 3 introduces the API surface; Phase 4 will build the matching UI.
 
 from __future__ import annotations
 
+import csv
+import io
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -333,3 +337,67 @@ def list_pending_reviews(
             )
         )
     return out
+
+
+@router.get("/classes/{class_id}/export.csv")
+def export_class_csv(
+    class_id: int,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """Stream a CSV of all (essay, verdict) pairs in the class.
+
+    Columns: ``filename, student, verdict_id, label, confidence,
+    validated_at, is_overridden``. Essays with no verdicts still produce
+    one row with empty verdict fields, so the data-row count equals
+    ``len(essays)`` and the total line count equals ``len(essays) + 1``
+    (header).
+    """
+    repo = Repository(db)
+    cls = repo.get_class(class_id)
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+    _ensure_teacher_owns_class(teacher, cls)
+    essays = repo.get_class_essays(class_id)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(
+        [
+            "filename",
+            "student",
+            "verdict_id",
+            "label",
+            "confidence",
+            "validated_at",
+            "is_overridden",
+        ]
+    )
+    for essay in essays:
+        student = repo.get_user_by_id(essay.user_id) if essay.user_id else None
+        student_name = student.username if student else ""
+        verdicts = repo.get_verdicts(essay.id)
+        if not verdicts:
+            # Essay with no verdicts still gets a row so the teacher sees
+            # every uploaded file in the export.
+            writer.writerow([essay.filename, student_name, "", "", "", "", ""])
+            continue
+        for v in verdicts:
+            writer.writerow(
+                [
+                    essay.filename,
+                    student_name,
+                    v.id,
+                    v.label,
+                    v.confidence,
+                    v.validated_at.isoformat() if v.validated_at else "",
+                    "yes" if v.is_overridden else "no",
+                ]
+            )
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="class_{class_id}.csv"',
+        },
+    )
