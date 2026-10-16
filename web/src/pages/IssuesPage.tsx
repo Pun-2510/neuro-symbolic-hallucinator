@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api, type AnalysisReport, type Verdict, type ValidationLabel } from '@/api/client';
+import { type AnalysisReport, type Verdict, type ValidationLabel } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { getSourceDisplayName, getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
+import { useEssayPolling } from '@/hooks/useEssayPolling';
 import {
   AlertTriangle,
   AlertCircle,
@@ -74,7 +75,7 @@ const severityConfig = {
     bgClass: 'bg-slate-50 dark:bg-slate-800',
     borderClass: 'border-slate-200 dark:border-slate-700',
     icon: <Info className="h-5 w-5" />,
-    iconColor: 'text-slate-600 dark:text-slate-400',
+    iconColor: 'text-slate-600 dark:text-slate-300',
     textColor: 'text-slate-700 dark:text-slate-300',
     bgCard: 'bg-slate-50/50 dark:bg-slate-800/50',
     borderCard: 'border-slate-100 dark:border-slate-800',
@@ -136,7 +137,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
               Citation #{citationNum}
             </span>
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">
             <span className="font-medium">{verdict.citation_raw}</span>
           </p>
           <p className={`text-sm ${config.textColor}`}>
@@ -161,7 +162,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-4">
           {/* Reasoning */}
           <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+            <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
               What this means
             </h4>
             <p className="text-sm text-slate-700 dark:text-slate-300">
@@ -172,7 +173,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
           {/* Mismatched fields */}
           {verdict.mismatched_fields.length > 0 && (
             <div>
-              <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+              <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
                 Mismatched Fields
               </h4>
               <div className="flex flex-wrap gap-2">
@@ -191,7 +192,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
           {/* Triggered rules */}
           {verdict.triggered_rules.length > 0 && (
             <div>
-              <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+              <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
                 Triggered Rules
               </h4>
               <div className="flex flex-wrap gap-2">
@@ -210,7 +211,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
           {/* Source results */}
           {sourceResults.length > 0 && (
             <div>
-              <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+              <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
                 Source Lookup
               </h4>
               <div className="space-y-1">
@@ -225,7 +226,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
                         {getSourceDisplayName(source.source)}
                       </span>
                     </span>
-                    <span className="text-slate-500 dark:text-slate-400">
+                    <span className="text-slate-600 dark:text-slate-300">
                       Match
                     </span>
                   </div>
@@ -237,7 +238,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
           {/* Confidence score */}
           {verdict.confidence > 0 && (
             <div>
-              <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+              <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
                 Confidence
               </h4>
               <div className="flex items-center gap-2">
@@ -253,7 +254,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
                     style={{ width: `${verdict.confidence * 100}%` }}
                   />
                 </div>
-                <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
                   {Math.round(verdict.confidence * 100)}%
                 </span>
               </div>
@@ -263,7 +264,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
           {/* Mapping status */}
           {verdict.mapping_status && verdict.mapping_status !== 'matched' && (
             <div>
-              <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+              <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
                 Mapping Status
               </h4>
               <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium ${
@@ -308,7 +309,7 @@ function SeveritySection({
           </div>
           <div className="text-left">
             <span className={`font-semibold ${config.textColor}`}>{config.label}</span>
-            <span className="ml-2 text-sm text-slate-500 dark:text-slate-400">
+            <span className="ml-2 text-sm text-slate-600 dark:text-slate-300">
               {verdicts.length} {verdicts.length === 1 ? 'issue' : 'issues'}
             </span>
           </div>
@@ -341,61 +342,13 @@ function SeveritySection({
 
 export function IssuesPage() {
   const { id } = useParams<{ id: string }>();
-  const [report, setReport] = useState<AnalysisReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'critical' | 'warning' | 'info'>('all');
 
-  useEffect(() => {
-    if (!id) return;
-    // Validate essay ID - security: prevent NaN or invalid IDs
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId) || numericId <= 0) {
-      setError('Invalid essay ID');
-      return;
-    }
-
-    let cancelled = false;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-    const tryFetch = async () => {
-      try {
-        const data = await api.getEssay(numericId);
-        if (cancelled) return;
-        if (data) {
-          setReport(data);
-          setError(null);
-          if (pollTimer) clearInterval(pollTimer);
-        } else {
-          // Pipeline still running — poll status until complete.
-          const status = await api.getEssayStatus(numericId);
-          if (cancelled) return;
-          if (status.status === 'failed') {
-            setError(status.error ?? 'Pipeline failed.');
-            if (pollTimer) clearInterval(pollTimer);
-            return;
-          }
-          if (status.status === 'completed') {
-            const retry = await api.getEssay(numericId);
-            if (retry) {
-              setReport(retry);
-              setError(null);
-              if (pollTimer) clearInterval(pollTimer);
-              return;
-            }
-          }
-          if (!pollTimer) pollTimer = setInterval(tryFetch, 2000);
-        }
-      } catch {
-        if (!cancelled) setError('Failed to load report. Please try again.');
-      }
-    };
-
-    tryFetch();
-    return () => {
-      cancelled = true;
-      if (pollTimer) clearInterval(pollTimer);
-    };
-  }, [id]);
+  // SECURITY: parseInt guard retained — useEssayPolling báo error khi id không hợp lệ
+  const numericId = id ? parseInt(id, 10) : null;
+  const { report, error } = useEssayPolling(
+    numericId !== null && !Number.isNaN(numericId) && numericId > 0 ? numericId : null,
+  );
 
   // Filter and group verdicts by severity
   const issuesBySeverity = useMemo(() => {
@@ -437,7 +390,7 @@ export function IssuesPage() {
           <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
           <div>
             <p className="font-medium text-red-700 dark:text-red-300">Error loading issues</p>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{error}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{error}</p>
             <Link to="/history" className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
               ← Back to Reports
             </Link>
@@ -451,7 +404,7 @@ export function IssuesPage() {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin" />
-        <span className="ml-3 text-slate-600 dark:text-slate-400">Loading issues...</span>
+        <span className="ml-3 text-slate-600 dark:text-slate-300">Loading issues...</span>
       </div>
     );
   }
@@ -462,7 +415,7 @@ export function IssuesPage() {
       <div>
         <Link
           to={`/verification/report/${id}`}
-          className="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-3 transition-colors"
+          className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 mb-3 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Report
@@ -472,7 +425,7 @@ export function IssuesPage() {
             <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
               Issues
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 truncate" title={report.filename}>
+            <p className="text-slate-600 dark:text-slate-300 mt-1 truncate" title={report.filename}>
               {report.filename}
             </p>
           </div>
@@ -483,42 +436,50 @@ export function IssuesPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="stat-card text-center">
           <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalIssues}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total Issues</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Total Issues</p>
         </div>
         <div className="stat-card text-center border-red-200 dark:border-red-800">
           <p className="text-2xl font-bold text-red-600 dark:text-red-400">{issuesBySeverity.critical.length}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Critical</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Critical</p>
         </div>
         <div className="stat-card text-center border-amber-200 dark:border-amber-800">
           <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{issuesBySeverity.warning.length}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Warning</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Warning</p>
         </div>
         <div className="stat-card text-center border-slate-200 dark:border-slate-700">
-          <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">{issuesBySeverity.info.length}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Info</p>
+          <p className="text-2xl font-bold text-slate-600 dark:text-slate-300">{issuesBySeverity.info.length}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Info</p>
         </div>
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 flex-wrap">
-        {(['all', 'critical', 'warning', 'info'] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              filter === f
-                ? 'bg-indigo-600 text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-            {f !== 'all' && (
-              <span className="ml-2 opacity-75">
-                ({issuesBySeverity[f as keyof typeof issuesBySeverity].length})
-              </span>
-            )}
-          </button>
-        ))}
+      <div
+        role="group"
+        aria-label="Filter issues by severity"
+        className="flex gap-2 flex-wrap"
+      >
+        {(['all', 'critical', 'warning', 'info'] as const).map((f) => {
+          const isActive = filter === f;
+          return (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              aria-pressed={isActive}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {f !== 'all' && (
+                <span className="ml-2 opacity-75">
+                  ({issuesBySeverity[f as keyof typeof issuesBySeverity].length})
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Issues sections */}
@@ -532,7 +493,7 @@ export function IssuesPage() {
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
             No Issues Found
           </h3>
-          <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+          <p className="text-slate-600 dark:text-slate-300 max-w-sm mx-auto">
             All citations and references have been verified successfully. No critical, warning, or info issues detected.
           </p>
         </div>
@@ -550,25 +511,25 @@ export function IssuesPage() {
 
       {/* Legend */}
       <div className="card p-4 bg-slate-50 dark:bg-slate-800/50">
-        <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+        <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">
           Severity Legend
         </h3>
         <div className="flex flex-wrap gap-4 text-sm">
           <div className="flex items-center gap-2">
             <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-            <span className="text-slate-600 dark:text-slate-400">
+            <span className="text-slate-600 dark:text-slate-300">
               Critical: Suspected hallucination
             </span>
           </div>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            <span className="text-slate-600 dark:text-slate-400">
+            <span className="text-slate-600 dark:text-slate-300">
               Warning: Metadata error
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Info className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-            <span className="text-slate-600 dark:text-slate-400">
+            <Info className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+            <span className="text-slate-600 dark:text-slate-300">
               Info: Unresolved
             </span>
           </div>

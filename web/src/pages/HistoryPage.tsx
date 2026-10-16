@@ -85,7 +85,7 @@ export function HistoryPage() {
           <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
             Verification Reports
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-slate-600 dark:text-slate-300 mt-1">
             {items.length} document{items.length !== 1 ? 's' : ''} · Auto-refresh every 10s
           </p>
         </div>
@@ -97,7 +97,8 @@ export function HistoryPage() {
           <button
             onClick={() => loadEssays()}
             disabled={loading}
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
+            aria-label="Refresh history"
+            className="p-2 min-h-11 min-w-11 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
             title="Refresh"
           >
             <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
@@ -119,7 +120,8 @@ export function HistoryPage() {
         {searchQuery && (
           <button
             onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            aria-label="Clear search"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 min-h-11 min-w-11 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           >
             <XCircle className="h-5 w-5" />
           </button>
@@ -138,7 +140,7 @@ export function HistoryPage() {
       {loading && items.length === 0 ? (
         <div className="card p-12 flex flex-col items-center justify-center">
           <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
-          <p className="text-sm text-slate-500 dark:text-slate-400">Loading documents...</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">Loading documents...</p>
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="card p-12 text-center">
@@ -150,7 +152,7 @@ export function HistoryPage() {
               <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
                 No documents found
               </h3>
-              <p className="text-slate-500 dark:text-slate-400 mb-4">
+              <p className="text-slate-600 dark:text-slate-300 mb-4">
                 No documents match "{searchQuery}"
               </p>
               <button
@@ -165,7 +167,7 @@ export function HistoryPage() {
               <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
                 No documents yet
               </h3>
-              <p className="text-slate-500 dark:text-slate-400 mb-6">
+              <p className="text-slate-600 dark:text-slate-300 mb-6">
                 Upload your first document to start verifying citations
               </p>
               <Link to="/upload" className="btn-primary">
@@ -193,7 +195,7 @@ export function HistoryPage() {
                     <p className="font-semibold text-slate-900 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                       {essay.filename}
                     </p>
-                    <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300 mt-1">
                       <span className="flex items-center gap-1.5">
                         <FileText className="h-3.5 w-3.5" />
                         {essay.num_pages} pages
@@ -206,7 +208,7 @@ export function HistoryPage() {
                           year: 'numeric',
                         })}
                       </span>
-                      <span className="text-slate-400 dark:text-slate-500">ID #{essay.id}</span>
+                      <span className="text-slate-600 dark:text-slate-300">ID #{essay.id}</span>
                     </div>
                   </div>
                 </div>
@@ -223,7 +225,7 @@ export function HistoryPage() {
                       setConfirmDeleteId(essay.id);
                     }}
                     disabled={deletingId === essay.id}
-                    className="p-2.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
+                    className="p-2.5 min-h-11 min-w-11 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
                     title="Delete"
                     aria-label={`Delete ${essay.filename}`}
                   >
@@ -243,7 +245,7 @@ export function HistoryPage() {
 
       {/* Stats Footer */}
       {items.length > 0 && (
-        <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 pt-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300 pt-4 border-t border-slate-200 dark:border-slate-700">
           <p>
             Showing {filteredItems.length} of {items.length} documents
           </p>

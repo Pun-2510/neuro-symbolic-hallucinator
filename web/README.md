@@ -17,6 +17,19 @@ Build production:
 npm run build
 ```
 
+### Vite dev cache (504 "Outdated Optimize Dep")
+
+After restarting the Vite dev server, navigating directly to `/verification/report/:id`
+(EssayPage) or any other lazy-loaded page may briefly throw
+`Failed to fetch dynamically imported module`. This is Vite's pre-bundling cache
+going stale — it resolves itself once you visit any other page first.
+
+If you hit it persistently, clear the cache:
+
+```bash
+npm run dev:clean    # = rm -rf node_modules/.vite && vite
+```
+
 ## Stack
 
 - **React 18** + **TypeScript** + **Vite 5**

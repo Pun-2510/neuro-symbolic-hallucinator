@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api, type AnalysisReport, type Verdict } from '@/api/client';
+import { type AnalysisReport, type Verdict } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { MappingStatusBadge } from '@/components/MappingStatusBadge';
 import { getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
+import { useEssayPolling } from '@/hooks/useEssayPolling';
 import {
   ArrowLeft,
   Loader2,
@@ -205,7 +206,7 @@ function CitationPopup({
         <div className="p-6 space-y-4">
           {/* Citation raw text */}
           <div className="min-w-0 flex-1">
-            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
               In-text Citation
             </label>
             <p className="mt-1 text-sm text-slate-900 dark:text-slate-100 font-medium">
@@ -216,7 +217,7 @@ function CitationPopup({
           {/* Status badges */}
           <div className="flex flex-wrap gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
                 Verification
               </label>
               <div className="mt-1">
@@ -224,7 +225,7 @@ function CitationPopup({
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
                 Mapping
               </label>
               <div className="mt-1">
@@ -238,7 +239,7 @@ function CitationPopup({
             <>
               {/* Reasoning */}
               <div>
-                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
                   What we found
                 </label>
                 <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
@@ -248,7 +249,7 @@ function CitationPopup({
 
               {/* Confidence */}
               <div>
-                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
                   Confidence
                 </label>
                 <div className="mt-2 flex items-center gap-3">
@@ -264,7 +265,7 @@ function CitationPopup({
                       style={{ width: `${verdict.confidence * 100}%` }}
                     />
                   </div>
-                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
                     {(verdict.confidence * 100).toFixed(0)}%
                   </span>
                 </div>
@@ -273,7 +274,7 @@ function CitationPopup({
               {/* Mismatched fields */}
               {verdict.mismatched_fields.length > 0 && (
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
                     Mismatched Fields
                   </label>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -292,7 +293,7 @@ function CitationPopup({
               {/* Triggered rules */}
               {verdict.triggered_rules.length > 0 && (
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
                     Triggered Rules
                   </label>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -332,62 +333,16 @@ function CitationPopup({
 
 export function DocumentInspectorPage() {
   const { id } = useParams<{ id: string }>();
-  const [report, setReport] = useState<AnalysisReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [selectedCitation, setSelectedCitation] = useState<InlineCitation | null>(null);
   const [selectedVerdict, setSelectedVerdict] = useState<Verdict | null>(null);
   const [filterLabel, setFilterLabel] = useState<string>('all');
 
-  useEffect(() => {
-    if (!id) return;
-    // SECURITY: Validate essay ID - prevent NaN or invalid IDs
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId) || numericId <= 0) {
-      setError('Invalid essay ID');
-      return;
-    }
-
-    let cancelled = false;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-    const tryFetch = async () => {
-      try {
-        const data = await api.getEssay(numericId);
-        if (cancelled) return;
-        if (data) {
-          setReport(data);
-          setError(null);
-          if (pollTimer) clearInterval(pollTimer);
-        } else {
-          const status = await api.getEssayStatus(numericId);
-          if (cancelled) return;
-          if (status.status === 'failed') {
-            setError(status.error ?? 'Pipeline failed.');
-            if (pollTimer) clearInterval(pollTimer);
-            return;
-          }
-          if (status.status === 'completed') {
-            const retry = await api.getEssay(numericId);
-            if (retry) {
-              setReport(retry);
-              setError(null);
-              if (pollTimer) clearInterval(pollTimer);
-              return;
-            }
-          }
-          if (!pollTimer) pollTimer = setInterval(tryFetch, 2000);
-        }
-      } catch {
-        if (!cancelled) setError('Failed to load document. Please try again.');
-      }
-    };
-
-    tryFetch();
-    return () => {
-      cancelled = true;
-      if (pollTimer) clearInterval(pollTimer);
-    };
-  }, [id]);
+  // SECURITY: parseInt guard retained — useEssayPolling báo error khi id không hợp lệ
+  const numericId = id ? parseInt(id, 10) : null;
+  const { report, error } = useEssayPolling(
+    numericId !== null && !Number.isNaN(numericId) && numericId > 0 ? numericId : null,
+    { errorMessage: 'Failed to load document. Please try again.' },
+  );
 
   // Build inline citations
   const inlineCitations = report ? buildInlineCitations(report.verdicts) : [];
@@ -442,7 +397,7 @@ export function DocumentInspectorPage() {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin" />
-        <span className="ml-3 text-slate-600 dark:text-slate-400">
+        <span className="ml-3 text-slate-600 dark:text-slate-300">
           Loading document...
         </span>
       </div>
@@ -455,7 +410,7 @@ export function DocumentInspectorPage() {
       <div>
         <Link
           to={`/verification/report/${id}`}
-          className="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-3 transition-colors"
+          className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 mb-3 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Report
@@ -465,11 +420,11 @@ export function DocumentInspectorPage() {
             <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
               Document Inspector
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 truncate" title={report.filename}>
+            <p className="text-slate-600 dark:text-slate-300 mt-1 truncate" title={report.filename}>
               {report.filename}
             </p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
             <BookOpen className="h-5 w-5" />
             <span>
               {report.num_pages} pages · {inlineCitations.length} citations
@@ -480,31 +435,31 @@ export function DocumentInspectorPage() {
 
       {/* Status legend */}
       <div className="card p-4">
-        <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
+        <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-3">
           Inline Status Legend
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="flex items-center gap-2">
             <div className="w-4 h-0.5 bg-emerald-500" />
-            <span className="text-sm text-slate-600 dark:text-slate-400">
+            <span className="text-sm text-slate-600 dark:text-slate-300">
               Verified ({statusCounts.verified})
             </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-0.5 bg-amber-500" />
-            <span className="text-sm text-slate-600 dark:text-slate-400">
+            <span className="text-sm text-slate-600 dark:text-slate-300">
               Meta Error ({statusCounts.metadata_error})
             </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-0.5 bg-red-500" />
-            <span className="text-sm text-slate-600 dark:text-slate-400">
+            <span className="text-sm text-slate-600 dark:text-slate-300">
               Suspected ({statusCounts.suspected_hallucination})
             </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-0.5 bg-slate-400" />
-            <span className="text-sm text-slate-600 dark:text-slate-400">
+            <span className="text-sm text-slate-600 dark:text-slate-300">
               Unverifiable ({statusCounts.unresolved})
             </span>
           </div>
@@ -518,7 +473,7 @@ export function DocumentInspectorPage() {
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             filterLabel === 'all'
               ? 'bg-indigo-600 text-white'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
         >
           All ({inlineCitations.length})
@@ -530,7 +485,7 @@ export function DocumentInspectorPage() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               filterLabel === label
                 ? 'bg-indigo-600 text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
             {label.replace(/_/g, ' ')} ({count})
@@ -553,7 +508,7 @@ export function DocumentInspectorPage() {
           <div className="prose prose-slate dark:prose-invert max-w-none">
             <div className="space-y-4 text-sm leading-relaxed">
               {filteredCitations.length === 0 ? (
-                <p className="text-slate-500 dark:text-slate-400 italic">
+                <p className="text-slate-600 dark:text-slate-300 italic">
                   No citations match the current filter.
                 </p>
               ) : (
@@ -578,7 +533,7 @@ export function DocumentInspectorPage() {
                         </>
                       ) : (
                         <>
-                          <span className="text-slate-500 dark:text-slate-400 italic">
+                          <span className="text-slate-600 dark:text-slate-300 italic">
                             [No surrounding text extracted]
                           </span>{' '}
                           <InlineCitationMarker
@@ -602,7 +557,7 @@ export function DocumentInspectorPage() {
             <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
               Citation List
             </h3>
-            <span className="ml-auto text-sm text-slate-500 dark:text-slate-400">
+            <span className="ml-auto text-sm text-slate-600 dark:text-slate-300">
               {filteredCitations.length} citations
             </span>
           </div>
@@ -621,7 +576,7 @@ export function DocumentInspectorPage() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <span className="text-xs font-mono text-slate-500 dark:text-slate-400 shrink-0">
+                    <span className="text-xs font-mono text-slate-600 dark:text-slate-300 shrink-0">
                       [{index + 1}]
                     </span>
                     <div className="flex-1 min-w-0">

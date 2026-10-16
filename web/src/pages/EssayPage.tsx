@@ -4,15 +4,11 @@ import { api, type AnalysisReport, type Verdict, type MatchedSource, type Citati
 import { CISScoreCard } from '@/components/CISScoreCard';
 import { VerdictTable } from '@/components/VerdictTable';
 import { CitationDetailDrawer } from '@/components/CitationDetailDrawer';
+import { EssayHeader } from './essay/EssayHeader';
 import { isUrlResource } from '@/lib/verdictExplanation';
 import {
-  FileText,
-  Download,
-  ArrowLeft,
   Loader2,
   ChevronRight,
-  Clock,
-  Quote,
   AlertCircle,
   GitBranch,
   FileSearch,
@@ -323,78 +319,13 @@ export function EssayPage() {
   return (
     <div className="space-y-6">
       {/* Breadcrumb & Header - Section 7 */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
-        <div className="min-w-0 flex-1">
-          <Link
-            to="/history"
-            className="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-3 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Reports
-          </Link>
-          <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100 truncate" title={report.filename}>
-            {report.filename}
-          </h1>
-          <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400 mt-2 flex-wrap">
-            <span className="flex items-center gap-1.5">
-              <FileText className="h-4 w-4" />
-              {report.num_pages} pages
-            </span>
-            <span className="text-slate-300 dark:text-slate-600">·</span>
-            <span className="flex items-center gap-1.5">
-              <Quote className="h-4 w-4" />
-              {report.num_citations} citations
-            </span>
-            {report.style_profile && (
-              <>
-                <span className="text-slate-300 dark:text-slate-600">·</span>
-                <span className="tag tag-primary">{report.style_profile.style}</span>
-              </>
-            )}
-            <span className="text-slate-300 dark:text-slate-600">·</span>
-            <span className="flex items-center gap-1.5">
-              <Clock className="h-4 w-4" />
-              ID #{report.essay_id}
-            </span>
-          </div>
-        </div>
-
-        {/* Export Actions */}
-        <div className="flex gap-2 flex-wrap">
-          <a
-            href={api.downloadReport(report.essay_id, 'json')}
-            className="btn-ghost btn-sm"
-            download
-          >
-            <Download className="h-3.5 w-3.5" />
-            JSON
-          </a>
-          <a
-            href={api.downloadReport(report.essay_id, 'csv')}
-            className="btn-ghost btn-sm"
-            download
-          >
-            <Download className="h-3.5 w-3.5" />
-            CSV
-          </a>
-          <a
-            href={api.downloadReport(report.essay_id, 'pdf')}
-            className="btn-primary btn-sm"
-            download
-          >
-            <Download className="h-3.5 w-3.5" />
-            PDF
-          </a>
-          <a
-            href={api.downloadReport(report.essay_id, 'docx')}
-            className="btn-ghost btn-sm"
-            download
-          >
-            <Download className="h-3.5 w-3.5" />
-            DOCX
-          </a>
-        </div>
-      </div>
+      <EssayHeader
+        essayId={report.essay_id}
+        filename={report.filename}
+        numPages={report.num_pages}
+        numCitations={report.num_citations}
+        styleName={report.style_profile?.style}
+      />
 
       {/* Stats Overview - Section 7 */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

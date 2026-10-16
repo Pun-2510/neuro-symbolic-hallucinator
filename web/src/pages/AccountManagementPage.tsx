@@ -113,7 +113,7 @@ export function AccountManagementPage() {
           <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
             Account Management
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-slate-600 dark:text-slate-300 mt-1">
             Manage user accounts, roles, and permissions
           </p>
         </div>
@@ -185,7 +185,7 @@ export function AccountManagementPage() {
         {loading ? (
           <div className="p-12 flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 text-indigo-600 animate-spin mb-4" />
-            <p className="text-sm text-slate-500">Loading users...</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">Loading users...</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center">
@@ -197,7 +197,7 @@ export function AccountManagementPage() {
                 ? 'No users match your filters'
                 : 'No users yet'}
             </h3>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">
+            <p className="text-slate-600 dark:text-slate-300 text-sm">
               {searchQuery || roleFilter !== 'all' || statusFilter !== 'all'
                 ? 'Try adjusting your search or filters'
                 : 'Create the first user to get started'}
@@ -208,22 +208,22 @@ export function AccountManagementPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     User
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Last Login
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Member Since
                   </th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -251,7 +251,7 @@ export function AccountManagementPage() {
                           <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
                             {u.full_name || u.username}
                           </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                          <p className="text-xs text-slate-600 dark:text-slate-300 truncate">
                             {u.username}
                             {u.email && ` · ${u.email}`}
                           </p>
@@ -264,7 +264,7 @@ export function AccountManagementPage() {
                     <td className="py-3 px-4">
                       <StatusBadge active={u.is_active} />
                     </td>
-                    <td className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400">
+                    <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">
                       {u.last_login_at
                         ? new Date(u.last_login_at).toLocaleDateString('en-US', {
                             month: 'short',
@@ -273,7 +273,7 @@ export function AccountManagementPage() {
                           })
                         : '—'}
                     </td>
-                    <td className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400">
+                    <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">
                       {u.created_at
                         ? new Date(u.created_at).toLocaleDateString('en-US', {
                             month: 'short',
@@ -311,7 +311,7 @@ export function AccountManagementPage() {
 
       {/* Footer count */}
       {!loading && (
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
           Showing {filtered.length} of {users.length} users
         </p>
       )}

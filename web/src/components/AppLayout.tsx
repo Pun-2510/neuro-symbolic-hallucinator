@@ -118,7 +118,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile menu button */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg"
+        aria-label="Open navigation menu"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 min-h-11 min-w-11 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg"
       >
         <Menu className="h-5 w-5 text-slate-600 dark:text-slate-400" />
       </button>
@@ -144,7 +145,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Mobile close button */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="lg:hidden absolute top-4 right-4 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          aria-label="Close navigation menu"
+          className="lg:hidden absolute top-4 right-4 p-2 min-h-11 min-w-11 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         >
           <X className="h-5 w-5 text-slate-500" />
         </button>

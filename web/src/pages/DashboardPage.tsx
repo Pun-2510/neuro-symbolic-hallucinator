@@ -171,7 +171,7 @@ export function DashboardPage() {
           <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
             Dashboard
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-slate-600 dark:text-slate-300 mt-1">
             Overview of your verification workspace
           </p>
         </div>
@@ -183,7 +183,8 @@ export function DashboardPage() {
           <button
             onClick={() => loadEssays()}
             disabled={loading}
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
+            aria-label="Refresh essays list"
+            className="p-2 min-h-11 min-w-11 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
             title="Refresh"
           >
             <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
@@ -196,7 +197,7 @@ export function DashboardPage() {
         {statCards.map((card) => (
           <div key={card.label} className={`card p-5 ${card.bg}`}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm text-slate-600 dark:text-slate-400">{card.label}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300">{card.label}</p>
               <card.icon className={`h-5 w-5 ${card.color}`} />
             </div>
             <p className={`text-2xl font-bold font-display ${card.color}`}>{card.value}</p>
@@ -238,7 +239,7 @@ export function DashboardPage() {
         {loading && essays.length === 0 ? (
           <div className="p-12 flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
-            <p className="text-sm text-slate-500 dark:text-slate-400">Loading documents...</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">Loading documents...</p>
           </div>
         ) : filteredEssays.length === 0 ? (
           <div className="p-12 text-center">
@@ -250,7 +251,7 @@ export function DashboardPage() {
                 <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
                   No documents found
                 </h3>
-                <p className="text-slate-500 dark:text-slate-400 mb-4">
+                <p className="text-slate-600 dark:text-slate-300 mb-4">
                   No documents match "{searchQuery}"
                 </p>
                 <button
@@ -265,7 +266,7 @@ export function DashboardPage() {
                 <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
                   No documents yet
                 </h3>
-                <p className="text-slate-500 dark:text-slate-400 mb-6">
+                <p className="text-slate-600 dark:text-slate-300 mb-6">
                   Upload your first document to start verifying citations
                 </p>
                 <Link to="/upload" className="btn-primary">
@@ -280,16 +281,16 @@ export function DashboardPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Document
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Pages
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Uploaded
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -309,19 +310,19 @@ export function DashboardPage() {
                           <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate max-w-md">
                             {essay.filename}
                           </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                          <p className="text-xs text-slate-600 dark:text-slate-300">
                             ID #{essay.id}
                           </p>
                         </div>
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                      <span className="text-sm text-slate-600 dark:text-slate-300">
                         {essay.num_pages}
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
                         <Clock className="h-3.5 w-3.5" />
                         {new Date(essay.uploaded_at).toLocaleDateString('en-US', {
                           month: 'short',
@@ -368,7 +369,7 @@ export function DashboardPage() {
 
       {/* Stats Footer */}
       {essays.length > 0 && (
-        <div className="text-sm text-slate-500 dark:text-slate-400">
+        <div className="text-sm text-slate-600 dark:text-slate-300">
           <p>
             Showing {filteredEssays.length} of {essays.length} documents
           </p>
