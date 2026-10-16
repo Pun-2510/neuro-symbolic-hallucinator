@@ -100,3 +100,11 @@ web/playwright-report/
 
 # User avatars (uploaded images)
 data/avatars/
+
+# Working plan docs (not part of source — kept locally)
+IMPLEMENTATION_PHASE2_PLAN.md
+IMPLEMENTATION_PHASE3_PLAN.md
+IMPLEMENTATION_ROADMAP.md
+PHASE1_2_VERIFICATION_REPORT.md
+ROLES_PLAN.md
+docs/UX_UI_COMPREHENSIVE_AUDIT_REPORT.md
