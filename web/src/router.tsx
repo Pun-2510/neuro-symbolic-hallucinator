@@ -47,6 +47,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ defa
 const AccountManagementPage = lazy(() => import('./pages/AccountManagementPage').then((m) => ({ default: m.AccountManagementPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const MyClassesPage = lazy(() => import('./pages/MyClassesPage').then((m) => ({ default: m.MyClassesPage })));
+const ClassDetailPage = lazy(() => import('./pages/ClassDetailPage').then((m) => ({ default: m.ClassDetailPage })));
 const PendingReviewsPage = lazy(() => import('./pages/PendingReviewsPage').then((m) => ({ default: m.PendingReviewsPage })));
 const SystemHealthPage = lazy(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
@@ -172,6 +173,16 @@ export const router = createBrowserRouter([
           <ProtectedRoute requiredCapabilities={['view_class_history']}>
             <Suspense fallback={<PageSkeleton />}>
               <MyClassesPage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/teacher/classes/:classId',
+        element: (
+          <ProtectedRoute requiredCapabilities={['view_class_history']}>
+            <Suspense fallback={<PageSkeleton />}>
+              <ClassDetailPage />
             </Suspense>
           </ProtectedRoute>
         ),
