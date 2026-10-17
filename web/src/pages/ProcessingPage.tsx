@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Check,
@@ -11,7 +11,8 @@ import {
   Quote,
   AlertTriangle,
 } from 'lucide-react';
-import { api, type EssayStatus, type AnalysisReport } from '@/api/client';
+import { api, type EssayStatus } from '@/api/client';
+import { useEssayReport } from '@/hooks/useEssayReport';
 
 /* ============================================================
    ProcessingPage — Real-time pipeline progress
@@ -56,48 +57,47 @@ export function ProcessingPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  const numericId = id ? parseInt(id, 10) : null;
+  const essayId = numericId !== null && !isNaN(numericId) ? numericId : null;
+
+  // useEssayReport polls until report arrives; we read status separately to drive UI
+  const { data: report } = useEssayReport(essayId, { intervalMs: 1500 });
   const [status, setStatus] = useState<EssayStatus | null>(null);
-  const [report, setReport] = useState<AnalysisReport | null>(null);
   const [redirecting, setRedirecting] = useState(false);
-  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Poll /status every 1.5 s until we know it's done/failed
+  // Independent status poll — needed for the stepper UI; React Query handles the report
   useEffect(() => {
-    if (!id) return;
-
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId)) return;
-
-    const poll = async () => {
+    if (essayId === null) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const tick = async () => {
       try {
-        const snap = await api.getEssayStatus(numericId);
+        const snap = await api.getEssayStatus(essayId);
+        if (cancelled) return;
         setStatus(snap);
-
-        if (snap.status === 'completed') {
-          // Stop polling status — fetch the full report once then redirect
-          if (pollTimer.current) clearInterval(pollTimer.current);
-
-          const rep = await api.getEssay(numericId);
-          if (rep) {
-            setReport(rep);
-            setRedirecting(true);
-            setTimeout(() => navigate(`/verification/report/${id}`), 1500);
-          }
-        } else if (snap.status === 'failed') {
-          if (pollTimer.current) clearInterval(pollTimer.current);
+        if (snap.status === 'failed' || snap.status === 'completed') {
+          if (timer) clearInterval(timer);
         }
       } catch {
-        // Ignore poll errors — keep trying
+        // ignore transient errors
       }
     };
-
-    poll(); // immediate first poll
-    pollTimer.current = setInterval(poll, 1500);
-
+    void tick();
+    timer = setInterval(tick, 1500);
     return () => {
-      if (pollTimer.current) clearInterval(pollTimer.current);
+      cancelled = true;
+      if (timer) clearInterval(timer);
     };
-  }, [id, navigate]);
+  }, [essayId]);
+
+  // Redirect to report page when report arrives
+  useEffect(() => {
+    if (report && essayId !== null) {
+      setRedirecting(true);
+      const t = setTimeout(() => navigate(`/verification/report/${id}`), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [report, essayId, id, navigate]);
 
   const backendIndex = status
     ? Math.min(STEP_KEY_TO_INDEX[status.step] ?? 0, STEP_LABELS.length - 1)
