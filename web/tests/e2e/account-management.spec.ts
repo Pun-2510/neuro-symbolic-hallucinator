@@ -137,7 +137,9 @@ test.describe('Account Management Page', () => {
   test('admin sees Account Management link in sidebar', async ({ page }) => {
     await page.goto('/dashboard');
     await waitForAuth(page);
-    const link = page.getByRole('link', { name: /account management/i });
+    // Sidebar label is "Accounts" (not "Account Management"); the page heading uses
+    // the full name. Match the sidebar link explicitly.
+    const link = page.getByRole('link', { name: 'Accounts' });
     await expect(link).toBeVisible();
   });
 
