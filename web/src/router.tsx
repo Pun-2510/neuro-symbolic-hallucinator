@@ -47,7 +47,10 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ defa
 const AccountManagementPage = lazy(() => import('./pages/AccountManagementPage').then((m) => ({ default: m.AccountManagementPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const MyClassesPage = lazy(() => import('./pages/MyClassesPage').then((m) => ({ default: m.MyClassesPage })));
+const ClassDetailPage = lazy(() => import('./pages/ClassDetailPage').then((m) => ({ default: m.ClassDetailPage })));
 const PendingReviewsPage = lazy(() => import('./pages/PendingReviewsPage').then((m) => ({ default: m.PendingReviewsPage })));
+const SystemHealthPage = lazy(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
+const AuditLogPage = lazy(() => import('./pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
 
 // Wrap any lazy component in a Suspense boundary using PageSkeleton as fallback
 function withSuspense(LazyComponent: React.ComponentType) {
@@ -142,6 +145,26 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: '/admin/system',
+        element: (
+          <ProtectedRoute requiredCapabilities={['view_system_health']}>
+            <Suspense fallback={<PageSkeleton />}>
+              <SystemHealthPage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/admin/audit',
+        element: (
+          <ProtectedRoute requiredCapabilities={['view_audit_log']}>
+            <Suspense fallback={<PageSkeleton />}>
+              <AuditLogPage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
       { path: '/settings', element: withSuspense(SettingsPage) },
       // Teacher (v1.15 / Phase 3) — gated by view_class_history capability
       {
@@ -150,6 +173,16 @@ export const router = createBrowserRouter([
           <ProtectedRoute requiredCapabilities={['view_class_history']}>
             <Suspense fallback={<PageSkeleton />}>
               <MyClassesPage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/teacher/classes/:classId',
+        element: (
+          <ProtectedRoute requiredCapabilities={['view_class_history']}>
+            <Suspense fallback={<PageSkeleton />}>
+              <ClassDetailPage />
             </Suspense>
           </ProtectedRoute>
         ),

@@ -8,6 +8,8 @@ import type {
 } from '@/api/client';
 import { cn } from '@/lib/utils';
 import { RefreshCw } from 'lucide-react';
+import { useRole } from '@/hooks/useRole';
+import { useToast } from '@/contexts/ToastContext';
 
 const LABEL_OPTIONS: { value: ValidationLabel; label: string; color: string }[] = [
   { value: 'verified', label: '✓ Verified', color: 'text-green-700' },
@@ -37,6 +39,7 @@ function OverrideForm({
   onClose: () => void;
   onSubmit: (req: OverrideRequest) => Promise<void>;
 }) {
+  const toast = useToast();
   const [label, setLabel] = useState<ValidationLabel>(verdict.label);
   const [status, setStatus] = useState<CitationMappingStatus>(verdict.mapping_status);
   const [reason, setReason] = useState('');
@@ -48,6 +51,7 @@ function OverrideForm({
     setSubmitting(true);
     try {
       await onSubmit({ verdict_id: verdict.citation_id, new_label: label, new_mapping_status: status, reason });
+      toast.success('Đã ghi đè verdict & ghi audit log');
       setDone(true);
       setTimeout(onClose, 500);
     } finally {
@@ -162,6 +166,12 @@ export function OverrideControls({
   onOverride: (req: OverrideRequest) => Promise<void>;
   className?: string;
 }) {
+  // Capability gate — only users with override_verdict may see the controls.
+  // Task 18 (Phase 4): centralize the gate here so EssayPage can mount
+  // OverrideControls unconditionally without worrying about role.
+  const { has } = useRole();
+  if (!has('override_verdict')) return null;
+
   const [open, setOpen] = useState(false);
 
   // Close on Escape

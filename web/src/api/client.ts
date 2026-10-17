@@ -390,6 +390,43 @@ export interface TeacherDashboard {
   classes: Class[];
 }
 
+// --- Phase 4: Teacher pending reviews + Admin system health/audit ---
+
+export interface PendingVerdict {
+  verdict_id: number;
+  essay_id: number;
+  filename: string;
+  student_username: string | null;
+  label: string;
+  confidence: number;
+  reasoning: string;
+  validated_at: string;
+}
+
+export interface SystemHealth {
+  status: string;
+  totals: {
+    users: number;
+    admins: number;
+    teachers: number;
+    students: number;
+    essays: number;
+    verdicts: number;
+  };
+  verdict_label_counts: Record<string, number>;
+  cache_stats: Record<string, unknown>;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  verdict_id: number;
+  original_label: string;
+  new_label: string;
+  user: string;
+  note: string | null;
+  logged_at: string | null;
+}
+
 // --- Endpoints ---
 
 export const api = {
@@ -457,6 +494,20 @@ export const api = {
   listClassEssays: (classId: number) =>
     request<ClassEssay[]>(`/teacher/classes/${classId}/essays`),
   getTeacherDashboard: () => request<TeacherDashboard>('/teacher/dashboard'),
+  listPendingReviews: (classId: number) =>
+    request<PendingVerdict[]>(`/teacher/classes/${classId}/pending-reviews`),
+  getSystemHealth: () => request<SystemHealth>('/system/health'),
+  listAuditLog: (
+    params: { limit?: number; offset?: number; user?: string } = {},
+  ) => {
+    const qs = new URLSearchParams();
+    if (params.limit) qs.set('limit', String(params.limit));
+    if (params.offset) qs.set('offset', String(params.offset));
+    if (params.user) qs.set('user', params.user);
+    return request<AuditLogEntry[]>(`/audit/log?${qs.toString()}`);
+  },
+  exportClassCSV: (classId: number) =>
+    `${BASE_URL}/teacher/classes/${classId}/export.csv`,
 
 
   uploadEssay: (file: File) => {

@@ -2,6 +2,8 @@ import { useCallback, useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, FileText, X, Loader2, CheckCircle2, AlertCircle, Clock, RefreshCw, ExternalLink, Trash2 } from 'lucide-react';
 import { api } from '../api/client';
+import { useRole } from '@/hooks/useRole';
+import type { Class } from '@/api/client';
 
 /* ============================================================
    Batch Upload Page — v1.0
@@ -79,6 +81,17 @@ function getStatusText(status: FileStatus, progress: number): string {
 }
 
 export function BatchUploadPage() {
+  const { isTeacher, isAdmin } = useRole();
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [targetClassId, setTargetClassId] = useState<number | null>(null);
+
+  // Load classes for teacher/admin (Task 20 — Phase 4)
+  useEffect(() => {
+    if (isTeacher || isAdmin) {
+      api.listMyClasses().then(setClasses).catch(() => setClasses([]));
+    }
+  }, [isTeacher, isAdmin]);
+
   const [files, setFiles] = useState<BatchFileItem[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [queueState, setQueueState] = useState<QueueState>({ isProcessing: false, currentIndex: -1, hasAutoNavigated: false });
@@ -318,6 +331,36 @@ export function BatchUploadPage() {
           Upload multiple PDFs for concurrent citation analysis
         </p>
       </div>
+
+      {/* Class selector (teacher/admin only) — Task 20 */}
+      {(isTeacher || isAdmin) && classes.length > 0 && (
+        <div className="mb-6 max-w-md mx-auto">
+          <label
+            htmlFor="batch-class-select"
+            className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300"
+          >
+            Gán vào lớp (optional)
+          </label>
+          <select
+            id="batch-class-select"
+            value={targetClassId ?? ''}
+            onChange={(e) =>
+              setTargetClassId(e.target.value ? Number(e.target.value) : null)
+            }
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">-- Không gán lớp --</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Choose which class to assign these essays to.
+          </p>
+        </div>
+      )}
 
       {/* Dropzone */}
       <div

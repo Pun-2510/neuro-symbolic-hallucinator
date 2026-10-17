@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, Search, Loader2, UserCog, Shield, ShieldCheck, ShieldAlert, ImageIcon, X } from 'lucide-react';
+import { UserPlus, Search, Loader2, UserCog, ImageIcon, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import { UserFormDialog } from '@/components/UserFormDialog';
 import { DeleteUserDialog } from '@/components/DeleteUserDialog';
+import { RoleBadge } from '@/components/RoleBadge';
 import type { User } from '@/api/client';
 import { api } from '@/api/client';
 
@@ -80,18 +81,7 @@ export function AccountManagementPage() {
     setDeleteDialogOpen(true);
   };
 
-  const RoleBadge = ({ role }: { role: string }) => (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-        role === 'admin'
-          ? 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'
-          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-      }`}
-    >
-      {role === 'admin' ? <Shield className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
-      {role}
-    </span>
-  );
+  // RoleBadge is now imported from @/components/RoleBadge (Phase 4 / Task 17).
 
   const StatusBadge = ({ active }: { active: boolean }) => (
     <span
@@ -218,6 +208,9 @@ export function AccountManagementPage() {
                     Status
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                    Lớp
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Last Login
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
@@ -263,6 +256,9 @@ export function AccountManagementPage() {
                     </td>
                     <td className="py-3 px-4">
                       <StatusBadge active={u.is_active} />
+                    </td>
+                    <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">
+                      {u.institution ?? '—'}
                     </td>
                     <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">
                       {u.last_login_at

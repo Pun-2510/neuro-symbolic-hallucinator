@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from integrity_checker.db.models import (
+    AuditLog,
     CitationCache,
     CitationRecord,
     Class,
@@ -215,6 +216,37 @@ class Repository:
             verdict.mapping_status = new_mapping_status
         self.session.flush()
         return verdict
+
+    def log_audit(
+        self,
+        verdict_id: int,
+        original_label: str,
+        new_label: str,
+        user: str,
+        note: str | None = None,
+    ) -> AuditLog:
+        """Append-only audit row. Never update or delete via repository."""
+        row = AuditLog(
+            verdict_id=verdict_id,
+            original_label=original_label,
+            new_label=new_label,
+            user=user,
+            note=note,
+        )
+        self.session.add(row)
+        return row
+
+    def list_audit_log(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        user_filter: str | None = None,
+    ) -> list[AuditLog]:
+        """Return audit rows newest-first, optionally filtered by user."""
+        q = self.session.query(AuditLog)
+        if user_filter:
+            q = q.filter(AuditLog.user == user_filter)
+        return q.order_by(AuditLog.logged_at.desc()).limit(limit).offset(offset).all()
 
     def get_citations(self, essay_id: int) -> list[CitationRecord]:
         """Return extracted citations in insertion order."""
@@ -594,4 +626,30 @@ class Repository:
                 VerdictRecord.label.in_(["metadata_error", "suspected_hallucination"]),
             )
             .count()
+        )
+
+    def list_pending_reviews_for_class(self, class_id: int) -> list[VerdictRecord]:
+        """Verdicts trong essays của students trong class này, limited to
+        labels that need review (``metadata_error`` or
+        ``suspected_hallucination``) and not yet overridden. Dùng cho
+        teacher pending-reviews UI.
+        """
+        student_ids = [
+            row[0]
+            for row in self.session.query(ClassMembership.student_id)
+            .filter(ClassMembership.class_id == class_id)
+            .all()
+        ]
+        if not student_ids:
+            return []
+        return list(
+            self.session.query(VerdictRecord)
+            .join(EssayRecord, EssayRecord.id == VerdictRecord.essay_id)
+            .filter(
+                EssayRecord.user_id.in_(student_ids),
+                VerdictRecord.label.in_(["metadata_error", "suspected_hallucination"]),
+                VerdictRecord.is_overridden == 0,
+            )
+            .order_by(VerdictRecord.validated_at.desc())
+            .all()
         )

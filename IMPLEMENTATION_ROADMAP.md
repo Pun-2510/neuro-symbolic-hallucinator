@@ -644,13 +644,14 @@ Nếu sát deadline, cắt theo thứ tự:
 
 ---
 
-**Document version**: 1.1
-**Last updated**: 2026-10-16
-**Next review**: Trước khi bắt đầu Phase 4
+**Document version**: 1.2
+**Last updated**: 2026-10-17
+**Next review**: Phase 5 (Polish & Defense Prep)
 
-**Phase 1+2+3 status (2026-10-16)**: ✅ ALL DONE
+**Phase 1+2+3+4 status (2026-10-17)**: ✅ ALL DONE
 - Phase 1: 11 commits (foundation, a11y, code-splitting, API consolidation)
 - Phase 2: 21 commits (polish, contrast, hooks, god component split)
 - Phase 3: 15 commits (teacher role, Class model, capability system)
-- 1029 backend tests pass, 21/21 E2E pass, build OK
+- Phase 4: 19 commits (teacher + admin pages, audit log, system health, e2e tests)
+- 1041 backend tests pass, 3/3 E2E teacher-flow pass, build OK
 - 1 critical bug + 1 high bug + 3 low bugs caught & fixed in audit
