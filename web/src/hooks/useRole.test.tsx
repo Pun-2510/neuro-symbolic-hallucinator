@@ -4,7 +4,8 @@ import { useRole, type UserRole, type UserCapability } from './useRole';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
-import { AuthContext, type AuthUser } from '@/contexts/AuthContext';
+import { AuthContext } from '@/contexts/AuthContext';
+import type { User } from '@/api/client';
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -15,7 +16,7 @@ function createTestQueryClient() {
   });
 }
 
-function hookWrapper(user: AuthUser | null) {
+function hookWrapper(user: User | null) {
   const queryClient = createTestQueryClient();
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -24,7 +25,9 @@ function hookWrapper(user: AuthUser | null) {
           <AuthContext.Provider
             value={{
               user,
-              loading: false,
+              token: user ? 'mock-token' : null,
+              isLoading: false,
+              isAdmin: user?.role === 'admin',
               login: async () => {},
               logout: async () => {},
               refreshUser: async () => {},
@@ -38,12 +41,18 @@ function hookWrapper(user: AuthUser | null) {
   };
 }
 
-const userOf = (role: UserRole): AuthUser => ({
+const userOf = (role: UserRole): User => ({
   id: 1,
   username: 'test',
   role,
   email: 't@test.local',
   full_name: 'Test',
+  is_active: true,
+  avatar_url: null,
+  last_login_at: null,
+  created_at: null,
+  institution: null,
+  can_override_verdicts: role !== 'user',
 });
 
 describe('useRole', () => {

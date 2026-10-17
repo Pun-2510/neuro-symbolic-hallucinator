@@ -1,11 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { queryClient } from '@/lib/queryClient';
 import './i18n';
 import './index.css';
 
@@ -39,13 +41,15 @@ function GlobalErrorFallback(): JSX.Element {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary fallback={<GlobalErrorFallback />}>
-      <ThemeProvider>
-        <ToastProvider position="bottom-right" maxToasts={5}>
-          <AuthProvider>
-            <RouterProvider router={router} />
-          </AuthProvider>
-        </ToastProvider>
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <ToastProvider position="bottom-right" maxToasts={5}>
+            <AuthProvider>
+              <RouterProvider router={router} />
+            </AuthProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 );
