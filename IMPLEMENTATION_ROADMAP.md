@@ -431,12 +431,21 @@ useEffect(() => {
 
 **Mục tiêu**: React Query adoption, finish god component splits, ConfirmationModal, full-text search. Sau phase này, app ready cho thesis defense.
 
-**Exit criteria**:
-- [ ] Tất cả 5 polling pages dùng React Query
-- [ ] Không còn `any` type trong TypeScript
-- [ ] ConfirmationModal dùng cho tất cả destructive actions
-- [ ] Full-text search hoạt động ở Dashboard + History + Verdict
-- [ ] Test coverage: Vitest cho hooks + Playwright e2e cho top 10 flows
+**Phase 5 status (2026-10-17)**: ✅ DONE (core scope)
+- 11 commits on `feat/phase-5-polish` branch
+- React Query adopted for 5 pages: DashboardPage, HistoryPage, ProcessingPage, EssayPage, OrphanDetectionPage
+- New hooks: useEssays, useDeleteEssay, useDashboardStats, useEssayReport, useOverrideVerdict, useOrphanReport
+- Vitest setup + 20 tests across 4 hook files (useDebounce, useLocalStorage, useRole, useEssayPolling)
+- Initial bundle: 157 KB (under 250 KB target)
+- Backend 965/965 tests pass, build OK
+- **Deferred to post-defense**: full-text search (28.x), `as any` cleanup, optimistic override
+
+**Exit criteria** (core scope ✅):
+- [x] Tất cả 5 polling pages dùng React Query
+- [ ] Không còn `any` type trong TypeScript (3 occurrences deferred)
+- [x] ConfirmationModal dùng cho tất cả destructive actions (Phase 4 đã xong)
+- [ ] Full-text search (deferred — basic search đã có)
+- [x] Test coverage: Vitest cho 4 hooks (20 tests) + Playwright e2e (112 tests, Phase 4)
 
 ---
 
