@@ -21,6 +21,7 @@ import {
 import { api, type EssaySummary, type AnalysisReport } from '@/api/client';
 import { useToast } from '@/contexts/ToastContext';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
+import { useRole } from '@/hooks/useRole';
 
 /* ============================================================
    SourceLogic — Dashboard Page Component
@@ -39,6 +40,7 @@ const REFRESH_INTERVAL_MS = 10_000;
 
 export function DashboardPage() {
   const toast = useToast();
+  const { isTeacher, isAdmin } = useRole();
   const [essays, setEssays] = useState<EssaySummary[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     total_documents: 0,
@@ -267,12 +269,16 @@ export function DashboardPage() {
                   No documents yet
                 </h3>
                 <p className="text-slate-600 dark:text-slate-300 mb-6">
-                  Upload your first document to start verifying citations
+                  {isTeacher || isAdmin
+                    ? 'Chưa có bài nộp nào trong lớp bạn phụ trách.'
+                    : 'Upload your first document to start verifying citations'}
                 </p>
-                <Link to="/upload" className="btn-primary">
-                  <Upload className="h-4 w-4" />
-                  Upload Document
-                </Link>
+                {!(isTeacher || isAdmin) && (
+                  <Link to="/upload" className="btn-primary">
+                    <Upload className="h-4 w-4" />
+                    Upload Document
+                  </Link>
+                )}
               </>
             )}
           </div>
