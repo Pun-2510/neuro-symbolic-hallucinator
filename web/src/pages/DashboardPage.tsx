@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   FileText,
   Upload,
@@ -7,7 +7,6 @@ import {
   Clock,
   Trash2,
   RefreshCw,
-  ChevronRight,
   AlertTriangle,
   CheckCircle2,
   Loader2,
@@ -15,13 +14,16 @@ import {
   Scale,
   XCircle,
   TrendingUp,
-  FileCheck,
-  AlertCircle,
 } from 'lucide-react';
-import { api, type EssaySummary, type AnalysisReport } from '@/api/client';
 import { useToast } from '@/contexts/ToastContext';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
 import { useRole } from '@/hooks/useRole';
+import {
+  useEssays,
+  useDeleteEssay,
+  useDashboardStats,
+  type DashboardStats,
+} from '@/hooks/useEssays';
 
 /* ============================================================
    SourceLogic — Dashboard Page Component
@@ -29,102 +31,36 @@ import { useRole } from '@/hooks/useRole';
    Academic Source Verification Workspace
    ============================================================ */
 
-interface DashboardStats {
-  total_documents: number;
-  total_citations: number;
-  avg_cis_score: number | null;
-  verified_rate: number;
-}
-
-const REFRESH_INTERVAL_MS = 10_000;
+const DEFAULT_STATS: DashboardStats = {
+  total_documents: 0,
+  total_citations: 0,
+  avg_cis_score: null,
+  verified_rate: 0,
+};
 
 export function DashboardPage() {
   const toast = useToast();
   const { isTeacher, isAdmin } = useRole();
-  const [essays, setEssays] = useState<EssaySummary[]>([]);
-  const [stats, setStats] = useState<DashboardStats>({
-    total_documents: 0,
-    total_citations: 0,
-    avg_cis_score: null,
-    verified_rate: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { data: essays = [], isLoading, error, refetch, isFetching } = useEssays();
+  const { data: stats = DEFAULT_STATS } = useDashboardStats();
+  const deleteMutation = useDeleteEssay();
   const [searchQuery, setSearchQuery] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-  const loadEssays = useCallback(async (silent = false) => {
-    try {
-      if (!silent) setLoading(true);
-      const data = await api.listEssays();
-      setEssays(data);
-
-      // Calculate aggregate stats from essays (fetch each report to count verdicts)
-      let totalCitations = 0;
-      let totalCIS = 0;
-      let cisCount = 0;
-      let totalVerified = 0;
-      let totalVerdicts = 0;
-
-      for (const essay of data) {
-        try {
-          const report: AnalysisReport | null = await api.getEssay(essay.id);
-          if (report) {
-            totalCitations += report.num_citations || 0;
-            if (report.cis?.score) {
-              totalCIS += report.cis.score;
-              cisCount++;
-            }
-            // Compute verified rate from verdicts (single source of truth)
-            if (Array.isArray(report.verdicts)) {
-              totalVerdicts += report.verdicts.length;
-              totalVerified += report.verdicts.filter(
-                (v) => v.label === 'verified' || v.is_overridden
-              ).length;
-            }
-          }
-        } catch {
-          // Skip failed report fetches (e.g. essay still processing → 425)
-        }
-      }
-
-      setStats({
-        total_documents: data.length,
-        total_citations: totalCitations,
-        avg_cis_score: cisCount > 0 ? Math.round((totalCIS / cisCount) * 100) / 100 : null,
-        verified_rate:
-          totalVerdicts > 0 ? Math.round((totalVerified / totalVerdicts) * 100) : 0,
-      });
-
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Connection error');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadEssays();
-    const interval = setInterval(() => loadEssays(true), REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [loadEssays]);
+  const errorMessage = error ? (error instanceof Error ? error.message : 'Connection error') : null;
+  const deletingId = deleteMutation.isPending
+    ? (deleteMutation.variables ?? null)
+    : null;
 
   const handleDelete = async () => {
     const id = confirmDeleteId;
     if (id == null) return;
     setConfirmDeleteId(null);
-    setDeletingId(id);
     try {
-      await api.deleteEssay(id);
-      setEssays((prev) => prev.filter((e) => e.id !== id));
-      setStats((prev) => ({ ...prev, total_documents: prev.total_documents - 1 }));
+      await deleteMutation.mutateAsync(id);
       toast.success('Document deleted');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Delete failed');
-    } finally {
-      setDeletingId(null);
     }
   };
 
@@ -183,13 +119,13 @@ export function DashboardPage() {
             New Check
           </Link>
           <button
-            onClick={() => loadEssays()}
-            disabled={loading}
+            onClick={() => refetch()}
+            disabled={isFetching}
             aria-label="Refresh essays list"
             className="p-2 min-h-11 min-w-11 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
             title="Refresh"
           >
-            <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-5 w-5 ${isFetching ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -229,16 +165,16 @@ export function DashboardPage() {
       </div>
 
       {/* Error */}
-      {error && (
+      {errorMessage && (
         <div className="card p-5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          <p className="text-sm text-red-700 dark:text-red-300">{errorMessage}</p>
         </div>
       )}
 
       {/* Documents Table */}
       <div className="card overflow-hidden">
-        {loading && essays.length === 0 ? (
+        {isLoading && essays.length === 0 ? (
           <div className="p-12 flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
             <p className="text-sm text-slate-600 dark:text-slate-300">Loading documents...</p>

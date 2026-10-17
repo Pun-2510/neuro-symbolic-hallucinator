@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, type EssaySummary } from '@/api/client';
+import { api, type EssaySummary, type AnalysisReport } from '@/api/client';
 
 const ESSAYS_KEY = ['essays'] as const;
 
@@ -18,6 +18,65 @@ export function useDeleteEssay() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ESSAYS_KEY });
     },
+  });
+}
+
+export interface DashboardStats {
+  total_documents: number;
+  total_citations: number;
+  avg_cis_score: number | null;
+  verified_rate: number;
+}
+
+/**
+ * Aggregate stats từ essays + reports.
+ * Loop qua essays, fetch report, tính tổng. Skip essay nào lỗi.
+ */
+async function loadDashboardStats(essays: EssaySummary[]): Promise<DashboardStats> {
+  let totalCitations = 0;
+  let totalCIS = 0;
+  let cisCount = 0;
+  let totalVerified = 0;
+  let totalVerdicts = 0;
+
+  await Promise.all(
+    essays.map(async (essay) => {
+      try {
+        const report: AnalysisReport | null = await api.getEssay(essay.id);
+        if (!report) return;
+        totalCitations += report.num_citations || 0;
+        if (report.cis?.score) {
+          totalCIS += report.cis.score;
+          cisCount++;
+        }
+        if (Array.isArray(report.verdicts)) {
+          totalVerdicts += report.verdicts.length;
+          totalVerified += report.verdicts.filter(
+            (v) => v.label === 'verified' || v.is_overridden,
+          ).length;
+        }
+      } catch {
+        // Skip essay đang processing (425) hoặc lỗi
+      }
+    }),
+  );
+
+  return {
+    total_documents: essays.length,
+    total_citations: totalCitations,
+    avg_cis_score: cisCount > 0 ? Math.round((totalCIS / cisCount) * 100) / 100 : null,
+    verified_rate:
+      totalVerdicts > 0 ? Math.round((totalVerified / totalVerdicts) * 100) : 0,
+  };
+}
+
+export function useDashboardStats() {
+  const { data: essays = [] } = useEssays();
+  return useQuery({
+    queryKey: ['dashboard-stats', essays.map((e) => e.id).join(',')],
+    queryFn: () => loadDashboardStats(essays),
+    enabled: essays.length > 0,
+    staleTime: 30_000,
   });
 }
 
