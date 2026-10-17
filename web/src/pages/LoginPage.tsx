@@ -257,18 +257,20 @@ export function LoginPage() {
             </button>
           </form>
 
-          {/* Demo credentials hint */}
-          <div className="mt-5 p-4 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 font-medium">Demo credentials:</p>
-            <div className="space-y-1 text-sm font-mono">
-              <p className="text-slate-600 dark:text-slate-300">
-                <span className="text-slate-400 dark:text-slate-500">Username:</span> admin
-              </p>
-              <p className="text-slate-600 dark:text-slate-300">
-                <span className="text-slate-400 dark:text-slate-500">Password:</span> admin123
-              </p>
+          {/* Demo credentials hint — only shown in demo mode (Task 22) */}
+          {import.meta.env.VITE_DEMO_MODE === 'true' && (
+            <div className="mt-5 p-4 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 font-medium">Demo credentials:</p>
+              <div className="space-y-1 text-sm font-mono">
+                <p className="text-slate-600 dark:text-slate-300">
+                  <span className="text-slate-400 dark:text-slate-500">Username:</span> admin
+                </p>
+                <p className="text-slate-600 dark:text-slate-300">
+                  <span className="text-slate-400 dark:text-slate-500">Password:</span> admin123
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Disclaimer */}
           <div className="mt-6 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 flex items-start gap-3">
