@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Loader2,
@@ -13,10 +13,10 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from 'lucide-react';
-import { api, type EssaySummary } from '@/api/client';
 import { useToast } from '@/contexts/ToastContext';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
 import { useRole } from '@/hooks/useRole';
+import { useEssays, useDeleteEssay } from '@/hooks/useEssays';
 
 /* ============================================================
    SourceLogic — History Page Component
@@ -27,50 +27,32 @@ import { useRole } from '@/hooks/useRole';
    - Reports = compilation output history
    ============================================================ */
 
-const REFRESH_INTERVAL_MS = 10_000;
-
 export function HistoryPage() {
   const toast = useToast();
   const { isTeacher, isAdmin } = useRole();
-  const [items, setItems] = useState<EssaySummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { data: items = [], isLoading, error, refetch, isFetching } = useEssays();
+  const deleteMutation = useDeleteEssay();
   const [searchQuery, setSearchQuery] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-  const loadEssays = useCallback(async (silent = false) => {
-    try {
-      if (!silent) setLoading(true);
-      const data = await api.listEssays();
-      setItems(data);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Connection error');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadEssays();
-    const interval = setInterval(() => loadEssays(true), REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [loadEssays]);
+  const errorMessage = error
+    ? error instanceof Error
+      ? error.message
+      : 'Connection error'
+    : null;
+  const deletingId = deleteMutation.isPending
+    ? (deleteMutation.variables ?? null)
+    : null;
 
   const handleDelete = async () => {
     const id = confirmDeleteId;
     if (id == null) return;
     setConfirmDeleteId(null);
-    setDeletingId(id);
     try {
-      await api.deleteEssay(id);
-      setItems((prev) => prev.filter((e) => e.id !== id));
+      await deleteMutation.mutateAsync(id);
       toast.success('Document deleted');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Delete failed');
-    } finally {
-      setDeletingId(null);
     }
   };
 
@@ -88,7 +70,7 @@ export function HistoryPage() {
             Verification Reports
           </h1>
           <p className="text-slate-600 dark:text-slate-300 mt-1">
-            {items.length} document{items.length !== 1 ? 's' : ''} · Auto-refresh every 10s
+            {items.length} document{items.length !== 1 ? 's' : ''} · Auto-refresh active
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -97,13 +79,13 @@ export function HistoryPage() {
             New Check
           </Link>
           <button
-            onClick={() => loadEssays()}
-            disabled={loading}
+            onClick={() => refetch()}
+            disabled={isFetching}
             aria-label="Refresh history"
             className="p-2 min-h-11 min-w-11 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
             title="Refresh"
           >
-            <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-5 w-5 ${isFetching ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -131,15 +113,15 @@ export function HistoryPage() {
       </div>
 
       {/* Error */}
-      {error && (
+      {errorMessage && (
         <div className="card p-5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          <p className="text-sm text-red-700 dark:text-red-300">{errorMessage}</p>
         </div>
       )}
 
       {/* Loading */}
-      {loading && items.length === 0 ? (
+      {isLoading && items.length === 0 ? (
         <div className="card p-12 flex flex-col items-center justify-center">
           <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
           <p className="text-sm text-slate-600 dark:text-slate-300">Loading documents...</p>
