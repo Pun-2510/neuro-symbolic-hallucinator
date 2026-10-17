@@ -13,6 +13,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Exported for test utilities (renderWithProviders). Production code should use useAuth().
+export { AuthContext };
+
 const API_BASE = '/api';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
