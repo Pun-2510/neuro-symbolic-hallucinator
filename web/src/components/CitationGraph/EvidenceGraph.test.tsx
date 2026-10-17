@@ -6,7 +6,7 @@ function makeVerdict(overrides: Partial<Verdict> = {}): Verdict {
   return {
     citation_id: 'cite-1',
     citation_raw: 'Smith et al., 2023',
-    mapping_status: 'exact_match',
+    mapping_status: 'matched',
     mapping_confidence: 0.9,
     label: 'verified',
     confidence: 0.85,

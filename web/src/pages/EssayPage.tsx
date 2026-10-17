@@ -5,23 +5,17 @@ import { CISScoreCard } from '@/components/CISScoreCard';
 import { VerdictTable } from '@/components/VerdictTable';
 import { CitationDetailDrawer } from '@/components/CitationDetailDrawer';
 import { EssayHeader } from './essay/EssayHeader';
+import { EssayActionBar } from './essay/EssayActionBar';
+import { EssayTabNav, type EssayTab } from './essay/EssayTabNav';
+import { EssayStatsGrid } from './essay/EssayStatsGrid';
 import { isUrlResource } from '@/lib/verdictExplanation';
 import { useEssayReport, useOverrideVerdict } from '@/hooks/useEssayReport';
-import {
-  Loader2,
-  ChevronRight,
-  AlertCircle,
-  GitBranch,
-  FileSearch,
-  Link2
-} from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 /* ============================================================
    SourceLogic — Essay/Report Page Component
    Based on UX/UI Concept Section 7-8: Dashboard + Citations & References
    ============================================================ */
-
-type TabType = 'overview' | 'citations' | 'references';
 
 export function EssayPage() {
   const { id } = useParams<{ id: string }>();
@@ -32,7 +26,7 @@ export function EssayPage() {
   const { data: report, isLoading, error } = useEssayReport(essayId);
   const overrideMutation = useOverrideVerdict();
   const [selected, setSelected] = useState<Verdict | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<EssayTab>('overview');
 
   const errorMessage =
     essayId === null
@@ -278,95 +272,27 @@ export function EssayPage() {
       />
 
       {/* Stats Overview - Section 7 */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <div className="stat-card text-center">
-          <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{stats.total}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total</p>
-        </div>
-        <div className="stat-card text-center">
-          <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{stats.verified}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Verified</p>
-        </div>
-        <div className="stat-card text-center">
-          <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{stats.metadataError}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Metadata Error</p>
-        </div>
-        <div className="stat-card text-center">
-          <p className="text-3xl font-bold text-red-600 dark:text-red-400">{stats.suspectedHallucination}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Suspected</p>
-        </div>
-        <div className="stat-card text-center">
-          <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{coverage}%</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Coverage</p>
-        </div>
-      </div>
+      <EssayStatsGrid
+        total={stats.total}
+        verified={stats.verified}
+        metadataError={stats.metadataError}
+        suspectedHallucination={stats.suspectedHallucination}
+        coverage={coverage}
+      />
 
       {/* CIS Score */}
       {academicVerdicts.length > 0 && <CISScoreCard cis={report.cis.score} />}
 
       {/* Quick Links - Section 7: Report navigation */}
-      <div className="flex gap-3 flex-wrap">
-        <Link
-          to={`/verification/report/${id}/issues`}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
-        >
-          <AlertCircle className="h-4 w-4" />
-          Issues
-        </Link>
-        <Link
-          to={`/verification/report/${id}/document`}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
-        >
-          <FileSearch className="h-4 w-4" />
-          Document
-        </Link>
-        <Link
-          to={`/verification/report/${id}/consistency`}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
-        >
-          <Link2 className="h-4 w-4" />
-          Consistency
-        </Link>
-        <Link
-          to={`/verification/report/${id}/trace`}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
-        >
-          <GitBranch className="h-4 w-4" />
-          Logic Trace
-        </Link>
-      </div>
+      <EssayActionBar essayId={id ?? ''} />
 
       {/* Section 8: Tab Navigation - Citations & References */}
-      <div className="border-b border-slate-200 dark:border-slate-700">
-        <nav className="flex gap-6" aria-label="Report sections">
-          {(['overview', 'citations', 'references'] as TabType[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`relative pb-3 text-sm font-medium transition-colors ${
-                activeTab === tab
-                  ? 'text-indigo-600 dark:text-indigo-400'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              {tab === 'citations' && (
-                <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                  {dedupedInText.length}
-                </span>
-              )}
-              {tab === 'references' && (
-                <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                  {references.length}
-                </span>
-              )}
-              {activeTab === tab && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full" />
-              )}
-            </button>
-          ))}
-        </nav>
-      </div>
+      <EssayTabNav
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        citationsCount={dedupedInText.length}
+        referencesCount={references.length}
+      />
 
       {/* Section 8: Citations Tab */}
       {activeTab === 'citations' && (
