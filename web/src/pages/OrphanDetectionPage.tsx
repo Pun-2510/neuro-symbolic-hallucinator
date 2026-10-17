@@ -1,9 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api, type AnalysisReport, type Verdict } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { isUrlResource } from '@/lib/verdictExplanation';
 import { MappingStatusBadge } from '@/components/MappingStatusBadge';
+import { useOrphanReport } from '@/hooks/useOrphanReport';
 import {
   ArrowLeft,
   Loader2,
@@ -208,60 +209,18 @@ function SectionHeader({
 
 export function OrphanDetectionPage() {
   const { id } = useParams<{ id: string }>();
-  const [report, setReport] = useState<AnalysisReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const numericId = id ? parseInt(id, 10) : null;
+  const essayId = numericId !== null && !isNaN(numericId) && numericId > 0
+    ? numericId
+    : null;
+  const { data: report, isLoading, error } = useOrphanReport(essayId);
   const [activeTab, setActiveTab] = useState<'orphans' | 'uncited' | 'all'>('all');
 
-  useEffect(() => {
-    if (!id) return;
-    // SECURITY: Validate essay ID
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId) || numericId <= 0) {
-      setError('Invalid essay ID');
-      return;
-    }
-
-    let cancelled = false;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-    const tryFetch = async () => {
-      try {
-        const data = await api.getEssay(numericId);
-        if (cancelled) return;
-        if (data) {
-          setReport(data);
-          setError(null);
-          if (pollTimer) clearInterval(pollTimer);
-        } else {
-          const status = await api.getEssayStatus(numericId);
-          if (cancelled) return;
-          if (status.status === 'failed') {
-            setError(status.error ?? 'Pipeline failed.');
-            if (pollTimer) clearInterval(pollTimer);
-            return;
-          }
-          if (status.status === 'completed') {
-            const retry = await api.getEssay(numericId);
-            if (retry) {
-              setReport(retry);
-              setError(null);
-              if (pollTimer) clearInterval(pollTimer);
-              return;
-            }
-          }
-          if (!pollTimer) pollTimer = setInterval(tryFetch, 2000);
-        }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed');
-      }
-    };
-
-    tryFetch();
-    return () => {
-      cancelled = true;
-      if (pollTimer) clearInterval(pollTimer);
-    };
-  }, [id]);
+  const errorMessage = essayId === null
+    ? 'Invalid essay ID'
+    : error
+      ? (error instanceof Error ? error.message : 'Failed')
+      : null;
 
   // Calculate orphan stats
   const stats = useMemo(() => {
@@ -269,13 +228,13 @@ export function OrphanDetectionPage() {
     return getOrphanStats(report.verdicts);
   }, [report]);
 
-  if (error) {
+  if (errorMessage) {
     return (
       <div className="card p-6 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800">
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-red-700 dark:text-red-300">Error: {error}</p>
+            <p className="font-medium text-red-700 dark:text-red-300">Error: {errorMessage}</p>
             <Link
               to="/history"
               className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block"
