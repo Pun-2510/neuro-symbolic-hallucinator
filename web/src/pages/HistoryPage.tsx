@@ -170,9 +170,11 @@ export function HistoryPage() {
                 No documents yet
               </h3>
               <p className="text-slate-600 dark:text-slate-300 mb-6">
-                {isTeacher || isAdmin
-                  ? 'Chưa có bài nộp nào trong lớp bạn phụ trách.'
-                  : 'Upload your first document to start verifying citations'}
+                {isAdmin
+                  ? 'Chưa có bài nộp nào trong hệ thống.'
+                  : isTeacher
+                    ? 'Chưa có bài nộp nào trong lớp bạn phụ trách.'
+                    : 'Upload your first document to start verifying citations'}
               </p>
               {!(isTeacher || isAdmin) && (
                 <Link to="/upload" className="btn-primary">

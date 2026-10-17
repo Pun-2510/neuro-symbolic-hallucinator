@@ -148,6 +148,7 @@ export function AccountManagementPage() {
           >
             <option value="all">All Roles</option>
             <option value="admin">Admin</option>
+            <option value="teacher">Teacher</option>
             <option value="user">User</option>
           </select>
 
