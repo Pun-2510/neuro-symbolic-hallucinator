@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api, type AnalysisReport, type Verdict, type MatchedSource, type CitationLink } from '@/api/client';
 import { CISScoreCard } from '@/components/CISScoreCard';
@@ -6,6 +6,7 @@ import { VerdictTable } from '@/components/VerdictTable';
 import { CitationDetailDrawer } from '@/components/CitationDetailDrawer';
 import { EssayHeader } from './essay/EssayHeader';
 import { isUrlResource } from '@/lib/verdictExplanation';
+import { useEssayReport, useOverrideVerdict } from '@/hooks/useEssayReport';
 import {
   Loader2,
   ChevronRight,
@@ -24,90 +25,37 @@ type TabType = 'overview' | 'citations' | 'references';
 
 export function EssayPage() {
   const { id } = useParams<{ id: string }>();
-  const [report, setReport] = useState<AnalysisReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const numericId = id ? parseInt(id, 10) : null;
+  const essayId = numericId !== null && !Number.isNaN(numericId) && numericId > 0
+    ? numericId
+    : null;
+  const { data: report, isLoading, error } = useEssayReport(essayId);
+  const overrideMutation = useOverrideVerdict();
   const [selected, setSelected] = useState<Verdict | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
-  useEffect(() => {
-    if (!id) return;
-    // Validate essay ID - security: prevent NaN or invalid IDs
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId) || numericId <= 0) {
-      setError('Invalid essay ID');
-      return;
-    }
-
-    let cancelled = false;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-    const tryFetch = async () => {
-      try {
-        const data = await api.getEssay(numericId);
-        if (cancelled) return;
-        if (data) {
-          // Got the report
-          setReport(data);
-          setError(null);
-          if (pollTimer) clearInterval(pollTimer);
-        } else {
-          // 425 — pipeline still running. Poll status instead.
-          const status = await api.getEssayStatus(numericId);
-          if (cancelled) return;
-          if (status.status === 'failed') {
-            setError(status.error ?? 'Pipeline failed.');
-            if (pollTimer) clearInterval(pollTimer);
-            return;
-          }
-          if (status.status === 'completed') {
-            // Race condition — try once more
-            const retry = await api.getEssay(numericId);
-            if (retry) {
-              setReport(retry);
-              setError(null);
-              if (pollTimer) clearInterval(pollTimer);
-              return;
-            }
-          }
-          // Otherwise keep polling via status
-          if (!pollTimer) {
-            pollTimer = setInterval(tryFetch, 2000);
-          }
-        }
-      } catch (err) {
-        if (!cancelled) setError('Failed to load report. Please try again.');
-      }
-    };
-
-    tryFetch();
-
-    return () => {
-      cancelled = true;
-      if (pollTimer) clearInterval(pollTimer);
-    };
-  }, [id]);
+  const errorMessage =
+    essayId === null
+      ? 'Invalid essay ID'
+      : error
+        ? (error instanceof Error ? error.message : 'Failed to load report.')
+        : null;
 
   async function handleOverride(verdict: Verdict, req: Parameters<typeof api.overrideVerdict>[1]) {
-    const updated = await api.overrideVerdict(Number(id), req);
-    setReport((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        verdicts: prev.verdicts.map((v) =>
-          v.citation_id === updated.citation_id ? updated : v
-        ),
-      };
+    // Verdict is identified by citation_id (string) in the report
+    await overrideMutation.mutateAsync({
+      verdictId: verdict.citation_id,
+      req,
     });
-    setSelected(updated);
   }
 
-  if (error) {
+  if (errorMessage) {
     return (
       <div className="card p-6 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800">
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium text-red-700 dark:text-red-300">Error: {error}</p>
+            <p className="font-medium text-red-700 dark:text-red-300">Error: {errorMessage}</p>
             <Link to="/history" className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
               ← Back to Reports
             </Link>
@@ -121,7 +69,9 @@ export function EssayPage() {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin" />
-        <span className="ml-3 text-slate-600 dark:text-slate-400">Loading report...</span>
+        <span className="ml-3 text-slate-600 dark:text-slate-400">
+          {isLoading ? 'Loading report...' : 'Waiting for analysis...'}
+        </span>
       </div>
     );
   }

@@ -43,7 +43,7 @@ export function useOverrideVerdict() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ verdictId, req }: { verdictId: number | string; req: OverrideRequest }) =>
-      // api.overrideVerdict signature: (verdictId, body) where verdictId is number
+      // api.overrideVerdict signature: (verdictId, body) — verdictId may be a citation_id string
       api.overrideVerdict(verdictId as number, req),
     onSuccess: () => {
       // Invalidate all essay-report queries (we don't know which one)
