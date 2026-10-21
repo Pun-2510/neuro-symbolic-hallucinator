@@ -13,11 +13,19 @@ export function useEssayReport(
   options: UseEssayReportOptions = {},
 ) {
   const { pollUntilDone = true, intervalMs = 2000 } = options;
+  const queryClient = useQueryClient();
 
   return useQuery({
     queryKey: ['essay-report', essayId],
     queryFn: async (): Promise<AnalysisReport | null> => {
       if (essayId === null) return null;
+      // Once the report has loaded for this essay, don't hit the endpoint again
+      // on remount — a manual invalidation still refreshes it.
+      const cached = queryClient.getQueryData<AnalysisReport | null>([
+        'essay-report',
+        essayId,
+      ]);
+      if (cached) return cached;
       // Try direct report first
       const report = await api.getEssay(essayId);
       if (report) return report;

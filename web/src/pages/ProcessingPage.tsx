@@ -11,8 +11,8 @@ import {
   Quote,
   AlertTriangle,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api, type EssayStatus } from '@/api/client';
-import { useEssayReport } from '@/hooks/useEssayReport';
 
 /* ============================================================
    ProcessingPage — Real-time pipeline progress
@@ -60,10 +60,11 @@ export function ProcessingPage() {
   const numericId = id ? parseInt(id, 10) : null;
   const essayId = numericId !== null && !isNaN(numericId) ? numericId : null;
 
-  // useEssayReport polls until report arrives; we read status separately to drive UI
-  const { data: report } = useEssayReport(essayId, { intervalMs: 1500 });
+  // Poll only /status here — it tells us when the pipeline is done. The report
+  // is fetched once afterwards, so we never spam /report with 425 responses.
   const [status, setStatus] = useState<EssayStatus | null>(null);
   const [redirecting, setRedirecting] = useState(false);
+  const queryClient = useQueryClient();
 
   // Independent status poll — needed for the stepper UI; React Query handles the report
   useEffect(() => {
@@ -90,14 +91,39 @@ export function ProcessingPage() {
     };
   }, [essayId]);
 
-  // Redirect to report page when report arrives
+  // Pipeline finished — fetch the report once (it is ready now, so no 425)
+  // and then move on to the report page.
   useEffect(() => {
-    if (report && essayId !== null) {
+    if (essayId === null) return;
+    const done = status?.status === 'completed';
+    const failed = status?.status === 'failed';
+    if (!done && !failed) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const finish = () => {
+      if (cancelled) return;
       setRedirecting(true);
-      const t = setTimeout(() => navigate(`/verification/report/${id}`), 1500);
-      return () => clearTimeout(t);
+      timer = setTimeout(() => navigate(`/verification/report/${id}`), failed ? 3000 : 1500);
+    };
+
+    if (done) {
+      api.getEssay(essayId).then((report) => {
+        // Seed the cache so the report page renders instantly.
+        if (report) queryClient.setQueryData(['essay-report', essayId], report);
+      }).catch(() => {
+        // Report fetch failed — still take the user to the report page,
+        // which shows the error state itself.
+      }).finally(finish);
+    } else {
+      finish();
     }
-  }, [report, essayId, id, navigate]);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [essayId, status?.status, id, navigate, queryClient]);
 
   const backendIndex = status
     ? Math.min(STEP_KEY_TO_INDEX[status.step] ?? 0, STEP_LABELS.length - 1)
@@ -297,28 +323,6 @@ export function ProcessingPage() {
             />
           ))}
         </div>
-
-        {/* Source retrieval tiles from full report once complete */}
-        {report && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {(['crossref', 'openalex', 's2', 'core'] as const).map((db) => {
-              const count = report.verdicts.filter(
-                (v) => (v.matched_sources ?? []).some((s) => s.source === db),
-              ).length;
-              return (
-                <div
-                  key={db}
-                  className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30"
-                >
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">{db}</p>
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-                    {count} verified
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* Completion banner */}
