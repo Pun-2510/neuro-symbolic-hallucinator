@@ -52,6 +52,9 @@ def _run_inline_migrations(engine: Engine) -> None:
         2026-10-15 (v1.15) — users table gained institution, can_override_verdicts
             for teacher support. classes + class_memberships tables are created
             by Base.metadata.create_all (no ALTER needed — fresh tables).
+        2026-10-21 (v1.16) — citations + verdicts tables gained context, the
+            surrounding PDF text of a citation, so the Document Inspector can
+            render the sentence a citation appears in.
     """
     with engine.begin() as conn:
         # --- citations ---
@@ -70,6 +73,20 @@ def _run_inline_migrations(engine: Engine) -> None:
         if "citation_link_json" not in cit_cols:
             conn.exec_driver_sql(
                 "ALTER TABLE citations ADD COLUMN citation_link_json TEXT"
+            )
+        if "context" not in cit_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE citations ADD COLUMN context TEXT"
+            )
+
+        # --- verdicts (v1.16 citation context) ---
+        verdict_cols = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(verdicts)").fetchall()
+        }
+        if "context" not in verdict_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE verdicts ADD COLUMN context TEXT"
             )
 
         # --- users (v1.10 account management) ---

@@ -131,6 +131,9 @@ def _serialize_extracted_citation(c) -> dict[str, Any]:
         "style": c.style,
         "page_num": c.page_num,
         "confidence": c.confidence,
+        # NEW v1.16 — surrounding PDF text, so the Document Inspector can
+        # show the sentence the citation appears in.
+        "context": getattr(c, "context", None),
         # NEW v1.7/v1.8 — linking layer for UI Citations tab.
         "mapping_status": getattr(c, "mapping_status", None)
         or (first_link or {}).get("status"),
@@ -262,6 +265,9 @@ def _json_response(
             "citation_id": f"v{v.id}",
             "citation_raw": v.citation_raw,
             "citation_type": citation_types.get(v.citation_raw, "unknown"),
+            # NEW v1.16 — surrounding PDF text, so the Document Inspector can
+            # show the sentence the citation appears in.
+            "context": v.context,
             "citation_link": features_dict.get("citation_link"),
             # Integrity layer
             "mapping_status": status,
@@ -363,6 +369,9 @@ def _json_response(
                 "url": c.url,
                 "page_num": c.page_num,
                 "confidence": c.confidence,
+                # NEW v1.16 — surrounding PDF text (borrowed from the in-text
+                # occurrence that cites this entry, when there is one).
+                "context": getattr(c, "context", None),
                 # NEW v1.8 — "cited in text" indicator for the References tab
                 "cited_in_text_count": in_text_by_ref.get(
                     ref_link_by_record_id.get(c.id, ""), {"count": 0}

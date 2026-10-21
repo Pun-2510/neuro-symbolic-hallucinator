@@ -127,6 +127,9 @@ class Repository:
                     getattr(c, "citation_links", None),
                     fallback=getattr(c, "citation_link", None),
                 ),
+                # NEW v1.16 — surrounding PDF text, so the Document Inspector
+                # can show the sentence the citation sits in after a reload.
+                context=getattr(c, "context", None),
             )
             for c in citations
         ]
@@ -183,6 +186,9 @@ class Repository:
                 style_penalty=getattr(v, "style_penalty", None),
                 domain_exception=getattr(v, "domain_exception", False),
                 is_overridden=v.is_overridden,
+                # NEW v1.16 — surrounding PDF text of the citation, carried
+                # over from the Citation object the verdict was built from.
+                context=getattr(v.citation, "context", None),
             )
             for v in verdicts
         ]

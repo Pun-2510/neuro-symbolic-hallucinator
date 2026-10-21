@@ -136,6 +136,11 @@ class CitationRecord(Base):
     mapping_confidence: Mapped[float] = mapped_column(Float, default=0.0)
     citation_link_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # NEW v1.16 — surrounding text of the citation in the PDF, so the
+    # Document Inspector can show the sentence the citation sits in.
+    # Nullable: older rows (and citations with no extractable context) stay NULL.
+    context: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     essay: Mapped[EssayRecord] = relationship(back_populates="citations")
 
 
@@ -163,6 +168,10 @@ class VerdictRecord(Base):
     is_overridden: Mapped[bool] = mapped_column(Integer, default=0)
     override_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     overridden_by: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # NEW v1.16 — surrounding text of the citation in the PDF, so the
+    # Document Inspector can show the sentence the citation sits in.
+    context: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     essay: Mapped[EssayRecord] = relationship(back_populates="verdicts")
 

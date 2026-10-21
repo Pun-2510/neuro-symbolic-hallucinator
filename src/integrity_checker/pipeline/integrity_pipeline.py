@@ -564,6 +564,16 @@ class IntegrityPipeline:
         # copy metadata from the matched reference entry
         self._populate_citation_metadata(in_text_citations, ref_citations, link_by_raw_text)
 
+        # 1d-bis. Extract the surrounding sentence for every in-text
+        # occurrence. This runs BEFORE the verdict loop so a reference-list
+        # verdict can borrow the context of the occurrence that cites it —
+        # a bibliography entry has no sentence of its own.
+        occurrence_by_reference_id = self._extract_occurrence_contexts(
+            in_text_citations,
+            document_pages,
+            links_by_key_multi,
+        )
+
         # 1e. Merge citations theo priority (cho retrieval/checker).
         # Appendix chỉ dùng cho linking thống kê, không retrieval.
         all_citations = self._merge_citations(
@@ -744,16 +754,24 @@ class IntegrityPipeline:
                         mapping_confidence = 0.0
                         citation_link = None
             # Extract citation context from page text (v1.3 - Neural content alignment)
-            citation_context = None
-            # Search all pages for the citation (page_num may be incorrect from extraction)
-            for page in document_pages:
-                if citation.raw_text.lower() in page.text.lower():
+            #
+            # A reference-list entry has no sentence of its own — the useful
+            # context is where the paper is cited in the body. Fall back to the
+            # entry's own page only when no linked occurrence provides one.
+            citation_context = IntegrityPipeline._extract_reference_context(
+                citation,
+                document_pages,
+                occurrence_by_reference_id,
+            )
+            if not citation_context:
+                page = IntegrityPipeline._find_context_page(citation, document_pages)
+                if page is not None:
                     citation_context = IntegrityPipeline._extract_citation_context(
                         citation.raw_text,
                         page.text,
                         window_chars=200,
+                        fallback_needle=citation.title,
                     )
-                    break
 
             # NEW v1.5: Persist context onto Citation object so it serializes to
             # the report JSON and reaches the frontend Document View.
@@ -921,6 +939,7 @@ class IntegrityPipeline:
         citation_raw: str,
         page_text: str,
         window_chars: int = 150,
+        fallback_needle: str | None = None,
     ) -> str | None:
         """Extract context around a citation from page text.
 
@@ -928,24 +947,39 @@ class IntegrityPipeline:
             citation_raw: The citation text (e.g., "(Vaswani et al., 2017)")
             page_text: Full text of the page containing the citation
             window_chars: Number of characters before/after to include
+            fallback_needle: Alternative text to search for when the raw text
+                does not appear verbatim (e.g. the title of a reference-list
+                entry the parser reordered).
 
         Returns:
             String containing citation with surrounding context, or None if not found
         """
-        if not citation_raw or not page_text:
+        if not page_text:
             return None
 
-        # Find citation in page text
-        citation_lower = citation_raw.lower()
-        page_lower = page_text.lower()
-
-        pos = page_lower.find(citation_lower)
-        if pos == -1:
+        # Find citation in page text.
+        #
+        # The raw text of a citation rarely matches the PDF text verbatim: PDF
+        # extraction breaks it across lines and wraps long entries, so the
+        # citation and the page text differ in whitespace. Matching with a
+        # ``\s+`` pattern bridges those breaks while still returning the
+        # original text — the context is shown to a human, so its casing and
+        # punctuation have to survive intact.
+        needles = []
+        for candidate in (citation_raw, fallback_needle):
+            cleaned = " ".join(candidate.split()) if candidate else ""
+            if cleaned:
+                needles.append(cleaned)
+        if not needles:
             return None
 
-        # Extract context window
+        match = IntegrityPipeline._find_text_span(page_text, needles)
+        if match is None:
+            return None
+        pos, length = match
+
         start = max(0, pos - window_chars)
-        end = min(len(page_text), pos + len(citation_raw) + window_chars)
+        end = min(len(page_text), pos + length + window_chars)
 
         context = page_text[start:end].strip()
 
@@ -953,6 +987,93 @@ class IntegrityPipeline:
         context = " ".join(context.split())  # Normalize whitespace
 
         return context if len(context) > 20 else None
+
+    @staticmethod
+    def _find_text_span(
+        page_text: str,
+        needles: list[str],
+    ) -> tuple[int, int] | None:
+        """Locate the first of ``needles`` in ``page_text``.
+
+        Whitespace in the needle matches any run of whitespace in the page, so
+        a citation broken across lines is still found. The match is
+        case-insensitive, but the returned span points into the ORIGINAL text,
+        preserving its casing for display.
+        """
+        for needle in needles:
+            pattern = re.compile(r"\s+".join(re.escape(part) for part in needle.split()))
+            match = pattern.search(page_text)
+            if match:
+                return match.start(), match.end() - match.start()
+        return None
+
+    @staticmethod
+    def _find_context_page(
+        citation: Citation,
+        document_pages: list[Page],
+    ) -> Page | None:
+        """Locate the page a citation really sits on.
+
+        ``page_num`` is authoritative when the parser recorded one: every
+        ``[1]`` in the document has its own page, and searching every page in
+        order would hand them all the first page's context. Only when the
+        page number is missing (reference-list entries, which are not
+        positionally tracked) do we fall back to scanning.
+        """
+        if citation.page_num and 1 <= citation.page_num <= len(document_pages):
+            page = document_pages[citation.page_num - 1]
+            if page and page.text:
+                return page
+        for page in document_pages:
+            if not page.text:
+                continue
+            if IntegrityPipeline._find_text_span(page.text, [citation.raw_text]):
+                return page
+        # Last resort: a bibliography entry whose raw text never appears
+        # verbatim (the parser reorders it, e.g. "Settles, B, Learning, Active"
+        # for "[10] B. Settles, Active Learning") still has a title that does
+        # appear on the page. Match on the title so the entry is not left
+        # without any context. Very short titles are too generic to be a
+        # reliable signal, so they are not used.
+        title = " ".join((citation.title or "").split())
+        if len(title) < 12:
+            return None
+        for page in document_pages:
+            if not page.text:
+                continue
+            if IntegrityPipeline._find_text_span(page.text, [title]):
+                return page
+        return None
+
+    @staticmethod
+    def _extract_reference_context(
+        citation: Citation,
+        document_pages: list[Page],
+        occurrence_by_reference_id: dict[str, Citation],
+    ) -> str | None:
+        """Find context for a bibliography entry.
+
+        A reference-list entry has no sentence of its own — the useful
+        context is the sentence in the body where the paper is actually
+        cited. We look for the in-text occurrence linked to this reference
+        and take its context.
+        """
+        if not citation.reference_id:
+            return None
+        occurrence = occurrence_by_reference_id.get(citation.reference_id)
+        if occurrence is None:
+            return None
+        if occurrence.context:
+            return occurrence.context
+        page = IntegrityPipeline._find_context_page(occurrence, document_pages)
+        if page is None:
+            return None
+        return IntegrityPipeline._extract_citation_context(
+            occurrence.raw_text,
+            page.text,
+            window_chars=200,
+            fallback_needle=occurrence.title,
+        )
 
     @staticmethod
     def _merge_citations(
@@ -1096,6 +1217,65 @@ class IntegrityPipeline:
                         citation.year = ref.year
                     if not citation.doi and ref.doi:
                         citation.doi = ref.doi
+
+    @staticmethod
+    def _extract_occurrence_contexts(
+        in_text: list[Citation],
+        document_pages: list[Page],
+        links_by_key_multi: dict[str, list[CitationLink]],
+    ) -> dict[str, Citation]:
+        """Give every in-text occurrence its surrounding PDF text.
+
+        Returns a map from ``reference_id`` to the first occurrence that cites
+        it, so a bibliography entry can borrow the sentence where the paper is
+        actually used. Occurrences are keyed by the reference they point at,
+        not by their own id.
+        """
+        occurrence_by_reference_id: dict[str, Citation] = {}
+        for citation in in_text:
+            page = IntegrityPipeline._find_context_page(citation, document_pages)
+            if page is not None:
+                citation.context = IntegrityPipeline._extract_citation_context(
+                    citation.raw_text,
+                    page.text,
+                    window_chars=200,
+                )
+            if not citation.context:
+                continue
+
+            # Record the occurrence under every reference it cites — "[9, 10]"
+            # points at two bibliography entries and both may want this text.
+            for link in IntegrityPipeline._links_for_occurrence(
+                citation, links_by_key_multi
+            ):
+                reference_id = getattr(link, "reference_id", None)
+                if reference_id and reference_id not in occurrence_by_reference_id:
+                    occurrence_by_reference_id[reference_id] = citation
+        return occurrence_by_reference_id
+
+    @staticmethod
+    def _links_for_occurrence(
+        citation: Citation,
+        links_by_key_multi: dict[str, list[CitationLink]],
+    ) -> list[CitationLink]:
+        """Every link whose occurrence is this citation.
+
+        The lookup map is keyed by occurrence id, normalised identifier and
+        raw text, so the same occurrence can be reached several ways; the
+        first key that resolves wins.
+        """
+        keys = [citation.reference_id] if citation.reference_id else []
+        raw = " ".join(citation.raw_text.split())
+        if raw:
+            keys.append(raw.lower())
+            keys.append(IntegrityPipeline._normalize_identifier(raw))
+        for key in keys:
+            if not key:
+                continue
+            links = links_by_key_multi.get(key)
+            if links:
+                return links
+        return []
 
     def _run_linking(
         self,
