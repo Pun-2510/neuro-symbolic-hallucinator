@@ -34,7 +34,11 @@ services:
     volumes:
       - grobid-cache:/opt/grobid/grobid-home/cache
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8070/api/isalive"]
+      # Grobid image has no curl/wget (and `sh` is dash, no /dev/tcp) — probe
+      # with bash's /dev/tcp instead.
+      test:
+        - CMD-SHELL
+        - 'bash -c ''exec 3<>/dev/tcp/127.0.0.1/8070 && printf "GET /api/isalive HTTP/1.0\r\n\r\n" >&3 && head -1 <&3 | grep -q 200'''
       interval: 30s
       timeout: 10s
       retries: 3
@@ -67,7 +71,8 @@ services:
       - GROBID_URL=http://grobid:8070  # Docker internal network
       - DATABASE_URL=sqlite:///./data/app.db
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      # Health lives under /api (the app is mounted there), not at the root.
+      test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health',timeout=5).status==200 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -95,7 +100,10 @@ services:
     volumes:
       - ./web:/app/web
     environment:
-      - VITE_API_BASE_URL=http://localhost:8000
+      # Use proxy (/api) - Vite will forward to host.docker.internal:8000
+      - VITE_API_BASE_URL=/api
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: >
       sh -c "npm install --legacy-peer-deps &&
              npm run dev -- --host 0.0.0.0"

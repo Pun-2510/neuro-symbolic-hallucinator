@@ -62,40 +62,73 @@ const MOCK_PENDING = [
 ];
 
 function setupTeacherMocks(page: Page): void {
-  setupAuthenticatedPage(page);
-  // Override the default admin MOCK_USER with a teacher
+  // Override API base URL FIRST before any page load
+  page.context().addInitScript(() => {
+    // @ts-ignore
+    window.__API_BASE_URL__ = 'http://localhost:8000';
+  });
+
+  // Clear and set teacher user in localStorage
   page.context().addInitScript((user) => {
     localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('token', 'mock-teacher-token');
   }, TEACHER_USER);
 
-  // Auth/me returns teacher
-  page.route('**/api/auth/me', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TEACHER_USER) }),
-  );
-  page.route('**/api/users/me', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TEACHER_USER) }),
-  );
-
+  // Auth routes — mock teacher user (override any existing mocks)
+  page.route('http://localhost:8000/api/auth/me', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(TEACHER_USER),
+    });
+  });
+  page.route('http://localhost:8000/api/users/me', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(TEACHER_USER),
+    });
+  });
   // Teacher dashboard
-  page.route('**/api/teacher/dashboard', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_DASHBOARD) }),
+  page.route('http://localhost:8000/api/teacher/dashboard', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(MOCK_DASHBOARD),
+    });
+  });
+  page.route('http://localhost:8000/api/teacher/classes', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(MOCK_CLASSES),
+    });
+  });
+  // Pending reviews
+  page.route('http://localhost:8000/api/teacher/classes/1/pending-reviews', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(MOCK_PENDING),
+    });
+  });
+  // Students and essays
+  page.route('http://localhost:8000/api/teacher/classes/1/students', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([]),
+    }),
   );
-  page.route('**/api/teacher/classes', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_CLASSES) }),
+  page.route('http://localhost:8000/api/teacher/classes/1/essays', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([]),
+    }),
   );
-  // Pending reviews for class 1
-  page.route('**/api/teacher/classes/1/pending-reviews', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_PENDING) }),
-  );
-  // Empty students + essays
-  page.route('**/api/teacher/classes/1/students', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) }),
-  );
-  page.route('**/api/teacher/classes/1/essays', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) }),
-  );
-  // System health (admin-only — should still be reachable for capability test)
-  page.route('**/api/system/health', (route) =>
+  // System health
+  page.route('http://localhost:8000/api/system/health', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -111,13 +144,18 @@ function setupTeacherMocks(page: Page): void {
 
 test.describe('Phase 4 — Teacher flow', () => {
   test('MyClassesPage renders, can open Create dialog, navigate to reviews', async ({ page }) => {
+    // Set teacher auth before page load
+    await page.addInitScript((user) => {
+      localStorage.setItem('token', 'mock-teacher-token');
+      localStorage.setItem('user', JSON.stringify(user));
+    }, TEACHER_USER);
     setupTeacherMocks(page);
 
     await page.goto('/teacher/classes');
     await waitForAuth(page);
 
     // Header
-    await expect(page.getByRole('heading', { name: /My Classes/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /My Classes/i })).toBeVisible({ timeout: 10000 });
     // Create button (capability-gated)
     const createBtn = page.getByRole('button', { name: /Tạo lớp/i });
     await expect(createBtn).toBeVisible();
@@ -139,6 +177,11 @@ test.describe('Phase 4 — Teacher flow', () => {
   });
 
   test('PendingReviewsPage shows class filter + verdict rows', async ({ page }) => {
+    // Set teacher auth before page load
+    await page.addInitScript((user) => {
+      localStorage.setItem('token', 'mock-teacher-token');
+      localStorage.setItem('user', JSON.stringify(user));
+    }, TEACHER_USER);
     setupTeacherMocks(page);
 
     await page.goto('/teacher/reviews');
@@ -152,6 +195,11 @@ test.describe('Phase 4 — Teacher flow', () => {
   });
 
   test('teacher cannot see /admin/audit (no view_audit_log capability)', async ({ page }) => {
+    // Set teacher auth before page load
+    await page.addInitScript((user) => {
+      localStorage.setItem('token', 'mock-teacher-token');
+      localStorage.setItem('user', JSON.stringify(user));
+    }, TEACHER_USER);
     setupTeacherMocks(page);
     await page.goto('/admin/audit');
     await waitForAuth(page);

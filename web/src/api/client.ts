@@ -199,6 +199,9 @@ export interface Citation {
   url?: string | null;
   page_num: number;
   confidence: number;
+  // NEW v1.16 — surrounding PDF text of the citation, shown in the Document
+  // Inspector. Optional — older reports have no context.
+  context?: string | null;
   // NEW v1.7 — linking layer for Citations tab
   mapping_status?: CitationMappingStatus;
   mapping_confidence?: number;

@@ -38,15 +38,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`${API_BASE}/auth/me`, {
         headers: { Authorization: `Bearer ${tokenToValidate}` },
       });
+      // 401/403 = token expired or revoked — drop it silently. Other
+      // statuses (5xx, network) keep the token so a transient backend
+      // outage doesn't sign the user out.
       if (res.ok) {
         const userData: User = await res.json();
         setToken(tokenToValidate);
         setUser(userData);
-      } else {
+      } else if (res.status === 401 || res.status === 403) {
         localStorage.removeItem('token');
       }
     } catch {
-      localStorage.removeItem('token');
+      // Network error — keep the token; the next mount retries validation.
     } finally {
       setIsLoading(false);
     }

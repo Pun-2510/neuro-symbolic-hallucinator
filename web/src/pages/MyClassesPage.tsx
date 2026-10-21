@@ -106,7 +106,7 @@ export function MyClassesPage() {
         {dashboard?.classes.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
             <p className="text-slate-700 dark:text-slate-300 font-medium">Chưa có lớp nào.</p>
-            <p className="text-sm text-slate-500 mt-1">Bấm "Tạo lớp" để bắt đầu.</p>
+            <p className="text-sm text-slate-500 mt-1">Bấm &ldquo;Tạo lớp&rdquo; để bắt đầu.</p>
           </div>
         ) : (
           dashboard?.classes.map((c: Class) => (
