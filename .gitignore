@@ -109,3 +109,7 @@ PHASE1_2_VERIFICATION_REPORT.md
 ROLES_PLAN.md
 docs/UX_UI_COMPREHENSIVE_AUDIT_REPORT.md
 TDTU-MidtermReport/
+
+# Local runtime data (dev containers write these)
+web/data/
+web/tests/e2e/_debug.spec.ts
