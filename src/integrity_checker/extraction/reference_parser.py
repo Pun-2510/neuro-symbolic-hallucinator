@@ -52,8 +52,7 @@ logger = logging.getLogger(__name__)
 _APA_ENTRY_RE = re.compile(
     r"""
     ^(?P<authors>.+?)                # authors block (lazy)
-    \s*\(\s*(?P<year>\d{4})(?P<suffix>[a-z])?
-    (?:\s*,\s*[^)]*)?                # optional month/day, e.g. "(2025, August)"
+    \s*\(\s*(?:(?P<year>\d{4})(?P<suffix>[a-z])?(?:\s*,\s*[^)]*)?|(?P<nd>n\.?\s*d\.?))
     \s*\)
     \.?\s*
     (?P<title>[^\.]+?)               # title (up to first period — may include colons)
@@ -61,7 +60,7 @@ _APA_ENTRY_RE = re.compile(
     (?P<venue>.+?)                   # venue + volume + pages + DOI
     $
     """,
-    re.VERBOSE | re.MULTILINE,
+    re.VERBOSE | re.MULTILINE | re.IGNORECASE,
 )
 
 # IEEE entry: [N] authors, "title," venue, ...
@@ -100,6 +99,15 @@ _VANCOUVER_YEAR_FIRST_RE = re.compile(
     """,
     re.VERBOSE,
 )
+
+# Unquoted book / chapter entry (APA-like, no quoted title):
+#   "Settles, B, Active Learning (2012) Synthesis Lectures on ..."
+# Parsed with plain string operations instead of one big regex: the author
+# segment is the leading sequence of "Surname, Initials" pairs (ambiguous
+# commas such as "Learning, Active" are resolved by trying every split, see
+# ``_parse_unquoted_book_entry``). Avoids regex backtracking entirely.
+_YEAR_PAREN_SEARCH = re.compile(r"\((?:19|20)\d{2}[a-z]?\)")
+_INITIALS_FULLMATCH = re.compile(r"[A-ZÀ-Ý](?:\.?-?[A-ZÀ-Ý])*\.?")
 
 # DOI regex (tách riêng vì có thể xuất hiện ở cuối nhiều style)
 _DOI_RE = re.compile(r"10\.\d{4,9}/[^\s\]\)\,;]+")
@@ -397,8 +405,8 @@ class ReferenceListParser:
         # Split at: ] followed by space and capital letter (start of next entry)
         # But be careful not to split inside quotes
 
-        # Find all [N] positions
-        bracket_pattern = re.compile(r'\[\d+\]')
+        # Find all [N] positions (excluding 4-digit years like [2020])
+        bracket_pattern = re.compile(r'\[(?!19\d{2}\]|20\d{2}\])\d+\]')
         matches = list(bracket_pattern.finditer(text))
 
         if len(matches) < 2:
@@ -573,6 +581,15 @@ class ReferenceListParser:
         if idx_match:
             numeric_index = int(idx_match.group(1))
 
+        # Unquoted book/chapter entry: ``Surname, Initials, Title (Year) venue``.
+        # Must run BEFORE the format registry — ``nature_book`` claims these
+        # entries with a one-letter "title" and provably wrong authors.
+        book_citation = self._parse_unquoted_book_entry(entry, order_index, page_num)
+        if book_citation:
+            if numeric_index and book_citation.numeric_index is None:
+                book_citation.numeric_index = numeric_index
+            return book_citation
+
         # Try format modules from registry first
         # Require title for a meaningful match (year alone is not enough)
         # IEEE entries with [N] prefix are an exception - they should be accepted with just year
@@ -582,6 +599,14 @@ class ReferenceListParser:
                 has_title = bool(citation.title)
                 has_year = bool(citation.year)
                 has_numeric_index = citation.numeric_index is not None
+                # Never let the short-title book pattern (``nature_book``)
+                # claim an entry whose title is a stray token: it drops the
+                # year and turns the title's words into fake authors.
+                if (
+                    citation.matched_pattern == "nature_book"
+                    and (not has_year or len((citation.title or "").strip()) < 8)
+                ):
+                    continue
                 # Accept if: has title, OR (has year AND is IEEE with [N] prefix)
                 if has_title or (has_year and has_numeric_index):
                     # Set common fields
@@ -628,6 +653,94 @@ class ReferenceListParser:
 
     # -- per-style parsers --
 
+    def _parse_unquoted_book_entry(
+        self, entry: str, order_index: int, page_num: int
+    ) -> Citation | None:
+        """Parse ``Surname, Initials, Title (Year) venue`` (no quoted title).
+
+        Example: ``Settles, B, Active Learning (2012) Synthesis Lectures on …``.
+
+        The comma that ends the author list is ambiguous when the title
+        itself starts with ``Word, Word`` (``Settles, B, Learning, Active
+        (2012)``): several split points are valid, so every split is tried and
+        the longest author list whose pieces all look like ``Surname,
+        Initials`` wins. A piece such as ``John`` (full first name) is never
+        accepted as initials, so ``Smith, John, Title (2020)`` falls through.
+        """
+        year_m = _YEAR_PAREN_SEARCH.search(entry)
+        if not year_m:
+            return None
+        head = entry[: year_m.start()].strip()
+        rest = entry[year_m.end():]
+
+        # Standard APA entries have a period right after (Year): "Authors (Year). Title."
+        # Unquoted book entries here have the title BEFORE (Year) and venue after (Year)
+        # without a leading period, and do not contain author conjunctions (& / and) in head.
+        if rest.lstrip().startswith("."):
+            return None
+        if "&" in head or re.search(r"\band\b", head, re.IGNORECASE):
+            return None
+
+        pieces = [p.strip() for p in head.split(",")]
+
+        raw_authors: str | None = None
+        title = ""
+        # pieces[0] is the surname; pairs are (surname, initials).
+        for n_pairs in range(len(pieces) // 2, 0, -1):
+            pair_pieces = pieces[: n_pairs * 2]
+            surname, initials = pair_pieces[0], pair_pieces[1]
+            if len(surname) < 2 or _INITIALS_FULLMATCH.fullmatch(surname):
+                continue
+            if any(
+                not _INITIALS_FULLMATCH.fullmatch(pair_pieces[i])
+                for i in range(1, len(pair_pieces), 2)
+            ):
+                continue
+            rem_pieces = [p.strip() for p in pieces[n_pairs * 2:] if p.strip()]
+            if not rem_pieces:
+                continue
+            # If any remaining piece looks like author initials (e.g. "R. L."),
+            # then head is a multi-author APA list, not an unquoted book title.
+            if any(
+                _INITIALS_FULLMATCH.fullmatch(p) or re.search(r"\b[A-ZÀ-Ý]\.", p)
+                for p in rem_pieces
+            ):
+                continue
+            if len(rem_pieces) == 2 and all(
+                re.fullmatch(r"[A-ZÀ-Ý][a-zà-ỹ]+", p) for p in rem_pieces
+            ):
+                # GROBID sometimes inverts a 2-word book title into "Surname, Forename"
+                # (e.g. "Active Learning" -> "Learning, Active").
+                candidate_title = f"{rem_pieces[1]} {rem_pieces[0]}"
+            else:
+                candidate_title = ", ".join(rem_pieces).strip()
+            if len(candidate_title) < 5 or not candidate_title[0].isupper():
+                continue
+            raw_authors = ", ".join(pair_pieces)
+            title = candidate_title
+            break
+        if raw_authors is None:
+            return None
+
+        title = title.rstrip(",;: ").strip()
+        doi_m = _DOI_RE.search(entry)
+        return Citation(
+            raw_text=entry.strip(),
+            citation_type=CitationType.REFERENCE_LIST,
+            style=CitationStyle.APA,
+            page_num=page_num,
+            matched_pattern="unquoted_book_entry",
+            order_index=order_index,
+            title=title,
+            title_normalized=_normalize_title(title),
+            year=year_m.group(0)[1:-1].rstrip("abcdefghijklmnopqrstuvwxyz"),
+            year_suffix=(suffix if (suffix := year_m.group(0)[-2:-1]).isalpha() else None),
+            authors=parse_authors(raw_authors),
+            venue=(rest.strip(" .,") or None),
+            doi=doi_m.group(0).rstrip(".,") if doi_m else None,
+            confidence=0.75,
+        )
+
     def _parse_apa_entry(
         self, entry: str, order_index: int, page_num: int
     ) -> Citation | None:
@@ -652,13 +765,18 @@ class ReferenceListParser:
             numeric_index=numeric_index,  # FIX: Set numeric_index for APA entries with [N]
         )
         citation.year = m.group("year")
+        if not citation.year:
+            ym = _YEAR_RE.search(m.group("venue") or "")
+            if ym:
+                citation.year = ym.group(1)
         suffix = m.group("suffix")
         citation.year_suffix = suffix if suffix else None
         title = m.group("title").strip().rstrip(".")
         citation.title = title
         citation.title_normalized = _normalize_title(title)
         citation.venue = m.group("venue").strip().rstrip(".")
-        citation.authors = parse_authors(m.group("authors"))
+        authors_raw = re.sub(r"^\[\s*\d+\s*\]\s*", "", m.group("authors")).strip()
+        citation.authors = parse_authors(authors_raw)
         # DOI
         doi_m = _DOI_RE.search(entry)
         if doi_m:
@@ -791,6 +909,7 @@ class ReferenceListParser:
 
         # Try to find title: text between quotes, or text after authors
         title_raw = None
+        authors_part = ""
         # Quoted title
         quote_m = re.search(r'[""]([^""]+)[""]', clean_text)
         if quote_m:
@@ -851,15 +970,15 @@ class ReferenceListParser:
                 title_raw = remaining.rstrip(".,").strip()
 
         # Extract authors: everything before the title or year
-        authors_part = ""
-        if title_raw:
-            idx = after_index.find(title_raw)
-            if idx > 0:
-                authors_part = after_index[:idx].strip().rstrip(",").rstrip()
-        elif year_m:
-            idx = after_index.find(year_m.group(0))
-            if idx > 0:
-                authors_part = after_index[:idx].strip().rstrip(",").rstrip()
+        if not authors_part:
+            if title_raw:
+                idx = after_index.find(title_raw)
+                if idx > 0:
+                    authors_part = after_index[:idx].strip().rstrip(",").rstrip()
+            elif year_m:
+                idx = after_index.find(year_m.group(0))
+                if idx > 0:
+                    authors_part = after_index[:idx].strip().rstrip(",").rstrip()
 
         # Parse authors
         authors = parse_authors(authors_part) if authors_part else []

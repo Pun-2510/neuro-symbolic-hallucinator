@@ -61,7 +61,7 @@ _APA_REFERENCE_ENTRY = CompiledPattern.create(
     pattern=(
         r"^"
         r"(?P<authors>.+?)"
-        r"\s+\(\s*(?P<year>\d{4})(?P<suffix>[a-z])?(?:\s*,\s*[^)]+)?\s*\)"
+        r"\s+\(\s*(?:(?P<year>\d{4})(?P<suffix>[a-z])?(?:\s*,\s*[^)]+)?|(?P<nd>n\.?\s*d\.?))\s*\)"
         r"\.?\s*"
         r"(?P<title>[^\.]+?)"
         r"\.(?:\s*)"
@@ -239,13 +239,18 @@ class APAFormat:
             matched_pattern="apa_reference_entry",
         )
 
-        # Extract authors
+        # Extract authors (strip any leading [N] marker before parsing)
         authors_str = match.group("authors")
         if authors_str:
+            authors_str = re.sub(r"^\[\s*\d+\s*\]\s*", "", authors_str).strip()
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract year
+        # Extract year (for "(n.d.)" entries, fallback to retrieval/access year in venue)
         citation.year = match.group("year")
+        if not citation.year:
+            venue_year_m = re.search(r"\b((?:19|20)\d{2})\b", match.group("venue") or "")
+            if venue_year_m:
+                citation.year = venue_year_m.group(1)
         suffix = match.group("suffix")
         citation.year_suffix = suffix if suffix else None
 
@@ -294,13 +299,18 @@ class APAFormat:
             matched_pattern="apa_book_chapter",
         )
 
-        # Extract authors
+        # Extract authors (strip any leading [N] marker before parsing)
         authors_str = match.group("authors")
         if authors_str:
+            authors_str = re.sub(r"^\[\s*\d+\s*\]\s*", "", authors_str).strip()
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract year
+        # Extract year (for "(n.d.)" entries, fallback to retrieval/access year in venue)
         citation.year = match.group("year")
+        if not citation.year:
+            venue_year_m = re.search(r"\b((?:19|20)\d{2})\b", match.group("venue") or "")
+            if venue_year_m:
+                citation.year = venue_year_m.group(1)
         suffix = match.group("suffix")
         citation.year_suffix = suffix if suffix else None
 
@@ -333,13 +343,18 @@ class APAFormat:
             matched_pattern="apa_simple_entry",
         )
 
-        # Extract authors
+        # Extract authors (strip any leading [N] marker before parsing)
         authors_str = match.group("authors")
         if authors_str:
+            authors_str = re.sub(r"^\[\s*\d+\s*\]\s*", "", authors_str).strip()
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract year
+        # Extract year (for "(n.d.)" entries, fallback to retrieval/access year in venue)
         citation.year = match.group("year")
+        if not citation.year:
+            venue_year_m = re.search(r"\b((?:19|20)\d{2})\b", match.group("venue") or "")
+            if venue_year_m:
+                citation.year = venue_year_m.group(1)
         suffix = match.group("suffix")
         citation.year_suffix = suffix if suffix else None
 

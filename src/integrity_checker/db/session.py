@@ -5,36 +5,43 @@ from __future__ import annotations
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from integrity_checker.config import get_settings
 from integrity_checker.db.models import Base
 
 
 _engine: Engine | None = None
+_engine_url: str | None = None
 _SessionLocal: sessionmaker[Session] | None = None
 
 
 def get_engine() -> Engine:
-    """Lazy singleton engine."""
-    global _engine
-    if _engine is None:
-        settings = get_settings()
-        url = settings.database.url
+    """Lazy singleton engine — automatically rebinds if database.url changes."""
+    global _engine, _engine_url, _SessionLocal
+    settings = get_settings()
+    url = settings.database.url
+    if _engine is None or _engine_url != url:
         connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
-        _engine = create_engine(
-            url,
-            echo=settings.database.echo,
-            connect_args=connect_args,
-        )
+        kwargs: dict = {
+            "echo": settings.database.echo,
+            "connect_args": connect_args,
+        }
+        if url == "sqlite:///:memory:":
+            kwargs["poolclass"] = StaticPool
+        _engine = create_engine(url, **kwargs)
+        _engine_url = url
+        _SessionLocal = None
     return _engine
 
 
 def get_session() -> Session:
     """Trả về session mới. Caller chịu trách nhiệm close."""
     global _SessionLocal
+    engine = get_engine()
     if _SessionLocal is None:
         _ensure_db_initialized()
-        _SessionLocal = sessionmaker(bind=get_engine(), autoflush=False, autocommit=False)
+        _SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     return _SessionLocal()
 
 
@@ -116,6 +123,14 @@ def _run_inline_migrations(engine: Engine) -> None:
             conn.exec_driver_sql(
                 "ALTER TABLE users ADD COLUMN can_override_verdicts INTEGER DEFAULT 0"
             )
+
+        # --- Clean up any historical orphan rows ---
+        conn.exec_driver_sql(
+            "DELETE FROM citations WHERE essay_id NOT IN (SELECT id FROM essays)"
+        )
+        conn.exec_driver_sql(
+            "DELETE FROM verdicts WHERE essay_id NOT IN (SELECT id FROM essays)"
+        )
 
 
 def _ensure_db_initialized() -> None:

@@ -262,3 +262,40 @@ class TestMultipleEntriesSplit:
         assert cits[1].title == "Title B"
         assert cits[0].order_index == 1
         assert cits[1].order_index == 2
+
+
+class TestUnquotedBookEntry:
+    """Regression: unquoted book entries must not be eaten by ``nature_book``.
+
+    A full-title book entry with one author and no quoted title used to match
+    ``nature_book`` (title="B", year lost) and split the author list into
+    ``["Settles", "Learning", "Active"]``.
+    """
+
+    ENTRY = (
+        "Settles, B, Learning, Active (2012) Synthesis Lectures on "
+        "Artificial Intelligence and Machine Learning"
+    )
+
+    def test_parses_full_title_and_year(self):
+        c = ReferenceListParser()._parse_entry(self.ENTRY, order_index=1, page_num=1)
+        assert c is not None
+        assert c.title == "Active Learning"
+        assert c.year == "2012"
+
+    def test_single_author_keeps_initials(self):
+        c = ReferenceListParser()._parse_entry(self.ENTRY, order_index=1, page_num=1)
+        assert c is not None
+        assert [a.last_name for a in c.authors] == ["settles"]
+        assert c.authors[0].initials and c.authors[0].initials[0].upper().startswith("B")
+
+    def test_ieee_unquoted_book_still_works(self):
+        c = ReferenceListParser()._parse_entry(
+            "[10] B. Settles, Active Learning. Synthesis Lectures on Artificial "
+            "Intelligence and Machine Learning, vol. 6, no. 1, pp. 1-114, 2012.",
+            order_index=1,
+            page_num=1,
+        )
+        assert c is not None
+        assert c.title == "Active Learning"
+        assert c.year == "2012"

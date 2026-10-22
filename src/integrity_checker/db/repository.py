@@ -37,6 +37,13 @@ class Repository:
         essay = EssayRecord(filename=filename, num_pages=num_pages)
         self.session.add(essay)
         self.session.flush()
+        # Defensive cleanup in case SQLite reused a deleted essay's ID
+        self.session.query(CitationRecord).filter(
+            CitationRecord.essay_id == essay.id
+        ).delete(synchronize_session=False)
+        self.session.query(VerdictRecord).filter(
+            VerdictRecord.essay_id == essay.id
+        ).delete(synchronize_session=False)
         return essay
 
     def get_essay(self, essay_id: int) -> EssayRecord | None:
@@ -105,6 +112,12 @@ class Repository:
                 return None
             return json.dumps(payload, ensure_ascii=False)
 
+        # Replace any existing citation rows for this essay_id so re-analysis
+        # or id reuse can never accumulate duplicate rows.
+        self.session.query(CitationRecord).filter(
+            CitationRecord.essay_id == essay_id
+        ).delete(synchronize_session=False)
+
         records = [
             CitationRecord(
                 essay_id=essay_id,
@@ -140,6 +153,11 @@ class Repository:
     # -- Verdicts --
 
     def add_verdicts(self, essay_id: int, verdicts: list[CitationVerdict]) -> None:
+        # Replace any existing verdict rows for this essay_id for idempotency.
+        self.session.query(VerdictRecord).filter(
+            VerdictRecord.essay_id == essay_id
+        ).delete(synchronize_session=False)
+
         records = [
             VerdictRecord(
                 essay_id=essay_id,
@@ -366,6 +384,13 @@ class Repository:
         essay = EssayRecord(filename=filename, num_pages=num_pages, user_id=user_id)
         self.session.add(essay)
         self.session.flush()
+        # Defensive cleanup in case SQLite reused a deleted essay's ID
+        self.session.query(CitationRecord).filter(
+            CitationRecord.essay_id == essay.id
+        ).delete(synchronize_session=False)
+        self.session.query(VerdictRecord).filter(
+            VerdictRecord.essay_id == essay.id
+        ).delete(synchronize_session=False)
         return essay
 
     def update_essay_pipeline_output(

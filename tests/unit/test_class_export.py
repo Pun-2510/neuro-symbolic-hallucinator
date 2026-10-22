@@ -24,6 +24,7 @@ from fastapi.testclient import TestClient
 from integrity_checker.api.main import app
 from integrity_checker.db.models import (
     AuditLog,
+    CitationRecord,
     Class as ClassModel,
     ClassMembership,
     EssayRecord,
@@ -286,6 +287,7 @@ def clean_db():
     session = get_session()
     session.query(AuditLog).delete()
     session.query(VerdictRecord).delete()
+    session.query(CitationRecord).delete()
     session.query(EssayRecord).delete()
     session.query(ClassMembership).delete()
     session.query(ClassModel).delete()
@@ -297,6 +299,7 @@ def clean_db():
     session = get_session()
     session.query(AuditLog).delete()
     session.query(VerdictRecord).delete()
+    session.query(CitationRecord).delete()
     session.query(EssayRecord).delete()
     session.query(ClassMembership).delete()
     session.query(ClassModel).delete()

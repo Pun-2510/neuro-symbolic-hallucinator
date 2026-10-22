@@ -384,27 +384,111 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
         if not entry_id:
             continue
 
+        # Raw reference note (if provided by GROBID)
+        raw_ref_el = bibl.find(f".//{_TEI}note[@type='raw_reference']")
+        raw_ref_text = (
+            "".join(raw_ref_el.itertext()).strip()
+            if raw_ref_el is not None
+            else ""
+        )
+
         # Authors
-        authors: list[GrobidAuthor] = []
+        raw_authors: list[tuple[str, str]] = []
         for author_el in bibl.findall(f".//{_TEI}author"):
             pers = author_el.find(f"{_TEI}persName")
             if pers is None:
+                org = author_el.find(f"{_TEI}orgName")
+                if org is not None and org.text and org.text.strip():
+                    raw_authors.append((org.text.strip(), ""))
                 continue
             surname = pers.find(f"{_TEI}surname")
-            forename = pers.find(f"{_TEI}forename")
+            forenames = [
+                f.text.strip()
+                for f in pers.findall(f"{_TEI}forename")
+                if f.text and f.text.strip()
+            ]
             sn = surname.text.strip() if surname is not None and surname.text else ""
-            fn = forename.text.strip() if forename is not None and forename.text else ""
+            fn = " ".join(forenames)
+
+            # Fix GROBID splitting hyphenated Vietnamese initials into surname
+            # e.g. forename="D H", surname=".-C. Nguyen" -> fn="D H.-C.", sn="Nguyen"
+            if sn:
+                hyph_m = re.match(r"^(\.?-[A-ZÀ-Ý]\.?)\s+(.+)$", sn)
+                if hyph_m:
+                    fn = f"{fn}{hyph_m.group(1)}".strip()
+                    sn = hyph_m.group(2).strip()
+
+            # Merge with previous author if GROBID split a hyphenated given name
+            # across two <author> nodes: prev has sn="" & fn="L T", current has fn="-V" & sn="Pham"
+            if (
+                fn.startswith("-")
+                and sn
+                and raw_authors
+                and not raw_authors[-1][0]
+                and raw_authors[-1][1]
+            ):
+                prev_fn = raw_authors.pop()[1]
+                fn = f"{prev_fn}{fn}"
+
+            raw_authors.append((sn, fn))
+
+        authors: list[GrobidAuthor] = []
+        for sn, fn in raw_authors:
+            if not sn and not fn:
+                continue
+            # Skip obvious non-author artifacts from GROBID on body text
+            if f"{sn} {fn}".strip().lower() in ("cls token",):
+                continue
             authors.append(
-                GrobidAuthor(full_name=f"{sn}, {fn}".strip(", "),
-                             first_name=fn or None, last_name=sn or None)
+                GrobidAuthor(
+                    full_name=f"{sn}, {fn}".strip(", "),
+                    first_name=fn or None,
+                    last_name=sn or None,
+                )
             )
 
-        # Title (article-level) — dùng .// để tìm trong <analytic>
-        title_el = (
-            bibl.find(f".//{_TEI}title[@level='a']")
-            or bibl.find(f".//{_TEI}title")
-        )
-        title = "".join(title_el.itertext()).strip() if title_el is not None else None
+        # Recover corporate/organization author from raw_reference when GROBID
+        # omitted <author> (e.g. "American Psychiatric Association. (2022)..."
+        # or "World Health Organization. (2023)...").
+        if not authors and raw_ref_text:
+            org_m = re.match(
+                r"^(?:\[\s*\d+\s*\]\s*)?([A-Z][A-Za-z0-9\s&'\u2019-]{2,80}?)\.\s*\((?:19|20)\d{2}",
+                raw_ref_text,
+            )
+            if org_m:
+                org_name = org_m.group(1).strip()
+                authors.append(
+                    GrobidAuthor(full_name=org_name, first_name=None, last_name=org_name)
+                )
+
+        # Title (article-level first, then monograph-level, skipping empty <title/> tags)
+        title: str | None = None
+        for xpath in (
+            f".//{_TEI}title[@level='a']",
+            f".//{_TEI}title[@level='m']",
+            f".//{_TEI}title",
+        ):
+            for cand_el in bibl.findall(xpath):
+                cand_text = "".join(cand_el.itertext()).strip()
+                if cand_text:
+                    title = cand_text
+                    break
+            if title:
+                break
+
+        # Fallback: check <note> (excluding raw_reference) when <title/> is empty
+        # (e.g. Flanagan [2020] where GROBID puts "JavaScript: The Definitive Guide, 7th Edition" in <note>)
+        if not title:
+            for note_el in bibl.findall(f"{_TEI}note"):
+                if note_el.get("type") == "raw_reference":
+                    continue
+                note_text = "".join(note_el.itertext()).strip()
+                if (
+                    len(note_text) > 5
+                    and not re.match(r"^(?:\d+(?:st|nd|rd|th)|th)\s+ed", note_text, re.I)
+                ):
+                    title = note_text
+                    break
 
         # Year
         year_el = bibl.find(f".//{_TEI}date[@type='published']")
@@ -430,6 +514,32 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
         # Venue (journal-level title) — dùng .// để tìm trong <monogr>
         venue_el = bibl.find(f".//{_TEI}title[@level='j']")
         venue = "".join(venue_el.itertext()).strip() if venue_el is not None else None
+
+        # Fix unquoted IEEE/APA book entries where GROBID places the book title
+        # into a second <author> inside <monogr> and the series into <title level="m">
+        # (e.g. "B. Settles, Active Learning. Synthesis Lectures...").
+        if (
+            bibl.find(f"{_TEI}analytic") is None
+            and len(authors) >= 2
+            and raw_ref_text
+        ):
+            last_auth = authors[-1]
+            if (
+                last_auth.first_name
+                and last_auth.last_name
+                and len(last_auth.first_name) > 2
+                and len(last_auth.last_name) > 2
+            ):
+                candidate_book_title = f"{last_auth.first_name} {last_auth.last_name}"
+                if re.search(
+                    rf",\s*{re.escape(candidate_book_title)}\.\s+",
+                    raw_ref_text,
+                    re.IGNORECASE,
+                ):
+                    authors.pop()
+                    if title and not venue:
+                        venue = title
+                    title = candidate_book_title
 
         # For malformed two-column references GROBID may put the continuation
         # of the author list in <analytic>/<title>, while the real title is in

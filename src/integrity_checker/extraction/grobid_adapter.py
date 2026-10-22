@@ -539,14 +539,11 @@ def _is_duplicate_reference(cit: Citation, existing: list[Citation]) -> bool:
             if existing_cit.doi and existing_cit.doi.lower() == cit.doi.lower():
                 return True
 
-    # Title + Author + Year fuzzy match
-    if cit.title and cit.authors and cit.year:
+    # Title + Author + Year fuzzy match (also handles cases where one source
+    # missed authors on corporate/book entries but title + year match strongly)
+    if cit.title and cit.year:
         for existing_cit in existing:
-            if (
-                existing_cit.title
-                and existing_cit.authors
-                and existing_cit.year
-            ):
+            if existing_cit.title and existing_cit.year:
                 if _title_author_year_match(cit, existing_cit):
                     return True
 
@@ -559,40 +556,51 @@ def _title_author_year_match(a: Citation, b: Citation) -> bool:
     if a.year != b.year:
         return False
 
-    # Author must have significant overlap
+    # Author must have significant overlap when both citations have authors
     def _get_author_names(cit) -> set:
         """Extract author names as strings from citation."""
         if not cit.authors:
             return set()
-        first = cit.authors[0]
-        # If it's a string, use it directly
-        if isinstance(first, str):
-            return {auth.split(",")[0].strip().lower() for auth in cit.authors}
-        # If it's an Author object, use last_name
-        if hasattr(first, "last_name") and first.last_name:
-            return {auth.last_name.lower() for auth in cit.authors if hasattr(auth, "last_name") and auth.last_name}
-        return set()
+        out = set()
+        for auth in cit.authors:
+            if isinstance(auth, str):
+                tokens = [t.strip().lower() for t in re.split(r"[,\s]+", auth) if len(t.strip()) >= 2]
+                if tokens:
+                    out.add(tokens[0])
+                    out.add(tokens[-1])
+            elif hasattr(auth, "last_name") and auth.last_name:
+                ln = auth.last_name.lower().strip()
+                out.add(ln)
+                for tok in ln.split():
+                    if len(tok) >= 2:
+                        out.add(tok)
+        return out
 
     a_authors = _get_author_names(a)
     b_authors = _get_author_names(b)
+    both_have_authors = bool(a_authors and b_authors)
 
-    if a_authors and b_authors:
+    if both_have_authors:
         overlap = len(a_authors & b_authors)
         if overlap == 0:
             return False
-        # At least 50% overlap
-        min_len = min(len(a_authors), len(b_authors))
-        if overlap < min_len * 0.5:
-            return False
 
-    # Title similarity (simple word overlap)
+    # Title similarity (word overlap on normalized alphanumeric tokens)
     if a.title and b.title:
-        a_words = set(a.title.lower().split())
-        b_words = set(b.title.lower().split())
+        a_words = {w for w in re.split(r"\W+", a.title.lower()) if len(w) >= 2}
+        b_words = {w for w in re.split(r"\W+", b.title.lower()) if len(w) >= 2}
+        if not a_words or not b_words:
+            return False
         overlap = len(a_words & b_words)
-        if overlap > 0:
-            # At least 3 common words or 50% overlap
-            if overlap >= 3 or (overlap >= len(a_words) * 0.5 and overlap >= len(b_words) * 0.5):
+        min_words = min(len(a_words), len(b_words))
+        if both_have_authors:
+            if overlap >= 3 or (overlap > 0 and overlap >= min_words * 0.5):
+                return True
+        else:
+            # When one side lacks authors, require stronger title agreement
+            if a.title.lower().strip() == b.title.lower().strip():
+                return True
+            if overlap >= 3 and overlap >= min_words * 0.7:
                 return True
 
     return False

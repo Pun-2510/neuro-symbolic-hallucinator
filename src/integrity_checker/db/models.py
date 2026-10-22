@@ -91,6 +91,7 @@ Index("idx_source", CitationCache.source)
 
 class EssayRecord(Base):
     __tablename__ = "essays"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     filename: Mapped[str] = mapped_column(String, nullable=False)
@@ -104,10 +105,10 @@ class EssayRecord(Base):
     user: Mapped["User | None"] = relationship(back_populates="essays")
 
     citations: Mapped[list["CitationRecord"]] = relationship(
-        back_populates="essay", cascade="all, delete-orphan"
+        back_populates="essay", cascade="all, delete-orphan", passive_deletes=True
     )
     verdicts: Mapped[list["VerdictRecord"]] = relationship(
-        back_populates="essay", cascade="all, delete-orphan"
+        back_populates="essay", cascade="all, delete-orphan", passive_deletes=True
     )
 
 
@@ -115,7 +116,7 @@ class CitationRecord(Base):
     __tablename__ = "citations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    essay_id: Mapped[int] = mapped_column(ForeignKey("essays.id"), nullable=False)
+    essay_id: Mapped[int] = mapped_column(ForeignKey("essays.id", ondelete="CASCADE"), nullable=False)
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
     citation_type: Mapped[str] = mapped_column(String, default="unknown")
     style: Mapped[str] = mapped_column(String, default="unknown")
@@ -148,7 +149,7 @@ class VerdictRecord(Base):
     __tablename__ = "verdicts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    essay_id: Mapped[int] = mapped_column(ForeignKey("essays.id"), nullable=False)
+    essay_id: Mapped[int] = mapped_column(ForeignKey("essays.id", ondelete="CASCADE"), nullable=False)
     citation_raw: Mapped[str] = mapped_column(Text, nullable=False)
     label: Mapped[str] = mapped_column(String, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
@@ -182,7 +183,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    verdict_id: Mapped[int] = mapped_column(ForeignKey("verdicts.id"), nullable=False)
+    verdict_id: Mapped[int] = mapped_column(ForeignKey("verdicts.id", ondelete="CASCADE"), nullable=False)
     original_label: Mapped[str] = mapped_column(String, nullable=False)
     new_label: Mapped[str] = mapped_column(String, nullable=False)
     user: Mapped[str] = mapped_column(String, nullable=False)

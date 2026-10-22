@@ -445,11 +445,7 @@ def _parse_vancouver_format(text: str) -> list[Author]:
             )
 
             if is_initials and len(rest) >= 1:
-                # Pattern: "LastName Initials" (e.g., "Smith JK")
-                last_name = " ".join(rest).rstrip(".,;|")
-                # Extract initials from last token (remove periods, split into individual)
-                initials = [c for c in last_token if c.isalpha()]
-                initials = [i.upper() for i in initials]
+                last_name, initials = self._handle_initials_pattern(rest, last_token)
 
                 author = Author(
                     last_name=last_name.lower(),
@@ -495,6 +491,27 @@ def _parse_vancouver_format(text: str) -> list[Author]:
     return authors
 
 
+def _handle_initials_pattern(self, rest: list[str], initials_token: str) -> tuple[str, list[str]]:
+    """Xử lý pattern "LastName Initials" (Vancouver) cho phần tên đã tách.
+
+    Args:
+        rest: các token tên phía trước token initials (vd ["van", "der", "Berg"]).
+        initials_token: token initials (vd "JK", "J", "J.K.").
+
+    Returns:
+        (last_name, initials) — last_name đã loại bỏ ký tự phân cách cuối,
+        initials là danh sách chữ cái viết hoa.
+    """
+    initials = [c.upper() for c in initials_token if c.isalpha()]
+
+    # Nếu tên có particle (van der Berg), last_name gồm particle + từ cuối
+    last_name = " ".join(rest).rstrip(".,;|").strip()
+    if not last_name:
+        last_name = initials_token.rstrip(".,;|")
+
+    return last_name, initials
+
+
 def _safe_parse(piece: str) -> Author | None:
     a = normalize_author(piece)
     return a if a.last_name else None
@@ -531,6 +548,73 @@ _APA_AUTHOR_RE = re.compile(
 )
 
 
+def _is_initial_token(tok: str) -> bool:
+    """True nếu token là một initial: 'J', 'J.', 'Đ.', và cả cụm 'J.K.'."""
+    tok = unicodedata.normalize("NFC", tok).strip(".,;")
+    if not tok:
+        return False
+    stripped = tok.replace(".", "")
+    if not stripped or len(stripped) > 3:
+        return False
+    return all(ch.isalpha() and ch.isupper() for ch in stripped)
+
+
+def _count_separator_commas(text: str) -> int:
+    """Đếm dấu phẩy đóng vai trò separator giữa các author.
+
+    "LeCun, Y., Bengio, Y." → 2  (', Bengio', ', Yann' ở dạng full name)
+    "LeCun, Y., Bengio, Y., Hinton, G." → 3
+    "Y., Bengio" → dấu phẩy ngay sau initial KHÔNG tính.
+    """
+    count = 0
+    for m in re.finditer(r",\s*([^\s,&.]+)", text):
+        if not _is_initial_token(m.group(1)):
+            count += 1
+    return count
+
+
+def _split_after_separator_commas(text: str) -> list[str]:
+    """Tách author list tại các dấu phẩy là separator, GIỮ dấu phẩy sau initial.
+
+    "LeCun, Y., Bengio, Y., & Hinton, G."
+        → ["LeCun, Y.", "Bengio, Y.", "Hinton, G."]
+    """
+    parts: list[str] = []
+    start = 0
+    for m in re.finditer(r",", text):
+        # A comma followed by a plain word ("LeCun, Yann", "Bowman, Angeli")
+        # separates authors. A comma followed by initials ("LeCun, Y.") or by
+        # nothing / a conjunction ("Y., Bengio") belongs to the previous name.
+        if not re.match(r"\s*[^\s,&.]+", text[m.end():]):
+            continue
+        following = re.match(r"\s*([^\s,&.]+)", text[m.end():]).group(1)
+        if _is_initial_token(following):
+            continue
+        parts.append(text[start : m.start()])
+        start = m.end()
+    parts.append(text[start:])
+    return [p.strip() for p in parts if p.strip()]
+
+
+def _is_surname_initial_piece(piece: str) -> bool:
+    """True nếu piece là MỘT author APA đơn lẻ "Surname... , Initials".
+
+    "LeCun, Y." / "van der Berg, J." → True
+    "Yann" (full first name) / "Hinton, G. (2015). Deep learning." → False
+    """
+    return bool(_APA_AUTHOR_RE.fullmatch(piece.strip(" ,")))
+
+
+def _is_vancouver_surname(piece: str) -> bool:
+    """True nếu piece là surname Vancouver 1-2 từ, không có initials.
+
+    "Bowman" / "Angeli" / "van der Berg" → True
+    "Potts C" (Vancouver "Surname Initials") → False — để nhánh Vancouver cũ xử lý
+    """
+    words = piece.split()
+    return 1 <= len(words) <= 2 and all(_PARTICLE_WORD_RE.match(w) for w in words)
+
+
 def _split_apa_authors(text: str) -> list[Author]:
     """Tách multi-author APA không có separator rõ ràng.
 
@@ -546,15 +630,36 @@ def _split_apa_authors(text: str) -> list[Author]:
 
     # Detect Vancouver style: multiple commas, no "and"/"&", likely separate names
     # "Bowman, Angeli, Potts" -> three separate single-word last names
-    comma_count = text.count(",")
+    # A comma AFTER an initial ("Y., Bengio") is a punctuation mark belonging to
+    # that initial, not an author-list separator. Only commas that precede a
+    # plain word ("LeCun, Yann", "Bowman, Angeli") are candidate separators.
+    separator_commas = _count_separator_commas(text)
     has_and_or_amp = bool(re.search(r"\s+and\s+|&", text, re.IGNORECASE))
-    if comma_count >= 2 and not has_and_or_amp:
-        # Likely Vancouver style with separate names - parse directly
-        return _parse_firstname_lastname_no_et_al(text)
+    if separator_commas >= 2:
+        # APA with a dangling "&" splits into one "Last, Initials" piece per
+        # author: "LeCun, Y., Bengio, Y., & Hinton, G.". Parse each piece on its
+        # own so no initials are dropped ("lecun|" for every author — the bug)
+        # or glued onto the wrong author. Checked BEFORE the Vancouver branch
+        # because "LeCun, Y." also looks like a two-word surname there.
+        # Also works with "&" present — a letter-based comma split is what
+        # keeps "LeCun, Y., & Bengio, Y." from becoming a single author.
+        # A piece carrying a year is not an author piece — it is the trailing
+        # title/venue of an entry-level string ("… Bengio, Y. (2015). Deep
+        # learning. Nature, 521"); leave that to the heuristics below.
+        pieces = _split_after_separator_commas(text)
+        if (
+            len(pieces) > 1
+            and not any(re.search(r"\((?:19|20)\d{2}[a-z]?\)|\b(?:19|20)\d{2}\b", p) for p in pieces)
+            and all(_is_surname_initial_piece(p) for p in pieces)
+        ):
+            return [normalize_author(p.strip(" ,")) for p in pieces]
+        if not has_and_or_amp and pieces and all(_is_vancouver_surname(p) for p in pieces):
+            # "Bowman, Angeli, Potts" — bare surnames, no initials.
+            return _parse_firstname_lastname_no_et_al(text)
+        # Anything else (a trailing title/venue after the author block, full
+        # first names, mixed lists) keeps the match-based heuristics below.
 
-    # Try APA pattern first: "LastName, I."
     matches = list(_APA_AUTHOR_RE.finditer(text))
-
     if matches:
         authors = []
         # For each match, also process any text AFTER it that looks like "FirstName LastName"

@@ -389,6 +389,15 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _validate_weights_sum(self) -> "Settings":
         """CIS weights PHẢI tổng = 1.0 (±0.01). Raise nếu sai."""
+        import os
+
+        env_db_url = os.getenv("DATABASE_URL")
+        if env_db_url:
+            self.database.url = env_db_url
+        env_app_env = os.getenv("APP_ENV")
+        if env_app_env:
+            self.app.env = env_app_env
+
         w = self.cis.weights
         s = (
             w.verified_ratio

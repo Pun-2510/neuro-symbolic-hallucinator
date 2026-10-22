@@ -616,15 +616,41 @@ class IEEEFormat:
             title = quote_m.group(1).strip()
             citation.title = title
             citation.title_normalized = self._normalize_title(title)
+            before_quote = re.sub(r'^\[\s*\d+\s*\]\s*', '', text[:quote_m.start()]).strip().rstrip(',')
+            if before_quote:
+                citation.authors = self._parse_authors(before_quote)
         else:
-            # Unquoted book references: [N] B. Settles, Active Learning. Synthesis...
-            book_m = re.match(
-                r'^\[\s*\d+\s*\]\s*.+?,\s+(?P<title>[^.]{5,})\.\s+',
+            # Bracketed-year book references: [N] Flanagan, D., [2020], JavaScript: The Definitive Guide, 7th Edition, O'Reilly Media, USA.
+            bracket_yr_m = re.match(
+                r'^\[\s*\d+\s*\]\s*(?P<authors>.+?),\s*\[\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\],\s*(?P<rest>.+)$',
                 text,
             )
-            if book_m:
-                citation.title = book_m.group('title').strip()
-                citation.title_normalized = self._normalize_title(citation.title)
+            if bracket_yr_m:
+                authors_str = bracket_yr_m.group('authors').strip()
+                if authors_str:
+                    citation.authors = self._parse_authors(authors_str)
+                rest_str = bracket_yr_m.group('rest').strip().rstrip('.')
+                parts = [p.strip() for p in rest_str.split(',') if p.strip()]
+                if parts:
+                    citation.title = parts[0]
+                    citation.title_normalized = self._normalize_title(citation.title)
+                    if len(parts) > 1:
+                        citation.venue = ', '.join(parts[1:])
+            else:
+                # Unquoted book references: [N] B. Settles, Active Learning. Synthesis...
+                book_m = re.match(
+                    r'^\[\s*\d+\s*\]\s*(?P<authors>.+?),\s+(?P<title>[^.]{5,})\.\s+(?P<venue>.*)$',
+                    text,
+                )
+                if book_m:
+                    citation.title = book_m.group('title').strip()
+                    citation.title_normalized = self._normalize_title(citation.title)
+                    authors_str = book_m.group('authors').strip()
+                    if authors_str:
+                        citation.authors = self._parse_authors(authors_str)
+                    venue_str = book_m.group('venue').strip()
+                    if venue_str:
+                        self._parse_venue(citation, venue_str)
 
         # Extract DOI
         doi_m = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', text)

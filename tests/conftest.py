@@ -12,6 +12,13 @@ from sqlalchemy.orm import sessionmaker
 TEST_DATA_DIR = Path(__file__).parent / "fixtures"
 TEST_DB_URL = "sqlite:///:memory:"
 
+# Set test environment variables at import time so module-level create_app()
+# during pytest collection binds to the in-memory test DB instead of data/app.db.
+os.environ.setdefault("APP_ENV", "test")
+os.environ.setdefault("APP_DEBUG", "false")
+os.environ.setdefault("APP_LOG_LEVEL", "WARNING")
+os.environ["DATABASE_URL"] = TEST_DB_URL
+
 
 @pytest.fixture(autouse=True)
 def set_test_env(monkeypatch: pytest.MonkeyPatch) -> None:

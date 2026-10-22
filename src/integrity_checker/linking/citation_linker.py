@@ -342,7 +342,7 @@ class CitationLinker:
         title.
         """
         token = author.strip().lower()
-        if not token or len(token) < 4 or " " in token:
+        if not token or len(token) < 3 or " " in token:
             return None
 
         for bib_idx, bib in enumerate(bib_citations):
@@ -352,7 +352,14 @@ class CitationLinker:
                 str(part or "")
                 for part in (bib.title, bib.venue, bib.raw_text)
             ).lower()
-            if self._org_token_in_haystack(token, haystack):
+            # Also check if token is an acronym of the corporate author (e.g. "who" -> "World Health Organization")
+            org_acronyms: set[str] = set()
+            for auth in bib.authors or []:
+                auth_str = auth if isinstance(auth, str) else getattr(auth, "last_name", "") or ""
+                words = [w for w in re.split(r"\W+", auth_str) if w and len(w) > 2 and w.lower() not in ("and", "the", "for", "of")]
+                if len(words) >= 2:
+                    org_acronyms.add("".join(w[0].lower() for w in words))
+            if token in org_acronyms or self._org_token_in_haystack(token, haystack):
                 return CitationLink(
                     occurrence_id=occ_id,
                     reference_id=bib.reference_id or f"ref-{bib_idx:04d}",
@@ -436,7 +443,7 @@ class CitationLinker:
     def _index_by_numeric(self, bibs: list[Citation]) -> dict[int, Citation]:
         out: dict[int, Citation] = {}
         for bib in bibs:
-            if bib.numeric_index is not None:
+            if bib.numeric_index is not None and bib.numeric_index not in out:
                 out[bib.numeric_index] = bib
         return out
 
@@ -449,7 +456,12 @@ class CitationLinker:
                 last_name = self._normalize_last_name(bib.authors[0])
                 if last_name:
                     key = (last_name.lower(), bib.year)
-                    out.setdefault(key, []).append(bib)
+                    if bib not in out.setdefault(key, []):
+                        out[key].append(bib)
+                    if " " in last_name:
+                        short_key = (last_name.split()[-1].lower(), bib.year)
+                        if bib not in out.setdefault(short_key, []):
+                            out[short_key].append(bib)
         return out
 
     def _index_by_author_year_suffix(
@@ -463,7 +475,12 @@ class CitationLinker:
                 year_suffix = bib.year_suffix or ""
                 if last_name:
                     key = (last_name.lower(), bib.year, year_suffix)
-                    out.setdefault(key, []).append(bib)
+                    if bib not in out.setdefault(key, []):
+                        out[key].append(bib)
+                    if " " in last_name:
+                        short_key = (last_name.split()[-1].lower(), bib.year, year_suffix)
+                        if bib not in out.setdefault(short_key, []):
+                            out[short_key].append(bib)
         return out
 
     def _normalize_last_name(self, raw: str | object) -> str:
@@ -471,7 +488,9 @@ class CitationLinker:
 
         Handles:
             - str "Smith, J." → "Smith"
+            - str "De Choudhury, M." → "De Choudhury"
             - str "Smith J." → "Smith"
+            - str "De Choudhury" → "De Choudhury"
             - Author object → .last_name attribute
         """
         # Handle Author object from author_parser.py
@@ -483,7 +502,17 @@ class CitationLinker:
             last = raw.split(",")[0].strip()
         else:
             tokens = raw.split()
-            last = tokens[0] if tokens else ""
+            if not tokens:
+                return ""
+            if len(tokens) >= 2 and len(tokens[-1].rstrip(".")) == 1 and tokens[-1][0].isupper():
+                # "Smith J." → "Smith"
+                last = " ".join(tokens[:-1])
+            elif len(tokens) >= 2 and len(tokens[0].rstrip(".")) == 1 and tokens[0][0].isupper():
+                # "J. Smith" → "Smith"
+                non_init = [t for t in tokens if len(t.rstrip(".")) > 1]
+                last = " ".join(non_init) if non_init else tokens[-1]
+            else:
+                last = " ".join(tokens)
         return last.strip()
 
     # -- extractors --

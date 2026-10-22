@@ -26,6 +26,17 @@ from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate
 from integrity_checker.retrieval.base import BaseScholarClient
+from integrity_checker.retrieval.normalization import title_similarity
+
+# Minimum title similarity để chấp nhận một organic result.
+# Google Scholar xếp hạng theo độ liên quan mờ, nên kết quả top-1 có thể là bài
+# hoàn toàn khác chủ đề (vd. "Persuasion: Theory and research" cho "Attention Is
+# All You Need"). Chỉ nhận result nếu title khớp được với citation.
+MIN_TITLE_SIMILARITY = 0.60
+
+# Số organic result tối đa được dùng khi query bằng author + year
+# (gần như luôn lệch, cần duyệt thêm vài kết quả).
+MAX_FALLBACK_RESULTS = 5
 
 logger = get_logger(__name__)
 
@@ -106,6 +117,20 @@ class SerpApiClient(BaseScholarClient):
                 error=f"SerpApi: No results for '{query[:60]}'",
             )
 
+        # Lọc theo title: không nhận kết quả tìm bằng title nhưng lệch chủ đề
+        if citation.title:
+            similarity = title_similarity(citation.title, result.get("title"))
+            if similarity < MIN_TITLE_SIMILARITY:
+                logger.info(
+                    f"SerpApi: title mismatch ({similarity:.2f}) for '{query[:60]}' "
+                    f"→ '{str(result.get('title'))[:60]}'"
+                )
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"SerpApi: No title match for '{query[:60]}'",
+                )
+
         return self._result_to_candidate(result)
 
     def _build_search_query(self, citation: Citation) -> str:
@@ -172,6 +197,7 @@ class SerpApiClient(BaseScholarClient):
                         self._sync_search,
                         query,
                         citation.year,
+                        bool(citation.title),
                     )
                     return result
             return None
@@ -186,13 +212,15 @@ class SerpApiClient(BaseScholarClient):
         self,
         query: str,
         year: str | None = None,
+        title_query: bool = True,
     ) -> dict | None:
         """Sync search wrapper cho asyncio executor.
 
         Returns:
-            First organic_result dict hoặc None.
+            First matching organic_result dict hoặc None.
         """
         from serpapi import GoogleScholarSearch  # Local import
+        from integrity_checker.retrieval.normalization import title_similarity
 
         params: dict = {
             "engine": "google_scholar",
@@ -200,12 +228,16 @@ class SerpApiClient(BaseScholarClient):
             "api_key": self.api_key,
         }
 
-        # Add year filter if available
-        if year:
-            year_int = int(year) if year.isdigit() else None
-            if year_int:
-                params["as_ylo"] = str(max(1900, year_int - 1))
-                params["as_yhi"] = str(min(2030, year_int + 1))
+        # Exact-phrase search: Google Scholar xếp hạng từ khóa rời (bag-of-words)
+        # nên "Attention Is All You Need" trả về bài không liên quan trước.
+        # as_epq ép khớp nguyên cụm, cho kết quả chính xác hơn nhiều.
+        if title_query:
+            params["as_epq"] = query
+
+        # NOTE: Không dùng as_ylo/as_yhi khi đã có as_epq — Google Scholar (qua
+        # SerpApi) bỏ qua exact-phrase và trả kết quả rác khi kết hợp hai tham
+        # số này. Lọc theo năm ở client thay vào đó (xem _filter_by_year).
+        year_int = int(year) if year and year.isdigit() else None
 
         try:
             search = GoogleScholarSearch(params)
@@ -219,16 +251,52 @@ class SerpApiClient(BaseScholarClient):
                     logger.warning(f"SerpApi status={status}: {error_msg}")
                     return None
 
-            # Get first organic result
-            organic = data.get("organic_results", [])
-            if organic:
-                return organic[0]
+            organic = data.get("organic_results", []) or []
+            candidates = organic[:1] if title_query else organic[:MAX_FALLBACK_RESULTS]
 
-            return None
+            # Lọc theo năm ở client (±1 năm), giữ kết quả không rõ năm
+            if year_int:
+                candidates = self._filter_by_year(candidates, year_int)
+
+            if title_query:
+                return candidates[0] if candidates else None
+
+            # Query bằng author + year gần như luôn lệch: chọn kết quả khớp
+            # title tốt nhất trong các ứng viên.
+            best = None
+            best_sim = 0.0
+            for r in candidates:
+                sim = title_similarity(query, r.get("title"))
+                if sim > best_sim:
+                    best, best_sim = r, sim
+            return best
 
         except Exception as e:
             logger.error(f"SerpApi sync search failed: {e}")
             return None
+
+    @staticmethod
+    def _result_year(result: dict) -> int | None:
+        """Extract năm xuất bản từ một organic result, None nếu không rõ."""
+        candidates = [
+            result.get("snippet", ""),
+            (result.get("publication_info") or {}).get("summary", ""),
+            result.get("title", ""),
+        ]
+        for text in candidates:
+            if text:
+                m = re.search(r"\b(19|20)\d{2}\b", text)
+                if m:
+                    return int(m.group(0))
+        return None
+
+    @classmethod
+    def _filter_by_year(cls, results: list[dict], year: int) -> list[dict]:
+        """Giữ kết quả trong khoảng [year-1, year+1] hoặc không rõ năm."""
+        return [
+            r for r in results
+            if (y := cls._result_year(r)) is None or abs(y - year) <= 1
+        ]
 
     @staticmethod
     def _result_to_candidate(result: dict) -> SourceCandidate:

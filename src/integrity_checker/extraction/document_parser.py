@@ -397,10 +397,25 @@ class DocumentParser:
         Returns:
             list[Citation] với merged references và provenance tracking.
         """
-        # Lấy references từ GROBID (primary)
+        from integrity_checker.extraction.reference_parser import _is_fake_entry
+
+        # Lấy references từ GROBID (primary) và lọc bỏ fake entries TRƯỚC khi
+        # đánh lại order_index / numeric_index (tránh bị lệch index như ở thesis.pdf).
         grobid_refs: list[Citation] = []
         if grobid is not None and grobid.is_available and grobid.bibliography:
-            grobid_refs = self._grobid_to_citations(grobid)
+            raw_grobid_refs = self._grobid_to_citations(grobid)
+            for ref in raw_grobid_refs:
+                if _is_fake_entry(ref.raw_text) or (
+                    ref.year is None and not ref.doi and _is_fake_entry(ref.title or "")
+                ):
+                    logger.debug(
+                        f"Filtered fake GROBID entry before indexing: {ref.raw_text[:50]}..."
+                    )
+                    continue
+                grobid_refs.append(ref)
+            for idx, ref in enumerate(grobid_refs, start=1):
+                ref.order_index = idx
+                ref.numeric_index = idx
 
         # Lấy references từ regex (secondary/supplemental)
         regex_refs = self._extract_references_from_sections(sections)
@@ -409,8 +424,6 @@ class DocumentParser:
         merged_refs = self._merge_reference_lists(grobid_refs, regex_refs)
 
         # FIX v1.11: Filter out fake/non-citation entries from merged references
-        # This catches entries from GROBID that look like method descriptions
-        from integrity_checker.extraction.reference_parser import _is_fake_entry
         filtered_refs = []
         for ref in merged_refs:
             if not _is_fake_entry(ref.raw_text):
@@ -479,16 +492,36 @@ class DocumentParser:
         """
         from integrity_checker.extraction.grobid_adapter import _is_duplicate_reference
 
+        def _enrich_grobid_ref(target: Citation, donor: Citation) -> None:
+            """Fill in missing fields on a GROBID reference from its regex counterpart."""
+            if not target.authors and donor.authors:
+                target.authors = donor.authors
+            if not target.doi and donor.doi:
+                target.doi = donor.doi
+            if not target.venue and donor.venue:
+                target.venue = donor.venue
+            if not target.year and donor.year:
+                target.year = donor.year
+            if not target.title and donor.title:
+                target.title = donor.title
+                target.title_normalized = donor.title_normalized
+            if donor.numeric_index is not None:
+                target.numeric_index = donor.numeric_index
+
         merged: list[Citation] = []
 
         # Track GROBID ref IDs để avoid duplicate
-        grobid_doi_set = {c.doi.lower() for c in grobid_refs if c.doi}
-        grobid_keys: set = set()  # (title_norm, year, first_author_last_name)
+        grobid_by_doi: dict[str, Citation] = {
+            c.doi.lower(): c for c in grobid_refs if c.doi
+        }
+        grobid_by_key: dict[tuple, Citation] = {}
+        grobid_by_num: dict[int, Citation] = {}
 
         for c in grobid_refs:
-            # Track key for deduplication
             key = self._citation_key(c)
-            grobid_keys.add(key)
+            grobid_by_key[key] = c
+            if c.numeric_index is not None and c.numeric_index not in grobid_by_num:
+                grobid_by_num[c.numeric_index] = c
             merged.append(c)
 
         # Add regex entries không trùng với GROBID
@@ -496,24 +529,53 @@ class DocumentParser:
             key = self._citation_key(c)
 
             # Check DOI match
-            if c.doi and c.doi.lower() in grobid_doi_set:
+            if c.doi and c.doi.lower() in grobid_by_doi:
+                _enrich_grobid_ref(grobid_by_doi[c.doi.lower()], c)
                 logger.debug(f"Skipping regex duplicate by DOI: {c.raw_text[:50]}")
                 continue
 
             # Check key match
-            if key in grobid_keys:
+            if key in grobid_by_key:
+                _enrich_grobid_ref(grobid_by_key[key], c)
                 logger.debug(f"Skipping regex duplicate by key: {c.raw_text[:50]}")
                 continue
 
             # Check GROBID refs directly
-            if _is_duplicate_reference(c, grobid_refs):
+            dup_match = next(
+                (g for g in grobid_refs if _is_duplicate_reference(c, [g])),
+                None,
+            )
+            if dup_match is not None:
+                _enrich_grobid_ref(dup_match, c)
                 logger.debug(f"Skipping regex duplicate: {c.raw_text[:50]}")
                 continue
+
+            # Check same numeric_index slot (e.g. [10] in GROBID vs [10] in regex
+            # when GROBID and regex parsed slightly different title/author boundaries
+            # from the exact same numbered bibliography entry)
+            if c.numeric_index is not None and c.numeric_index in grobid_by_num:
+                g_num = grobid_by_num[c.numeric_index]
+                if g_num.year == c.year or (g_num.doi and c.doi and g_num.doi.lower() == c.doi.lower()):
+                    _enrich_grobid_ref(g_num, c)
+                    logger.debug(
+                        f"Skipping regex duplicate at same numeric_index={c.numeric_index}: {c.raw_text[:50]}"
+                    )
+                    continue
 
             # Mark as merged source
             c.source = "merged"
             c.source_confidence = c.confidence
             merged.append(c)
+
+        # If all merged references have unique numeric_index values (e.g. when
+        # regex filled in a numbered entry [16] that GROBID skipped), sort by
+        # numeric_index so the bibliography order matches the paper's [1]..[N].
+        if (
+            merged
+            and all(c.numeric_index is not None for c in merged)
+            and len({c.numeric_index for c in merged}) == len(merged)
+        ):
+            merged.sort(key=lambda c: c.numeric_index or 0)
 
         # Re-index order_index
         for idx, c in enumerate(merged, start=1):

@@ -287,7 +287,8 @@ class CitationExtractor:
         # well let one survivor through per type — a numeric and an in_text
         # variant of the very same "[24]" — which doubled every numeric
         # occurrence in the report ("x4" instead of "x2").
-        matched_spans: set[tuple[int, int]] = set()
+        seen_spans: set[tuple[int, int]] = set()
+        accepted_spans: set[tuple[int, int]] = set()
         for pattern_def, compiled in self._compiled:
             # Find positions in raw text first (preserves whitespace/newlines)
             for m in compiled.finditer(raw_text):
@@ -315,13 +316,17 @@ class CitationExtractor:
                     style = pattern_def.style
 
                 span_key = (m.start(), m.end())
-                if span_key in matched_spans:
+                if span_key in seen_spans or any(
+                    m.start() < e and m.end() > s for s, e in accepted_spans
+                ):
                     continue
-                matched_spans.add(span_key)
+                seen_spans.add(span_key)
 
-                # Bug fix 1: Filter out IEEE [N] reference list markers
+                # Bug fix 1: Filter out IEEE [N] reference list markers and array/year brackets ([0], [2020])
                 # "[4] Xiao, Y., ..." at start of line is a reference list entry, not in-text citation
-                if citation_type == CitationType.NUMERIC:
+                if citation_type == CitationType.NUMERIC or raw.startswith("["):
+                    if re.fullmatch(r"\[\s*(?:0|(?:19|20)\d{2})\s*\]", raw):
+                        continue
                     if _is_reference_list_marker(raw_text, raw_start):
                         continue
 
@@ -332,14 +337,22 @@ class CitationExtractor:
 
                 # Bug fix 3: Filter out [N] in test scenario contexts
                 # Test scenarios like "Reference: [1]" or "APA-01: MATCHED" should not extract [1]
-                if citation_type == CitationType.NUMERIC:
+                if citation_type == CitationType.NUMERIC or raw.startswith("["):
                     if _is_in_test_scenario_context(raw_text, raw_start):
                         continue
 
                 # Bug fix 4: Filter out date-only patterns like "(May 2012)", "(Spring 2013)"
-                # These are legal citations with dates, not author-year citations
+                # and non-author parentheticals like "(42, 123, 2024)" or "(loadComments, 5000)"
                 if _is_date_only_citation(raw):
                     continue
+                if citation_type == CitationType.IN_TEXT and raw.startswith("("):
+                    if not re.search(r"\b(?:19|20)\d{2}[a-z]?\b", raw):
+                        continue
+                    inner_head = raw[1:].split(",")[0].strip()
+                    if not inner_head or not re.search(r"[A-ZÀ-Ý]", inner_head) or inner_head[0].isdigit() or inner_head[0].islower():
+                        continue
+
+                accepted_spans.add(span_key)
 
                 citation = Citation(
                     raw_text=raw,
