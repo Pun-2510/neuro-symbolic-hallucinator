@@ -113,6 +113,21 @@ function setupTeacherMocks(page: Page): void {
     });
   });
   // Students and essays
+  page.route('http://localhost:8000/api/teacher/students', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 101,
+          username: 'studentA',
+          email: 'studentA@example.com',
+          full_name: 'Student A',
+          is_active: true,
+        },
+      ]),
+    }),
+  );
   page.route('http://localhost:8000/api/teacher/classes/1/students', (route) =>
     route.fulfill({
       status: 200,

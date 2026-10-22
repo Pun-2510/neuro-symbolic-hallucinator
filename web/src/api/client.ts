@@ -481,6 +481,8 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
+  listAvailableStudents: () =>
+    request<ClassStudent[]>('/teacher/students'),
   listClassStudents: (classId: number) =>
     request<ClassStudent[]>(`/teacher/classes/${classId}/students`),
   addStudentToClass: (classId: number, studentId: number) =>

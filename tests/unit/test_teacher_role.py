@@ -338,6 +338,31 @@ class TestClassOwnership:
 
 
 class TestClassStudents:
+    def test_teacher_lists_available_students(self, clean_db):
+        token = get_teacher_token()
+        client = TestClient(app)
+        s1 = _make_user("alice", role="user", email="alice@x.com")
+        s2 = _make_user("bob", role="user", email="bob@x.com")
+        _make_user("other_teacher", role="teacher")
+        _make_user("other_admin", role="admin")
+
+        resp = client.get("/api/teacher/students", headers=auth_header(token))
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        usernames = [u["username"] for u in data]
+        ids = [u["id"] for u in data]
+        assert "alice" in usernames and "bob" in usernames
+        assert s1 in ids and s2 in ids
+        assert "other_teacher" not in usernames
+        assert "other_admin" not in usernames
+        assert "teacher" not in usernames
+
+    def test_user_cannot_list_available_students(self, clean_db):
+        token = get_user_token()
+        client = TestClient(app)
+        resp = client.get("/api/teacher/students", headers=auth_header(token))
+        assert resp.status_code == 403
+
     def test_teacher_adds_student_to_own_class(self, clean_db):
         token = get_teacher_token()
         client = TestClient(app)

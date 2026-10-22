@@ -176,6 +176,17 @@ def create_class(
     return _class_to_response(cls, repo)
 
 
+@router.get("/students", response_model=list[StudentInClass])
+def list_available_students(
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """List all users with role='user' so teachers can search and add them to a class."""
+    repo = Repository(db)
+    students = repo.list_all_students()
+    return [_student_to_response(s) for s in students]
+
+
 @router.get("/classes/{class_id}/students", response_model=list[StudentInClass])
 def list_class_students(
     class_id: int,

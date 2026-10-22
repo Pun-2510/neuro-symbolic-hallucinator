@@ -83,9 +83,27 @@ export function ClassDetailPage() {
     }
   };
 
-  const handleExport = () => {
-    // Open in same tab — backend requires auth, browser sends cookies
-    window.location.href = api.exportClassCSV(cid);
+  const handleExport = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const resp = await fetch(api.exportClassCSV(cid), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!resp.ok) {
+        throw new Error(`API ${resp.status}: ${await resp.text()}`);
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `class_${cid}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Export CSV thất bại');
+    }
   };
 
   if (loading) {

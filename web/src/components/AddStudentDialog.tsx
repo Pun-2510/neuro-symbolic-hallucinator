@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { X, Search } from 'lucide-react';
-import { api, type User } from '@/api/client';
+import { api, type ClassStudent } from '@/api/client';
 
 export interface AddStudentDialogProps {
   open: boolean;
@@ -23,7 +23,7 @@ export function AddStudentDialog({
   onClose,
   onAdded,
 }: AddStudentDialogProps) {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<ClassStudent[]>([]);
   const [search, setSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -35,7 +35,7 @@ export function AddStudentDialog({
     let cancelled = false;
     setLoading(true);
     setError('');
-    api.listUsers()
+    api.listAvailableStudents()
       .then((data) => {
         if (!cancelled) setUsers(data);
       })
@@ -65,7 +65,6 @@ export function AddStudentDialog({
   const q = search.trim().toLowerCase();
   const candidates = users.filter(
     (u) =>
-      u.role === 'user' &&
       !existingStudentIds.includes(u.id) &&
       (!q ||
         u.username.toLowerCase().includes(q) ||

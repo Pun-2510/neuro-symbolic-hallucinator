@@ -624,6 +624,15 @@ class Repository:
             .all()
         )
 
+    def list_all_students(self) -> list[User]:
+        """List all users with role='user' (students), ordered by username."""
+        return list(
+            self.session.query(User)
+            .filter(User.role == "user")
+            .order_by(User.username.asc())
+            .all()
+        )
+
     def count_students_in_class(self, class_id: int) -> int:
         return (
             self.session.query(ClassMembership)
