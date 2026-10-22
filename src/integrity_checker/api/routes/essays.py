@@ -12,12 +12,20 @@ from sqlalchemy.orm import Session
 
 from integrity_checker.api.deps import get_current_user, get_db, get_pipeline, require_admin
 from integrity_checker.api.progress import get_tracker
-from integrity_checker.db.models import User
+from integrity_checker.config import PROJECT_ROOT, is_test_runtime
+from integrity_checker.db.models import CitationRecord, User, VerdictRecord
 from integrity_checker.db.repository import Repository
 from integrity_checker.models.api_schemas import CitationSchema, EssayUploadResponse
 from integrity_checker.pipeline.integrity_pipeline import IntegrityPipeline
 
 router = APIRouter()
+
+UPLOADS_DIR = PROJECT_ROOT / "data" / "essays" / "uploads"
+
+
+def _get_persisted_upload_path(essay_id: int) -> Path:
+    """Return persistent path on disk for an uploaded essay PDF."""
+    return UPLOADS_DIR / f"{essay_id}.pdf"
 
 
 # ---------------------------------------------------------------------------
@@ -29,6 +37,7 @@ async def _run_pipeline_task(
     tmp_path: str,
     user_id: int,
     pipeline: IntegrityPipeline,
+    cleanup_file: bool = True,
 ) -> None:
     """Background task: run full pipeline and persist results to DB.
 
@@ -83,7 +92,9 @@ async def _run_pipeline_task(
 
             # Persist every extracted occurrence/entry so the Citations and
             # References tabs reflect the real document, not the deduped
-            # verification set.
+            # verification set. Clear any partial rows from an interrupted run first.
+            session.query(CitationRecord).filter(CitationRecord.essay_id == essay_id).delete()
+            session.query(VerdictRecord).filter(VerdictRecord.essay_id == essay_id).delete()
             repo.add_citations(essay_id, report.extracted_citations)
             repo.add_verdicts(essay_id, report.verdicts)
 
@@ -173,8 +184,8 @@ async def _run_pipeline_task(
         logger.exception(f"Pipeline failed for essay {essay_id}: {exc}")
         tracker.fail(essay_id, str(exc))
     finally:
-        # Always clean up the temp file
-        Path(tmp_path).unlink(missing_ok=True)
+        if cleanup_file:
+            Path(tmp_path).unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -197,11 +208,7 @@ async def upload_essay(
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files allowed")
 
-    # Save to temp file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        content = await file.read()
-        tmp.write(content)
-        tmp_path = tmp.name
+    content = await file.read()
 
     # Create essay record immediately (num_pages=0 until pipeline fills it)
     repo = Repository(db)
@@ -211,6 +218,18 @@ async def upload_essay(
         user_id=current_user.id,
     )
     repo.commit()
+
+    if is_test_runtime():
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
+        cleanup_file = True
+    else:
+        UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+        persisted_path = _get_persisted_upload_path(essay.id)
+        persisted_path.write_bytes(content)
+        tmp_path = str(persisted_path)
+        cleanup_file = False
 
     # Initialize real-time progress tracker so GET /status returns something useful
     tracker = get_tracker()
@@ -223,6 +242,7 @@ async def upload_essay(
         tmp_path,
         current_user.id,
         pipeline,
+        cleanup_file,
     )
 
     return EssayUploadResponse(
@@ -240,20 +260,21 @@ def get_essay_status(
     essay_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> dict:
     """Return real-time pipeline progress for the ProcessingScreen.
 
     Returns a snapshot of the in-memory ProgressState.  If the tracker has no
     entry (task finished or server restarted), falls back to checking the DB:
     - Verdicts written → status=completed
-    - No verdicts yet → status=queued/processing
+    - No verdicts yet → auto-resume if uploaded PDF is on disk, else processing
     """
     repo = Repository(db)
     essay = repo.get_essay(essay_id)
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
 
-    if current_user.role != "admin" and essay.user_id != current_user.id:
+    if not repo.can_user_access_essay(current_user, essay):
         raise HTTPException(status_code=403, detail="Access denied")
 
     tracker = get_tracker()
@@ -264,7 +285,7 @@ def get_essay_status(
 
     # No tracker entry — fall back to DB state
     verdicts = repo.get_verdicts(essay_id)
-    if verdicts:
+    if verdicts or essay.cis_json is not None:
         extracted = repo.get_citations(essay_id)
         # Pipeline completed (possibly via cache hit or prior run)
         return {
@@ -281,6 +302,21 @@ def get_essay_status(
             "finished_at": None,
             "error": None,
         }
+
+    # Server restarted before background analysis finished: auto-resume if the
+    # uploaded PDF is persisted on disk.
+    persisted_pdf = _get_persisted_upload_path(essay_id)
+    if not is_test_runtime() and persisted_pdf.is_file():
+        resumed_state = tracker.init(essay_id)
+        background_tasks.add_task(
+            _run_pipeline_task,
+            essay.id,
+            str(persisted_pdf),
+            essay.user_id or current_user.id,
+            get_pipeline(),
+            False,
+        )
+        return resumed_state.to_snapshot()
 
     # No tracker and no verdicts — either queued or server restarted mid-run
     return {
@@ -312,13 +348,9 @@ def list_essays(
     """
     repo = Repository(db)
 
-    grouped = repo.get_all_essays_deduped()
-    if current_user.role != "admin":
-        grouped = [
-            (essay, dupes)
-            for essay, dupes in grouped
-            if essay.user_id == current_user.id
-        ]
+    grouped = repo.get_all_essays_deduped(
+        user_id=None if current_user.role == "admin" else current_user.id
+    )
 
     return [
         {
@@ -367,8 +399,8 @@ async def get_essay(
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
 
-    # Ownership check
-    if current_user.role != "admin" and essay.user_id != current_user.id:
+    # Ownership / teacher class check
+    if not repo.can_user_access_essay(current_user, essay):
         raise HTTPException(status_code=403, detail="Access denied")
 
     return {
@@ -396,8 +428,9 @@ async def delete_essay(
     if current_user.role != "admin" and essay.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Clean up progress tracker
+    # Clean up progress tracker and persisted PDF
     get_tracker().clear(essay_id)
+    _get_persisted_upload_path(essay_id).unlink(missing_ok=True)
 
     db.delete(essay)
     db.commit()

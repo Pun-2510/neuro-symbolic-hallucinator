@@ -85,8 +85,9 @@ services:
           memory: 4G
         reservations:
           memory: 2G
-    # Hot-reload: override CMD to add --reload flag
-    command: uvicorn integrity_checker.api.main:app --host 0.0.0.0 --port 8000 --reload
+    # Hot-reload: override CMD to add --reload flag (watch only /app/src so
+    # test edits or SQLite writes in /app/data don't restart the server)
+    command: uvicorn integrity_checker.api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/src
 
   # ---------------------------------------------------------------------------
   # Web — React frontend (Vite dev server)

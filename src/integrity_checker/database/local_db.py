@@ -31,7 +31,7 @@ from .models import Paper, QueryLog
 from .schemas import INIT_STATEMENTS
 
 # Default database path
-DEFAULT_DB_PATH = Path("./data/local_papers.db")
+DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "local_papers.db"
 
 
 def _title_key(title: str | None) -> str:

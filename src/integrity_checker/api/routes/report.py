@@ -47,9 +47,9 @@ async def get_report(
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
 
-    # SECURITY: Ownership check
+    # SECURITY: Ownership / teacher class check
     current_user = get_current_user(authorization, db) if authorization else None
-    if current_user and current_user.role != "admin" and essay.user_id != current_user.id:
+    if current_user and not repo.can_user_access_essay(current_user, essay):
         raise HTTPException(status_code=403, detail="Access denied")
 
     # If the pipeline is still running, return 425 so the frontend knows to keep polling.

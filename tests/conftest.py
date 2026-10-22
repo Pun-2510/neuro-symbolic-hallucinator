@@ -14,22 +14,26 @@ TEST_DB_URL = "sqlite:///:memory:"
 
 # Set test environment variables at import time so module-level create_app()
 # during pytest collection binds to the in-memory test DB instead of data/app.db.
-os.environ.setdefault("APP_ENV", "test")
-os.environ.setdefault("APP_DEBUG", "false")
-os.environ.setdefault("APP_LOG_LEVEL", "WARNING")
+os.environ["APP_ENV"] = "test"
+os.environ["APP_DEBUG"] = "false"
+os.environ["APP_LOG_LEVEL"] = "WARNING"
 os.environ["DATABASE_URL"] = TEST_DB_URL
+
+from integrity_checker.config import get_settings
+
+get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)
-def set_test_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Set test-env defaults."""
+def set_test_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Set test-env defaults and isolate DB/avatar paths from production data/."""
     monkeypatch.setenv("APP_ENV", "test")
     monkeypatch.setenv("APP_DEBUG", "false")
     monkeypatch.setenv("APP_LOG_LEVEL", "WARNING")
     monkeypatch.setenv("DATABASE_URL", TEST_DB_URL)
-    # Clear LRU cache for get_settings
-    from integrity_checker.config import get_settings
-
+    monkeypatch.setenv("AVATARS_DIR", str(tmp_path / "avatars"))
+    get_settings.cache_clear()
+    yield
     get_settings.cache_clear()
 
 

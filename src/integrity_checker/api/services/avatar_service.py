@@ -7,7 +7,10 @@ and size to prevent abuse (max 2MB, JPG/PNG/WEBP only).
 from __future__ import annotations
 
 import os
+import tempfile
 from pathlib import Path
+
+from integrity_checker.config import PROJECT_ROOT, is_test_runtime
 
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp"}
 MIME_TO_EXT = {
@@ -28,7 +31,12 @@ class AvatarService:
     """
 
     def __init__(self, base_dir: Path | None = None, public_prefix: str = "/api/avatars") -> None:
-        self.base_dir = (base_dir or Path("data/avatars")).resolve()
+        default_dir = (
+            Path(tempfile.gettempdir()) / "integrity_checker_test_avatars"
+            if is_test_runtime()
+            else (PROJECT_ROOT / "data" / "avatars")
+        )
+        self.base_dir = (base_dir or default_dir).resolve()
         self.public_prefix = public_prefix.rstrip("/")
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
@@ -85,14 +93,23 @@ class AvatarService:
 
 
 _singleton: AvatarService | None = None
+_singleton_dir: Path | None = None
 
 
 def get_avatar_service() -> AvatarService:
     """Lazy singleton — mirrors the get_settings / get_session pattern."""
-    global _singleton
-    if _singleton is None:
-        # Honour $AVATARS_DIR override for tests / containerized deployments
-        env_dir = os.environ.get("AVATARS_DIR")
-        base = Path(env_dir) if env_dir else None
+    global _singleton, _singleton_dir
+    env_dir = os.environ.get("AVATARS_DIR")
+    base = (
+        Path(env_dir)
+        if env_dir
+        else (
+            Path(tempfile.gettempdir()) / "integrity_checker_test_avatars"
+            if is_test_runtime()
+            else (PROJECT_ROOT / "data" / "avatars")
+        )
+    ).resolve()
+    if _singleton is None or _singleton_dir != base:
         _singleton = AvatarService(base_dir=base)
+        _singleton_dir = base
     return _singleton

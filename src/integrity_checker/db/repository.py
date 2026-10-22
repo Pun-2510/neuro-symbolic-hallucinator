@@ -424,17 +424,20 @@ class Repository:
     # -- Essay dedupe --
 
     @staticmethod
-    def _essay_quality(essay: EssayRecord, citation_counts: dict[int, int]) -> tuple[int, int, str]:
+    def _essay_quality(essay: EssayRecord, citation_counts: dict[int, int]) -> tuple[int, int, str, int]:
         """Rank key for keeping the best copy of a duplicated upload.
 
         Prefers essays that actually produced results (verdicts/citations),
         then the most recent upload, then a stable id tie-breaker.
         """
         uploaded = essay.uploaded_at.isoformat() if essay.uploaded_at else ""
-        return (citation_counts.get(essay.id, 0), 1 if uploaded else 0, uploaded)
+        has_results = 1 if (citation_counts.get(essay.id, 0) > 0 or bool(essay.cis_json)) else 0
+        return (has_results, 1 if uploaded else 0, uploaded, essay.id or 0)
 
-    def get_all_essays_deduped(self) -> list[tuple[EssayRecord, list[int]]]:
-        """Group essays by filename, keeping the best copy.
+    def get_all_essays_deduped(
+        self, user_id: int | None = None
+    ) -> list[tuple[EssayRecord, list[int]]]:
+        """Group essays by filename (scoped per user), keeping the best copy.
 
         Re-uploading the same PDF currently creates a new ``essays`` row every
         time, which inflates statistics (e.g. ``TranThanhPhuoc_...pdf`` ×4).
@@ -445,11 +448,10 @@ class Repository:
             list of ``(canonical_essay, duplicate_ids)`` ordered by the
             canonical essay's ``uploaded_at`` descending.
         """
-        essays = list(
-            self.session.query(EssayRecord)
-            .order_by(EssayRecord.uploaded_at.desc())
-            .all()
-        )
+        query = self.session.query(EssayRecord)
+        if user_id is not None:
+            query = query.filter(EssayRecord.user_id == user_id)
+        essays = list(query.order_by(EssayRecord.uploaded_at.desc()).all())
         if not essays:
             return []
 
@@ -462,9 +464,9 @@ class Repository:
             ).group_by(CitationRecord.essay_id).all()
         }
 
-        groups: dict[str, list[EssayRecord]] = {}
+        groups: dict[tuple[int | None, str], list[EssayRecord]] = {}
         for essay in essays:
-            groups.setdefault(essay.filename, []).append(essay)
+            groups.setdefault((essay.user_id, essay.filename), []).append(essay)
 
         result: list[tuple[EssayRecord, list[int]]] = []
         for copies in groups.values():
@@ -477,6 +479,23 @@ class Repository:
             reverse=True,
         )
         return result
+
+    def can_user_access_essay(self, user: User, essay: EssayRecord) -> bool:
+        """Return True if ``user`` owns ``essay``, is admin, or teaches the owner."""
+        if user.role == "admin" or essay.user_id == user.id:
+            return True
+        if user.role == "teacher" and essay.user_id is not None:
+            teacher_class_ids = {c.id for c in self.list_classes_for_teacher(user.id)}
+            if not teacher_class_ids:
+                return False
+            student_class_ids = {
+                m.class_id
+                for m in self.session.query(ClassMembership)
+                .filter(ClassMembership.student_id == essay.user_id)
+                .all()
+            }
+            return bool(teacher_class_ids & student_class_ids)
+        return False
 
     # -- Citation Cache --
 

@@ -17,6 +17,36 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+MAIN_APP_DB_PATH = (PROJECT_ROOT / "data" / "app.db").resolve()
+
+
+def is_test_runtime() -> bool:
+    """Return True when running inside pytest or with APP_ENV=test."""
+    import os
+    import sys
+
+    return (
+        "pytest" in sys.modules
+        or "PYTEST_CURRENT_TEST" in os.environ
+        or os.getenv("APP_ENV", "").lower() in ("test", "testing")
+    )
+
+
+def is_main_app_db_url(url: str) -> bool:
+    """Return True if a SQLite URL resolves to the main project data/app.db."""
+    if not url.startswith("sqlite:///") or url == "sqlite:///:memory:":
+        return False
+    raw_path = url.removeprefix("sqlite:///").split("?", 1)[0]
+    if not raw_path or raw_path == ":memory:":
+        return False
+    p = Path(raw_path)
+    candidates = [p.resolve()]
+    if not p.is_absolute():
+        candidates.append((PROJECT_ROOT / p).resolve())
+    return any(c == MAIN_APP_DB_PATH for c in candidates)
+
+
 # ---------- Sub-configs ----------
 
 
@@ -398,6 +428,13 @@ class Settings(BaseSettings):
         if env_app_env:
             self.app.env = env_app_env
 
+        if is_test_runtime():
+            self.app.env = "test"
+            if not env_db_url or is_main_app_db_url(self.database.url):
+                self.database.url = "sqlite:///:memory:"
+        elif is_main_app_db_url(self.database.url):
+            self.database.url = f"sqlite:///{MAIN_APP_DB_PATH.as_posix()}"
+
         w = self.cis.weights
         s = (
             w.verified_ratio
@@ -435,11 +472,16 @@ def get_settings() -> Settings:
     # developer .env file.  The previous ``override=True`` made APP_ENV=test
     # ineffective and accidentally enabled production report/local-db caches
     # during tests.
-    load_dotenv(Path(".env"), override=False)
+    env_path = Path(".env") if Path(".env").exists() else (PROJECT_ROOT / ".env")
+    load_dotenv(env_path, override=False)
 
     config_file = Path("configs/config.yaml")
     if not config_file.exists():
+        config_file = PROJECT_ROOT / "configs/config.yaml"
+    if not config_file.exists():
         config_file = Path("configs/config.example.yaml")
+    if not config_file.exists():
+        config_file = PROJECT_ROOT / "configs/config.example.yaml"
 
     yaml_data: dict[str, Any] = {}
     if config_file.exists():

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from sqlalchemy import create_engine
+import os
+from pathlib import Path
+
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from integrity_checker.config import get_settings
-from integrity_checker.db.models import Base
+from integrity_checker.config import get_settings, is_main_app_db_url, is_test_runtime
+from integrity_checker.db.models import Base, User
 
 
 _engine: Engine | None = None
@@ -21,15 +24,36 @@ def get_engine() -> Engine:
     global _engine, _engine_url, _SessionLocal
     settings = get_settings()
     url = settings.database.url
+
+    # Hard safety guard: never let pytest or test mode touch the main app.db
+    if is_test_runtime() and is_main_app_db_url(url):
+        url = "sqlite:///:memory:"
+
     if _engine is None or _engine_url != url:
-        connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
+        is_sqlite = url.startswith("sqlite")
+        is_memory = url == "sqlite:///:memory:" or ":memory:" in url
+        if is_sqlite and not is_memory and url.startswith("sqlite:///"):
+            raw_path = url.removeprefix("sqlite:///").split("?", 1)[0]
+            if raw_path:
+                Path(raw_path).parent.mkdir(parents=True, exist_ok=True)
+
+        connect_args = {"check_same_thread": False, "timeout": 30} if is_sqlite else {}
         kwargs: dict = {
             "echo": settings.database.echo,
             "connect_args": connect_args,
         }
-        if url == "sqlite:///:memory:":
+        if is_memory:
             kwargs["poolclass"] = StaticPool
         _engine = create_engine(url, **kwargs)
+        if is_sqlite and not is_memory:
+            @event.listens_for(_engine, "connect")
+            def _set_sqlite_pragma(dbapi_connection, _connection_record) -> None:
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+                cursor.execute("PRAGMA busy_timeout=5000")
+                cursor.close()
+
         _engine_url = url
         _SessionLocal = None
     return _engine
@@ -133,6 +157,45 @@ def _run_inline_migrations(engine: Engine) -> None:
         )
 
 
+def _seed_default_users(engine: Engine) -> None:
+    """Ensure default demo accounts (admin, teacher, user) exist in the main DB."""
+    if is_test_runtime() or not is_main_app_db_url(str(engine.url)):
+        return
+    demo_enabled = os.getenv("DEMO_USERS_ENABLED", "").lower()
+    if demo_enabled in ("false", "0", "no"):
+        return
+
+    import bcrypt
+
+    defaults = [
+        ("admin", "admin123", "admin", "admin@example.com", "Administrator", 1),
+        ("teacher", "teacher123", "teacher", "teacher@example.com", "Demo Teacher", 1),
+        ("user", "user123", "user", "user@example.com", "Demo User", 0),
+    ]
+    with Session(bind=engine) as session:
+        existing_usernames = {u.username for u in session.query(User).all()}
+        existing_emails = {u.email for u in session.query(User).all() if u.email}
+        added = False
+        for username, password, role, email, full_name, can_override in defaults:
+            if username in existing_usernames:
+                continue
+            pwd_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            session.add(
+                User(
+                    username=username,
+                    password_hash=pwd_hash,
+                    role=role,
+                    email=email if email not in existing_emails else None,
+                    full_name=full_name,
+                    is_active=1,
+                    can_override_verdicts=can_override,
+                )
+            )
+            added = True
+        if added:
+            session.commit()
+
+
 def _ensure_db_initialized() -> None:
     """Ensure all migrations have run and tables exist.
 
@@ -143,6 +206,7 @@ def _ensure_db_initialized() -> None:
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
     _run_inline_migrations(engine)
+    _seed_default_users(engine)
 
 
 def init_db() -> None:

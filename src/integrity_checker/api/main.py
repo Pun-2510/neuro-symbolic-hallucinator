@@ -58,9 +58,9 @@ def create_app() -> FastAPI:
     logger.info("Database initialized")
 
     # Ensure avatars directory exists before mounting
-    from pathlib import Path
+    from integrity_checker.config import PROJECT_ROOT
 
-    avatars_dir = Path("data/avatars")
+    avatars_dir = PROJECT_ROOT / "data" / "avatars"
     avatars_dir.mkdir(parents=True, exist_ok=True)
 
     # Serve uploaded avatars (user-uploaded profile pictures)

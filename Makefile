@@ -33,7 +33,7 @@ demo:
 
 # --- Services ---
 api:
-	. .venv/bin/activate && uvicorn integrity_checker.api.main:app --reload --port 8000
+	. .venv/bin/activate && uvicorn integrity_checker.api.main:app --reload --reload-dir src --port 8000
 
 web:
 	cd web && npm install && npm run dev
@@ -63,5 +63,4 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 	rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov .coverage
-	rm -f data/app.db data/app.*.db
 	rm -rf data/cache/*.json data/cache/*.sqlite

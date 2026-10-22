@@ -44,7 +44,10 @@ data/essays/*.pdf
 data/cache/*.json
 data/cache/*.sqlite
 data/app.db
+data/app.db-shm
+data/app.db-wal
 data/app.*.db
+data/essays/uploads/
 # Generated paper knowledge base + its WAL sidecars (rebuild via
 # `python scripts/import_acl_xml.py && python scripts/clean_local_db.py --apply`).
 data/local_papers.db

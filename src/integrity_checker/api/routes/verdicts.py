@@ -35,9 +35,9 @@ async def get_verdicts(
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
 
-    # SECURITY: Ownership check
+    # SECURITY: Ownership / teacher class check
     current_user = get_current_user(authorization, db) if authorization else None
-    if current_user and current_user.role != "admin" and essay.user_id != current_user.id:
+    if current_user and not repo.can_user_access_essay(current_user, essay):
         raise HTTPException(status_code=403, detail="Access denied")
 
     records = repo.get_verdicts(essay_id)
