@@ -1,4 +1,6 @@
-import { Shield, TrendingUp, TrendingDown, Minus, CheckCircle2, AlertTriangle, AlertCircle, XCircle, HelpCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import { CheckCircle2, AlertTriangle, AlertCircle, XCircle } from 'lucide-react';
 
 /* ============================================================
    SourceLogic — Citation Integrity Score Card
@@ -14,11 +16,11 @@ interface CISScoreCardProps {
    CIS Status Configuration
    Based on SourceLogic verification coverage thresholds
    ============================================================ */
-const getStatus = (score: number) => {
+const getStatus = (score: number, t: TFunction) => {
   if (score >= 90) {
     return {
-      label: 'Excellent',
-      description: 'Most sources verified with matching metadata',
+      label: t('essay.cisExcellent'),
+      description: t('essay.cisExcellentDesc'),
       color: 'emerald',
       bg: 'bg-emerald-50 dark:bg-emerald-950/40',
       border: 'border-emerald-200 dark:border-emerald-800',
@@ -29,8 +31,8 @@ const getStatus = (score: number) => {
   }
   if (score >= 75) {
     return {
-      label: 'Good',
-      description: 'Most sources verified, minor issues detected',
+      label: t('essay.cisGood'),
+      description: t('essay.cisGoodDesc'),
       color: 'green',
       bg: 'bg-green-50 dark:bg-green-950/40',
       border: 'border-green-200 dark:border-green-800',
@@ -41,8 +43,8 @@ const getStatus = (score: number) => {
   }
   if (score >= 50) {
     return {
-      label: 'Fair',
-      description: 'Several metadata mismatches or unresolved sources',
+      label: t('essay.cisFair'),
+      description: t('essay.cisFairDesc'),
       color: 'amber',
       bg: 'bg-amber-50 dark:bg-amber-950/40',
       border: 'border-amber-200 dark:border-amber-800',
@@ -53,8 +55,8 @@ const getStatus = (score: number) => {
   }
   if (score >= 25) {
     return {
-      label: 'Concerning',
-      description: 'Multiple issues require attention',
+      label: t('essay.cisConcerning'),
+      description: t('essay.cisConcerningDesc'),
       color: 'orange',
       bg: 'bg-orange-50 dark:bg-orange-950/40',
       border: 'border-orange-200 dark:border-orange-800',
@@ -64,8 +66,8 @@ const getStatus = (score: number) => {
     };
   }
   return {
-    label: 'Critical',
-    description: 'Significant problems detected - review required',
+    label: t('essay.cisCritical'),
+    description: t('essay.cisCriticalDesc'),
     color: 'red',
     bg: 'bg-red-50 dark:bg-red-950/40',
     border: 'border-red-200 dark:border-red-800',
@@ -85,7 +87,8 @@ const getProgressColor = (score: number) => {
 };
 
 export function CISScoreCard({ cis, showDetails = true }: CISScoreCardProps) {
-  const status = getStatus(cis);
+  const { t } = useTranslation();
+  const status = getStatus(cis, t);
   const Icon = status.icon;
 
   // Calculate progress percentage
@@ -97,10 +100,10 @@ export function CISScoreCard({ cis, showDetails = true }: CISScoreCardProps) {
       <div className="flex items-start justify-between mb-6">
         <div className="flex-1">
           <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
-            Citation Integrity Score
+            {t('essay.cisTitle')}
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Based on verified sources and metadata consistency
+            {t('essay.cisSubtitle')}
           </p>
         </div>
 

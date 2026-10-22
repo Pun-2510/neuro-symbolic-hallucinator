@@ -1,5 +1,6 @@
-import { X, ExternalLink, CheckCircle, AlertTriangle, XCircle, HelpCircle, Database, Quote, FileText, GitBranch, ArrowRight, Search, Shield, Network, Link2 } from 'lucide-react';
+import { X, ExternalLink, CheckCircle, AlertTriangle, XCircle, HelpCircle, Database, Quote, FileText, GitBranch, Shield, Network, Link2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Verdict, MatchedSource, ValidationLabel, OverrideRequest } from '@/api/client';
 import { VerdictBadge } from './VerdictBadge';
 import { MappingStatusBadge } from './MappingStatusBadge';
@@ -114,12 +115,12 @@ function LogicTraceStep({
 export function CitationDetailDrawer({
   verdict,
   onClose,
-  onOverride,
 }: {
   verdict: Verdict;
   onClose: () => void;
   onOverride?: (req: OverrideRequest) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const drawerRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -206,10 +207,10 @@ export function CitationDetailDrawer({
                 id="citation-detail-title"
                 className="font-display text-lg font-bold text-slate-900 dark:text-white"
               >
-                Citation Detail
+                {t('essay.citationDetail')}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Reference verification analysis
+                {t('essay.referenceVerificationAnalysis')}
               </p>
             </div>
           </div>
@@ -228,7 +229,7 @@ export function CitationDetailDrawer({
             <div className="flex items-center gap-2 mb-3">
               <FileText className="h-4 w-4 text-slate-400" />
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                In-text Citation
+                {t('essay.inTextCitation')}
               </span>
             </div>
             <p className="text-sm text-slate-900 dark:text-slate-100 font-medium">
@@ -236,7 +237,7 @@ export function CitationDetailDrawer({
             </p>
             {verdict.citation_id && (
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                Citation ID: {verdict.citation_id}
+                {t('essay.citationId')}: {verdict.citation_id}
               </p>
             )}
           </div>
@@ -245,17 +246,17 @@ export function CitationDetailDrawer({
           <div className="flex flex-wrap gap-4">
             {/* Verification Status */}
             <div className="flex items-center gap-3">
-              <span className="text-xs text-slate-500 dark:text-slate-400">Verification:</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{t('essay.verification')}:</span>
               <VerdictBadge verdict={isUrlResource(verdict) ? 'resource' : verdict.label || 'UNVERIFIABLE'} size="md" />
               {verdict.confidence !== undefined && (
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  {Math.round(verdict.confidence * 100)}% confidence
+                  {Math.round(verdict.confidence * 100)}% {t('essay.confidence')}
                 </span>
               )}
             </div>
             {/* Mapping Status */}
             <div className="flex items-center gap-3">
-              <span className="text-xs text-slate-500 dark:text-slate-400">Mapping:</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{t('essay.mapping')}:</span>
               <MappingStatusBadge status={verdict.mapping_status} />
               {verdict.mapping_confidence !== undefined && (
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -271,7 +272,7 @@ export function CitationDetailDrawer({
               <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                  Human Override Applied
+                  {t('essay.humanOverrideApplied')}
                 </p>
                 {verdict.override_record && (
                   <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
@@ -287,7 +288,7 @@ export function CitationDetailDrawer({
             <div className="flex items-center gap-2 mb-3">
               <GitBranch className="h-4 w-4 text-slate-400" />
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                What we found
+                {t('essay.whatWeFound')}
               </span>
             </div>
             <p className="text-sm text-slate-900 dark:text-slate-100 leading-relaxed">
@@ -300,7 +301,7 @@ export function CitationDetailDrawer({
             <div className="flex items-center gap-2 mb-4">
               <Shield className="h-4 w-4 text-slate-400" />
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                How we checked it
+                {t('essay.howWeCheckedIt')}
               </span>
             </div>
             <div className="space-y-2">
@@ -330,7 +331,7 @@ export function CitationDetailDrawer({
             <div className="flex items-center gap-2 mb-4">
               <Network className="h-4 w-4 text-slate-400" />
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Evidence Graph
+                {t('essay.evidenceGraph')}
               </span>
             </div>
             <EvidenceGraph verdict={verdict} />
@@ -341,7 +342,7 @@ export function CitationDetailDrawer({
             <div className="card p-4">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Rules Triggered
+                  {t('essay.rulesTriggered')}
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -363,7 +364,7 @@ export function CitationDetailDrawer({
               <div className="flex items-center gap-2 mb-3">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Mismatched Fields
+                  {t('essay.mismatchedFields')}
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -385,7 +386,7 @@ export function CitationDetailDrawer({
               <div className="flex items-center gap-2 mb-3">
                 <Database className="h-4 w-4 text-slate-400" />
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Evidence Sources ({matchedSources.length})
+                  {t('essay.evidenceSources')} ({matchedSources.length})
                 </span>
               </div>
               <div className="space-y-3">
@@ -402,11 +403,11 @@ export function CitationDetailDrawer({
               <div className="flex items-center gap-2 mb-2">
                 <XCircle className="h-4 w-4 text-red-500" />
                 <span className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">
-                  No Evidence Found
+                  {t('essay.noEvidenceFound')}
                 </span>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                We could not find a matching publication in the sources we checked.
+                {t('essay.noEvidenceFoundDesc')}
               </p>
             </div>
           )}
@@ -418,11 +419,10 @@ export function CitationDetailDrawer({
                 <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                    Domain Exception Detected
+                    {t('essay.domainException')}
                   </p>
                   <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                    DOI matched but title similarity is low. This may be a valid source in a specialized
-                    domain where metadata differs across databases.
+                    {t('essay.domainExceptionDesc')}
                   </p>
                 </div>
               </div>
@@ -432,7 +432,7 @@ export function CitationDetailDrawer({
           {/* Style Penalty */}
           {verdict.style_penalty !== undefined && verdict.style_penalty !== 0 && (
             <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-              <span className="text-xs text-slate-500 dark:text-slate-400">Style penalty:</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{t('essay.stylePenalty')}:</span>
               <span className="text-sm font-mono text-amber-600 dark:text-amber-400">
                 {(verdict.style_penalty * 100).toFixed(1)}%
               </span>
@@ -444,7 +444,7 @@ export function CitationDetailDrawer({
             <div className="card p-4 border-t-4 border-indigo-500">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Override History
+                  {t('essay.overrideHistory')}
                 </span>
               </div>
               <div className="space-y-2 text-sm">

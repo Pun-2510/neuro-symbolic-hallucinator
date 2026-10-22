@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { UserPlus, Search, Loader2, UserCog, ImageIcon, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
@@ -10,6 +11,7 @@ import type { User } from '@/api/client';
 import { api } from '@/api/client';
 
 export function AccountManagementPage() {
+  const { t, i18n } = useTranslation();
   const { user: currentUser } = useAuth();
   const { isAdmin } = useRole();
   const navigate = useNavigate();
@@ -43,11 +45,11 @@ export function AccountManagementPage() {
       const data = await api.listUsers();
       setUsers(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load users');
+      setError(err instanceof Error ? err.message : t('admin.failedLoadUsers'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadUsers();
@@ -91,9 +93,11 @@ export function AccountManagementPage() {
           : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
       }`}
     >
-      {active ? 'Active' : 'Inactive'}
+      {active ? t('admin.active') : t('admin.inactive')}
     </span>
   );
+
+  const dateLocale = i18n.language?.startsWith('vi') ? 'vi-VN' : 'en-US';
 
   return (
     <div className="space-y-6">
@@ -101,10 +105,10 @@ export function AccountManagementPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
-            Account Management
+            {t('admin.accountManagement')}
           </h1>
           <p className="text-slate-600 dark:text-slate-300 mt-1">
-            Manage user accounts, roles, and permissions
+            {t('admin.accountManagementSubtitle')}
           </p>
         </div>
         <button
@@ -115,7 +119,7 @@ export function AccountManagementPage() {
           className="btn-primary btn-sm"
         >
           <UserPlus className="h-4 w-4" />
-          Create User
+          {t('admin.createUser')}
         </button>
       </div>
 
@@ -128,7 +132,7 @@ export function AccountManagementPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by username, name, or email..."
+              placeholder={t('admin.searchUsersPlaceholder')}
               className="input pl-10"
             />
             {searchQuery && (
@@ -146,10 +150,10 @@ export function AccountManagementPage() {
             onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
             className="input sm:w-40"
           >
-            <option value="all">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="teacher">Teacher</option>
-            <option value="user">User</option>
+            <option value="all">{t('admin.allRoles')}</option>
+            <option value="admin">{t('admin.roleAdmin')}</option>
+            <option value="teacher">{t('admin.roleTeacher')}</option>
+            <option value="user">{t('admin.roleUser')}</option>
           </select>
 
           <select
@@ -157,9 +161,9 @@ export function AccountManagementPage() {
             onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
             className="input sm:w-40"
           >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="all">{t('admin.allStatus')}</option>
+            <option value="active">{t('admin.active')}</option>
+            <option value="inactive">{t('admin.inactive')}</option>
           </select>
         </div>
       </div>
@@ -176,7 +180,7 @@ export function AccountManagementPage() {
         {loading ? (
           <div className="p-12 flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 text-indigo-600 animate-spin mb-4" />
-            <p className="text-sm text-slate-600 dark:text-slate-300">Loading users...</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">{t('admin.loadingUsers')}</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center">
@@ -185,13 +189,13 @@ export function AccountManagementPage() {
             </div>
             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
               {searchQuery || roleFilter !== 'all' || statusFilter !== 'all'
-                ? 'No users match your filters'
-                : 'No users yet'}
+                ? t('admin.noUsersMatch')
+                : t('admin.noUsersYet')}
             </h3>
             <p className="text-slate-600 dark:text-slate-300 text-sm">
               {searchQuery || roleFilter !== 'all' || statusFilter !== 'all'
-                ? 'Try adjusting your search or filters'
-                : 'Create the first user to get started'}
+                ? t('admin.tryAdjustingFilters')
+                : t('admin.createFirstUser')}
             </p>
           </div>
         ) : (
@@ -200,25 +204,25 @@ export function AccountManagementPage() {
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    User
+                    {t('admin.tableUser')}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    Role
+                    {t('admin.tableRole')}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    Status
+                    {t('admin.tableStatus')}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    Lớp
+                    {t('admin.tableClass')}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    Last Login
+                    {t('admin.tableLastLogin')}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    Member Since
+                    {t('admin.tableMemberSince')}
                   </th>
                   <th className="text-right py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    Actions
+                    {t('admin.tableActions')}
                   </th>
                 </tr>
               </thead>
@@ -263,7 +267,7 @@ export function AccountManagementPage() {
                     </td>
                     <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">
                       {u.last_login_at
-                        ? new Date(u.last_login_at).toLocaleDateString('en-US', {
+                        ? new Date(u.last_login_at).toLocaleDateString(dateLocale, {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
@@ -272,7 +276,7 @@ export function AccountManagementPage() {
                     </td>
                     <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">
                       {u.created_at
-                        ? new Date(u.created_at).toLocaleDateString('en-US', {
+                        ? new Date(u.created_at).toLocaleDateString(dateLocale, {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
@@ -292,7 +296,7 @@ export function AccountManagementPage() {
                           onClick={() => handleDelete(u)}
                           disabled={u.id === currentUser?.id}
                           className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={u.id === currentUser?.id ? 'Cannot delete yourself' : 'Delete user'}
+                          title={u.id === currentUser?.id ? t('admin.cannotDeleteSelf') : 'Delete user'}
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -309,7 +313,7 @@ export function AccountManagementPage() {
       {/* Footer count */}
       {!loading && (
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          Showing {filtered.length} of {users.length} users
+          {t('admin.showingUsers', { shown: filtered.length, total: users.length })}
         </p>
       )}
 

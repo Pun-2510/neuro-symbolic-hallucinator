@@ -1,5 +1,7 @@
 import { useCallback, useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Upload, FileText, X, Loader2, CheckCircle2, AlertCircle, Clock, RefreshCw, ExternalLink, Trash2 } from 'lucide-react';
 import { api } from '../api/client';
 import { useRole } from '@/hooks/useRole';
@@ -65,22 +67,23 @@ function getStatusColor(status: FileStatus): string {
   }
 }
 
-function getStatusText(status: FileStatus, progress: number): string {
+function getStatusText(status: FileStatus, progress: number, t: TFunction): string {
   switch (status) {
     case 'pending':
-      return 'Pending';
+      return t('batchUpload.pending');
     case 'uploading':
-      return 'Uploading...';
+      return t('batchUpload.uploading');
     case 'processing':
-      return progress > 0 ? `Processing ${progress}%` : 'Processing...';
+      return progress > 0 ? `${t('batchUpload.processing')} ${progress}%` : `${t('batchUpload.processing')}...`;
     case 'completed':
-      return 'Complete';
+      return t('batchUpload.complete');
     case 'failed':
-      return 'Failed';
+      return t('batchUpload.failed');
   }
 }
 
 export function BatchUploadPage() {
+  const { t } = useTranslation();
   const { isTeacher, isAdmin } = useRole();
   const [classes, setClasses] = useState<Class[]>([]);
   const [targetClassId, setTargetClassId] = useState<number | null>(null);
@@ -325,10 +328,10 @@ export function BatchUploadPage() {
       {/* Header */}
       <div className="mb-8 text-center">
         <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white mb-2">
-          Batch Verification
+          {t('batchUpload.title')}
         </h1>
         <p className="text-slate-600 dark:text-slate-400">
-          Upload multiple PDFs for concurrent citation analysis
+          {t('batchUpload.subtitle')}
         </p>
       </div>
 
@@ -339,7 +342,7 @@ export function BatchUploadPage() {
             htmlFor="batch-class-select"
             className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300"
           >
-            Gán vào lớp (optional)
+            {t('batchUpload.assignToClass')}
           </label>
           <select
             id="batch-class-select"
@@ -349,7 +352,7 @@ export function BatchUploadPage() {
             }
             className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="">-- Không gán lớp --</option>
+            <option value="">{t('batchUpload.noClassAssigned')}</option>
             {classes.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -357,7 +360,7 @@ export function BatchUploadPage() {
             ))}
           </select>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Choose which class to assign these essays to.
+            {t('batchUpload.assignToClassHint')}
           </p>
         </div>
       )}
@@ -392,13 +395,13 @@ export function BatchUploadPage() {
           <Upload className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
         </div>
         <p className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-          Drop PDF files here
+          {t('batchUpload.dropPdfs')}
         </p>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          or click to browse
+          {t('batchUpload.orClickBrowse')}
         </p>
         <span className="text-sm text-indigo-600 dark:text-indigo-400 font-medium mt-4 block">
-          PDF only
+          {t('batchUpload.pdfOnly')}
         </span>
       </div>
 
@@ -407,14 +410,14 @@ export function BatchUploadPage() {
         <div className="mt-8 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-              Files ({files.length})
+              {t('batchUpload.files')} ({files.length})
             </h2>
             <button
               onClick={clearAll}
               disabled={queueState.isProcessing}
               className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50"
             >
-              Clear All
+              {t('batchUpload.clearAll')}
             </button>
           </div>
 
@@ -443,7 +446,7 @@ export function BatchUploadPage() {
                 <div className="flex items-center gap-2">
                   {getStatusIcon(fileItem.status)}
                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(fileItem.status)}`}>
-                    {getStatusText(fileItem.status, fileItem.progress)}
+                    {getStatusText(fileItem.status, fileItem.progress, t)}
                   </span>
                 </div>
 
@@ -465,7 +468,7 @@ export function BatchUploadPage() {
                     <button
                       onClick={() => navigate(`/verification/report/${fileItem.essayId}`)}
                       className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                      title="View Report"
+                      title={t('dashboard.viewReport')}
                     >
                       <ExternalLink className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                     </button>
@@ -475,7 +478,7 @@ export function BatchUploadPage() {
                       onClick={() => retryFile(fileItem.id)}
                       disabled={queueState.isProcessing}
                       className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                      title="Retry"
+                      title={t('common.retry')}
                     >
                       <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                     </button>
@@ -484,7 +487,7 @@ export function BatchUploadPage() {
                     <button
                       onClick={() => removeFile(fileItem.id)}
                       className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                      title="Remove"
+                      title={t('common.delete')}
                     >
                       <Trash2 className="h-4 w-4 text-slate-500 dark:text-slate-400 hover:text-red-500" />
                     </button>
@@ -508,19 +511,19 @@ export function BatchUploadPage() {
         <div className="mt-6 grid grid-cols-4 gap-4">
           <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-slate-600 dark:text-slate-300">{stats.pending}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Pending</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('batchUpload.pending')}</p>
           </div>
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-300">{stats.processing}</p>
-            <p className="text-sm text-blue-600 dark:text-blue-400">Processing</p>
+            <p className="text-sm text-blue-600 dark:text-blue-400">{t('batchUpload.processing')}</p>
           </div>
           <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-300">{stats.completed}</p>
-            <p className="text-sm text-emerald-600 dark:text-emerald-400">Completed</p>
+            <p className="text-sm text-emerald-600 dark:text-emerald-400">{t('batchUpload.completed')}</p>
           </div>
           <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-red-600 dark:text-red-300">{stats.failed}</p>
-            <p className="text-sm text-red-600 dark:text-red-400">Failed</p>
+            <p className="text-sm text-red-600 dark:text-red-400">{t('batchUpload.failed')}</p>
           </div>
         </div>
       )}
@@ -541,11 +544,11 @@ export function BatchUploadPage() {
           {queueState.isProcessing ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" />
-              Processing...
+              {t('batchUpload.processing')}...
             </>
           ) : (
             <>
-              Start Verification
+              {t('batchUpload.startVerification')}
               <Upload className="h-5 w-5" />
             </>
           )}
@@ -557,11 +560,11 @@ export function BatchUploadPage() {
             {stats.completed > 0 ? (
               <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                All files processed — opening report…
+                {t('batchUpload.allProcessedOpening')}
               </p>
             ) : (
               <p className="text-sm text-red-600 dark:text-red-400">
-                All files failed to process. Check the errors above and retry.
+                {t('batchUpload.allFailedNotice')}
               </p>
             )}
           </>
@@ -571,7 +574,7 @@ export function BatchUploadPage() {
       {/* Disclaimer */}
       <div className="mt-12 text-center">
         <p className="text-xs text-slate-400 dark:text-slate-500">
-          This is a decision-support tool. All results should be reviewed by experts.
+          {t('batchUpload.disclaimer')}
         </p>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Upload, X, Loader2, ImageIcon } from 'lucide-react';
 import { api } from '@/api/client';
 
@@ -12,6 +13,7 @@ interface AvatarUploadProps {
 }
 
 export function AvatarUpload({ currentAvatarUrl, onSuccess, size = 'md' }: AvatarUploadProps) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -125,7 +127,7 @@ export function AvatarUpload({ currentAvatarUrl, onSuccess, size = 'md' }: Avata
               className="btn-ghost text-xs py-1 px-3"
             >
               <X className="h-3 w-3" />
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); handleUpload(); }}
@@ -135,12 +137,12 @@ export function AvatarUpload({ currentAvatarUrl, onSuccess, size = 'md' }: Avata
               {uploading ? (
                 <>
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Uploading...
+                  {t('upload.uploading')}
                 </>
               ) : (
                 <>
                   <Upload className="h-3 w-3" />
-                  Upload
+                  {t('common.upload')}
                 </>
               )}
             </button>
@@ -148,7 +150,7 @@ export function AvatarUpload({ currentAvatarUrl, onSuccess, size = 'md' }: Avata
         </div>
       ) : (
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Click or drag to upload
+          {t('profile.clickOrDrag')}
         </p>
       )}
     </div>

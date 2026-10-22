@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FileSearch, Upload, History, Menu, X, BookOpen, LogOut, User, Layers, Users, Settings, HelpCircle, GraduationCap, ClipboardCheck, Activity, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole, type UserCapability, type UserRole } from '@/hooks/useRole';
 import { ThemeToggle } from '@/contexts/ThemeContext';
@@ -14,14 +15,14 @@ import { HelpModal } from './HelpModal';
 
 interface NavItem {
   path: string;
-  label: string;
+  labelKey: string;
   icon: React.ComponentType<{ className?: string }>;
   /** If set, item is only visible when user has this capability. */
   capability?: UserCapability;
 }
 
 interface NavGroup {
-  label: string;
+  labelKey: string;
   /** If set, group is only visible when user role is in this list. */
   roles?: UserRole[];
   items: NavItem[];
@@ -29,35 +30,35 @@ interface NavGroup {
 
 const SIDEBAR_GROUPS: NavGroup[] = [
   {
-    label: 'Workspace',
+    labelKey: 'nav.workspace',
     items: [
-      { path: '/dashboard', label: 'Dashboard', icon: FileSearch, capability: 'upload_essay' },
-      { path: '/upload', label: 'New Check', icon: Upload, capability: 'upload_essay' },
-      { path: '/batch-upload', label: 'Batch Check', icon: Layers, capability: 'view_class_history' },
-      { path: '/history', label: 'History', icon: History, capability: 'view_own_history' },
+      { path: '/dashboard', labelKey: 'nav.dashboard', icon: FileSearch, capability: 'upload_essay' },
+      { path: '/upload', labelKey: 'nav.newCheck', icon: Upload, capability: 'upload_essay' },
+      { path: '/batch-upload', labelKey: 'nav.batchCheck', icon: Layers, capability: 'view_class_history' },
+      { path: '/history', labelKey: 'nav.history', icon: History, capability: 'view_own_history' },
     ],
   },
   {
-    label: 'Teaching',
+    labelKey: 'nav.teaching',
     roles: ['teacher', 'admin'],
     items: [
-      { path: '/teacher/classes', label: 'My Classes', icon: GraduationCap, capability: 'view_class_history' },
-      { path: '/teacher/reviews', label: 'Pending Reviews', icon: ClipboardCheck, capability: 'override_verdict' },
+      { path: '/teacher/classes', labelKey: 'nav.myClasses', icon: GraduationCap, capability: 'view_class_history' },
+      { path: '/teacher/reviews', labelKey: 'nav.pendingReviews', icon: ClipboardCheck, capability: 'override_verdict' },
     ],
   },
   {
-    label: 'Administration',
+    labelKey: 'nav.administration',
     roles: ['admin'],
     items: [
-      { path: '/admin/users', label: 'Accounts', icon: Users, capability: 'manage_users' },
-      { path: '/admin/system', label: 'System Health', icon: Activity, capability: 'view_system_health' },
-      { path: '/admin/audit', label: 'Audit Log', icon: FileText, capability: 'view_audit_log' },
+      { path: '/admin/users', labelKey: 'nav.accounts', icon: Users, capability: 'manage_users' },
+      { path: '/admin/system', labelKey: 'nav.systemHealth', icon: Activity, capability: 'view_system_health' },
+      { path: '/admin/audit', labelKey: 'nav.auditLog', icon: FileText, capability: 'view_audit_log' },
     ],
   },
   {
-    label: 'Preferences',
+    labelKey: 'nav.preferences',
     items: [
-      { path: '/settings', label: 'Settings', icon: Settings },
+      { path: '/settings', labelKey: 'nav.settings', icon: Settings },
     ],
   },
 ];
@@ -65,6 +66,7 @@ const SIDEBAR_GROUPS: NavGroup[] = [
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const { has, role } = useRole();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -112,7 +114,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-300
         "
       >
-        Skip to main content
+        {t('nav.skipToContent')}
       </a>
 
       {/* Mobile menu button */}
@@ -206,13 +208,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     SourceLogic
                   </h1>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Academic Verification
+                    {t('nav.academicVerification')}
                   </p>
                 </div>
               </div>
               {/* Tagline */}
               <p className="mt-3 text-xs text-slate-600 dark:text-slate-400 italic">
-                Verify citations. Trace evidence.
+                {t('nav.tagline')}
               </p>
             </Link>
           </div>
@@ -228,9 +230,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               );
               if (visibleItems.length === 0) return null;
               return (
-                <div key={group.label} className={group.roles ? 'pt-2' : ''}>
+                <div key={group.labelKey} className={group.roles ? 'pt-2' : ''}>
                   <p className="px-4 py-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                    {group.label}
+                    {t(group.labelKey)}
                   </p>
                   {visibleItems.map((item) => {
                     const Icon = item.icon;
@@ -249,7 +251,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         `}
                       >
                         <Icon className="h-5 w-5" />
-                        {item.label}
+                        {t(item.labelKey)}
                       </Link>
                     );
                   })}
@@ -260,7 +262,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Theme Toggle */}
             <div className="flex items-center justify-between px-4 py-2">
-              <span className="text-xs text-slate-500 dark:text-slate-400">Theme</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{t('nav.theme')}</span>
               <ThemeToggle size="sm" showLabel />
             </div>
 
@@ -271,7 +273,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 className="w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <HelpCircle className="h-4 w-4" />
-                Help & Shortcuts
+                {t('nav.helpShortcuts')}
               </button>
             </div>
 
@@ -306,7 +308,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
                   aria-label="View profile"
                 >
-                  View profile
+                  {t('nav.viewProfile')}
                 </Link>
               </div>
             </div>
@@ -322,7 +324,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               ) : (
                 <LogOut className="h-5 w-5" />
               )}
-              {loggingOut ? 'Signing out...' : 'Sign out'}
+              {loggingOut ? t('nav.signingOut') : t('nav.signOut')}
             </button>
           </div>
         </div>
@@ -345,9 +347,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <p className="flex items-center gap-2">
               <BookOpen className="h-3.5 w-3.5" />
-              SourceLogic — Academic Source Verification Workspace
+              {t('nav.footerBrand')}
             </p>
-            <p>Decision Support System</p>
+            <p>{t('nav.footerSystem')}</p>
           </div>
         </footer>
       </div>

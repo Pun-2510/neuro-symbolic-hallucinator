@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api, type AnalysisReport, type Verdict, type MatchedSource, type CitationLink } from '@/api/client';
+import { useTranslation } from 'react-i18next';
+import { api, type Verdict, type CitationLink } from '@/api/client';
 import { CISScoreCard } from '@/components/CISScoreCard';
 import { VerdictTable } from '@/components/VerdictTable';
 import { CitationDetailDrawer } from '@/components/CitationDetailDrawer';
@@ -18,6 +19,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
    ============================================================ */
 
 export function EssayPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const numericId = id ? parseInt(id, 10) : null;
   const essayId = numericId !== null && !Number.isNaN(numericId) && numericId > 0
@@ -30,9 +32,9 @@ export function EssayPage() {
 
   const errorMessage =
     essayId === null
-      ? 'Invalid essay ID'
+      ? t('essay.invalidEssayId')
       : error
-        ? (error instanceof Error ? error.message : 'Failed to load report.')
+        ? (error instanceof Error ? error.message : t('essay.failedLoadReport'))
         : null;
 
   async function handleOverride(verdict: Verdict, req: Parameters<typeof api.overrideVerdict>[1]) {
@@ -49,9 +51,9 @@ export function EssayPage() {
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium text-red-700 dark:text-red-300">Error: {errorMessage}</p>
+            <p className="font-medium text-red-700 dark:text-red-300">{t('common.error')}: {errorMessage}</p>
             <Link to="/history" className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
-              ← Back to Reports
+              {t('essay.backToReports')}
             </Link>
           </div>
         </div>
@@ -64,7 +66,7 @@ export function EssayPage() {
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin" />
         <span className="ml-3 text-slate-600 dark:text-slate-400">
-          {isLoading ? 'Loading report...' : 'Waiting for analysis...'}
+          {isLoading ? t('essay.loadingReport') : t('essay.waitingForAnalysis')}
         </span>
       </div>
     );
@@ -299,11 +301,11 @@ export function EssayPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Citations
+              {t('essay.citationsTab')}
             </h2>
             <span className="text-sm text-slate-500 dark:text-slate-400">
-              {dedupedInText.length} unique ·{' '}
-              {dedupedInText.reduce((sum, g) => sum + g.occurrences, 0)} occurrences
+              {dedupedInText.length} {t('essay.unique')} ·{' '}
+              {dedupedInText.reduce((sum, g) => sum + g.occurrences, 0)} {t('essay.occurrences')}
             </span>
           </div>
 
@@ -312,16 +314,16 @@ export function EssayPage() {
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Citation
+                    {t('essay.citation')}
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Linked Reference
+                    {t('essay.linkedReference')}
                   </th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Status
+                    {t('essay.status')}
                   </th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">
-                    Action
+                    {t('essay.action')}
                   </th>
                 </tr>
               </thead>
@@ -360,7 +362,7 @@ export function EssayPage() {
                           const linked = formatLinkedReference(group.refIds);
                           if (linked) return linked;
                           if (verdict.mapping_status === 'missing_reference') {
-                            return '— No Reference —';
+                            return t('essay.noReference');
                           }
                           return '—';
                         })()}
@@ -372,36 +374,36 @@ export function EssayPage() {
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
-                          Linked
+                          {t('essay.linked')}
                         </span>
                       ) : verdict.label === 'metadata_error' ? (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                           </svg>
-                          Metadata Issue
+                          {t('essay.metadataIssue')}
                         </span>
                       ) : verdict.label === 'suspected_hallucination' ? (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
-                          Hallucination
+                          {t('essay.hallucination')}
                         </span>
                       ) : verdict.label === 'resource' ? (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 dark:text-violet-400">
-                          URL Resource
+                          {t('essay.urlResource')}
                         </span>
                       ) : verdict.mapping_status === 'missing_reference' ? (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          No Reference
+                          {t('essay.noReferenceShort')}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                          Unverifiable
+                          {t('essay.unverifiable')}
                         </span>
                       )}
                     </td>
@@ -410,7 +412,7 @@ export function EssayPage() {
                         onClick={() => setSelected(verdict)}
                         className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm font-medium"
                       >
-                        View
+                        {t('common.view')}
                       </button>
                     </td>
                   </tr>
@@ -427,10 +429,10 @@ export function EssayPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
-              References
+              {t('essay.referencesTab')}
             </h2>
             <span className="text-sm text-slate-500 dark:text-slate-400">
-              {references.length} detected
+              {references.length} {t('essay.detected')}
             </span>
           </div>
 
@@ -442,16 +444,16 @@ export function EssayPage() {
                     #
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Reference
+                    {t('essay.reference')}
                   </th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Cited in Text
+                    {t('essay.citedInText')}
                   </th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Verification
+                    {t('essay.verification')}
                   </th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">
-                    Action
+                    {t('essay.action')}
                   </th>
                 </tr>
               </thead>
@@ -514,14 +516,14 @@ export function EssayPage() {
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                               </svg>
-                              Not cited
+                              {t('essay.notCited')}
                             </span>
                           );
                         })()}
                       </td>
                       <td className="px-4 py-3 text-center">
                            <span className="inline-block px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                           Reference entry
+                           {t('essay.referenceEntry')}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -529,7 +531,7 @@ export function EssayPage() {
                            onClick={() => matchingVerdict && setSelected(matchingVerdict)}
                           className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm font-medium"
                         >
-                          View
+                          {t('common.view')}
                         </button>
                       </td>
                     </tr>
@@ -546,7 +548,7 @@ export function EssayPage() {
         <>
           <div>
             <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Citation Verification Results
+              {t('essay.citationVerificationResults')}
             </h2>
           </div>
 

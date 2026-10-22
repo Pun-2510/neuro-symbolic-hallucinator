@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ClipboardCheck, ExternalLink, AlertCircle } from 'lucide-react';
 import { api, type PendingVerdict, type Class } from '@/api/client';
 
@@ -11,6 +12,7 @@ import { api, type PendingVerdict, type Class } from '@/api/client';
  * metadata_error).
  */
 export function PendingReviewsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [classes, setClasses] = useState<Class[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
@@ -64,9 +66,9 @@ export function PendingReviewsPage() {
           <ClipboardCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pending Reviews</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('teacher.pendingReviews')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Verdict cần xem xét & override.
+            {t('teacher.pendingReviewsSubtitle')}
           </p>
         </div>
       </div>
@@ -82,19 +84,19 @@ export function PendingReviewsPage() {
       )}
 
       {loadingClasses ? (
-        <p className="text-slate-500 text-sm">Loading…</p>
+        <p className="text-slate-500 text-sm">{t('common.loading')}</p>
       ) : classes.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
           <p className="text-slate-700 dark:text-slate-300 font-medium">
-            Bạn chưa phụ trách lớp nào.
+            {t('teacher.noClassesAssigned')}
           </p>
           <p className="text-sm text-slate-500 mt-1">
-            Tạo lớp ở trang My Classes trước khi xem reviews.
+            {t('teacher.noClassesAssignedHint')}
           </p>
         </div>
       ) : (
         <>
-          <div role="group" aria-label="Lọc theo lớp" className="flex flex-wrap gap-2">
+          <div role="group" aria-label={t('teacher.filterByClass')} className="flex flex-wrap gap-2">
             {classes.map((c) => {
               const isActive = selectedClassId === c.id;
               return (
@@ -116,10 +118,10 @@ export function PendingReviewsPage() {
 
           <div className="rounded-xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
             {loadingReviews ? (
-              <p className="p-6 text-center text-sm text-slate-500">Loading…</p>
+              <p className="p-6 text-center text-sm text-slate-500">{t('common.loading')}</p>
             ) : reviews.length === 0 ? (
               <p className="p-6 text-center text-sm text-slate-500">
-                Không có verdict chờ xem xét trong lớp này.
+                {t('teacher.noPendingVerdicts')}
               </p>
             ) : (
               reviews.map((r) => (

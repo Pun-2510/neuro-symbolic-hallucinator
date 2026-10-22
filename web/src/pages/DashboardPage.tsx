@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FileText,
   Upload,
@@ -39,6 +40,7 @@ const DEFAULT_STATS: DashboardStats = {
 };
 
 export function DashboardPage() {
+  const { t, i18n } = useTranslation();
   const toast = useToast();
   const { isTeacher, isAdmin } = useRole();
   const { data: essays = [], isLoading, error, refetch, isFetching } = useEssays();
@@ -47,7 +49,7 @@ export function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-  const errorMessage = error ? (error instanceof Error ? error.message : 'Connection error') : null;
+  const errorMessage = error ? (error instanceof Error ? error.message : t('error.network')) : null;
   const deletingId = deleteMutation.isPending
     ? (deleteMutation.variables ?? null)
     : null;
@@ -58,9 +60,9 @@ export function DashboardPage() {
     setConfirmDeleteId(null);
     try {
       await deleteMutation.mutateAsync(id);
-      toast.success('Document deleted');
+      toast.success(t('dashboard.documentDeleted'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Delete failed');
+      toast.error(err instanceof Error ? err.message : t('dashboard.deleteFailed'));
     }
   };
 
@@ -72,28 +74,28 @@ export function DashboardPage() {
   // Stat cards data
   const statCards = [
     {
-      label: 'Total Documents',
+      label: t('dashboard.totalDocuments'),
       value: stats.total_documents,
       icon: FileText,
       color: 'text-indigo-600 dark:text-indigo-400',
       bg: 'bg-indigo-50 dark:bg-indigo-950',
     },
     {
-      label: 'Total Citations',
+      label: t('dashboard.totalCitations'),
       value: stats.total_citations,
       icon: Scale,
       color: 'text-emerald-600 dark:text-emerald-400',
       bg: 'bg-emerald-50 dark:bg-emerald-950',
     },
     {
-      label: 'Avg CIS Score',
+      label: t('dashboard.avgCisScore'),
       value: stats.avg_cis_score !== null ? `${stats.avg_cis_score}%` : 'N/A',
       icon: TrendingUp,
       color: 'text-amber-600 dark:text-amber-400',
       bg: 'bg-amber-50 dark:bg-amber-950',
     },
     {
-      label: 'Verified Rate',
+      label: t('dashboard.verifiedRate'),
       value: stats.verified_rate > 0 ? `${stats.verified_rate}%` : 'N/A',
       icon: CheckCircle2,
       color: 'text-blue-600 dark:text-blue-400',
@@ -101,29 +103,31 @@ export function DashboardPage() {
     },
   ];
 
+  const dateLocale = i18n.language?.startsWith('vi') ? 'vi-VN' : 'en-US';
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
-            Dashboard
+            {t('dashboard.title')}
           </h1>
           <p className="text-slate-600 dark:text-slate-300 mt-1">
-            Overview of your verification workspace
+            {t('dashboard.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Link to="/upload" className="btn-primary btn-sm">
             <Upload className="h-4 w-4" />
-            New Check
+            {t('dashboard.newCheck')}
           </Link>
           <button
             onClick={() => refetch()}
             disabled={isFetching}
             aria-label="Refresh essays list"
             className="p-2 min-h-11 min-w-11 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
-            title="Refresh"
+            title={t('common.refresh')}
           >
             <RefreshCw className={`h-5 w-5 ${isFetching ? 'animate-spin' : ''}`} />
           </button>
@@ -150,7 +154,7 @@ export function DashboardPage() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search documents..."
+          placeholder={t('dashboard.searchPlaceholder')}
           aria-label="Search documents"
           className="input pl-12 pr-10"
         />
@@ -177,7 +181,7 @@ export function DashboardPage() {
         {isLoading && essays.length === 0 ? (
           <div className="p-12 flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
-            <p className="text-sm text-slate-600 dark:text-slate-300">Loading documents...</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">{t('dashboard.loadingDocuments')}</p>
           </div>
         ) : filteredEssays.length === 0 ? (
           <div className="p-12 text-center">
@@ -187,34 +191,34 @@ export function DashboardPage() {
             {searchQuery ? (
               <>
                 <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                  No documents found
+                  {t('dashboard.noDocumentsFound')}
                 </h3>
                 <p className="text-slate-600 dark:text-slate-300 mb-4">
-                  No documents match "{searchQuery}"
+                  {t('dashboard.noDocumentsMatch', { query: searchQuery })}
                 </p>
                 <button
                   onClick={() => setSearchQuery('')}
                   className="text-indigo-600 dark:text-indigo-400 hover:underline"
                 >
-                  Clear search
+                  {t('dashboard.clearSearch')}
                 </button>
               </>
             ) : (
               <>
                 <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                  No documents yet
+                  {t('dashboard.noDocumentsYet')}
                 </h3>
                 <p className="text-slate-600 dark:text-slate-300 mb-6">
                   {isAdmin
-                    ? 'Chưa có bài nộp nào trong hệ thống.'
+                    ? t('dashboard.noDocumentsAdmin')
                     : isTeacher
-                      ? 'Chưa có bài nộp nào trong lớp bạn phụ trách.'
-                      : 'Upload your first document to start verifying citations'}
+                      ? t('dashboard.noDocumentsTeacher')
+                      : t('dashboard.noDocumentsStudent')}
                 </p>
                 {!(isTeacher || isAdmin) && (
                   <Link to="/upload" className="btn-primary">
                     <Upload className="h-4 w-4" />
-                    Upload Document
+                    {t('dashboard.uploadDocument')}
                   </Link>
                 )}
               </>
@@ -226,16 +230,16 @@ export function DashboardPage() {
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    Document
+                    {t('dashboard.tableDocument')}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    Pages
+                    {t('dashboard.tablePages')}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    Uploaded
+                    {t('dashboard.tableUploaded')}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    Actions
+                    {t('dashboard.tableActions')}
                   </th>
                 </tr>
               </thead>
@@ -268,7 +272,7 @@ export function DashboardPage() {
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
                         <Clock className="h-3.5 w-3.5" />
-                        {new Date(essay.uploaded_at).toLocaleDateString('en-US', {
+                        {new Date(essay.uploaded_at).toLocaleDateString(dateLocale, {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
@@ -282,7 +286,7 @@ export function DashboardPage() {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors"
                         >
                           <Eye className="h-4 w-4" />
-                          View Report
+                          {t('dashboard.viewReport')}
                         </Link>
                         <button
                           onClickCapture={(e) => {
@@ -292,7 +296,7 @@ export function DashboardPage() {
                           }}
                           disabled={deletingId === essay.id}
                           className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
-                          title="Delete"
+                          title={t('common.delete')}
                           aria-label={`Delete ${essay.filename}`}
                         >
                           {deletingId === essay.id ? (
@@ -315,16 +319,17 @@ export function DashboardPage() {
       {essays.length > 0 && (
         <div className="text-sm text-slate-600 dark:text-slate-300">
           <p>
-            Showing {filteredEssays.length} of {essays.length} documents
+            {t('dashboard.showingCount', { shown: filteredEssays.length, total: essays.length })}
           </p>
         </div>
       )}
 
       <ConfirmationModal
         isOpen={confirmDeleteId !== null}
-        title="Delete this document?"
-        message="This will permanently remove the document and its analysis. This action cannot be undone."
-        confirmLabel="Delete"
+        title={t('dashboard.deleteConfirmTitle')}
+        message={t('dashboard.deleteConfirmMessage')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         variant="danger"
         onConfirm={handleDelete}
         onCancel={() => setConfirmDeleteId(null)}

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   GraduationCap,
   Plus,
@@ -20,6 +21,7 @@ import { CreateClassDialog } from '@/components/CreateClassDialog';
  * and essays (ClassDetailPage, Task 14).
  */
 export function MyClassesPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState<TeacherDashboard | null>(null);
   const [error, setError] = useState('');
@@ -47,18 +49,19 @@ export function MyClassesPage() {
             <GraduationCap className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">My Classes</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('teacher.myClasses')}</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Quản lý lớp học và theo dõi bài nộp.
+              {t('teacher.myClassesSubtitle')}
             </p>
           </div>
         </div>
         <button
           onClick={() => setCreateOpen(true)}
+          aria-label="Tạo lớp"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
           <Plus className="h-4 w-4" />
-          Tạo lớp
+          {t('teacher.createClass')}
         </button>
       </div>
 
@@ -75,25 +78,25 @@ export function MyClassesPage() {
       {dashboard && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
-            label="Lớp"
+            label={t('teacher.classes')}
             value={dashboard.total_classes}
             icon={GraduationCap}
             color="indigo"
           />
           <StatCard
-            label="Sinh viên"
+            label={t('teacher.students')}
             value={dashboard.total_students}
             icon={Users}
             color="green"
           />
           <StatCard
-            label="Bài nộp"
+            label={t('teacher.submissions')}
             value={dashboard.total_essays}
             icon={FileCheck}
             color="amber"
           />
           <StatCard
-            label="Cần xem xét"
+            label={t('teacher.needsReview')}
             value={dashboard.pending_reviews}
             icon={ClipboardCheck}
             color="rose"
@@ -105,8 +108,8 @@ export function MyClassesPage() {
       <div className="space-y-2">
         {dashboard?.classes.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
-            <p className="text-slate-700 dark:text-slate-300 font-medium">Chưa có lớp nào.</p>
-            <p className="text-sm text-slate-500 mt-1">Bấm &ldquo;Tạo lớp&rdquo; để bắt đầu.</p>
+            <p className="text-slate-700 dark:text-slate-300 font-medium">{t('teacher.noClassesYet')}</p>
+            <p className="text-sm text-slate-500 mt-1">{t('teacher.noClassesHint')}</p>
           </div>
         ) : (
           dashboard?.classes.map((c: Class) => (

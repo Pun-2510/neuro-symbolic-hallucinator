@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { VerdictBadge } from './VerdictBadge';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,7 +30,8 @@ function SortIcon({ sorted, direction }: { sorted: boolean; direction: 'asc' | '
     : <ChevronDown className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />;
 }
 
-export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTableProps) {
+export function VerdictTable({ verdicts, onSelect }: VerdictTableProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [verdictFilter, setVerdictFilter] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('citation_num');
@@ -113,7 +115,7 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search citations..."
+              placeholder={t('essay.searchCitations')}
               aria-label="Search citations"
               className="input pl-9 py-2 text-sm"
             />
@@ -135,7 +137,7 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
                   : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-indigo-300'
               )}
             >
-              All
+              {t('essay.all')}
               <span className="text-slate-400">({verdicts.length})</span>
             </button>
             {Object.entries(verdictCounts)
@@ -176,12 +178,12 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
               </th>
               <th className="px-4 py-3 text-left">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  Citation
+                  {t('essay.citation')}
                 </span>
               </th>
               <th className="px-4 py-3 text-left">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                   What we found
+                   {t('essay.whatWeFound')}
                 </span>
               </th>
               <th className="px-4 py-3 text-left">
@@ -189,7 +191,7 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
                   onClick={() => handleSort('label')}
                   className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
                 >
-                  Status
+                  {t('essay.status')}
                   <SortIcon sorted={sortField === 'label'} direction={sortDirection} />
                 </button>
               </th>
@@ -229,7 +231,7 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
       {/* Footer */}
       <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          Showing {filteredVerdicts.length} of {verdicts.length} citations
+          {t('essay.showingCitations', { shown: filteredVerdicts.length, total: verdicts.length })}
         </p>
       </div>
     </div>

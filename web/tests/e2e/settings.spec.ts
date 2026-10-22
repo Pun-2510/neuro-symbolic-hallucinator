@@ -38,6 +38,7 @@ test.describe('Settings Page', () => {
 
   test('should have theme section', async ({ page }) => {
     await page.goto('/settings');
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
 
     // Theme should be mentioned somewhere
     const pageContent = await page.content();
@@ -46,6 +47,7 @@ test.describe('Settings Page', () => {
 
   test('should have language section', async ({ page }) => {
     await page.goto('/settings');
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
 
     // Language should be mentioned
     const pageContent = await page.content();
@@ -54,6 +56,7 @@ test.describe('Settings Page', () => {
 
   test('should have notification toggles', async ({ page }) => {
     await page.goto('/settings');
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
 
     // Look for switch/checkbox elements
     const switchButtons = page.locator('button[role="switch"]');
@@ -63,6 +66,7 @@ test.describe('Settings Page', () => {
 
   test('should toggle notifications setting', async ({ page }) => {
     await page.goto('/settings');
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
 
     // Find notifications toggle and click it
     const switchButton = page.locator('button[role="switch"]').first();
@@ -77,6 +81,7 @@ test.describe('Settings Page', () => {
 
   test('should persist settings to localStorage', async ({ page }) => {
     await page.goto('/settings');
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
 
     // Toggle a setting
     const switchButton = page.locator('button[role="switch"]').first();
@@ -94,6 +99,7 @@ test.describe('Settings Page', () => {
 
   test('should show version info', async ({ page }) => {
     await page.goto('/settings');
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
 
     // Version should be displayed somewhere
     const pageContent = await page.content();
@@ -102,6 +108,7 @@ test.describe('Settings Page', () => {
 
   test('should have about section', async ({ page }) => {
     await page.goto('/settings');
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
 
     // About should be mentioned
     const pageContent = await page.content();
@@ -170,5 +177,87 @@ test.describe('Settings Integration', () => {
     // Preferences section should be visible
     const preferencesSection = page.locator('aside >> text=Preferences');
     await expect(preferencesSection).toBeVisible();
+  });
+});
+
+// ============================================================
+// Language Switching (Vietnamese / English) & Flag Removal Tests
+// ============================================================
+
+test.describe('Language Switching & Flag Removal', () => {
+  test.beforeEach(async ({ page }) => {
+    setupAuthenticatedPage(page);
+    await page.goto('/dashboard');
+    await waitForAuth(page);
+    await page.evaluate(() => localStorage.clear());
+  });
+
+  test('should not render flag emojis on language selector buttons', async ({ page }) => {
+    await page.goto('/settings');
+
+    const viBtn = page.getByRole('button', { name: 'Tiếng Việt' });
+    const enBtn = page.getByRole('button', { name: 'English' });
+
+    await expect(viBtn).toBeVisible();
+    await expect(enBtn).toBeVisible();
+
+    const pageText = await page.locator('main').innerText();
+    expect(pageText).not.toContain('🇻🇳');
+    expect(pageText).not.toContain('🇺🇸');
+  });
+
+  test('should activate Vietnamese UI when selecting Tiếng Việt and persist across reload and pages', async ({ page }) => {
+    await page.goto('/settings');
+
+    // Click Tiếng Việt button
+    const viBtn = page.getByRole('button', { name: 'Tiếng Việt' });
+    await viBtn.click();
+
+    // Verify Settings page is translated to Vietnamese
+    await expect(page.getByRole('heading', { name: 'Cài đặt' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Giao diện' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Ngôn ngữ' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Thông báo' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Giới thiệu' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Vùng nguy hiểm' })).toBeVisible();
+
+    // Verify Sidebar is translated to Vietnamese
+    const sidebar = page.locator('aside');
+    await expect(sidebar.getByText('Bảng điều khiển')).toBeVisible();
+    await expect(sidebar.getByText('Kiểm tra mới')).toBeVisible();
+    await expect(sidebar.getByText('Lịch sử')).toBeVisible();
+    await expect(sidebar.getByText('Cài đặt')).toBeVisible();
+    await expect(sidebar.getByText('Đăng xuất')).toBeVisible();
+
+    // Verify localStorage has 'vi'
+    const storedLang = await page.evaluate(() => localStorage.getItem('language'));
+    expect(storedLang).toBe('vi');
+
+    // Reload page and verify Vietnamese persists
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Cài đặt' })).toBeVisible();
+
+    // Navigate to Dashboard in Vietnamese
+    await sidebar.getByText('Bảng điều khiển').click();
+    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.getByRole('heading', { name: 'Bảng điều khiển' })).toBeVisible();
+    await expect(page.getByText('Tổng tài liệu')).toBeVisible();
+
+    // Navigate to Upload page in Vietnamese
+    await sidebar.getByText('Kiểm tra mới').click();
+    await expect(page).toHaveURL(/\/upload/);
+    await expect(page.getByRole('heading', { name: 'Kiểm tra mới' })).toBeVisible();
+
+    // Navigate to History page in Vietnamese
+    await sidebar.getByText('Lịch sử').click();
+    await expect(page).toHaveURL(/\/history/);
+    await expect(page.getByRole('heading', { name: 'Báo cáo xác minh' })).toBeVisible();
+
+    // Switch back to English on Settings page
+    await sidebar.getByText('Cài đặt').click();
+    await expect(page).toHaveURL(/\/settings/);
+    await page.getByRole('button', { name: 'English' }).click();
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    await expect(sidebar.getByText('Dashboard')).toBeVisible();
   });
 });

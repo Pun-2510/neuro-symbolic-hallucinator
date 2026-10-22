@@ -41,7 +41,7 @@ const STORAGE_KEY_COMPACT_VIEW = 'settings_compact_view';
 
 export function SettingsPage(): JSX.Element {
   const toast = useToast();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [confirmClear, setConfirmClear] = useState(false);
 
   // Load saved settings
@@ -51,14 +51,14 @@ export function SettingsPage(): JSX.Element {
     compactView: localStorage.getItem(STORAGE_KEY_COMPACT_VIEW) === 'true',
   }));
 
-  // Available languages
+  // Available languages (without flag emojis)
   const languages = [
-    { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳' },
-    { code: 'en', label: 'English', flag: '🇺🇸' },
+    { code: 'vi', label: 'Tiếng Việt' },
+    { code: 'en', label: 'English' },
   ];
 
   // Get current language from i18n (reactive) — no reload needed
-  const currentLang = (i18n.resolvedLanguage || i18n.language || 'vi').split('-')[0];
+  const currentLang = (i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
 
   // Toggle setting
   const toggleSetting = (key: keyof SettingsState): void => {
@@ -68,12 +68,12 @@ export function SettingsPage(): JSX.Element {
       localStorage.setItem(storageKey, String(newValue));
 
       toast.success(
-        'Settings saved',
+        t('settings.settingsSaved'),
         key === 'notifications'
-          ? `Notifications ${newValue ? 'enabled' : 'disabled'}`
+          ? newValue ? t('settings.notificationsEnabled') : t('settings.notificationsDisabled')
           : key === 'autoVerify'
-          ? `Auto-verify ${newValue ? 'enabled' : 'disabled'}`
-          : `Compact view ${newValue ? 'enabled' : 'disabled'}`
+          ? newValue ? t('settings.autoVerifyEnabled') : t('settings.autoVerifyDisabled')
+          : newValue ? t('settings.compactViewEnabled') : t('settings.compactViewDisabled')
       );
 
       return { ...prev, [key]: newValue };
@@ -83,14 +83,19 @@ export function SettingsPage(): JSX.Element {
   // Change language — uses i18n.changeLanguage() for SPA navigation (no reload)
   const changeLanguage = (langCode: string): void => {
     void i18n.changeLanguage(langCode);
-    toast.success('Language updated', langCode === 'vi' ? 'Tiếng Việt' : 'English');
+    localStorage.setItem('language', langCode);
+    localStorage.setItem('i18nextLng', langCode);
+    const fixedT = i18n.getFixedT(langCode);
+    toast.success(fixedT('settings.languageUpdated'), langCode === 'vi' ? 'Tiếng Việt' : 'English');
   };
 
   // Clear local cache (only after explicit user confirmation)
   const handleClearCache = (): void => {
     localStorage.removeItem('theme');
     localStorage.removeItem('language');
-    toast.success('Cache cleared successfully');
+    localStorage.removeItem('i18nextLng');
+    void i18n.changeLanguage('en');
+    toast.success(t('settings.cacheClearedSuccess'));
   };
 
   return (
@@ -102,10 +107,10 @@ export function SettingsPage(): JSX.Element {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            Settings
+            {t('settings.title')}
           </h1>
           <p className="text-slate-500 dark:text-slate-400">
-            Customize your experience
+            {t('settings.subtitle')}
           </p>
         </div>
       </div>
@@ -116,19 +121,19 @@ export function SettingsPage(): JSX.Element {
           <div className="flex items-center gap-2 mb-4">
             <Palette className="w-5 h-5 text-slate-500" />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Appearance
+              {t('settings.appearance')}
             </h2>
           </div>
 
           <div className="space-y-4">
             {/* Theme Selection */}
             <div>
-              <label className="input-label">Theme</label>
+              <label className="input-label">{t('settings.theme')}</label>
               <div className="mt-2">
                 <ThemeToggle showLabel />
               </div>
               <p className="text-xs text-slate-500 mt-2">
-                Choose your preferred color scheme
+                {t('settings.themeDescription')}
               </p>
             </div>
           </div>
@@ -139,7 +144,7 @@ export function SettingsPage(): JSX.Element {
           <div className="flex items-center gap-2 mb-4">
             <Globe className="w-5 h-5 text-slate-500" />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Language
+              {t('settings.language')}
             </h2>
           </div>
 
@@ -157,7 +162,6 @@ export function SettingsPage(): JSX.Element {
                   }
                 `}
               >
-                <span className="text-2xl">{lang.flag}</span>
                 <span className={`
                   font-medium
                   ${currentLang === lang.code
@@ -180,28 +184,28 @@ export function SettingsPage(): JSX.Element {
           <div className="flex items-center gap-2 mb-4">
             <Bell className="w-5 h-5 text-slate-500" />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Notifications
+              {t('settings.notifications')}
             </h2>
           </div>
 
           <div className="space-y-4">
             <ToggleSetting
-              label="Enable Notifications"
-              description="Show toast notifications for actions"
+              label={t('settings.enableNotifications')}
+              description={t('settings.enableNotificationsDesc')}
               checked={settings.notifications}
               onChange={() => toggleSetting('notifications')}
             />
 
             <ToggleSetting
-              label="Auto-verify on Upload"
-              description="Automatically verify citations when uploading"
+              label={t('settings.autoVerify')}
+              description={t('settings.autoVerifyDesc')}
               checked={settings.autoVerify}
               onChange={() => toggleSetting('autoVerify')}
             />
 
             <ToggleSetting
-              label="Compact View"
-              description="Show more content in less space"
+              label={t('settings.compactView')}
+              description={t('settings.compactViewDesc')}
               checked={settings.compactView}
               onChange={() => toggleSetting('compactView')}
             />
@@ -213,13 +217,13 @@ export function SettingsPage(): JSX.Element {
           <div className="flex items-center gap-2 mb-4">
             <Info className="w-5 h-5 text-slate-500" />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              About
+              {t('settings.about')}
             </h2>
           </div>
 
           <div className="space-y-3">
-            <InfoRow label="Version" value="1.11.0" />
-            <InfoRow label="Build Date" value={new Date().toLocaleDateString()} />
+            <InfoRow label={t('settings.version')} value="1.11.0" />
+            <InfoRow label={t('settings.buildDate')} value={new Date().toLocaleDateString()} />
 
             <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
               <a
@@ -228,7 +232,7 @@ export function SettingsPage(): JSX.Element {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:underline"
               >
-                View Source Code
+                {t('settings.viewSourceCode')}
                 <ChevronRight className="w-4 h-4" />
               </a>
             </div>
@@ -238,7 +242,7 @@ export function SettingsPage(): JSX.Element {
         {/* Danger Zone */}
         <section className="card border-red-200 dark:border-red-900/50">
           <h2 className="text-lg font-semibold text-red-700 dark:text-red-400 mb-4">
-            Danger Zone
+            {t('settings.dangerZone')}
           </h2>
 
           <div className="space-y-3">
@@ -248,7 +252,7 @@ export function SettingsPage(): JSX.Element {
               aria-label="Clear local cache"
             >
               <span className="text-slate-700 dark:text-slate-300">
-                Clear Local Cache
+                {t('settings.clearLocalCache')}
               </span>
               <ChevronRight className="w-5 h-5 text-slate-400" />
             </button>
@@ -258,9 +262,10 @@ export function SettingsPage(): JSX.Element {
 
       <ConfirmationModal
         isOpen={confirmClear}
-        title="Clear local cache?"
-        message="This will reset your theme and language preferences. You will not be signed out."
-        confirmLabel="Clear cache"
+        title={t('settings.clearCacheConfirmTitle')}
+        message={t('settings.clearCacheConfirmMessage')}
+        confirmLabel={t('settings.clearCacheConfirmBtn')}
+        cancelLabel={t('common.cancel')}
         variant="danger"
         onConfirm={() => {
           setConfirmClear(false);

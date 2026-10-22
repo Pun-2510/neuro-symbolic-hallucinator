@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, Shield, CheckCircle2, AlertCircle, Quote, Database, GitBranch, Scale, FileSearch } from 'lucide-react';
+import { Eye, EyeOff, Shield, CheckCircle2, AlertCircle, Quote, Database, GitBranch } from 'lucide-react';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { login } = useAuth();
   const [username, setUsername] = useState('');
@@ -21,7 +23,7 @@ export function LoginPage() {
       await login(username, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : t('auth.loginError'));
     } finally {
       setLoading(false);
     }
@@ -70,7 +72,7 @@ export function LoginPage() {
                 SourceLogic
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Academic Source Verification
+                {t('nav.academicVerification')}
               </p>
             </div>
           </div>
@@ -78,13 +80,12 @@ export function LoginPage() {
           {/* Hero */}
           <div className="mb-12">
             <h2 className="font-display text-3xl xl:text-4xl font-bold text-slate-900 dark:text-white mb-4 leading-tight">
-              Verify Every Citation.
+              {t('auth.heroTitle1')}
               <br />
-              <span className="text-indigo-600 dark:text-indigo-400">Trace Every Source.</span>
+              <span className="text-indigo-600 dark:text-indigo-400">{t('auth.heroTitle2')}</span>
             </h2>
             <p className="text-base text-slate-600 dark:text-slate-400 max-w-md leading-relaxed">
-              Detect invalid, mismatched and potentially hallucinated academic references
-              with explainable source verification.
+              {t('auth.heroDesc')}
             </p>
           </div>
 
@@ -95,9 +96,9 @@ export function LoginPage() {
                 <Quote className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white text-base">Citation Extraction</h3>
+                <h3 className="font-semibold text-slate-900 dark:text-white text-base">{t('auth.featureExtraction')}</h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                  Automatically extract in-text citations and references from documents
+                  {t('auth.featureExtractionDesc')}
                 </p>
               </div>
             </div>
@@ -106,9 +107,9 @@ export function LoginPage() {
                 <Database className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white text-base">Multi-Source Retrieval</h3>
+                <h3 className="font-semibold text-slate-900 dark:text-white text-base">{t('auth.featureRetrieval')}</h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                  Query Crossref, OpenAlex, Semantic Scholar, and CORE for metadata
+                  {t('auth.featureRetrievalDesc')}
                 </p>
               </div>
             </div>
@@ -117,9 +118,9 @@ export function LoginPage() {
                 <GitBranch className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white text-base">Neuro-Symbolic Verification</h3>
+                <h3 className="font-semibold text-slate-900 dark:text-white text-base">{t('auth.featureVerification')}</h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                  Explainable decision logic with evidence and rule tracing
+                  {t('auth.featureVerificationDesc')}
                 </p>
               </div>
             </div>
@@ -129,7 +130,7 @@ export function LoginPage() {
         {/* Footer */}
         <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
           <Shield className="h-4 w-4" />
-          <span>Decision Support System — Not an automated grader</span>
+          <span>{t('auth.footerNote')}</span>
         </div>
       </div>
 
@@ -174,7 +175,7 @@ export function LoginPage() {
                 SourceLogic
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Academic Verification
+                {t('nav.academicVerification')}
               </p>
             </div>
           </div>
@@ -182,10 +183,10 @@ export function LoginPage() {
           {/* Form Header */}
           <div className="mb-8">
             <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white mb-2">
-              Welcome back
+              {t('auth.welcomeBack')}
             </h2>
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              Sign in to access your verification workspace
+              {t('auth.signInSubtitle')}
             </p>
           </div>
 
@@ -201,7 +202,7 @@ export function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="username" className="input-label">
-                Username
+                {t('auth.username')}
               </label>
               <input
                 id="username"
@@ -211,13 +212,13 @@ export function LoginPage() {
                 required
                 autoComplete="username"
                 className="input"
-                placeholder="Enter your username"
+                placeholder={t('auth.usernamePlaceholder')}
               />
             </div>
 
             <div>
               <label htmlFor="password" className="input-label">
-                Password
+                {t('auth.password')}
               </label>
               <div className="relative">
                 <input
@@ -228,7 +229,7 @@ export function LoginPage() {
                   required
                   autoComplete="current-password"
                   className="input pr-12"
-                  placeholder="Enter your password"
+                  placeholder={t('auth.passwordPlaceholder')}
                 />
                 <button
                   type="button"
@@ -252,7 +253,7 @@ export function LoginPage() {
               {loading ? (
                 <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                'Sign In'
+                t('auth.signIn')
               )}
             </button>
           </form>
@@ -260,13 +261,13 @@ export function LoginPage() {
           {/* Demo credentials hint — only shown in demo mode (Task 22) */}
           {import.meta.env.VITE_DEMO_MODE === 'true' && (
             <div className="mt-5 p-4 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 font-medium">Demo credentials:</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 font-medium">{t('auth.demoCredentials')}</p>
               <div className="space-y-1 text-sm font-mono">
                 <p className="text-slate-600 dark:text-slate-300">
-                  <span className="text-slate-400 dark:text-slate-500">Username:</span> admin
+                  <span className="text-slate-400 dark:text-slate-500">{t('auth.username')}:</span> admin
                 </p>
                 <p className="text-slate-600 dark:text-slate-300">
-                  <span className="text-slate-400 dark:text-slate-500">Password:</span> admin123
+                  <span className="text-slate-400 dark:text-slate-500">{t('auth.password')}:</span> admin123
                 </p>
               </div>
             </div>
@@ -276,10 +277,9 @@ export function LoginPage() {
           <div className="mt-6 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 flex items-start gap-3">
             <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <div className="text-sm">
-              <p className="text-slate-900 dark:text-slate-100 font-medium mb-1">Academic Decision Support</p>
+              <p className="text-slate-900 dark:text-slate-100 font-medium mb-1">{t('auth.decisionSupportTitle')}</p>
               <p className="text-slate-600 dark:text-slate-400">
-                This system assists human review — it does not automatically conclude
-                academic fraud. All verdicts require human judgment.
+                {t('auth.decisionSupportDesc')}
               </p>
             </div>
           </div>

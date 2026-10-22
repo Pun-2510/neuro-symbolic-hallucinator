@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FileText, Search } from 'lucide-react';
 import { api, type AuditLogEntry } from '@/api/client';
 
@@ -9,6 +10,7 @@ import { api, type AuditLogEntry } from '@/api/client';
  * Filter by username; default limit 100 newest-first.
  */
 export function AuditLogPage() {
+  const { t } = useTranslation();
   const [entries, setEntries] = useState<AuditLogEntry[]>([]);
   const [userFilter, setUserFilter] = useState('');
   const [error, setError] = useState('');
@@ -41,9 +43,9 @@ export function AuditLogPage() {
           <FileText className="h-5 w-5 text-slate-600 dark:text-slate-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Audit Log</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.auditLog')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Lịch sử override verdict & system events.
+            {t('admin.auditLogSubtitle')}
           </p>
         </div>
       </div>
@@ -54,7 +56,7 @@ export function AuditLogPage() {
           type="text"
           value={userFilter}
           onChange={(e) => setUserFilter(e.target.value)}
-          placeholder="Lọc theo username…"
+          placeholder={t('admin.filterByUsername')}
           aria-label="Filter audit log by username"
           className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
@@ -68,23 +70,23 @@ export function AuditLogPage() {
 
       <div className="rounded-xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 overflow-hidden">
         {loading ? (
-          <p className="px-4 py-8 text-center text-slate-500 text-sm">Loading…</p>
+          <p className="px-4 py-8 text-center text-slate-500 text-sm">{t('common.loading')}</p>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800/50 text-xs uppercase text-slate-500">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold">When</th>
-                <th className="text-left px-4 py-3 font-semibold">User</th>
-                <th className="text-left px-4 py-3 font-semibold">Verdict</th>
-                <th className="text-left px-4 py-3 font-semibold">From → To</th>
-                <th className="text-left px-4 py-3 font-semibold">Note</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('admin.when')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('admin.tableUser')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('admin.verdict')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('admin.fromTo')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('admin.note')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {entries.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
-                    Chưa có audit log.
+                    {t('admin.noAuditLogs')}
                   </td>
                 </tr>
               ) : (

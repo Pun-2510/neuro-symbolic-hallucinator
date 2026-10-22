@@ -10,6 +10,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Moon, Sun, Monitor } from 'lucide-react';
 
 // ============================================================
@@ -151,6 +152,7 @@ export function ThemeToggle({
   className = '',
 }: ThemeToggleProps): ReactNode {
   const { theme, setTheme } = useTheme();
+  const { t } = useTranslation();
 
   const sizeClasses = {
     sm: 'p-1.5',
@@ -182,6 +184,12 @@ export function ThemeToggle({
     system: 'System',
   };
 
+  const translatedLabels: Record<Theme, string> = {
+    light: t('settings.themeLight'),
+    dark: t('settings.themeDark'),
+    system: t('settings.themeSystem'),
+  };
+
   return (
     <button
       onClick={() => {
@@ -207,7 +215,7 @@ export function ThemeToggle({
       {themeIcons[theme]}
       {showLabel && (
         <span className={`${labelSizes[size]} font-medium`}>
-          {themeLabels[theme]}
+          {translatedLabels[theme]}
         </span>
       )}
     </button>

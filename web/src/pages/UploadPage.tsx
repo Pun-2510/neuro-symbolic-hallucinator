@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Upload, FileText, X, Loader2 } from 'lucide-react';
 import { api } from '../api/client';
 
@@ -19,6 +20,7 @@ const ACCEPTED_EXTENSIONS = ['.pdf'];
 const ACCEPTED_MIME = { 'application/pdf': ['.pdf'] };
 
 export function UploadPage() {
+  const { t } = useTranslation();
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -41,20 +43,20 @@ export function UploadPage() {
       // Validate file extension — PDF only
       const ext = droppedFile.name.substring(droppedFile.name.lastIndexOf('.')).toLowerCase();
       if (!ACCEPTED_EXTENSIONS.includes(ext)) {
-        setError('Only PDF files are supported. Please upload a .pdf document.');
+        setError(t('upload.onlyPdfSupported'));
         return;
       }
       setError(null);
       setFile(droppedFile);
     }
-  }, []);
+  }, [t]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const picked = e.target.files[0];
       const ext = picked.name.substring(picked.name.lastIndexOf('.')).toLowerCase();
       if (!ACCEPTED_EXTENSIONS.includes(ext)) {
-        setError('Only PDF files are supported. Please upload a .pdf document.');
+        setError(t('upload.onlyPdfSupported'));
         return;
       }
       setError(null);
@@ -72,7 +74,7 @@ export function UploadPage() {
       // and the background task handles the real analysis
       navigate(`/verification/processing/${response.essay_id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed. Please try again.');
+      setError(e instanceof Error ? e.message : t('upload.uploadFailed'));
       setUploading(false);
     }
   };
@@ -82,10 +84,10 @@ export function UploadPage() {
       {/* Header */}
       <div className="mb-8 text-center">
         <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white mb-2">
-          New Verification
+          {t('upload.title')}
         </h1>
         <p className="text-slate-600 dark:text-slate-400">
-          Upload your document to begin citation and reference verification.
+          {t('upload.subtitle')}
         </p>
       </div>
 
@@ -142,13 +144,13 @@ export function UploadPage() {
               <Upload className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
             </div>
             <p className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-              Drop your document here
+              {t('upload.dropDocument')}
             </p>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-              PDF only
+              {t('upload.pdfOnly')}
             </p>
             <span className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
-              or browse file
+              {t('upload.orBrowse')}
             </span>
           </>
         )}
@@ -177,11 +179,11 @@ export function UploadPage() {
           {uploading ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" />
-              Uploading...
+              {t('upload.uploading')}
             </>
           ) : (
             <>
-              Start Verification
+              {t('upload.startVerification')}
               <Upload className="h-5 w-5" />
             </>
           )}

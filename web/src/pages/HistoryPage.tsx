@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Loader2,
   FileText,
@@ -28,6 +29,7 @@ import { useEssays, useDeleteEssay } from '@/hooks/useEssays';
    ============================================================ */
 
 export function HistoryPage() {
+  const { t, i18n } = useTranslation();
   const toast = useToast();
   const { isTeacher, isAdmin } = useRole();
   const { data: items = [], isLoading, error, refetch, isFetching } = useEssays();
@@ -38,7 +40,7 @@ export function HistoryPage() {
   const errorMessage = error
     ? error instanceof Error
       ? error.message
-      : 'Connection error'
+      : t('error.network')
     : null;
   const deletingId = deleteMutation.isPending
     ? (deleteMutation.variables ?? null)
@@ -50,9 +52,9 @@ export function HistoryPage() {
     setConfirmDeleteId(null);
     try {
       await deleteMutation.mutateAsync(id);
-      toast.success('Document deleted');
+      toast.success(t('dashboard.documentDeleted'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Delete failed');
+      toast.error(err instanceof Error ? err.message : t('dashboard.deleteFailed'));
     }
   };
 
@@ -61,29 +63,31 @@ export function HistoryPage() {
     item.filename.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const dateLocale = i18n.language?.startsWith('vi') ? 'vi-VN' : 'en-US';
+
   return (
     <div className="space-y-6">
       {/* Header - UX/UI Concept Section 19 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
-            Verification Reports
+            {t('history.title')}
           </h1>
           <p className="text-slate-600 dark:text-slate-300 mt-1">
-            {items.length} document{items.length !== 1 ? 's' : ''} · Auto-refresh active
+            {t(items.length === 1 ? 'history.documentCountOne' : 'history.documentCountOther', { count: items.length })}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Link to="/upload" className="btn-primary btn-sm">
             <Upload className="h-4 w-4" />
-            New Check
+            {t('dashboard.newCheck')}
           </Link>
           <button
             onClick={() => refetch()}
             disabled={isFetching}
             aria-label="Refresh history"
             className="p-2 min-h-11 min-w-11 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
-            title="Refresh"
+            title={t('common.refresh')}
           >
             <RefreshCw className={`h-5 w-5 ${isFetching ? 'animate-spin' : ''}`} />
           </button>
@@ -97,7 +101,7 @@ export function HistoryPage() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search documents..."
+          placeholder={t('dashboard.searchPlaceholder')}
           aria-label="Search documents"
           className="input pl-12 pr-10"
         />
@@ -124,7 +128,7 @@ export function HistoryPage() {
       {isLoading && items.length === 0 ? (
         <div className="card p-12 flex flex-col items-center justify-center">
           <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
-          <p className="text-sm text-slate-600 dark:text-slate-300">Loading documents...</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">{t('dashboard.loadingDocuments')}</p>
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="card p-12 text-center">
@@ -134,34 +138,34 @@ export function HistoryPage() {
           {searchQuery ? (
             <>
               <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                No documents found
+                {t('dashboard.noDocumentsFound')}
               </h3>
               <p className="text-slate-600 dark:text-slate-300 mb-4">
-                No documents match "{searchQuery}"
+                {t('dashboard.noDocumentsMatch', { query: searchQuery })}
               </p>
               <button
                 onClick={() => setSearchQuery('')}
                 className="text-indigo-600 dark:text-indigo-400 hover:underline"
               >
-                Clear search
+                {t('dashboard.clearSearch')}
               </button>
             </>
           ) : (
             <>
               <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                No documents yet
+                {t('dashboard.noDocumentsYet')}
               </h3>
               <p className="text-slate-600 dark:text-slate-300 mb-6">
                 {isAdmin
-                  ? 'Chưa có bài nộp nào trong hệ thống.'
+                  ? t('dashboard.noDocumentsAdmin')
                   : isTeacher
-                    ? 'Chưa có bài nộp nào trong lớp bạn phụ trách.'
-                    : 'Upload your first document to start verifying citations'}
+                    ? t('dashboard.noDocumentsTeacher')
+                    : t('dashboard.noDocumentsStudent')}
               </p>
               {!(isTeacher || isAdmin) && (
                 <Link to="/upload" className="btn-primary">
                   <Upload className="h-4 w-4" />
-                  Upload Document
+                  {t('dashboard.uploadDocument')}
                 </Link>
               )}
             </>
@@ -188,11 +192,11 @@ export function HistoryPage() {
                     <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300 mt-1">
                       <span className="flex items-center gap-1.5">
                         <FileText className="h-3.5 w-3.5" />
-                        {essay.num_pages} pages
+                        {essay.num_pages} {t('history.pages')}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Clock className="h-3.5 w-3.5" />
-                        {new Date(essay.uploaded_at).toLocaleDateString('en-US', {
+                        {new Date(essay.uploaded_at).toLocaleDateString(dateLocale, {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
@@ -206,7 +210,7 @@ export function HistoryPage() {
                 {/* Right: Actions */}
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="hidden sm:inline-flex px-3 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 group-hover:border-indigo-300 dark:group-hover:border-indigo-600 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    View Report
+                    {t('dashboard.viewReport')}
                   </span>
                   <button
                     onClickCapture={(e) => {
@@ -216,7 +220,7 @@ export function HistoryPage() {
                     }}
                     disabled={deletingId === essay.id}
                     className="p-2.5 min-h-11 min-w-11 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
-                    title="Delete"
+                    title={t('common.delete')}
                     aria-label={`Delete ${essay.filename}`}
                   >
                     {deletingId === essay.id ? (
@@ -237,20 +241,21 @@ export function HistoryPage() {
       {items.length > 0 && (
         <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300 pt-4 border-t border-slate-200 dark:border-slate-700">
           <p>
-            Showing {filteredItems.length} of {items.length} documents
+            {t('dashboard.showingCount', { shown: filteredItems.length, total: items.length })}
           </p>
           <p className="flex items-center gap-1.5">
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
-            Auto-refresh active
+            {t('history.autoRefreshActive')}
           </p>
         </div>
       )}
 
       <ConfirmationModal
         isOpen={confirmDeleteId !== null}
-        title="Delete this document?"
-        message="This will permanently remove the document and its analysis. This action cannot be undone."
-        confirmLabel="Delete"
+        title={t('dashboard.deleteConfirmTitle')}
+        message={t('dashboard.deleteConfirmMessage')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         variant="danger"
         onConfirm={handleDelete}
         onCancel={() => setConfirmDeleteId(null)}

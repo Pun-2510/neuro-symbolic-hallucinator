@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, FileText, Quote, Clock, Download } from 'lucide-react';
 import { api } from '@/api/client';
 
@@ -24,6 +25,8 @@ export function EssayHeader({
   numCitations,
   styleName,
 }: EssayHeaderProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-start justify-between flex-wrap gap-4">
       <div className="min-w-0 flex-1">
@@ -32,7 +35,7 @@ export function EssayHeader({
           className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 mb-3 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Reports
+          {t('essay.backToReports').replace(/^←\s*/, '')}
         </Link>
         <h1
           className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100 truncate"
@@ -43,12 +46,12 @@ export function EssayHeader({
         <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300 mt-2 flex-wrap">
           <span className="flex items-center gap-1.5">
             <FileText className="h-4 w-4" />
-            {numPages} pages
+            {numPages} {t('history.pages')}
           </span>
           <span className="text-slate-300 dark:text-slate-600">·</span>
           <span className="flex items-center gap-1.5">
             <Quote className="h-4 w-4" />
-            {numCitations} citations
+            {numCitations} {t('essay.citationsTab').toLowerCase()}
           </span>
           {styleName && (
             <>

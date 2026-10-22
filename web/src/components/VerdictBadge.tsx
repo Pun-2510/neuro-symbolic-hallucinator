@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { CheckCircle, AlertTriangle, AlertCircle, XCircle, HelpCircle, Link2 } from 'lucide-react';
 
 /* ============================================================
@@ -179,13 +180,35 @@ const sizeClasses = {
   lg: 'text-sm px-4 py-1.5 gap-2',
 };
 
+const verdictLabelKey: Record<string, string> = {
+  VERIFIED: 'verdict.verified',
+  verified: 'verdict.verified',
+  LIKELY_VERIFIED: 'verdict.likelyVerified',
+  METADATA_ERROR: 'verdict.metadataError',
+  metadata_error: 'verdict.metadataError',
+  SOURCE_MISMATCH: 'verdict.sourceMismatch',
+  source_mismatch: 'verdict.sourceMismatch',
+  HALLUCINATED: 'verdict.likelyHallucinated',
+  hallucinated: 'verdict.likelyHallucinated',
+  SUSPECTED_HALLUCINATION: 'essay.suspected',
+  suspected_hallucination: 'essay.suspected',
+  UNVERIFIABLE: 'essay.unverifiable',
+  UNRESOLVED: 'verdict.unresolved',
+  unresolved: 'verdict.unresolved',
+  RESOURCE: 'essay.urlResource',
+  resource: 'essay.urlResource',
+};
+
 export function VerdictBadge({
   verdict,
   size = 'md',
   showIcon = true,
   className = ''
 }: VerdictBadgeProps) {
+  const { t } = useTranslation();
   const config = verdictConfig[verdict] || verdictConfig.UNVERIFIABLE;
+  const labelKey = verdictLabelKey[verdict];
+  const labelText = labelKey ? t(labelKey) : config.label;
 
   return (
     <span
@@ -202,7 +225,7 @@ export function VerdictBadge({
           {config.icon}
         </span>
       )}
-      <span className={config.iconColor}>{config.label}</span>
+      <span className={config.iconColor}>{labelText}</span>
     </span>
   );
 }

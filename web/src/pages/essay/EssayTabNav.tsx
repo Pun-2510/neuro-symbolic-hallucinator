@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 export type EssayTab = 'overview' | 'citations' | 'references';
 
 interface EssayTabNavProps {
@@ -20,6 +22,14 @@ export function EssayTabNav({
   citationsCount,
   referencesCount,
 }: EssayTabNavProps) {
+  const { t } = useTranslation();
+
+  const tabLabels: Record<EssayTab, string> = {
+    overview: t('essay.overviewTab'),
+    citations: t('essay.citationsTab'),
+    references: t('essay.referencesTab'),
+  };
+
   return (
     <div className="border-b border-slate-200 dark:border-slate-700">
       <nav className="flex gap-6" aria-label="Report sections">
@@ -33,7 +43,7 @@ export function EssayTabNav({
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tabLabels[tab]}
             {tab === 'citations' && (
               <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
                 {citationsCount}
