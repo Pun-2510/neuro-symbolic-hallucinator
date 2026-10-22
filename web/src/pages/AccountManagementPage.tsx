@@ -172,7 +172,7 @@ export function AccountManagementPage() {
       )}
 
       {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="card p-0 overflow-hidden">
         {loading ? (
           <div className="p-12 flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 text-indigo-600 animate-spin mb-4" />

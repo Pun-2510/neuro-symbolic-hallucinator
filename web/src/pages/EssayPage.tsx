@@ -307,7 +307,7 @@ export function EssayPage() {
             </span>
           </div>
 
-          <div className="card overflow-hidden">
+          <div className="card p-0 overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
@@ -434,7 +434,7 @@ export function EssayPage() {
             </span>
           </div>
 
-          <div className="card overflow-hidden">
+          <div className="card p-0 overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">

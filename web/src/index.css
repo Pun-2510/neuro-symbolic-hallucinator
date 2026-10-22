@@ -12,48 +12,56 @@
 @layer base {
   :root {
     /* Core Palette — SourceLogic Design System (UX/UI Concept) */
+    --background: 210 20% 98%;          /* #F8FAFC - Slate 50 */
+    --foreground: 222 47% 11%;          /* #0F172A - Slate 900 */
     --bg: 210 20% 98%;                  /* #F8FAFC */
     --text: 222 47% 11%;                /* #0F172A */
     --surface: 0 0% 100%;               /* #FFFFFF */
-    --muted: 215 16% 47%;               /* #64748B */
 
     /* Primary — Indigo #4F46E5 */
-    --primary: 244 63 94;
+    --primary: 243 75% 59%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 244 63 84;
-    --primary-light: 244 63 94 / 0.1;
+    --primary-hover: 245 58% 51%;
+    --primary-light: 243 75% 59% / 0.1;
 
     /* Secondary — Warm Gray */
     --secondary: 220 14% 96%;
     --secondary-foreground: 222 47% 11%;
 
-    /* Muted — Subtle Gray */
+    /* Muted — Subtle Slate */
+    --muted: 210 40% 96%;               /* #F1F5F9 - Slate 100 */
+    --muted-foreground: 215 16% 47%;    /* #64748B - Slate 500 */
     --muted-bg: 214 32% 91%;
     --muted-fg: 215 16% 47%;
 
     /* Accent — Soft Blue */
     --accent: 214 97% 95%;
-    --accent-foreground: 244 63 94;
+    --accent-foreground: 243 75% 59%;
 
     /* Semantic Colors — SourceLogic Verified Palette (UX/UI Concept) */
     --verified: 160 84% 39%;            /* #10B981 - Green */
     --verified-light: 160 84% 39% / 0.12;
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;              /* #F59E0B - Amber */
+    --warning-foreground: 0 0% 100%;
     --warning-light: 38 92% 50% / 0.12;
     --mismatch: 24 96% 54%;              /* #F97316 - Orange */
     --mismatch-light: 24 96% 54% / 0.12;
     --danger: 0 72% 51%;                /* #EF4444 - Red */
     --danger-light: 0 72% 51% / 0.12;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
     --unknown: 215 16% 47%;             /* #94A3B8 - Slate */
 
     /* Border & Input */
-    --border: 214 22% 88%;              /* #E2E8F0 */
-    --input: 214 22% 88%;
-    --ring: 244 63 94;
+    --border: 214 32% 91%;              /* #E2E8F0 - Slate 200 */
+    --input: 214 32% 91%;
+    --ring: 243 75% 59%;
 
     /* Card */
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 0 0% 100%;                  /* #FFFFFF */
+    --card-foreground: 222 47% 11%;     /* #0F172A */
 
     /* Verdict Status Colors — SourceLogic UX/UI Concept */
     --verdict-verified: 160 84% 39%;         /* #10B981 - Green */
@@ -61,7 +69,9 @@
     --verdict-metadata-error: 38 92% 50%;    /* #F59E0B - Amber */
     --verdict-source-mismatch: 24 96% 54%;   /* #F97316 - Orange */
     --verdict-hallucinated: 0 72% 51%;       /* #EF4444 - Red */
+    --verdict-suspected: 0 72% 51%;          /* #EF4444 - Red */
     --verdict-unverifiable: 215 16% 47%;     /* #94A3B8 - Slate */
+    --verdict-unresolved: 215 16% 47%;       /* #94A3B8 - Slate */
 
     /* Mapping Status Colors */
     --mapping-matched: 160 84% 39%;
@@ -87,6 +97,40 @@
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 222 47% 6%;           /* #020617 - Slate 950 */
+    --foreground: 210 40% 98%;          /* #F8FAFC - Slate 50 */
+    --bg: 222 47% 6%;
+    --text: 210 40% 98%;
+    --surface: 222 47% 11%;             /* #0F172A - Slate 900 */
+
+    --primary: 239 84% 67%;             /* #6366F1 - Indigo 500 */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 243 75% 59%;       /* #4F46E5 - Indigo 600 */
+    --primary-light: 239 84% 67% / 0.15;
+
+    --secondary: 217 33% 17%;           /* #1E293B - Slate 800 */
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;               /* #1E293B - Slate 800 */
+    --muted-foreground: 215 20% 65%;    /* #94A3B8 - Slate 400 */
+    --muted-bg: 217 33% 17%;
+    --muted-fg: 215 20% 65%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;              /* #1E293B - Slate 800 */
+    --input: 217 33% 17%;
+    --ring: 239 84% 67%;
+
+    --card: 222 47% 11%;                /* #0F172A - Slate 900 */
+    --card-foreground: 210 40% 98%;     /* #F8FAFC - Slate 50 */
   }
 
   * {
@@ -116,7 +160,7 @@
 
   /* Selection */
   ::selection {
-    background: hsl(244 63 94 / 0.3);
+    background: hsl(243 75% 59% / 0.3);
   }
 }
 
@@ -243,16 +287,16 @@
      ============================================================ */
 
   .card {
-    @apply bg-card rounded-2xl border border-slate-200 dark:border-slate-700 p-6;
+    @apply bg-card text-card-foreground rounded-2xl border border-slate-200 dark:border-slate-700 p-6;
     box-shadow: var(--shadow-sm);
   }
 
   .card-elevated {
-    @apply bg-card rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-200;
+    @apply bg-card text-card-foreground rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-200;
   }
 
   .card-interactive {
-    @apply bg-card rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-200 cursor-pointer;
+    @apply bg-card text-card-foreground rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-200 cursor-pointer;
   }
 
   .card-interactive:hover {

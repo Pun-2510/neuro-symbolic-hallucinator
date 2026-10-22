@@ -51,7 +51,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
       {/* Modal */}
       <div className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex">
         {/* Sidebar */}
-        <div className="w-56 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-4">
+        <div className="w-64 shrink-0 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-4">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-semibold text-slate-900 dark:text-white">Help</h2>
             <button
@@ -69,14 +69,14 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-left whitespace-nowrap transition-colors ${
                     activeSection === section.id
-                      ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
+                      ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-medium'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
-                  {section.label}
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span>{section.label}</span>
                 </button>
               );
             })}

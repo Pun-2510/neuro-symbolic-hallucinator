@@ -244,7 +244,7 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
       </div>
 
       {/* Graph */}
-      <div className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-900 overflow-x-auto">
+      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-900 overflow-x-auto">
         <div className="min-w-fit">
           <EvidenceGraphNode
             node={graphData}
@@ -258,26 +258,26 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
       {/* Legend */}
       <div className="flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border border-emerald-300 bg-emerald-50" />
+          <div className="w-3 h-3 rounded border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950" />
           <span>Match found</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border border-slate-300 bg-slate-100" />
+          <div className="w-3 h-3 rounded border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800" />
           <span>No match</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border border-amber-300 bg-amber-50" />
+          <div className="w-3 h-3 rounded border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950" />
           <span>Warning</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border border-red-300 bg-red-50" />
+          <div className="w-3 h-3 rounded border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950" />
           <span>Error/Issue</span>
         </div>
       </div>
 
       {/* Mismatched fields */}
       {verdict.mismatched_fields.length > 0 && (
-        <div className="border rounded-lg p-3">
+        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
           <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2">
             Mismatched Fields
           </h4>

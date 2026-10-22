@@ -20,10 +20,10 @@ const getStatus = (score: number) => {
       label: 'Excellent',
       description: 'Most sources verified with matching metadata',
       color: 'emerald',
-      bg: 'bg-emerald-50 dark:bg-emerald-950',
+      bg: 'bg-emerald-50 dark:bg-emerald-950/40',
       border: 'border-emerald-200 dark:border-emerald-800',
       text: 'text-emerald-700 dark:text-emerald-300',
-      iconBg: 'bg-emerald-100 dark:bg-emerald-900',
+      iconBg: 'bg-emerald-100 dark:bg-emerald-900/60',
       icon: CheckCircle2,
     };
   }
@@ -32,10 +32,10 @@ const getStatus = (score: number) => {
       label: 'Good',
       description: 'Most sources verified, minor issues detected',
       color: 'green',
-      bg: 'bg-green-50 dark:bg-green-950',
+      bg: 'bg-green-50 dark:bg-green-950/40',
       border: 'border-green-200 dark:border-green-800',
       text: 'text-green-700 dark:text-green-300',
-      iconBg: 'bg-green-100 dark:bg-green-900',
+      iconBg: 'bg-green-100 dark:bg-green-900/60',
       icon: CheckCircle2,
     };
   }
@@ -44,10 +44,10 @@ const getStatus = (score: number) => {
       label: 'Fair',
       description: 'Several metadata mismatches or unresolved sources',
       color: 'amber',
-      bg: 'bg-amber-50 dark:bg-amber-950',
+      bg: 'bg-amber-50 dark:bg-amber-950/40',
       border: 'border-amber-200 dark:border-amber-800',
       text: 'text-amber-700 dark:text-amber-300',
-      iconBg: 'bg-amber-100 dark:bg-amber-900',
+      iconBg: 'bg-amber-100 dark:bg-amber-900/60',
       icon: AlertTriangle,
     };
   }
@@ -56,10 +56,10 @@ const getStatus = (score: number) => {
       label: 'Concerning',
       description: 'Multiple issues require attention',
       color: 'orange',
-      bg: 'bg-orange-50 dark:bg-orange-950',
+      bg: 'bg-orange-50 dark:bg-orange-950/40',
       border: 'border-orange-200 dark:border-orange-800',
       text: 'text-orange-700 dark:text-orange-300',
-      iconBg: 'bg-orange-100 dark:bg-orange-900',
+      iconBg: 'bg-orange-100 dark:bg-orange-900/60',
       icon: AlertCircle,
     };
   }
@@ -67,10 +67,10 @@ const getStatus = (score: number) => {
     label: 'Critical',
     description: 'Significant problems detected - review required',
     color: 'red',
-    bg: 'bg-red-50 dark:bg-red-950',
+    bg: 'bg-red-50 dark:bg-red-950/40',
     border: 'border-red-200 dark:border-red-800',
     text: 'text-red-700 dark:text-red-300',
-    iconBg: 'bg-red-100 dark:bg-red-900',
+    iconBg: 'bg-red-100 dark:bg-red-900/60',
     icon: XCircle,
   };
 };
@@ -96,10 +96,10 @@ export function CISScoreCard({ cis, showDetails = true }: CISScoreCardProps) {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div className="flex-1">
-          <h3 className="font-display text-lg font-semibold text-foreground mb-1">
+          <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
             Citation Integrity Score
           </h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
             Based on verified sources and metadata consistency
           </p>
         </div>
@@ -107,7 +107,7 @@ export function CISScoreCard({ cis, showDetails = true }: CISScoreCardProps) {
         {/* Status Badge */}
         <div className={`
           inline-flex items-center gap-2 px-3 py-1.5 rounded-lg
-          ${status.bg} ${status.border} border
+          ${status.iconBg} ${status.border} border
           ${status.text} font-semibold text-sm
         `}>
           <Icon className="h-4 w-4" />
@@ -120,14 +120,14 @@ export function CISScoreCard({ cis, showDetails = true }: CISScoreCardProps) {
         <div className="flex-1">
           {/* Large score */}
           <div className="flex items-baseline gap-2 mb-4">
-            <span className="text-6xl font-bold tracking-tight text-foreground">
+            <span className="text-6xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               {cis.toFixed(1)}
             </span>
-            <span className="text-xl text-muted-foreground">/ 100</span>
+            <span className="text-xl text-slate-500 dark:text-slate-400">/ 100</span>
           </div>
 
           {/* Progress bar */}
-          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ease-out ${getProgressColor(cis)}`}
               style={{ width: `${progressPercent}%` }}
@@ -135,7 +135,7 @@ export function CISScoreCard({ cis, showDetails = true }: CISScoreCardProps) {
           </div>
 
           {/* Progress markers */}
-          <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+          <div className="flex justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
             <span>0</span>
             <span>50</span>
             <span>100</span>
@@ -145,7 +145,7 @@ export function CISScoreCard({ cis, showDetails = true }: CISScoreCardProps) {
         {/* Shield Icon */}
         <div className={`
           w-20 h-20 rounded-2xl
-          ${status.bg} ${status.border} border
+          ${status.iconBg} ${status.border} border
           flex items-center justify-center
           shadow-sm
         `}>
@@ -155,8 +155,8 @@ export function CISScoreCard({ cis, showDetails = true }: CISScoreCardProps) {
 
       {/* Explanation */}
       {showDetails && (
-        <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-          <p className="text-sm text-muted-foreground leading-relaxed">
+        <div className="mt-6 pt-4 border-t border-slate-200/80 dark:border-slate-700/80">
+          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
             {status.description}
           </p>
         </div>

@@ -99,7 +99,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
+    <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 flex">
       {/* Skip-to-content — visually hidden until focused. WCAG 2.1 Level A
           (Bypass Blocks) requires a way to jump past repeated navigation. */}
       <a
@@ -136,7 +136,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-50
-          w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800
+          w-72 h-screen shrink-0 overflow-hidden bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800
           transform transition-transform duration-300 ease-out
           lg:transform-none
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -218,7 +218,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Navigation — capability-driven (v1.15 / Phase 3) */}
-          <nav className="flex-1 p-4 space-y-1">
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             {SIDEBAR_GROUPS.map((group) => {
               // Hide whole group if role-restricted and user doesn't match
               if (group.roles && !group.roles.includes(role)) return null;

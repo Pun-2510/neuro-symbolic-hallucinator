@@ -102,7 +102,7 @@ export function VerdictTable({ verdicts, onSelect, onOverride }: VerdictTablePro
   };
 
   return (
-    <div className="card overflow-hidden">
+    <div className="card p-0 overflow-hidden">
       {/* Table Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

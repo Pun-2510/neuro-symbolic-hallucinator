@@ -173,7 +173,7 @@ export function DashboardPage() {
       )}
 
       {/* Documents Table */}
-      <div className="card overflow-hidden">
+      <div className="card p-0 overflow-hidden">
         {isLoading && essays.length === 0 ? (
           <div className="p-12 flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />

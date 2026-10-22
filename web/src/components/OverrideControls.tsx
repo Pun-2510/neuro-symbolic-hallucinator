@@ -12,11 +12,11 @@ import { useRole } from '@/hooks/useRole';
 import { useToast } from '@/contexts/ToastContext';
 
 const LABEL_OPTIONS: { value: ValidationLabel; label: string; color: string }[] = [
-  { value: 'verified', label: '✓ Verified', color: 'text-green-700' },
-  { value: 'metadata_error', label: '△ Metadata Error', color: 'text-amber-700' },
-  { value: 'suspected_hallucination', label: '✗ Suspected', color: 'text-red-700' },
-  { value: 'unresolved', label: '— Unresolved', color: 'text-gray-600' },
-  { value: 'resource', label: '↗ URL Resource', color: 'text-violet-700' },
+  { value: 'verified', label: '✓ Verified', color: 'text-green-700 dark:text-green-400' },
+  { value: 'metadata_error', label: '△ Metadata Error', color: 'text-amber-700 dark:text-amber-400' },
+  { value: 'suspected_hallucination', label: '✗ Suspected', color: 'text-red-700 dark:text-red-400' },
+  { value: 'unresolved', label: '— Unresolved', color: 'text-gray-600 dark:text-slate-400' },
+  { value: 'resource', label: '↗ URL Resource', color: 'text-violet-700 dark:text-violet-400' },
 ];
 
 const STATUS_OPTIONS: { value: CitationMappingStatus; label: string }[] = [
@@ -131,7 +131,7 @@ function OverrideForm({
             onChange={(e) => setReason(e.target.value)}
             placeholder="VD: Kiểm tra thủ công, tác giả xác nhận..."
             rows={2}
-            className="w-full px-3 py-2 border rounded text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
 
@@ -186,7 +186,7 @@ export function OverrideControls({
 
   if (verdict.is_overridden) {
     return (
-      <div className={cn('flex items-center gap-1 text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200', className)}>
+      <div className={cn('flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-1 rounded border border-amber-200 dark:border-amber-800', className)}>
         <RefreshCw className="h-3 w-3" />
         <span>Đã ghi đè</span>
         {verdict.override_record && (

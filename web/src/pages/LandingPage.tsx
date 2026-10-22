@@ -221,7 +221,7 @@ function HowItWorksSection() {
 
         <StaggeredGrid className="grid md:grid-cols-2 lg:grid-cols-4 gap-6" staggerDelay={150}>
           {steps.map((step, i) => (
-            <div key={i} className="card text-center group hover:shadow-lg transition-shadow">
+            <div key={i} className="card bg-white text-center group hover:shadow-lg transition-shadow">
               <div className={`w-14 h-14 rounded-2xl ${step.color} flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform`}>
                 <step.icon className="h-7 w-7" />
               </div>
