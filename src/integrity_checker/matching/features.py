@@ -90,6 +90,20 @@ class FeatureCalculator:
 
         # Year distance
         year_dist = self._year_distance(citation.year, best.year)
+        if year_dist > 1 and fuzzy_sim >= 0.95 and author_sim >= 0.80:
+            same_work_dists = [
+                self._year_distance(citation.year, c.year)
+                for c in source.candidates
+                if c.found
+                and self._compute_title_similarity(
+                    c_title,
+                    (c.title or "").lower().strip(),
+                    is_raw_fallback=not bool(citation.title),
+                )
+                >= 0.95
+            ]
+            if same_work_dists:
+                year_dist = min(year_dist, min(same_work_dists))
 
         # DOI exact match (normalized + known arXiv/ACL equivalent DOIs)
         doi_match = self._doi_matches(citation.doi, best.doi)

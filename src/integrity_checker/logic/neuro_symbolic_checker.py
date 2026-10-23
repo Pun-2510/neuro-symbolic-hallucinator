@@ -149,7 +149,15 @@ class NeuroSymbolicChecker:
             # Developer/Documentation keyword sau citation
             re.compile(
                 r'(Google\s+for\s+Developers|Developer\s+Documentation|'
-                r'API\s+Reference|Getting\s+Started|REST\s+API)\s*[.,]',
+                r'API\s+Reference|API\s+Documentation|REST\s+API\s+Documentation|'
+                r'Academic\s+Graph\s+API|Getting\s+Started|REST\s+API|'
+                r'The\s+DOI\s+Handbook)\s*[.,]',
+                re.IGNORECASE
+            ),
+            # Web portal / online archive with explicit URL and no DOI
+            re.compile(
+                r'\b(ACL\s+Anthology|Crossref\s+REST\s+API|Semantic\s+Scholar\s+Academic\s+Graph\s+API|'
+                r'The\s+DOI\s+Handbook)\b.*?\bRetrieved\s+from\s+https?://',
                 re.IGNORECASE
             ),
             # Company name + API/SDK/Tool keyword (short form từ GROBID)

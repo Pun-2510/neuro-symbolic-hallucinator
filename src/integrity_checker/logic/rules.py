@@ -213,15 +213,15 @@ class SymbolicRules:
 
         This is a trusted match because local_db/known_papers are curated knowledge bases.
         """
-        # Chỉ apply nếu TẤT CẢ sources đều là local sources (local_db hoặc known_papers)
+        # Chỉ apply nếu best candidate đến từ local source (local_db hoặc known_papers)
         if not source.sources_succeeded:
             return None
-        for s in source.sources_succeeded:
-            if s not in _NON_LIVE_SOURCES:
-                return None
-
         best = source.best_candidate()
         if not best:
+            return None
+        if best.source_name not in _NON_LIVE_SOURCES and any(
+            s not in _NON_LIVE_SOURCES for s in source.sources_succeeded
+        ):
             return None
 
         # Check thresholds (require fuzzy title match to prevent semantic inflation)
@@ -230,7 +230,12 @@ class SymbolicRules:
         year_dist = features.year_distance
 
         # Perfect match: fuzzy title >= 0.90, title >= 0.95 AND author >= 0.8 AND year match
-        if features.title_sim_fuzzy >= 0.90 and title_sim >= 0.95 and author_sim >= 0.8 and year_dist == 0:
+        if (
+            features.title_sim_fuzzy >= 0.90
+            and title_sim >= 0.95
+            and author_sim >= 0.8
+            and year_dist <= self.year_tolerance
+        ):
             # Calculate confidence
             if features.doi_exact_match:
                 confidence = 0.90
@@ -279,15 +284,15 @@ class SymbolicRules:
 
         Lower confidence because author_sim is lower.
         """
-        # Chỉ apply nếu TẤT CẢ sources đều là local sources
+        # Chỉ apply nếu best candidate đến từ local source
         if not source.sources_succeeded:
             return None
-        for s in source.sources_succeeded:
-            if s not in _NON_LIVE_SOURCES:
-                return None
-
         best = source.best_candidate()
         if not best:
+            return None
+        if best.source_name not in _NON_LIVE_SOURCES and any(
+            s not in _NON_LIVE_SOURCES for s in source.sources_succeeded
+        ):
             return None
 
         title_sim = max(features.title_sim_fuzzy, features.title_sim_semantic)
@@ -295,7 +300,12 @@ class SymbolicRules:
         year_dist = features.year_distance
 
         # Good match: fuzzy title >= 0.90, title >= 0.95 AND author >= 0.5 AND year match
-        if features.title_sim_fuzzy >= 0.90 and title_sim >= 0.95 and author_sim >= 0.5 and year_dist == 0:
+        if (
+            features.title_sim_fuzzy >= 0.90
+            and title_sim >= 0.95
+            and author_sim >= 0.5
+            and year_dist <= self.year_tolerance
+        ):
             confidence = max(0.0, 0.75 - style_penalty)
 
             mismatched = ["author"]
@@ -889,6 +899,32 @@ class SymbolicRules:
                 style_penalty=style_penalty,
             )
 
+        # --- Rule 3c: 1 nguồn live với title + author khớp nhưng lệch năm → METADATA_ERROR ---
+        if (
+            consensus >= 1
+            and _has_live_source(source, verified_sources)
+            and features.title_sim_fuzzy >= 0.85
+            and author_sim >= self.author_jaccard_verified
+            and year_dist > self.year_tolerance
+            and not has_doi_conflict
+        ):
+            if features.title_sim_fuzzy < 0.90:
+                mismatched.append("title")
+            mismatched.append("year")
+            triggered_rules.append("R-SINGLE-SOURCE-PARTIAL")
+            return RuleOutcome(
+                label=ValidationLabel.METADATA_ERROR,
+                confidence=max(0.0, 0.68 - style_penalty),
+                reasoning=(
+                    f"Tìm thấy công trình của cùng tác giả trên {', '.join(source.sources_succeeded)} "
+                    f"(title_sim={features.title_sim_fuzzy:.2f}, author_sim={author_sim:.2f}) "
+                    f"nhưng lệch trường: {', '.join(mismatched)}."
+                ),
+                triggered_rules=triggered_rules,
+                mismatched_fields=mismatched,
+                style_penalty=style_penalty,
+            )
+
         # --- Rule 4 (NEW v1.2 #33): AMBIGUOUS_MAPPING → cap confidence ---
         # Nếu linker không quyết định được → force abstention band
         if mapping_status is not None and hasattr(mapping_status, "value"):
@@ -984,8 +1020,13 @@ class SymbolicRules:
                     style_penalty=style_penalty,
                 )
 
-            # Rule: Moderate content alignment = UNRESOLVED
-            if not content_is_aligned and 0.2 <= content_alignment_score < 0.5:
+            # Rule: Moderate content alignment = UNRESOLVED (only when candidate plausibly matches author/year)
+            if (
+                not content_is_aligned
+                and 0.2 <= content_alignment_score < 0.5
+                and author_sim >= 0.3
+                and year_dist <= self.year_tolerance
+            ):
                 return RuleOutcome(
                     label=ValidationLabel.UNRESOLVED,
                     confidence=max(0.0, content_alignment_score - style_penalty),
@@ -1017,7 +1058,7 @@ class SymbolicRules:
             ) if best.title else 0
             has_quality_candidate = title_sim_for_check >= 0.3
 
-        if is_known_author and has_verified_sources and has_quality_candidate:
+        if is_known_author and has_verified_sources and has_quality_candidate and author_sim >= 0.5:
             # Only apply METADATA_ERROR if we have quality evidence
             if 0.3 <= title_sim < self.title_sim_verified:
                 triggered_rules.append("R-KNOWN-AUTHOR-TITLE-MISMATCH")

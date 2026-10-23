@@ -118,3 +118,68 @@ def test_abstention_border_zone_returns_unresolved() -> None:
     outcome = rules.apply(features, source)
     assert outcome.label == ValidationLabel.UNRESOLVED
     assert "R-ABSTENTION-BORDER" in outcome.triggered_rules
+
+
+def test_local_db_verified_allows_year_tolerance() -> None:
+    """local_db match with year_distance == 1 (arXiv vs conf year) → VERIFIED."""
+    rules = SymbolicRules()
+    cand = SourceCandidate(
+        source_name="local_db",
+        found=True,
+        doi="10.18653/v1/d19-1410",
+        title="Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks",
+        authors=["Nils Reimers", "Iryna Gurevych"],
+        year="2019",
+        confidence=0.9,
+    )
+    source = SourceResult(
+        citation_raw="Reimers & Gurevych (2020)",
+        candidates=[cand],
+        sources_queried=["local_db"],
+        sources_succeeded=["local_db"],
+    )
+    features = MatchFeatures(
+        title_sim_fuzzy=1.0,
+        title_sim_semantic=1.0,
+        author_jaccard=1.0,
+        year_distance=1,
+        doi_exact_match=False,
+        source_consensus=1,
+    )
+    outcome = rules.apply(features, source)
+    assert outcome.label == ValidationLabel.VERIFIED
+    assert "R-LOCAL_DB_VERIFIED" in outcome.triggered_rules
+
+
+def test_single_source_year_mismatch_not_masked_by_content_alignment() -> None:
+    """Single live source with matching title & author but year_distance=2 → METADATA_ERROR."""
+    rules = SymbolicRules()
+    cand = SourceCandidate(
+        source_name="crossref",
+        found=True,
+        doi="10.1007/0-387-25465-x_40",
+        title="Data Mining for Imbalanced Datasets: An Overview",
+        authors=["Nitesh V. Chawla"],
+        year="2006",
+        confidence=0.9,
+    )
+    source = SourceResult(
+        citation_raw="Chawla, S. V. (2008). Data mining for imbalanced datasets: A survey.",
+        candidates=[cand],
+        sources_queried=["crossref"],
+        sources_succeeded=["crossref"],
+    )
+    features = MatchFeatures(
+        title_sim_fuzzy=0.86,
+        title_sim_semantic=0.88,
+        author_jaccard=1.0,
+        year_distance=2,
+        doi_exact_match=False,
+        source_consensus=1,
+        content_alignment_score=0.35,
+        content_is_aligned=False,
+    )
+    outcome = rules.apply(features, source)
+    assert outcome.label == ValidationLabel.METADATA_ERROR
+    assert "R-SINGLE-SOURCE-PARTIAL" in outcome.triggered_rules
+    assert "year" in outcome.mismatched_fields
