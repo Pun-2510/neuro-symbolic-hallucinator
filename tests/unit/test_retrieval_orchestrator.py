@@ -822,3 +822,31 @@ class TestArxivDoiRouting:
         assert len(result.sources_succeeded) == 0
         # Health check should trigger for arXiv DOIs with 2 failing sources
         assert len(result.sources_failed) == 2
+
+    def test_filter_quality_candidates_removes_suspicious_doi(self, mock_cache):
+        """Candidates with placeholder DOIs (10.1234, 10.9999) must be filtered out."""
+        orchestrator = RetrievalOrchestrator(cache=mock_cache)
+        citation = Citation(raw_text="Test citation", title="Valid Academic Paper Title")
+        candidates = [
+            SourceCandidate(
+                source_name="crossref",
+                found=True,
+                doi="10.1234/fake.2023",
+                title="Valid Academic Paper Title",
+                authors=["Smith, J."],
+            ),
+            SourceCandidate(
+                source_name="openalex",
+                found=True,
+                doi="10.1109/real.2023",
+                title="Valid Academic Paper Title",
+                authors=["Smith, J."],
+            ),
+        ]
+        filtered, succeeded = orchestrator._filter_quality_candidates(
+            candidates, ["crossref", "openalex"], citation
+        )
+        assert len(filtered) == 1
+        assert filtered[0].doi == "10.1109/real.2023"
+        assert succeeded == ["openalex"]
+

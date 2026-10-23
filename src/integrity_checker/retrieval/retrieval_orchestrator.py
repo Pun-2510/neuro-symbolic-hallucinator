@@ -1216,10 +1216,9 @@ class RetrievalOrchestrator:
             # Check 4: DOI is not suspicious
             if cand.doi:
                 doi_lower = cand.doi.lower()
-                for suspicious in suspicious_publishers:
-                    if doi_lower.startswith(suspicious):
-                        logger.debug(f"Filtering out candidate with suspicious DOI='{cand.doi}'")
-                        continue
+                if any(doi_lower.startswith(suspicious) for suspicious in suspicious_publishers):
+                    logger.debug(f"Filtering out candidate with suspicious DOI='{cand.doi}'")
+                    continue
 
             # Check 5: Title looks like garbage (just numbers, special chars, etc.)
             if cand.title:

@@ -445,7 +445,7 @@ def _parse_vancouver_format(text: str) -> list[Author]:
             )
 
             if is_initials and len(rest) >= 1:
-                last_name, initials = self._handle_initials_pattern(rest, last_token)
+                last_name, initials = _handle_initials_pattern(rest, last_token)
 
                 author = Author(
                     last_name=last_name.lower(),
@@ -491,7 +491,7 @@ def _parse_vancouver_format(text: str) -> list[Author]:
     return authors
 
 
-def _handle_initials_pattern(self, rest: list[str], initials_token: str) -> tuple[str, list[str]]:
+def _handle_initials_pattern(rest: list[str], initials_token: str) -> tuple[str, list[str]]:
     """Xử lý pattern "LastName Initials" (Vancouver) cho phần tên đã tách.
 
     Args:

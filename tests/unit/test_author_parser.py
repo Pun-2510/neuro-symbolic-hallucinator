@@ -132,6 +132,14 @@ class TestParseAuthors:
         assert len(authors) == 1
         assert authors[0].last_name == "smith"
 
+    def test_vancouver_initials_pattern(self):
+        authors = parse_authors("Smith JK, van der Berg AB", format_name="Vancouver")
+        assert len(authors) == 2
+        assert authors[0].last_name == "smith"
+        assert authors[0].initials == ["J", "K"]
+        assert authors[1].last_name == "van der berg"
+        assert authors[1].initials == ["A", "B"]
+
 
 class TestJaccardSimilarity:
     def test_identical(self):
