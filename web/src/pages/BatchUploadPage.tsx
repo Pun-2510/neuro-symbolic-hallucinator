@@ -1,5 +1,5 @@
 import { useCallback, useState, useRef, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
@@ -12,6 +12,9 @@ import {
   RefreshCw,
   ExternalLink,
   Trash2,
+  Layers,
+  GraduationCap,
+  ArrowRight,
 } from 'lucide-react';
 import { api } from '../api/client';
 import { useRole } from '@/hooks/useRole';
@@ -22,9 +25,10 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 /* ============================================================
-   Batch Upload Page (shadcn/ui v2.0)
+   Batch Upload Page (Scholarly Precision shadcn/ui v2.0)
    Upload multiple PDFs for concurrent analysis
    ============================================================ */
 
@@ -99,10 +103,12 @@ function getStatusText(status: FileStatus, progress: number, t: TFunction): stri
 }
 
 export function BatchUploadPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { isTeacher, isAdmin } = useRole();
   const [classes, setClasses] = useState<Class[]>([]);
   const [targetClassId, setTargetClassId] = useState<number | null>(null);
+
+  const lang = i18n.language?.startsWith('vi') ? 'vi' : 'en';
 
   useEffect(() => {
     if (isTeacher || isAdmin) {
@@ -420,271 +426,350 @@ export function BatchUploadPage() {
 
   const pendingCount = stats.pending;
 
-  return (
-    <div className="max-w-4xl mx-auto min-h-[calc(100vh-12rem)] flex flex-col py-8">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white mb-2">
-          {t('batchUpload.title')}
-        </h1>
-        <p className="text-slate-600 dark:text-slate-400">
-          {t('batchUpload.subtitle')}
-        </p>
-      </div>
+  const queueMetrics = [
+    {
+      idx: '01',
+      label: t('batchUpload.pending'),
+      value: stats.pending,
+      tone: 'text-slate-700 dark:text-slate-200',
+      badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+    },
+    {
+      idx: '02',
+      label: t('batchUpload.processing'),
+      value: stats.processing,
+      tone: 'text-indigo-600 dark:text-indigo-400',
+      badge: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300',
+    },
+    {
+      idx: '03',
+      label: t('batchUpload.completed'),
+      value: stats.completed,
+      tone: 'text-emerald-600 dark:text-emerald-400',
+      badge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+    },
+    {
+      idx: '04',
+      label: t('batchUpload.failed'),
+      value: stats.failed,
+      tone: 'text-red-600 dark:text-red-400',
+      badge: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
+    },
+  ];
 
-      {/* Class selector (teacher/admin only) */}
-      {(isTeacher || isAdmin) && classes.length > 0 && (
-        <div className="mb-6 max-w-md mx-auto w-full space-y-1.5">
-          <Label htmlFor="batch-class-select">
-            {t('batchUpload.assignToClass')}
-          </Label>
-          <Select
-            id="batch-class-select"
-            value={targetClassId ?? ''}
-            onChange={(e) =>
-              setTargetClassId(e.target.value ? Number(e.target.value) : null)
-            }
-            wrapperClassName="w-full"
-          >
-            <option value="">{t('batchUpload.noClassAssigned')}</option>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {t('batchUpload.assignToClassHint')}
+  return (
+    <div className="max-w-5xl mx-auto space-y-6 pb-10">
+      {/* Executive Header Banner */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
+              <Layers className="h-3 w-3" />
+              {lang === 'vi'
+                ? 'HÀNG ĐỢI ĐA BẢN THẢO · BATCH ENGINE'
+                : 'MULTI-MANUSCRIPT QUEUE · BATCH ENGINE'}
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-[11px] font-mono text-slate-600 dark:text-slate-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              CONCURRENT WORKER READY
+            </span>
+          </div>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            {t('batchUpload.title')}
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            {t('batchUpload.subtitle')}
           </p>
         </div>
-      )}
 
-      {/* Dropzone */}
-      <div
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`
-          relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-200 cursor-pointer
-          ${
-            dragActive
-              ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 scale-[1.02]'
-              : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-          }
-        `}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf"
-          multiple
-          onChange={handleFileInput}
-          className="hidden"
-        />
-
-        <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center mx-auto mb-4">
-          <Upload className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
-        </div>
-        <p className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-          {t('batchUpload.dropPdfs')}
-        </p>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          {t('batchUpload.orClickBrowse')}
-        </p>
-        <span className="text-sm text-indigo-600 dark:text-indigo-400 font-medium mt-4 block">
-          {t('batchUpload.pdfOnly')}
-        </span>
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="h-10 rounded-xl font-medium shrink-0"
+        >
+          <Link to="/upload">
+            <Upload className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <span>{t('nav.newCheck')}</span>
+          </Link>
+        </Button>
       </div>
 
-      {/* File List */}
-      {files.length > 0 && (
-        <div className="mt-8 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-              {t('batchUpload.files')} ({files.length})
-            </h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearAll}
-              disabled={queueState.isProcessing}
-              className="text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40"
-            >
-              {t('batchUpload.clearAll')}
-            </Button>
+      {/* 4 Queue Telemetry Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {queueMetrics.map((m) => (
+          <Card
+            key={m.idx}
+            className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                {m.label}
+              </span>
+              <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md ${m.badge}`}>
+                {m.idx}
+              </span>
+            </div>
+            <p className={`text-2xl font-bold font-mono tabular-nums ${m.tone}`}>
+              {m.value}
+            </p>
+          </Card>
+        ))}
+      </div>
+
+      {/* Main IDE Batch Ingestion Container */}
+      <Card className="p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        {/* Top Window Chrome */}
+        <div className="px-4 sm:px-6 py-3.5 bg-slate-50/80 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-400/80 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80 inline-block" />
+            </div>
+            <Separator orientation="vertical" className="h-4" />
+            <span className="font-mono text-xs text-slate-700 dark:text-slate-300 font-semibold">
+              batch_ingest_queue.py · {files.length} {t('batchUpload.files').toLowerCase()}
+            </span>
           </div>
 
-          <div className="space-y-2">
-            {files.map((fileItem) => (
-              <Card
-                key={fileItem.id}
-                className="flex items-center gap-4 px-4 py-3"
-              >
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center shrink-0">
-                  <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                </div>
+          <Badge
+            variant="outline"
+            className="font-mono text-[11px] bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400"
+          >
+            {t('batchUpload.pdfOnly')}
+          </Badge>
+        </div>
 
-                <div className="flex-1 min-w-0">
-                  <p
-                    className="font-medium text-slate-900 dark:text-white truncate"
-                    title={fileItem.file.name}
+        <div className="p-6 sm:p-8 space-y-6">
+          {/* Class selector (teacher/admin only) */}
+          {(isTeacher || isAdmin) && classes.length > 0 && (
+            <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                  <GraduationCap className="h-5 w-5" />
+                </div>
+                <div>
+                  <Label htmlFor="batch-class-select" className="font-semibold text-sm text-slate-900 dark:text-white">
+                    {t('batchUpload.assignToClass')}
+                  </Label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {t('batchUpload.assignToClassHint')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="sm:w-64 shrink-0">
+                <Select
+                  id="batch-class-select"
+                  value={targetClassId ?? ''}
+                  onChange={(e) =>
+                    setTargetClassId(e.target.value ? Number(e.target.value) : null)
+                  }
+                  wrapperClassName="w-full"
+                >
+                  <option value="">{t('batchUpload.noClassAssigned')}</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* Dropzone */}
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`
+              relative border-2 border-dashed rounded-2xl p-10 text-center transition-all duration-200 cursor-pointer
+              ${
+                dragActive
+                  ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/50 scale-[1.01]'
+                  : 'border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-950/50 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50/30 dark:hover:bg-slate-900'
+              }
+            `}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf"
+              multiple
+              onChange={handleFileInput}
+              className="hidden"
+            />
+
+            <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950 border border-indigo-200/70 dark:border-indigo-800/70 flex items-center justify-center mx-auto mb-3.5 shadow-2xs">
+              <Upload className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <p className="font-display text-lg font-bold text-slate-900 dark:text-white mb-1">
+              {t('batchUpload.dropPdfs')}
+            </p>
+            <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mb-3">
+              {t('batchUpload.orClickBrowse')} · {t('batchUpload.pdfOnly')}
+            </p>
+          </div>
+
+          {/* File List */}
+          {files.length > 0 && (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  {t('batchUpload.files')} ({files.length})
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAll}
+                  disabled={queueState.isProcessing}
+                  className="h-8 text-xs text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl"
+                >
+                  {t('batchUpload.clearAll')}
+                </Button>
+              </div>
+
+              <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                {files.map((fileItem, idx) => (
+                  <div
+                    key={fileItem.id}
+                    className="flex items-center gap-3.5 px-4 py-3 rounded-xl bg-slate-50/70 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
                   >
-                    {fileItem.file.name}
-                  </p>
-                  <p className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                    {formatBytes(fileItem.file.size)}
-                  </p>
-                </div>
+                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
+                      #{idx + 1}
+                    </span>
 
-                <div className="flex items-center gap-2">
-                  {getStatusIcon(fileItem.status)}
-                  <Badge variant={getStatusVariant(fileItem.status)}>
-                    {getStatusText(fileItem.status, fileItem.progress, t)}
-                  </Badge>
-                </div>
+                    <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center shrink-0">
+                      <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                    </div>
 
-                {(fileItem.status === 'processing' ||
-                  fileItem.status === 'uploading') && (
-                  <div className="w-24">
-                    <Progress value={fileItem.progress} />
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="text-sm font-semibold text-slate-900 dark:text-white truncate"
+                        title={fileItem.file.name}
+                      >
+                        {fileItem.file.name}
+                      </p>
+                      <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                        {formatBytes(fileItem.file.size)}
+                        {fileItem.essayId && ` · ID #${fileItem.essayId}`}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {getStatusIcon(fileItem.status)}
+                      <Badge variant={getStatusVariant(fileItem.status)} className="font-mono text-[11px]">
+                        {getStatusText(fileItem.status, fileItem.progress, t)}
+                      </Badge>
+                    </div>
+
+                    {(fileItem.status === 'processing' ||
+                      fileItem.status === 'uploading') && (
+                      <div className="w-24 shrink-0">
+                        <Progress value={fileItem.progress} />
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      {fileItem.status === 'completed' && fileItem.essayId && (
+                        <button
+                          onClick={() =>
+                            navigate(`/verification/report/${fileItem.essayId}`)
+                          }
+                          className="p-2 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
+                          title={t('dashboard.viewReport')}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </button>
+                      )}
+                      {fileItem.status === 'failed' && (
+                        <button
+                          onClick={() => retryFile(fileItem.id)}
+                          disabled={queueState.isProcessing}
+                          className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+                          title={t('common.retry')}
+                        >
+                          <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                        </button>
+                      )}
+                      {!queueState.isProcessing && (
+                        <button
+                          onClick={() => removeFile(fileItem.id)}
+                          className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          title={t('common.delete')}
+                        >
+                          <Trash2 className="h-4 w-4 text-slate-400 hover:text-red-500" />
+                        </button>
+                      )}
+                    </div>
                   </div>
+                ))}
+              </div>
+
+              {files
+                .filter((f) => f.error)
+                .map((f) => (
+                  <div
+                    key={f.id}
+                    className="text-xs font-mono text-red-600 dark:text-red-400 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60"
+                  >
+                    {f.file.name}: {f.error}
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* Action Footer */}
+          <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {t('batchUpload.disclaimer')}
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              {!queueState.isProcessing &&
+                files.length > 0 &&
+                stats.pending === 0 &&
+                stats.processing === 0 && (
+                  <>
+                    {stats.completed > 0 ? (
+                      <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        {t('batchUpload.allProcessedOpening')}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-mono text-red-600 dark:text-red-400">
+                        {t('batchUpload.allFailedNotice')}
+                      </span>
+                    )}
+                  </>
                 )}
 
-                <div className="flex items-center gap-1">
-                  {fileItem.status === 'completed' && fileItem.essayId && (
-                    <button
-                      onClick={() =>
-                        navigate(`/verification/report/${fileItem.essayId}`)
-                      }
-                      className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                      title={t('dashboard.viewReport')}
-                    >
-                      <ExternalLink className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                    </button>
-                  )}
-                  {fileItem.status === 'failed' && (
-                    <button
-                      onClick={() => retryFile(fileItem.id)}
-                      disabled={queueState.isProcessing}
-                      className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
-                      title={t('common.retry')}
-                    >
-                      <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                    </button>
-                  )}
-                  {!queueState.isProcessing && (
-                    <button
-                      onClick={() => removeFile(fileItem.id)}
-                      className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                      title={t('common.delete')}
-                    >
-                      <Trash2 className="h-4 w-4 text-slate-500 dark:text-slate-400 hover:text-red-500" />
-                    </button>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
-
-          {files
-            .filter((f) => f.error)
-            .map((f) => (
-              <div
-                key={f.id}
-                className="text-sm text-red-600 dark:text-red-400 pl-4"
+              <Button
+                size="lg"
+                onClick={handleStartVerification}
+                disabled={pendingCount === 0 || queueState.isProcessing}
+                className="w-full sm:w-auto h-11 px-7 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md shadow-indigo-600/20 btn-shimmer"
               >
-                {f.file.name}: {f.error}
-              </div>
-            ))}
+                {queueState.isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>{t('batchUpload.processing')}...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{t('batchUpload.startVerification')}</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
-      )}
-
-      {/* Summary Stats */}
-      {files.length > 0 && (
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Card className="bg-slate-100/80 dark:bg-slate-800/80 p-4 text-center">
-            <p className="text-2xl font-bold font-mono tabular-nums text-slate-600 dark:text-slate-300">
-              {stats.pending}
-            </p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {t('batchUpload.pending')}
-            </p>
-          </Card>
-          <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 p-4 text-center">
-            <p className="text-2xl font-bold font-mono tabular-nums text-blue-600 dark:text-blue-300">
-              {stats.processing}
-            </p>
-            <p className="text-sm text-blue-600 dark:text-blue-400">
-              {t('batchUpload.processing')}
-            </p>
-          </Card>
-          <Card className="bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 p-4 text-center">
-            <p className="text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-300">
-              {stats.completed}
-            </p>
-            <p className="text-sm text-emerald-600 dark:text-emerald-400">
-              {t('batchUpload.completed')}
-            </p>
-          </Card>
-          <Card className="bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 p-4 text-center">
-            <p className="text-2xl font-bold font-mono tabular-nums text-red-600 dark:text-red-300">
-              {stats.failed}
-            </p>
-            <p className="text-sm text-red-600 dark:text-red-400">
-              {t('batchUpload.failed')}
-            </p>
-          </Card>
-        </div>
-      )}
-
-      {/* Start Button */}
-      <div className="mt-8 flex flex-col items-center gap-3">
-        <Button
-          size="lg"
-          onClick={handleStartVerification}
-          disabled={pendingCount === 0 || queueState.isProcessing}
-          className="px-8 py-3 h-auto"
-        >
-          {queueState.isProcessing ? (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin" />
-              {t('batchUpload.processing')}...
-            </>
-          ) : (
-            <>
-              {t('batchUpload.startVerification')}
-              <Upload className="h-5 w-5" />
-            </>
-          )}
-        </Button>
-
-        {!queueState.isProcessing &&
-          files.length > 0 &&
-          stats.pending === 0 &&
-          stats.processing === 0 && (
-            <>
-              {stats.completed > 0 ? (
-                <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {t('batchUpload.allProcessedOpening')}
-                </p>
-              ) : (
-                <p className="text-sm text-red-600 dark:text-red-400">
-                  {t('batchUpload.allFailedNotice')}
-                </p>
-              )}
-            </>
-          )}
-      </div>
-
-      {/* Disclaimer */}
-      <div className="mt-12 text-center">
-        <p className="text-xs text-slate-400 dark:text-slate-500">
-          {t('batchUpload.disclaimer')}
-        </p>
-      </div>
+      </Card>
     </div>
   );
 }
