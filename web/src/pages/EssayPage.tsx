@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -12,6 +12,8 @@ import { EssayHeader } from './essay/EssayHeader';
 import { EssayActionBar } from './essay/EssayActionBar';
 import { OverrideControls } from '@/components/OverrideControls';
 import { useEssayReport, useOverrideVerdict } from '@/hooks/useEssayReport';
+import { isUrlResource } from '@/lib/verdictExplanation';
+import { useRole } from '@/hooks/useRole';
 import {
   Loader2,
   AlertCircle,
@@ -609,12 +611,15 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
 }
 
 function enrichVerdictItem(
-  verdict: Verdict,
+  rawVerdict: Verdict,
   index: number,
   references: Citation[],
   extractedCitations: Citation[],
   lang: 'vi' | 'en'
 ): EnrichedCitationItem {
+  const verdict: Verdict = isUrlResource(rawVerdict)
+    ? { ...rawVerdict, label: 'resource' }
+    : rawVerdict;
   const marker = `[${index + 1}]`;
   const parsedFallback = parseRawCitationMeta(verdict.citation_raw);
 
@@ -1007,6 +1012,7 @@ function enrichVerdictItem(
 
 export function EssayPage() {
   const { t, i18n } = useTranslation();
+  const { isUser } = useRole();
   const lang: 'vi' | 'en' = i18n.language?.startsWith('en') ? 'en' : 'vi';
 
   const { id } = useParams<{ id: string }>();
@@ -1022,6 +1028,16 @@ export function EssayPage() {
   const [selectedCitationId, setSelectedCitationId] = useState<string | null>(null);
   const [filterLabel, setFilterLabel] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedCitationId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const errorMessage =
     essayId === null
@@ -1047,8 +1063,17 @@ export function EssayPage() {
 
   const filteredItems = useMemo(() => {
     return enrichedItems.filter((item) => {
-      if (filterLabel !== 'all' && item.verdict.label !== filterLabel) {
-        return false;
+      if (filterLabel !== 'all') {
+        if (filterLabel === 'unresolved') {
+          if (
+            item.verdict.label !== 'unresolved' &&
+            item.verdict.label !== 'resource'
+          ) {
+            return false;
+          }
+        } else if (item.verdict.label !== filterLabel) {
+          return false;
+        }
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -1228,11 +1253,11 @@ export function EssayPage() {
               </Badge>
               <div
                 className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/90 border border-indigo-200/80 dark:border-indigo-800 text-xs font-mono"
-                title="Citation Integrity Score"
+                title="Verified Citations"
               >
-                <span className="text-slate-500 dark:text-slate-400">CIS:</span>
+                <span className="text-slate-500 dark:text-slate-400">VERIFIED:</span>
                 <span className="font-bold text-indigo-700 dark:text-indigo-300">
-                  {report.cis.score.toFixed(1)} / 100
+                  {counts.verified} / {counts.all}
                 </span>
               </div>
             </div>
@@ -1353,18 +1378,22 @@ export function EssayPage() {
                               >
                                 {cit.verdictText}
                               </span>
-                              <span
-                                className={`mapping-badge ${cit.mappingBadgeClass} text-[10px] px-2 py-0.5 font-mono`}
-                              >
-                                {cit.mappingText}
-                              </span>
+                              {!isUser && (
+                                <span
+                                  className={`mapping-badge ${cit.mappingBadgeClass} text-[10px] px-2 py-0.5 font-mono`}
+                                >
+                                  {cit.mappingText}
+                                </span>
+                              )}
                             </div>
-                            <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
-                              Conf:{' '}
-                              <strong className="text-slate-800 dark:text-slate-200">
-                                {cit.confidencePct}%
-                              </strong>
-                            </span>
+                            {!isUser && (
+                              <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                                Conf:{' '}
+                                <strong className="text-slate-800 dark:text-slate-200">
+                                  {cit.confidencePct}%
+                                </strong>
+                              </span>
+                            )}
                           </div>
                         </button>
                       );
@@ -1376,8 +1405,14 @@ export function EssayPage() {
                 {activeItem && (
                   <div className="mt-5 p-3.5 rounded-xl bg-slate-100/80 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
                     <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400 mb-1.5">
-                      <span>MANUSCRIPT CONTEXT ({activeItem.pageLabel})</span>
-                      <span>GROBID TEI-XML</span>
+                      <span>
+                        {isUser
+                          ? lang === 'vi'
+                            ? `NGỮ CẢNH TRONG BÀI (${activeItem.pageLabel})`
+                            : `IN-TEXT CONTEXT (${activeItem.pageLabel})`
+                          : `MANUSCRIPT CONTEXT (${activeItem.pageLabel})`}
+                      </span>
+                      {!isUser && <span>GROBID TEI-XML</span>}
                     </div>
                     <p className="document-content text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-4">
                       {activeItem.contextBefore}
@@ -1398,13 +1433,23 @@ export function EssayPage() {
                     <div className="flex flex-wrap items-start justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono text-xs text-slate-400">
-                            INSPECTING REFERENCE
-                          </span>
+                          {selectedCitationId !== null ? (
+                            <h4 className="font-mono text-xs text-slate-400">
+                              Citation Detail
+                            </h4>
+                          ) : (
+                            <span className="font-mono text-xs text-slate-400">
+                              {isUser
+                                ? lang === 'vi'
+                                  ? 'CHI TIẾT TRÍCH DẪN'
+                                  : 'CITATION DETAILS'
+                                : 'INSPECTING REFERENCE'}
+                            </span>
+                          )}
                           <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
                             {activeItem.marker}
                           </span>
-                          {linksOf(activeItem.verdict)[0]?.reference_id && (
+                          {!isUser && linksOf(activeItem.verdict)[0]?.reference_id && (
                             <span className="font-mono text-[11px] text-slate-400">
                               · {linksOf(activeItem.verdict)[0]?.reference_id}
                             </span>
@@ -1421,45 +1466,51 @@ export function EssayPage() {
                         >
                           {activeItem.verdictText}
                         </span>
-                        <span
-                          className={`mapping-badge ${activeItem.mappingBadgeClass} text-xs px-2.5 py-1 font-mono`}
-                        >
-                          {activeItem.mappingText}
-                        </span>
+                        {!isUser && (
+                          <span
+                            className={`mapping-badge ${activeItem.mappingBadgeClass} text-xs px-2.5 py-1 font-mono`}
+                          >
+                            {activeItem.mappingText}
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    {/* Explanation Callout */}
-                    <div className="my-4 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3">
-                      <Scale className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-                      <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                        <span className="font-semibold text-slate-900 dark:text-white mr-1.5">
-                          {lang === 'vi'
-                            ? 'Kết luận suy diễn:'
-                            : 'Neuro-Symbolic Reasoning:'}
-                        </span>
-                        {activeItem.explanationText}
+                    {/* Explanation Callout — Teacher & Admin only */}
+                    {!isUser && (
+                      <div className="my-4 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3">
+                        <Scale className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                        <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                          <span className="font-semibold text-slate-900 dark:text-white mr-1.5">
+                            {lang === 'vi'
+                              ? 'Kết luận suy diễn:'
+                              : 'Neuro-Symbolic Reasoning:'}
+                          </span>
+                          {activeItem.explanationText}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Inspector Tabs: Metadata Diff | Symbolic Rules | Federated Sources */}
-                    <Tabs defaultValue="diff" className="w-full">
-                      <TabsList className="w-full justify-start bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
-                        <TabsTrigger value="diff" className="flex-1 text-xs font-mono">
-                          {lang === 'vi' ? '1. Đối chiếu Metadata' : '1. Metadata Diff'}
-                        </TabsTrigger>
-                        <TabsTrigger value="rules" className="flex-1 text-xs font-mono">
-                          {lang === 'vi'
-                            ? `2. Luật Suy diễn (${activeItem.rules.length})`
-                            : `2. Symbolic Rules (${activeItem.rules.length})`}
-                        </TabsTrigger>
-                        <TabsTrigger value="sources" className="flex-1 text-xs font-mono">
-                          {lang === 'vi' ? '3. Nguồn Truy hồi' : '3. Source Retrieval'}
-                        </TabsTrigger>
-                      </TabsList>
+                    {/* Inspector Tabs: Metadata Diff (All) | Symbolic Rules & Sources (Teacher/Admin only) */}
+                    <Tabs defaultValue="diff" className="w-full mt-4">
+                      {!isUser && (
+                        <TabsList className="w-full justify-start bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
+                          <TabsTrigger value="diff" className="flex-1 text-xs font-mono">
+                            {lang === 'vi' ? '1. Đối chiếu Metadata' : '1. Metadata Diff'}
+                          </TabsTrigger>
+                          <TabsTrigger value="rules" className="flex-1 text-xs font-mono">
+                            {lang === 'vi'
+                              ? `2. Luật Suy diễn (${activeItem.rules.length})`
+                              : `2. Symbolic Rules (${activeItem.rules.length})`}
+                          </TabsTrigger>
+                          <TabsTrigger value="sources" className="flex-1 text-xs font-mono">
+                            {lang === 'vi' ? '3. Nguồn Truy hồi' : '3. Source Retrieval'}
+                          </TabsTrigger>
+                        </TabsList>
+                      )}
 
                       {/* TAB 1: Side-by-side Metadata Diff */}
-                      <TabsContent value="diff" className="mt-4">
+                      <TabsContent value="diff" className={isUser ? 'mt-0' : 'mt-4'}>
                         <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                           <table className="w-full table-fixed text-left border-collapse">
                             <thead>
@@ -1525,17 +1576,19 @@ export function EssayPage() {
                           </table>
                         </div>
 
-                        {/* Raw Bibliography Entry Box */}
-                        <div className="mt-3 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 text-xs">
-                          <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400 block mb-1">
-                            {lang === 'vi'
-                              ? 'Chuỗi Trích dẫn Gốc trong Tài liệu (Raw Extracted String)'
-                              : 'Raw Extracted Reference String'}
-                          </span>
-                          <p className="font-mono text-slate-700 dark:text-slate-300 break-words leading-relaxed">
-                            {activeItem.verdict.citation_raw}
-                          </p>
-                        </div>
+                        {/* Raw Bibliography Entry Box — Teacher & Admin only */}
+                        {!isUser && (
+                          <div className="mt-3 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 text-xs">
+                            <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400 block mb-1">
+                              {lang === 'vi'
+                                ? 'Chuỗi Trích dẫn Gốc trong Tài liệu (Raw Extracted String)'
+                                : 'Raw Extracted Reference String'}
+                            </span>
+                            <p className="font-mono text-slate-700 dark:text-slate-300 break-words leading-relaxed">
+                              {activeItem.verdict.citation_raw}
+                            </p>
+                          </div>
+                        )}
                       </TabsContent>
 
                       {/* TAB 2: Symbolic Rules Trace */}
@@ -1680,33 +1733,35 @@ export function EssayPage() {
                     </Tabs>
                   </div>
 
-                  {/* Inspector Footer Bar with Instructor Override & Full Logic Trace Link */}
-                  <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                        <span>
-                          {lang === 'vi'
-                            ? 'Giảng viên có thể Ghi đè nhãn (Override Verdict) kèm lý do kiểm toán.'
-                            : 'Instructors can Override Verdicts with mandatory audit logging.'}
-                        </span>
+                  {/* Inspector Footer Bar with Instructor Override & Full Logic Trace Link — Teacher & Admin only */}
+                  {!isUser && (
+                    <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                          <span>
+                            {lang === 'vi'
+                              ? 'Giảng viên có thể Ghi đè nhãn (Override Verdict) kèm lý do kiểm toán.'
+                              : 'Instructors can Override Verdicts with mandatory audit logging.'}
+                          </span>
+                        </div>
+                        <OverrideControls
+                          verdict={activeItem.verdict}
+                          onOverride={(req) => handleOverride(activeItem.verdict, req)}
+                        />
                       </div>
-                      <OverrideControls
-                        verdict={activeItem.verdict}
-                        onOverride={(req) => handleOverride(activeItem.verdict, req)}
-                      />
-                    </div>
 
-                    <Link
-                      to={`/verification/report/${report.essay_id}/trace`}
-                      className="inline-flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
-                    >
-                      <span>
-                        {lang === 'vi' ? 'Mở toàn bộ Inspector' : 'Open Full Inspector'}
-                      </span>
-                      <ArrowUpRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
+                      <Link
+                        to={`/verification/report/${report.essay_id}/trace`}
+                        className="inline-flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                      >
+                        <span>
+                          {lang === 'vi' ? 'Mở toàn bộ Inspector' : 'Open Full Inspector'}
+                        </span>
+                        <ArrowUpRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
