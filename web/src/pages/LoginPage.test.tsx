@@ -48,7 +48,7 @@ describe('LoginPage', () => {
     });
   });
 
-  it('renders brand showcase, form inputs, and decision-support compliance alert', () => {
+  it('renders brand showcase and form inputs', () => {
     renderLoginPage();
 
     expect(
@@ -60,7 +60,6 @@ describe('LoginPage', () => {
       screen.getByRole('button', { name: /sign in|đăng nhập/i })
     ).toBeDefined();
     expect(screen.getByText(/symbolic_verifier\.py/i)).toBeDefined();
-    expect(screen.getByText(/COMPLIANCE/i)).toBeDefined();
   });
 
   it('toggles password visibility when clicking the eye button', () => {

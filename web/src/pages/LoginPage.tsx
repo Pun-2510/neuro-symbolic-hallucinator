@@ -7,7 +7,6 @@ import {
   Eye,
   EyeOff,
   Shield,
-  CheckCircle2,
   AlertCircle,
   Quote,
   Database,
@@ -35,7 +34,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 function SourceLogicBrandMark({ size = 24 }: { size?: number }) {
   return (
@@ -501,28 +500,6 @@ export function LoginPage() {
               </>
             )}
           </Card>
-
-          {/* Academic Decision Support Disclaimer */}
-          <Alert
-            variant="success"
-            className="mt-4 rounded-2xl border-emerald-200/90 dark:border-emerald-800/70 bg-emerald-50/75 dark:bg-emerald-950/40 shadow-2xs"
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <AlertTitle className="mb-0 text-xs sm:text-sm font-semibold text-emerald-950 dark:text-emerald-200">
-                {t('auth.decisionSupportTitle')}
-              </AlertTitle>
-              <Badge
-                variant="verified"
-                className="text-[10px] font-mono px-2 py-0 h-4 shrink-0"
-              >
-                COMPLIANCE
-              </Badge>
-            </div>
-            <AlertDescription className="text-xs text-emerald-800/90 dark:text-emerald-300/90 leading-relaxed">
-              {t('auth.decisionSupportDesc')}
-            </AlertDescription>
-          </Alert>
         </div>
 
         {/* Top Utility Navigation Bar (Visually at top via order-1, placed after form in DOM) */}
