@@ -357,7 +357,11 @@ export function DocumentInspectorPage() {
   const filteredCitations =
     filterLabel === 'all'
       ? inlineCitations
-      : inlineCitations.filter((c) => c.label === filterLabel);
+      : inlineCitations.filter((c) =>
+          filterLabel === 'unresolved'
+            ? c.label === 'unresolved' || c.label === 'resource'
+            : c.label === filterLabel
+        );
 
   useEffect(() => {
     if (selectedCitation && report) {
@@ -372,7 +376,7 @@ export function DocumentInspectorPage() {
     verified: inlineCitations.filter((c) => c.label === 'verified').length,
     metadata_error: inlineCitations.filter((c) => c.label === 'metadata_error').length,
     suspected_hallucination: inlineCitations.filter((c) => c.label === 'suspected_hallucination').length,
-    unresolved: inlineCitations.filter((c) => c.label === 'unresolved').length,
+    unresolved: inlineCitations.filter((c) => c.label === 'unresolved' || c.label === 'resource').length,
   };
 
   if (error) {

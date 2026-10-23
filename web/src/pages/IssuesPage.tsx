@@ -9,6 +9,7 @@ import {
   isUrlResource,
 } from '@/lib/verdictExplanation';
 import { useEssayPolling } from '@/hooks/useEssayPolling';
+import { useRole } from '@/hooks/useRole';
 import { EssayHeader } from './essay/EssayHeader';
 import { EssayActionBar } from './essay/EssayActionBar';
 import {
@@ -100,7 +101,15 @@ function SourceIcon({ source }: { source: string }) {
   return <Database className="h-3.5 w-3.5" />;
 }
 
-function IssueCard({ verdict, lang }: { verdict: Verdict; lang: 'vi' | 'en' }) {
+function IssueCard({
+  verdict,
+  lang,
+  isUser,
+}: {
+  verdict: Verdict;
+  lang: 'vi' | 'en';
+  isUser: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const severity = getSeverity(verdict.label);
   const config = severityConfig[severity];
@@ -152,9 +161,11 @@ function IssueCard({ verdict, lang }: { verdict: Verdict; lang: 'vi' | 'en' }) {
               verdict={isUrlResource(verdict) ? 'resource' : verdict.label}
               size="sm"
             />
-            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-              Conf: <strong>{Math.round(verdict.confidence * 100)}%</strong>
-            </span>
+            {!isUser && (
+              <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                Conf: <strong>{Math.round(verdict.confidence * 100)}%</strong>
+              </span>
+            )}
           </div>
           <p className="text-sm text-slate-900 dark:text-slate-100 mb-1.5 font-serif">
             {verdict.citation_raw}
@@ -178,17 +189,19 @@ function IssueCard({ verdict, lang }: { verdict: Verdict; lang: 'vi' | 'en' }) {
 
       {expanded && (
         <div className="mt-4 pt-4 border-t border-slate-200/80 dark:border-slate-800 space-y-4">
-          <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 flex items-start gap-2.5">
-            <Scale className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">
-                {lang === 'vi' ? 'Giải thích Suy diễn' : 'What this means'}
-              </h4>
-              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
-                {getVerdictExplanation(verdict)}
-              </p>
+          {!isUser && (
+            <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 flex items-start gap-2.5">
+              <Scale className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">
+                  {lang === 'vi' ? 'Giải thích Suy diễn' : 'What this means'}
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+                  {getVerdictExplanation(verdict)}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="grid sm:grid-cols-2 gap-4">
             {verdict.mismatched_fields.length > 0 && (
@@ -210,7 +223,7 @@ function IssueCard({ verdict, lang }: { verdict: Verdict; lang: 'vi' | 'en' }) {
               </div>
             )}
 
-            {verdict.triggered_rules.length > 0 && (
+            {!isUser && verdict.triggered_rules.length > 0 && (
               <div>
                 <h4 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
                   {lang === 'vi' ? 'Luật Kích Hoạt' : 'Triggered Rules'}
@@ -230,7 +243,7 @@ function IssueCard({ verdict, lang }: { verdict: Verdict; lang: 'vi' | 'en' }) {
             )}
           </div>
 
-          {sourceResults.length > 0 && (
+          {!isUser && sourceResults.length > 0 && (
             <div>
               <h4 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
                 {lang === 'vi' ? 'Nguồn Đối Chiếu' : 'Source Lookup'}
@@ -254,7 +267,7 @@ function IssueCard({ verdict, lang }: { verdict: Verdict; lang: 'vi' | 'en' }) {
             </div>
           )}
 
-          {verdict.confidence > 0 && (
+          {!isUser && verdict.confidence > 0 && (
             <div>
               <h4 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                 {lang === 'vi' ? 'Độ tin cậy' : 'Confidence'}
@@ -287,10 +300,12 @@ function SeveritySection({
   severity,
   verdicts,
   lang,
+  isUser,
 }: {
   severity: Severity;
   verdicts: Verdict[];
   lang: 'vi' | 'en';
+  isUser: boolean;
 }) {
   const config = severityConfig[severity];
   const [isOpen, setIsOpen] = useState(true);
@@ -333,7 +348,7 @@ function SeveritySection({
       {isOpen && (
         <div className="space-y-2.5 pl-1">
           {verdicts.map((verdict) => (
-            <IssueCard key={verdict.citation_id} verdict={verdict} lang={lang} />
+            <IssueCard key={verdict.citation_id} verdict={verdict} lang={lang} isUser={isUser} />
           ))}
         </div>
       )}
@@ -344,6 +359,7 @@ function SeveritySection({
 export function IssuesPage() {
   const { id } = useParams<{ id: string }>();
   const { i18n } = useTranslation();
+  const { isUser } = useRole();
   const lang: 'vi' | 'en' = i18n.language?.startsWith('vi') ? 'vi' : 'en';
   const [filter, setFilter] = useState<'all' | 'critical' | 'warning' | 'info'>('all');
 
@@ -504,7 +520,11 @@ export function IssuesPage() {
             </div>
             <Separator orientation="vertical" className="h-4" />
             <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
-              anomaly_inspector.py · {lang === 'vi' ? 'Danh mục Vấn đề' : 'Diagnostic Issues'}
+              {isUser
+                ? lang === 'vi'
+                  ? 'Danh mục Vấn đề'
+                  : 'Issues List'
+                : `anomaly_inspector.py · ${lang === 'vi' ? 'Danh mục Vấn đề' : 'Diagnostic Issues'}`}
             </span>
           </div>
 
@@ -564,6 +584,7 @@ export function IssuesPage() {
                   severity={severity}
                   verdicts={data}
                   lang={lang}
+                  isUser={isUser}
                 />
               ))}
             </div>

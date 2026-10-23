@@ -138,8 +138,12 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
         {/* Full-Width Executive Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/90 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-indigo-600/10 dark:bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-2xs">
-              <BookOpen className="h-4 w-4" />
+            <div className="h-9 w-9 rounded-xl bg-white dark:bg-white/95 p-1.5 border border-slate-200/90 dark:border-white/20 flex items-center justify-center shadow-2xs">
+              <img
+                src="/citra-logo.png"
+                alt="CITRA Logo"
+                className="w-full h-full object-contain select-none"
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -147,7 +151,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                   {t('help.title')}
                 </h2>
                 <span className="inline-flex items-center rounded-md bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-600/20">
-                  SourceLogic Docs
+                  CITRA Docs
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">

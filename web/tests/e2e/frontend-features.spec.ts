@@ -19,19 +19,19 @@ test.describe('Help Modal', () => {
     await page.keyboard.press('Control+/');
 
     // Check modal is visible
-    await expect(page.locator('h3:has-text("Welcome to Essay Integrity Checker")')).toBeVisible();
+    await expect(page.locator('h3:has-text("Welcome to CITRA")')).toBeVisible();
   });
 
   test('should close help modal with Escape', async ({ page }) => {
     // Open help modal
     await page.keyboard.press('Control+/');
-    await expect(page.locator('h3:has-text("Welcome to Essay Integrity Checker")')).toBeVisible();
+    await expect(page.locator('h3:has-text("Welcome to CITRA")')).toBeVisible();
 
     // Press Escape to close
     await page.keyboard.press('Escape');
     // Wait for modal to close
     await page.waitForTimeout(500);
-    await expect(page.locator('h3:has-text("Welcome to Essay Integrity Checker")')).not.toBeVisible();
+    await expect(page.locator('h3:has-text("Welcome to CITRA")')).not.toBeVisible();
   });
 
   test('should show all help sections', async ({ page }) => {

@@ -33,7 +33,7 @@ const ACCEPTED_MIME = { 'application/pdf': ['.pdf'] };
 
 export function UploadPage() {
   const { t, i18n } = useTranslation();
-  const { isTeacher, isAdmin } = useRole();
+  const { isUser, isTeacher, isAdmin } = useRole();
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -130,18 +130,20 @@ export function UploadPage() {
       {/* Executive Header Banner */}
       <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
-              <Sparkles className="h-3 w-3" />
-              {lang === 'vi'
-                ? 'KIỂM CHỨNG ĐƠN TÀI LIỆU · LAYER 1–2'
-                : 'SINGLE MANUSCRIPT VERIFICATION · LAYER 1–2'}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-[11px] font-mono text-slate-600 dark:text-slate-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              GROBID v0.8.0 ONLINE
-            </span>
-          </div>
+          {!isUser && (
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
+                <Sparkles className="h-3 w-3" />
+                {lang === 'vi'
+                  ? 'KIỂM CHỨNG ĐƠN TÀI LIỆU · LAYER 1–2'
+                  : 'SINGLE MANUSCRIPT VERIFICATION · LAYER 1–2'}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-[11px] font-mono text-slate-600 dark:text-slate-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                GROBID v0.8.0 ONLINE
+              </span>
+            </div>
+          )}
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
             {t('upload.title')}
           </h1>
@@ -233,7 +235,7 @@ export function UploadPage() {
                       </span>
                     </div>
                     <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB · application/pdf · GROBID TEI
+                      {(file.size / 1024 / 1024).toFixed(2)} MB · application/pdf{!isUser ? ' · GROBID TEI' : ''}
                     </p>
                   </div>
                 </div>
@@ -279,9 +281,10 @@ export function UploadPage() {
           {/* Action Bar */}
           <div className="mt-6 pt-5 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-xs font-mono text-slate-500 dark:text-slate-400">
-              {lang === 'vi'
-                ? 'Pipeline: Bóc tách PDF → 5 CSDL Học thuật → Suy diễn Luật R01–R12'
-                : 'Pipeline: PDF Extraction → 5 Scholarly Indexes → Symbolic Rules R01–R12'}
+              {!isUser &&
+                (lang === 'vi'
+                  ? 'Pipeline: Bóc tách PDF → 5 CSDL Học thuật → Suy diễn Luật R01–R12'
+                  : 'Pipeline: PDF Extraction → 5 Scholarly Indexes → Symbolic Rules R01–R12')}
             </div>
 
             <Button
@@ -306,35 +309,37 @@ export function UploadPage() {
         </div>
       </Card>
 
-      {/* 3-Step Verification Pipeline Architecture Strip */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {pipelinePillars.map((pillar) => {
-          const Icon = pillar.icon;
-          return (
-            <Card
-              key={pillar.step}
-              className="p-4 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <div className={`p-2 rounded-xl border ${pillar.tone}`}>
-                    <Icon className="h-4 w-4" />
+      {/* 3-Step Verification Pipeline Architecture Strip (Teacher / Admin only) */}
+      {!isUser && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {pipelinePillars.map((pillar) => {
+            const Icon = pillar.icon;
+            return (
+              <Card
+                key={pillar.step}
+                className="p-4 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className={`p-2 rounded-xl border ${pillar.tone}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      STEP {pillar.step} · {pillar.tag}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                    STEP {pillar.step} · {pillar.tag}
-                  </span>
+                  <h3 className="font-display font-bold text-sm text-slate-900 dark:text-white">
+                    {pillar.title}
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                    {pillar.desc}
+                  </p>
                 </div>
-                <h3 className="font-display font-bold text-sm text-slate-900 dark:text-white">
-                  {pillar.title}
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-                  {pillar.desc}
-                </p>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

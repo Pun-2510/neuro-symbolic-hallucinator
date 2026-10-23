@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, type EssayStatus } from '@/api/client';
+import { useRole } from '@/hooks/useRole';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -120,6 +121,7 @@ export function ProcessingPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { i18n } = useTranslation();
+  const { isUser } = useRole();
   const lang = i18n.language?.startsWith('vi') ? 'vi' : 'en';
 
   const numericId = id ? parseInt(id, 10) : null;
@@ -230,25 +232,31 @@ export function ProcessingPage() {
       {/* Executive Header Banner */}
       <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
-              <Terminal className="h-3 w-3" />
-              {lang === 'vi'
-                ? 'TIẾN TRÌNH KIỂM CHỨNG THỜI GIAN THỰC'
-                : 'LIVE VERIFICATION TELEMETRY'}
-            </span>
-            {essayId && (
-              <Badge variant="secondary" className="font-mono text-[11px]">
-                ID #{essayId}
-              </Badge>
-            )}
-            {status?.elapsed_seconds !== undefined && status.elapsed_seconds > 0 && (
-              <span className="inline-flex items-center gap-1 text-xs font-mono text-slate-500 dark:text-slate-400">
-                <Clock className="h-3.5 w-3.5" />
-                {status.elapsed_seconds.toFixed(1)}s
-              </span>
-            )}
-          </div>
+          {(!isUser || (status?.elapsed_seconds !== undefined && status.elapsed_seconds > 0)) && (
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {!isUser && (
+                <>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
+                    <Terminal className="h-3 w-3" />
+                    {lang === 'vi'
+                      ? 'TIẾN TRÌNH KIỂM CHỨNG THỜI GIAN THỰC'
+                      : 'LIVE VERIFICATION TELEMETRY'}
+                  </span>
+                  {essayId && (
+                    <Badge variant="secondary" className="font-mono text-[11px]">
+                      ID #{essayId}
+                    </Badge>
+                  )}
+                </>
+              )}
+              {status?.elapsed_seconds !== undefined && status.elapsed_seconds > 0 && (
+                <span className="inline-flex items-center gap-1 text-xs font-mono text-slate-500 dark:text-slate-400">
+                  <Clock className="h-3.5 w-3.5" />
+                  {status.elapsed_seconds.toFixed(1)}s
+                </span>
+              )}
+            </div>
+          )}
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
             {isFailed
               ? lang === 'vi'
@@ -344,7 +352,7 @@ export function ProcessingPage() {
             </div>
             <Separator orientation="vertical" className="h-4" />
             <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
-              integrity_pipeline.py · Verification Pipeline
+              {!isUser ? 'integrity_pipeline.py · ' : ''}Verification Pipeline
             </span>
           </div>
 
@@ -420,9 +428,11 @@ export function ProcessingPage() {
                         {lang === 'vi' ? step.labelVi : step.labelEn}
                       </p>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 text-slate-500 dark:text-slate-400">
-                          {step.tag}
-                        </span>
+                        {!isUser && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+                            {step.tag}
+                          </span>
+                        )}
                         <span className="text-xs font-mono tabular-nums text-slate-400 dark:text-slate-500">
                           0{idx + 1}/0{STEP_LABELS.length}
                         </span>
@@ -462,35 +472,37 @@ export function ProcessingPage() {
         </div>
       </Card>
 
-      {/* Source retrieval tiles */}
-      <Card className="p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-        <div className="flex items-center justify-between gap-2 mb-4">
-          <div className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
-              {lang === 'vi'
-                ? 'Trạng thái Truy vấn CSDL Học thuật Liên hợp'
-                : 'Federated Source Retrieval'}
-            </h3>
+      {/* Source retrieval tiles (Teacher / Admin only) */}
+      {!isUser && (
+        <Card className="p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
+                {lang === 'vi'
+                  ? 'Trạng thái Truy vấn CSDL Học thuật Liên hợp'
+                  : 'Federated Source Retrieval'}
+              </h3>
+            </div>
+            {!isDone && !isFailed && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-mono text-indigo-600 dark:text-indigo-400">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                QUERYING
+              </span>
+            )}
           </div>
-          {!isDone && !isFailed && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-mono text-indigo-600 dark:text-indigo-400">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              QUERYING
-            </span>
-          )}
-        </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {(['crossref', 'openalex', 's2', 'core'] as const).map((db) => (
-            <SourceTile
-              key={db}
-              name={db}
-              state={status?.sources_queried[db]}
-            />
-          ))}
-        </div>
-      </Card>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {(['crossref', 'openalex', 's2', 'core'] as const).map((db) => (
+              <SourceTile
+                key={db}
+                name={db}
+                state={status?.sources_queried[db]}
+              />
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Completion banner */}
       {(isDone || redirecting) && (

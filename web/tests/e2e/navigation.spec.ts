@@ -24,7 +24,7 @@ test.describe('Navigation', () => {
     await expect(page).toHaveURL(/\/history/);
   });
 
-  test('should navigate back to Dashboard when clicking the SourceLogic logo', async ({ page }) => {
+  test('should navigate back to Dashboard when clicking the CITRA logo', async ({ page }) => {
     await page.getByRole('link', { name: /new check/i }).first().click();
     await expect(page).toHaveURL(/\/upload/);
 

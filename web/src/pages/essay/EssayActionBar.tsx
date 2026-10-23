@@ -14,7 +14,7 @@ interface EssayActionBarProps {
  */
 export function EssayActionBar({ essayId }: EssayActionBarProps) {
   const { t, i18n } = useTranslation();
-  const { has } = useRole();
+  const { has, isUser } = useRole();
   const location = useLocation();
   const lang = i18n.language?.startsWith('vi') ? 'vi' : 'en';
 
@@ -41,7 +41,13 @@ export function EssayActionBar({ essayId }: EssayActionBarProps) {
       >
         <Link to={basePath}>
           <Terminal className={`h-3.5 w-3.5 ${isReportRoot ? 'text-white' : 'text-indigo-500'}`} />
-          <span>{lang === 'vi' ? 'Citation Debugger' : 'Citation Debugger'}</span>
+          <span>
+            {isUser
+              ? t('essay.citationsTab')
+              : lang === 'vi'
+                ? 'Citation Debugger'
+                : 'Citation Debugger'}
+          </span>
         </Link>
       </Button>
 

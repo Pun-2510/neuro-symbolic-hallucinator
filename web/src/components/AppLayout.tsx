@@ -5,7 +5,6 @@ import {
   History,
   Menu,
   X,
-  BookOpen,
   LogOut,
   User,
   Layers,
@@ -25,11 +24,10 @@ import { useRole, type UserCapability, type UserRole } from '@/hooks/useRole';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import { HelpModal } from './HelpModal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 
 /* ============================================================
-   SourceLogic — App Layout Component (Scholarly Precision v2.0)
+   CITRA — App Layout Component (Scholarly Precision v2.0)
    Academic Source Verification Workspace
    ============================================================ */
 
@@ -195,68 +193,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
             >
               <div className="flex items-center gap-3.5">
-                {/* SourceLogic [1] -> ✓ Logo */}
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center shadow-md shadow-indigo-600/20 ring-1 ring-indigo-500/30 shrink-0 group-hover:scale-[1.03] transition-transform">
-                  <svg
-                    width="22"
-                    height="22"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    className="text-white"
-                  >
-                    <path
-                      d="M4 8C4 6.89543 4.89543 6 6 6H8"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M4 16C4 17.1046 4.89543 18 6 18H8"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M10 12H14M14 12L12 10M14 12L12 14"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M17 9L19 11L22 8"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                {/* CITRA Brand Mark */}
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/95 p-1.5 flex items-center justify-center shadow-sm ring-1 ring-slate-200/90 dark:ring-white/20 shrink-0 group-hover:scale-[1.03] transition-transform">
+                  <img
+                    src="/citra-logo.png"
+                    alt="CITRA Logo"
+                    className="w-full h-full object-contain select-none"
+                  />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h1 className="font-display text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none">
-                      SourceLogic
+                      CITRA
                     </h1>
-                    <Badge
-                      variant="secondary"
-                      className="text-[10px] font-mono px-1.5 py-0 h-4 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60"
-                    >
-                      v2.0
-                    </Badge>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
                     {t('nav.academicVerification')}
                   </p>
                 </div>
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-slate-100/80 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/60">
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 italic truncate">
-                  {t('nav.tagline')}
-                </span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  5 DBs
-                </span>
               </div>
             </Link>
           </div>
@@ -420,7 +374,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <footer className="relative z-10 shrink-0 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-6 py-3">
           <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <p className="flex items-center gap-2 font-medium">
-              <BookOpen className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+              <img
+                src="/citra-logo.png"
+                alt="CITRA"
+                className="h-4 w-4 object-contain dark:bg-white/95 dark:rounded-xs dark:p-0.5 select-none"
+              />
               {t('nav.footerBrand')}
             </p>
             <p className="font-mono text-[11px]">{t('nav.footerSystem')}</p>

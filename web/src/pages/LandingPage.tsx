@@ -532,12 +532,6 @@ function LandingHeader({
               <span className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none whitespace-nowrap">
                 CITRA
               </span>
-              <Badge
-                variant="secondary"
-                className="text-[10px] font-mono px-1.5 py-0 h-4 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60"
-              >
-                v2.0
-              </Badge>
             </div>
             <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 whitespace-nowrap">
               {lang === 'vi'
@@ -2442,7 +2436,7 @@ function CTASection({
 
             <div className="relative max-w-2xl mx-auto">
               <Badge className="mb-5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-mono text-xs px-3 py-1">
-                CITRA WORKSPACE v2.0
+                CITRA WORKSPACE
               </Badge>
               <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-5">
                 {lang === 'vi'

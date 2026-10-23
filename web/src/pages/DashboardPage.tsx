@@ -59,7 +59,7 @@ const DEFAULT_STATS: DashboardStats = {
 export function DashboardPage() {
   const { t, i18n } = useTranslation();
   const toast = useToast();
-  const { isTeacher, isAdmin } = useRole();
+  const { isUser, isTeacher, isAdmin } = useRole();
   const { data: essays = [], isLoading, error, refetch, isFetching } = useEssays();
   const { data: stats = DEFAULT_STATS } = useDashboardStats();
   const deleteMutation = useDeleteEssay();
@@ -153,16 +153,14 @@ export function DashboardPage() {
       {/* Executive Page Header Banner */}
       <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
-              <Terminal className="h-3 w-3" />
-              {lang === 'vi' ? 'TRUNG TÂM KIỂM CHỨNG' : 'VERIFICATION WORKSPACE'}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-[11px] font-mono text-slate-600 dark:text-slate-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              5 INDEXES READY
-            </span>
-          </div>
+          {!isUser && (
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
+                <Terminal className="h-3 w-3" />
+                {lang === 'vi' ? 'TRUNG TÂM KIỂM CHỨNG' : 'VERIFICATION WORKSPACE'}
+              </span>
+            </div>
+          )}
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             {t('dashboard.title')}
           </h1>
@@ -223,11 +221,13 @@ export function DashboardPage() {
                 <div className={`p-2.5 rounded-xl border ${card.iconBox}`}>
                   <Icon className="h-5 w-5" />
                 </div>
-                <span
-                  className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md border ${card.badgeTone}`}
-                >
-                  {card.idx}
-                </span>
+                {!isUser && (
+                  <span
+                    className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md border ${card.badgeTone}`}
+                  >
+                    {card.idx}
+                  </span>
+                )}
               </div>
               <p className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight ${card.color}`}>
                 {card.value}
@@ -235,9 +235,11 @@ export function DashboardPage() {
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">
                 {card.label}
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {card.sub}
-              </p>
+              {!isUser && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {card.sub}
+                </p>
+              )}
             </Card>
           );
         })}
@@ -383,15 +385,17 @@ export function DashboardPage() {
                         >
                           {essay.filename}
                         </Link>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                            ID #{essay.id}
-                          </span>
-                          <span className="text-slate-300 dark:text-slate-700">·</span>
-                          <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
-                            GROBID TEI
-                          </span>
-                        </div>
+                        {!isUser && (
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                              ID #{essay.id}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-700">·</span>
+                            <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+                              GROBID TEI
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -420,14 +424,16 @@ export function DashboardPage() {
                         <AlertCircle className="h-3.5 w-3.5" />
                         <span>{t('essay.issues')}</span>
                       </Link>
-                      <Link
-                        to={`/verification/report/${essay.id}/trace`}
-                        title={t('essay.logicTrace')}
-                        className="hidden lg:inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-violet-300 dark:hover:border-violet-700 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
-                      >
-                        <GitBranch className="h-3.5 w-3.5" />
-                        <span>Trace</span>
-                      </Link>
+                      {!isUser && (
+                        <Link
+                          to={`/verification/report/${essay.id}/trace`}
+                          title={t('essay.logicTrace')}
+                          className="hidden lg:inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-violet-300 dark:hover:border-violet-700 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                        >
+                          <GitBranch className="h-3.5 w-3.5" />
+                          <span>Trace</span>
+                        </Link>
+                      )}
                       <Link
                         to={`/verification/report/${essay.id}`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-indigo-50 dark:bg-indigo-950/90 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/70 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all"
