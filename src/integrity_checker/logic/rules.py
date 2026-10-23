@@ -1126,7 +1126,7 @@ class SymbolicRules:
         # FIX v1.4: Only return METADATA_ERROR if we have quality evidence
         # Previously this was too aggressive - returned METADATA_ERROR for known authors
         # even when APIs returned poor quality candidates
-        if is_known_author and sources_found > 0:
+        if is_known_author and sources_found > 0 and author_sim >= 0.5:
             # Check if we have quality candidates with decent title match
             best = source.best_candidate()
             has_quality = best and best.title and best.title.lower() not in ["", "unknown", "n/a"]

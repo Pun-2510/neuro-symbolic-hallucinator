@@ -154,9 +154,10 @@ class NeuroSymbolicChecker:
                 r'The\s+DOI\s+Handbook)\s*[.,]',
                 re.IGNORECASE
             ),
-            # Web portal / online archive with explicit URL and no DOI
+            # Web portal / online documentation / archive with explicit URL and no DOI
             re.compile(
-                r'\b(ACL\s+Anthology|Crossref\s+REST\s+API|Semantic\s+Scholar\s+Academic\s+Graph\s+API|'
+                r'\b(ACL\s+Anthology|Crossref\s+REST\s+API|Semantic\s+Scholar\s+(?:Academic\s+Graph\s+API|Open\s+Research\s+Corpus)|'
+                r'OpenAlex\s*:\s*An\s+open\s+catalogue|Handbook\s+of\s+the\s+DOI\s+Resolution\s+System|'
                 r'The\s+DOI\s+Handbook)\b.*?\bRetrieved\s+from\s+https?://',
                 re.IGNORECASE
             ),
