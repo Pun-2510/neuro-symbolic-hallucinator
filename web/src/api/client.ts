@@ -48,10 +48,16 @@ export interface CitationLink {
 }
 
 export interface MatchedSource {
-  source: string; // 'crossref' | 'openalex' | 's2' | 'arxiv'
+  source: string; // 'crossref' | 'openalex' | 's2' | 'arxiv' | 'local_db' | 'known_papers' | 'core'
   matched_fields: string[];
   checked_at: string;
-  url?: string;
+  url?: string | null;
+  doi?: string | null;
+  title?: string | null;
+  authors?: string[];
+  year?: string | null;
+  venue?: string | null;
+  confidence?: number;
 }
 
 export interface StyleProfile {
@@ -111,8 +117,18 @@ export interface Verdict {
   mismatched_fields: string[];
   /** May be absent for older cached reports — callers should default to []. */
   matched_sources: MatchedSource[];
+  features?: {
+    title_sim_fuzzy?: number;
+    title_sim_semantic?: number;
+    author_jaccard?: number;
+    year_distance?: number;
+    doi_exact_match?: boolean;
+    source_consensus?: number;
+    matched_sources?: MatchedSource[];
+  };
   // Override / audit
   is_overridden: boolean;
+  override_note?: string | null;
   override_record?: OverrideRecord;
 }
 

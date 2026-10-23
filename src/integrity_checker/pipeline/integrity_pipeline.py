@@ -1713,6 +1713,16 @@ def _serialize_matched_sources(source: Any) -> list[dict[str, Any]]:
             matched_fields.append("year")
         if getattr(c, "venue", None):
             matched_fields.append("venue")
+        raw_authors = getattr(c, "authors", None) or []
+        serialized_authors: list[str] = []
+        for a in raw_authors:
+            if isinstance(a, str):
+                serialized_authors.append(a)
+            elif hasattr(a, "last_name"):
+                parts = [getattr(a, "last_name", ""), getattr(a, "first_name", "")]
+                serialized_authors.append(" ".join(p for p in parts if p))
+            else:
+                serialized_authors.append(str(a))
         out.append({
             "source": getattr(c, "source_name", "unknown"),
             "matched_fields": matched_fields,
@@ -1720,6 +1730,9 @@ def _serialize_matched_sources(source: Any) -> list[dict[str, Any]]:
             "url": getattr(c, "url", None),
             "doi": getattr(c, "doi", None),
             "title": getattr(c, "title", None),
+            "authors": serialized_authors,
+            "year": str(getattr(c, "year", "")) if getattr(c, "year", None) else None,
+            "venue": getattr(c, "venue", None),
             "confidence": float(getattr(c, "confidence", 0.0) or 0.0),
         })
     return out
@@ -1745,6 +1758,9 @@ def _deserialize_matched_sources(payload: Any) -> SourceResult | None:
                 found=True,
                 doi=item.get("doi"),
                 title=item.get("title"),
+                authors=item.get("authors") or [],
+                year=item.get("year"),
+                venue=item.get("venue"),
                 url=item.get("url"),
                 confidence=float(item.get("confidence", 0.0) or 0.0),
             )

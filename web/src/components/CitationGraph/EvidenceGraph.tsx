@@ -37,7 +37,7 @@ export function buildEvidenceGraph(
       source: dbKey,
       matched: source.matched_fields.length > 0,
       fields: source.matched_fields,
-      url: source.url,
+      url: source.url ?? undefined,
     };
     if (sourcesByDatabase[dbKey]) {
       sourcesByDatabase[dbKey].push(entry);
