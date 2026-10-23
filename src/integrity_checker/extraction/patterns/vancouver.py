@@ -295,8 +295,8 @@ class VancouverFormat:
         # ACS: Year, Volume
         if re.search(r'\b(?:19|20)\d{2}\s*,\s*\d+', text):
             return True
-        # AMA / Chicago / Harvard / CSE book with Place: Publisher
-        if re.search(r'\b[A-Z][A-Za-z\s,]+:\s*[A-Z][A-Za-z\s]+(?:;\s*(?:19|20)\d{2}|,\s*(?:19|20)\d{2}|\.)', text):
+        # AMA / Chicago / Harvard / CSE book with Place: Publisher after a period
+        if re.search(r'\.\s+[A-Z][A-Za-z\s,]+:\s*[A-Z][A-Za-z\s&\'-]+(?:;\s*(?:19|20)\d{2}|,\s*(?:19|20)\d{2})\b', text):
             return True
         # Chicago / MLA author format: "Surname, Firstname" (full first name after comma)
         if re.match(r'^(?:\[\s*\d+\s*\]\s*|\d+\.\s*)?[A-ZÀ-Ý][a-zà-ÿ]+,\s+[A-ZÀ-Ý][a-zà-ÿ]{2,}', text):

@@ -81,8 +81,8 @@ _ACS_REFERENCE_ARTICLE = CompiledPattern.create(
     name="acs_reference_article",
     pattern=(
         _ACS_PREFIX
-        + r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|;|and\b))"  # Authors. (don't stop at initial)
-        + r"(?P<title>[^.]+?)\.\s+"  # Title.
+        + r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.(?!\s+[A-Z][a-z]+\.)|;|and\b|et\s+al\.))"  # Authors. (don't stop at initial)
+        + r"(?P<title>[^.]{5,}?)\.\s+"  # Title (at least 5 chars, not an abbrev token like J. or Am.).
         + r"(?P<venue>[^;]+?)\.?\s+"  # Journal (with or without abbreviation period)
         + r"(?P<year>(?:19|20)\d{2})\s*,\s*"  # Year,
         + r"(?P<volume>\d+)"  # Volume
@@ -94,23 +94,24 @@ _ACS_REFERENCE_ARTICLE = CompiledPattern.create(
     description="ACS article: (N) Authors. Title. Journal Year, Vol, Pages.",
 )
 
-# ACS article with abbreviation:
+# ACS article with abbreviation (title optional, since ACS style allows omitting article titles):
 # (1) Authors. Title. J. Abbrev. Year, Volume, Pages.
+# or (1) Authors. J. Abbrev. Year, Volume, Pages.
 _ACS_REFERENCE_JOURNAL_ABBREV = CompiledPattern.create(
     name="acs_reference_journal_abbrev",
     pattern=(
         _ACS_PREFIX
-        + r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|;|and\b))"
-        + r"(?P<title>[^.]+?)\.\s+"
-        + r"(?P<venue>[^;]+?)\.\s*"
-        + r"(?P<year>(?:19|20)\d{2})"
-        + r"(?:,\s*(?P<volume>\d+))?"
+        + r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.(?!\s+[A-Z][a-z]+\.)|;|and\b|et\s+al\.))"
+        + r"(?:(?P<title>[^.]{5,}?)\.\s+)?"
+        + r"(?P<venue>[A-Z][^;0-9]+?)\.\s*"
+        + r"(?P<year>(?:19|20)\d{2})(?!\s*;)"
+        + r"(?:,\s*(?P<volume>\d+))"
         + r"(?:\s*\((?P<issue>[^)]+)\))?"
         + r"(?:,\s*(?:pp?\.\s*)?(?P<pages>[\d–-]+))?"
         + r"\.?\s*(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
-    description="ACS journal: (N) Authors. Title. J. Abbrev. Year, Vol, Pages.",
+    description="ACS journal: (N) Authors. [Title.] J. Abbrev. Year, Vol, Pages.",
 )
 
 # ACS article with DOI:
@@ -119,10 +120,10 @@ _ACS_REFERENCE_DOI = CompiledPattern.create(
     name="acs_reference_doi",
     pattern=(
         _ACS_PREFIX
-        + r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|;|and\b))"
-        + r"(?P<title>[^.]+?)\.\s+"
+        + r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.(?!\s+[A-Z][a-z]+\.)|;|and\b|et\s+al\.))"
+        + r"(?P<title>[^.]{5,}?)\.\s+"
         + r"(?P<venue>[^;]+?)\.?\s+"
-        + r"(?P<year>(?:19|20)\d{2})"
+        + r"(?P<year>(?:19|20)\d{2})(?!\s*;)"
         + r"(?:\s*,\s*(?P<volume>\d+))?"
         + r"(?:\s*\((?P<issue>[^)]+)\))?"
         + r"(?:\s*,\s*(?:pp?\.\s*)?(?P<pages>[\d–-]+))?"
@@ -392,14 +393,19 @@ class ACSFormat:
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract title
-        title = match.group('title').strip()
-        citation.title = title
-        citation.title_normalized = self._normalize_title(title)
-
         # Extract venue
         venue = match.group('venue').strip()
         citation.venue = venue
+
+        # Extract title (optional in ACS journal citations)
+        raw_title = match.groupdict().get('title')
+        if raw_title and raw_title.strip():
+            title = raw_title.strip()
+            citation.title = title
+            citation.title_normalized = self._normalize_title(title)
+        elif venue:
+            citation.title = venue
+            citation.title_normalized = self._normalize_title(venue)
 
         # Extract year
         year_str = match.group('year')
@@ -446,14 +452,19 @@ class ACSFormat:
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract title
-        title = match.group('title').strip()
-        citation.title = title
-        citation.title_normalized = self._normalize_title(title)
-
         # Extract venue
         venue = match.group('venue').strip()
         citation.venue = venue
+
+        # Extract title (optional in ACS journal citations)
+        raw_title = match.groupdict().get('title')
+        if raw_title and raw_title.strip():
+            title = raw_title.strip()
+            citation.title = title
+            citation.title_normalized = self._normalize_title(title)
+        elif venue:
+            citation.title = venue
+            citation.title_normalized = self._normalize_title(venue)
 
         # Extract year
         year_str = match.group('year')
@@ -504,14 +515,19 @@ class ACSFormat:
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract title
-        title = match.group('title').strip()
-        citation.title = title
-        citation.title_normalized = self._normalize_title(title)
-
         # Extract venue
         venue = match.group('venue').strip()
         citation.venue = venue
+
+        # Extract title (optional in ACS journal citations)
+        raw_title = match.groupdict().get('title')
+        if raw_title and raw_title.strip():
+            title = raw_title.strip()
+            citation.title = title
+            citation.title_normalized = self._normalize_title(title)
+        elif venue:
+            citation.title = venue
+            citation.title_normalized = self._normalize_title(venue)
 
         # Extract year
         year_str = match.group('year')

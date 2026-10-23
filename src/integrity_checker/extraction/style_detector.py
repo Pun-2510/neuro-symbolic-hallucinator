@@ -131,13 +131,20 @@ class StyleDetector:
                 "ieee": CitationStyle.IEEE,
                 "vancouver": CitationStyle.VANCOUVER,
                 "chicago": CitationStyle.CHICAGO,
+                "mla": CitationStyle.MLA,
+                "harvard": CitationStyle.HARVARD,
+                "acm": CitationStyle.ACM,
+                "nature": CitationStyle.NATURE,
+                "acs": CitationStyle.ACS,
+                "ama": CitationStyle.AMA,
+                "cse": CitationStyle.CSE,
             }
             for fmt in get_all_formats():
                 mapped = style_map.get(fmt.name.lower())
                 if mapped is None:
                     continue
                 for pat in fmt.reference_patterns:
-                    if pat.regex.search(text):
+                    if pat.search(text):
                         return mapped
         except Exception:
             pass
@@ -158,14 +165,30 @@ class StyleDetector:
             f.body_total_citations += 1
 
             # Try registry first (optional enhancement)
-            detected_style = self._detect_style_from_registry(c.raw_text)
-            if detected_style == CitationStyle.IEEE:
+            detected_style = c.style if c.style and c.style != CitationStyle.UNKNOWN else self._detect_style_from_registry(c.raw_text)
+            if (
+                c.citation_type == CitationType.NUMERIC
+                or ieee_re.search(c.raw_text)
+                or detected_style in {
+                    CitationStyle.IEEE,
+                    CitationStyle.ACM,
+                    CitationStyle.VANCOUVER,
+                    CitationStyle.NATURE,
+                    CitationStyle.ACS,
+                    CitationStyle.AMA,
+                }
+            ):
                 f.body_ieee_like += 1
-            elif detected_style == CitationStyle.APA:
-                f.body_apa_like += 1
-            elif ieee_re.search(c.raw_text):
-                f.body_ieee_like += 1
-            elif apa_re.search(c.raw_text):
+            elif (
+                apa_re.search(c.raw_text)
+                or detected_style in {
+                    CitationStyle.APA,
+                    CitationStyle.HARVARD,
+                    CitationStyle.MLA,
+                    CitationStyle.CHICAGO,
+                    CitationStyle.CSE,
+                }
+            ):
                 f.body_apa_like += 1
             elif re.search(r"^\s*\d+\.\s+[A-Z]", c.raw_text):
                 f.body_vancouver_like += 1
@@ -183,14 +206,25 @@ class StyleDetector:
                 if detected_style:
                     style = detected_style
 
-            if style == CitationStyle.APA:
+            if style in {CitationStyle.APA, CitationStyle.HARVARD, CitationStyle.MLA}:
                 f.bib_apa_style += 1
-            elif style == CitationStyle.IEEE:
+            elif style in {
+                CitationStyle.IEEE,
+                CitationStyle.ACM,
+                CitationStyle.NATURE,
+                CitationStyle.ACS,
+                CitationStyle.AMA,
+            }:
                 f.bib_ieee_style += 1
             elif style == CitationStyle.VANCOUVER:
                 f.bib_vancouver_style += 1
             elif style == CitationStyle.CHICAGO:
                 f.bib_chicago_style += 1
+            elif style == CitationStyle.CSE:
+                if c.numeric_index is not None or re.match(r"^\s*(?:\[\s*\d+\s*\]|\d+\.)", c.raw_text or ""):
+                    f.bib_ieee_style += 1
+                else:
+                    f.bib_apa_style += 1
             else:
                 f.bib_other_style += 1
 
@@ -207,7 +241,7 @@ class StyleDetector:
         body_total = f.body_total_citations
         if body_total > 0:
             ratios["body_apa"] = f.body_apa_like / body_total
-            ratios["body_ieee"] = f.body_ieee_like / body_total
+            ratios["body_ieee"] = (f.body_ieee_like + f.body_vancouver_like) / body_total
             ratios["body_other"] = f.body_other / body_total
         else:
             ratios["body_apa"] = 0.0
@@ -217,8 +251,8 @@ class StyleDetector:
         # Bib ratios
         bib_total = f.bib_total_entries
         if bib_total > 0:
-            ratios["bib_apa"] = f.bib_apa_style / bib_total
-            ratios["bib_ieee"] = f.bib_ieee_style / bib_total
+            ratios["bib_apa"] = (f.bib_apa_style + f.bib_chicago_style) / bib_total
+            ratios["bib_ieee"] = (f.bib_ieee_style + f.bib_vancouver_style) / bib_total
             ratios["bib_vancouver"] = f.bib_vancouver_style / bib_total
             ratios["bib_chicago"] = f.bib_chicago_style / bib_total
             ratios["bib_other"] = f.bib_other_style / bib_total

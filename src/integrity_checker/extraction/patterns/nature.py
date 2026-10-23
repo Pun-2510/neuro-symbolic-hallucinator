@@ -76,7 +76,7 @@ _NATURE_REFERENCE_COMPACT = CompiledPattern.create(
     pattern=(
         r"^"
         r"(?:(?P<index>\d+)\.\s*)?"  # Optional number.
-        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b))"  # Authors. (don't stop at initial)
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b|et\s+al\.))"  # Authors. (don't stop at initial/et al.)
         r"(?P<title>[^.]+?)[.,]\s+"  # Title. or Title,
         r"(?P<venue>[^0-9,;]+?)\s+"  # Journal (no numbers)
         r"(?P<volume>\d+)"  # Volume
@@ -94,7 +94,7 @@ _NATURE_NUMBERED = CompiledPattern.create(
     name="nature_numbered",
     pattern=(
         r"^\[\s*(?P<index>\d+)\s*\]\s*"  # [N]
-        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b))"  # Authors.
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b|et\s+al\.))"  # Authors.
         r"(?P<title>[^.]+?)[.,]\s+"  # Title. or Title,
         r"(?P<venue>[^0-9,;]+?)\s+"  # Journal (no numbers)
         r"(?P<volume>\d+)"  # Volume
@@ -113,7 +113,7 @@ _NATURE_REFERENCE_DOI = CompiledPattern.create(
     pattern=(
         r"^"
         r"(?:(?P<index>\d+)\.\s*)?"  # Optional number.
-        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b))"  # Authors.
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b|et\s+al\.))"  # Authors.
         r"(?P<title>[^.]+?)[.,]\s+"  # Title. or Title,
         r"(?P<venue>[^0-9,;]+?)\s+"  # Journal (no numbers)
         r"(?P<volume>\d+)"  # Volume
@@ -133,7 +133,7 @@ _NATURE_BOOK = CompiledPattern.create(
     pattern=(
         r"^"
         r"(?:(?P<index>\d+)\.\s*)?"  # Optional number.
-        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b))"  # Authors.
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b|et\s+al\.))"  # Authors.
         r"(?P<title>[^.(]{5,}?)\s*"
         r"\(\s*(?P<publisher>[^,()]+),\s*(?P<year>(?:19|20)\d{2})\s*\)\.?"
         r"(?P<rest>.*)$"

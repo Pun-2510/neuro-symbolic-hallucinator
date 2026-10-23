@@ -39,29 +39,39 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # --- In-text MLA patterns ---
 
-# Parenthetical with page: (Nguyen 25), (Nguyen 25-27)
+# Parenthetical with page: (Nguyen 25), (Nguyen 25-27), (Smith and Doe 42), (Smith et al. 105)
+# Requires a capitalized surname (not Table/Figure/Section/etc.) and a page number/range (not a 4-digit year 19xx/20xx)
 _MLA_INTEXT_PARENTHETICAL_PAGE = CompiledPattern.create(
     name="mla_intext_parenthetical_page",
-    pattern=r"\(([^)]+)\s+(\d+(?:[-–]\d+)?)\)",
+    pattern=(
+        r"\((?!(?:Table|Figure|Fig|Section|Chapter|Part|Page|Eq|Equation|Appendix|"
+        r"Stage|Step|Phase|Level|Grade|Group|Type|Class|Model|Case|Test|Rule|Item|"
+        r"Line|Row|Col|Column|Version|Ver|Vol|No|Issue|Series|Set|Run|Trial|Block|"
+        r"Layer|Node|Fold|Epoch|Batch|Seed|Score|Rank|Rate|Ratio|Index|Value|Limit|"
+        r"Code|Error|Port|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|"
+        r"January|February|March|April|June|July|August|September|October|November|December)\b)"
+        r"([A-ZÀ-Ý][a-zà-ÿ]{2,}(?:\s+(?:and|&|và)\s+[A-ZÀ-Ý][a-zà-ÿ]{2,}|\s+et\s+al\.)?)"
+        r"(?:\s*,\s*pp?\.\s*|\s+)"
+        r"(?!(?:19|20)\d{2}\b)(\d{1,4}(?:[-–]\d{1,4})?)\)"
+    ),
     pattern_type=PatternType.IN_TEXT,
     description="MLA in-text parenthetical: (Author Page) | (Author 25-27)",
 )
 
-# Parenthetical without page: (Nguyen), (Smith et al.), (Smith and Jones)
-# FIX: tightened to require capitalized author name — rejects (gold standard), (a), (Deep Learning)
+# Parenthetical without page (kept for direct reference, not in default in_text_patterns to avoid matching (Term))
 _MLA_INTEXT_PARENTHETICAL = CompiledPattern.create(
     name="mla_intext_parenthetical",
-    pattern=r"\(([A-Z][a-zA-ZÀ-ž]+(?:\s+(?:and|&)\s+[A-Z][a-zA-ZÀ-ž]+)?(?:\s+et\s+al\.?)?(?:\s+\d+(?:[-–]\d+)?)?)\)",
+    pattern=r"\(([A-Z][a-zA-ZÀ-ž]+(?:\s+(?:and|&)\s+[A-Z][a-zA-ZÀ-ž]+)?(?:\s+et\s+al\.?))\)",
     pattern_type=PatternType.IN_TEXT,
-    description="MLA in-text parenthetical: (Author) | (Smith) | (Smith et al.) | (Smith and Jones)",
+    description="MLA in-text parenthetical: (Smith et al.) | (Smith and Jones)",
 )
 
-# Narrative: Author (Page) or Author (pages 25-27)
+# Narrative with explicit p./pp.: Author (p. 25) or Author (pp. 25-27)
 _MLA_INTEXT_NARRATIVE = CompiledPattern.create(
     name="mla_intext_narrative",
-    pattern=r"([A-Z][a-zA-ZÀ-žÀ-ž]+(?:\s+(?:and|&)\s+[A-Z][a-zA-ZÀ-žÀ-ž]+)?(?:\s+et\s+al\.?)?)\s+\((?:p\.?\s*)?(\d+(?:[-–]\d+)?)\)",
+    pattern=r"([A-Z][a-zA-ZÀ-žÀ-ž]+(?:\s+(?:and|&)\s+[A-Z][a-zA-ZÀ-žÀ-ž]+)?(?:\s+et\s+al\.?)?)\s+\(pp?\.\s*(\d+(?:[-–]\d+)?)\)",
     pattern_type=PatternType.IN_TEXT,
-    description="MLA narrative: Author (Page) | Author (pp. 25-27)",
+    description="MLA narrative: Author (p. 25) | Author (pp. 25-27)",
 )
 
 # --- Reference list MLA patterns ---
@@ -72,9 +82,9 @@ _MLA_ARTICLE = CompiledPattern.create(
     name="mla_article",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r'"(?P<title>.+?)"\.?\s*'  # "Title." or "Title". (period optional)
-        r"(?P<venue>.+)"  # Venue (rest)
+        r"(?P<authors>[A-ZÀ-Ý].+?)\.\s+"  # Authors.
+        r'["\u201c](?P<title>.+?)["\u201d]\.?\s*'  # "Title." or "Title".
+        r"(?P<venue>[^(\n]*(?:vol\.|no\.|pp?\.)[^(\n]*)"  # Venue with vol./no./pp. (not Chicago (Year))
         r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -87,10 +97,10 @@ _MLA_BOOK = CompiledPattern.create(
     name="mla_book",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors
-        r"(?P<title>.+?)\.\s*"  # Title
-        r"(?P<publisher_year>(?:.+?,\s*)?[^.]+?)?"  # Publisher, Year (optional)
-        r"(?:\.\s*(?P<rest>.*))?"
+        r"(?P<authors>[A-ZÀ-Ý][^\"“\n]+?,\s+[A-ZÀ-Ý][^\"“\n]*?)\.\s+"  # Author Last, First.
+        r"(?P<title>[^\"“:\n]+?)\.\s+"  # Title (unquoted, no Place: Publisher colon)
+        r"(?P<publisher_year>[^.:\n]+?,\s*(?:19|20)\d{2})\.?"  # Publisher, Year.
+        r"(?:\s*(?P<rest>.*))?"
         r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -103,13 +113,13 @@ _MLA_BOOK_CHAPTER = CompiledPattern.create(
     name="mla_book_chapter",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r'"(?P<chapter_title>.+?)"\.\s*'  # "Chapter Title." - non-greedy
-        r"(?P<book_title>.+?)"  # Book Title
-        r"(?:,\s+edited\s+by\s+(?P<editor>.+?))?"  # Optional editor
-        r"(?:,\s*(?P<publisher_year>.+?))?"  # Optional Publisher, Year
-        r"(?:,\s*pp\.\s*(?P<pages>[\d–-]+))?"  # Optional pages
-        r"(?:\.\s*(?P<rest>.*))?"
+        r"(?P<authors>[A-ZÀ-Ý].+?)\.\s+"  # Authors.
+        r'["\u201c](?P<chapter_title>.+?)["\u201d]\.?\s*'  # "Chapter Title."
+        r"(?P<book_title>[^,]+?)"  # Book Title
+        r",\s+edited\s+by\s+(?P<editor>[^,]+)"  # edited by Editor
+        r"(?:,\s*(?P<publisher_year>[^,]+,\s*(?:19|20)\d{2}))?"  # Publisher, Year
+        r"(?:,\s*pp?\.\s*(?P<pages>[\d–-]+))?\.?"  # Optional pages
+        r"(?:\s*(?P<rest>.*))?"
         r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -122,11 +132,11 @@ _MLA_WEBSITE = CompiledPattern.create(
     name="mla_website",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r'"(?P<title>.+?)"\.\s*'  # "Title." - non-greedy
-        r"(?P<website>.+?)"  # Website
-        r"(?:,\s*(?P<date>.+?))?"  # Optional date
-        r"(?:,\s*(?P<url>.+))?"  # Optional URL
+        r"(?P<authors>[A-ZÀ-Ý].+?)\.\s+"  # Authors.
+        r'["\u201c](?P<title>.+?)["\u201d]\.?\s*'  # "Title."
+        r"(?P<website>[^,]+?)"  # Website
+        r"(?:,\s*(?P<date>[^,]*\b(?:19|20)\d{2}\b[^,]*))?"  # Optional date
+        r",\s*(?P<url>https?://\S+)\.?"  # Required URL
         r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -188,7 +198,6 @@ class MLAFormat:
         return [
             _MLA_INTEXT_PARENTHETICAL_PAGE,
             _MLA_INTEXT_NARRATIVE,
-            _MLA_INTEXT_PARENTHETICAL,
         ]
 
     @property
@@ -488,7 +497,13 @@ class MLAFormat:
         return citation
 
     def _parse_mla_fallback(self, text: str) -> Optional[Citation]:
-        """Fallback parser: extract whatever metadata possible."""
+        """Fallback parser: only match when MLA-specific cues exist."""
+        if not (
+            re.search(r'["\u201c][^"\u201d]+["\u201d]', text)
+            and re.search(r'\b(?:vol\.|no\.|pp?\.)\s*\d+', text)
+        ):
+            return None
+
         citation = Citation(
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
@@ -507,9 +522,9 @@ class MLAFormat:
             citation.year = year_m.group(1)
 
         # Try to extract title (text between quotes)
-        quote_m = re.search(r'["""]([^""""]+)["""]', text)
+        quote_m = re.search(r'["\u201c]([^"\u201d]+)["\u201d]', text)
         if quote_m:
-            title = quote_m.group(1).strip()
+            title = quote_m.group(1).strip().rstrip('.,')
             citation.title = title
             citation.title_normalized = self._normalize_title(title)
 
@@ -524,7 +539,7 @@ class MLAFormat:
             citation.url = url_m.group(0)
 
         citation.confidence = self._estimate_confidence(citation)
-        return citation if citation.title or citation.year else None
+        return citation if citation.title and citation.year else None
 
     def _parse_authors(self, authors_str: str) -> list[str]:
         """Parse author string into list of authors.
@@ -544,30 +559,33 @@ class MLAFormat:
 
         venue_text = venue_text.strip()
 
-        # Extract volume and issue: "Journal, vol. 10, no. 2, 2020, pp. 25-45"
-        vol_match = re.search(
-            r'(?P<journal>.+?),?\s*'
-            r'(?:vol\.\s*(?P<vol>\d+),?\s*)?'
-            r'(?:no\.\s*(?P<issue>\d+),?\s*)?'
-            r'(?P<year>(?:19|20)\d{2})?,?\s*'
-            r'(?:pp\.\s*(?P<pages>[\d–-]+))?',
-            venue_text
+        # Extract vol., no., year, pp. explicitly
+        vol_m = re.search(r'\bvol\.\s*(\d+)', venue_text, re.IGNORECASE)
+        if vol_m:
+            citation.volume = vol_m.group(1)
+
+        issue_m = re.search(r'\bno\.\s*([\d–-]+)', venue_text, re.IGNORECASE)
+        if issue_m:
+            citation.issue = issue_m.group(1)
+
+        year_m = re.search(r'\b((?:19|20)\d{2})\b', venue_text)
+        if year_m:
+            citation.year = year_m.group(1)
+
+        pages_m = re.search(r'\bpp?\.\s*([\d–-]+)', venue_text, re.IGNORECASE)
+        if pages_m:
+            citation.pages = pages_m.group(1)
+
+        # Extract journal name as the segment before vol./no./year/pp.
+        journal_m = re.split(
+            r',\s*(?:vol\.|no\.|(?:19|20)\d{2}\b|pp?\.)',
+            venue_text,
+            maxsplit=1,
+            flags=re.IGNORECASE,
         )
-        if vol_match:
-            citation.venue = vol_match.group('journal').strip() if vol_match.group('journal') else venue_text
-            if vol_match.group('vol'):
-                citation.volume = vol_match.group('vol')
-            if vol_match.group('issue'):
-                citation.issue = vol_match.group('issue')
-            if vol_match.group('year'):
-                citation.year = vol_match.group('year')
-            if vol_match.group('pages'):
-                citation.pages = vol_match.group('pages')
+        if journal_m and journal_m[0].strip():
+            citation.venue = journal_m[0].strip()
         else:
-            # Try simpler year extraction
-            year_m = re.search(r'\b((?:19|20)\d{2})\b', venue_text)
-            if year_m:
-                citation.year = year_m.group(1)
             citation.venue = venue_text
 
         # Clean up venue
@@ -647,7 +665,6 @@ register_format(MLAFormat())
 MLA_IN_TEXT_PATTERNS = [
     _MLA_INTEXT_PARENTHETICAL_PAGE,
     _MLA_INTEXT_NARRATIVE,
-    _MLA_INTEXT_PARENTHETICAL,
 ]
 
 MLA_REFERENCE_PATTERNS = [

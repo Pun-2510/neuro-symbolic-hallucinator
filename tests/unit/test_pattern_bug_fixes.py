@@ -23,25 +23,33 @@ from integrity_checker.extraction.patterns import (
 
 
 class TestRemovedFormatsNotRegistered:
-    """Tests verifying MLA, ACS, AMA are no longer auto-registered."""
+    """Tests verifying MLA, ACS, AMA are registered with safe patterns only."""
 
-    def test_mla_not_auto_registered(self):
-        """MLA format should NOT be auto-registered."""
-        assert get_format("MLA") is None, (
-            "MLA should not be auto-registered — overly permissive patterns"
-        )
+    def test_mla_registered_without_permissive_parenthetical(self):
+        """MLA format should be registered without bare (Author) pattern."""
+        mla = get_format("MLA")
+        assert mla is not None
+        pattern_names = [p.name for p in mla.in_text_patterns]
+        assert "mla_intext_parenthetical_page" in pattern_names
+        assert "mla_intext_parenthetical" not in pattern_names
 
-    def test_acs_not_auto_registered(self):
-        """ACS format should NOT be auto-registered."""
-        assert get_format("ACS") is None, (
-            "ACS should not be auto-registered — overly permissive patterns"
-        )
+    def test_acs_registered_without_parenthesized(self):
+        """ACS format should be registered without bare (1) or comma-separated number patterns."""
+        acs = get_format("ACS")
+        assert acs is not None
+        pattern_names = [p.name for p in acs.in_text_patterns]
+        assert "acs_superscript" in pattern_names
+        assert "acs_parenthesized" not in pattern_names
+        assert "acs_comma_separated" not in pattern_names
 
-    def test_ama_not_auto_registered(self):
-        """AMA format should NOT be auto-registered."""
-        assert get_format("AMA") is None, (
-            "AMA should not be auto-registered — overly permissive patterns"
-        )
+    def test_ama_registered_without_parenthesized(self):
+        """AMA format should be registered without bare (1) or comma-separated number patterns."""
+        ama = get_format("AMA")
+        assert ama is not None
+        pattern_names = [p.name for p in ama.in_text_patterns]
+        assert "ama_superscript" in pattern_names
+        assert "ama_parenthesized" not in pattern_names
+        assert "ama_comma_separated" not in pattern_names
 
 
 class TestRemainingFormatsWork:
@@ -137,44 +145,40 @@ class TestCSERemovedParensFromInText:
 
 
 class TestPatternCountReduction:
-    """Verify total pattern count decreased after removing MLA/ACS/AMA."""
+    """Verify false-positive patterns remain excluded while all 11 formats are registered."""
 
     def test_in_text_pattern_count(self):
-        """Total in_text_patterns should be 24 (was 36, removed 12 from MLA+ACS+AMA+CSE)."""
+        """Total in_text_patterns should be 30 across all 11 registered formats."""
         patterns = get_in_text_patterns()
-        assert len(patterns) == 24, f"Expected 24 patterns, got {len(patterns)}"
+        assert len(patterns) == 30, f"Expected 30 patterns, got {len(patterns)}"
 
-    def test_no_mla_acs_ama_patterns_in_registry(self):
-        """No MLA, ACS, AMA patterns should appear in registry."""
+    def test_no_permissive_patterns_in_registry(self):
+        """No overly permissive parenthesized/comma-number patterns should appear in registry."""
         patterns = get_in_text_patterns()
         pattern_names = [p.name for p in patterns]
 
         forbidden_patterns = [
             "mla_intext_parenthetical",
-            "mla_intext_parenthetical_page",
-            "mla_intext_narrative",
             "acs_comma_separated",
             "acs_parenthesized",
-            "acs_superscript",
-            "acs_author_superscript",
             "ama_comma_separated",
             "ama_parenthesized",
-            "ama_superscript",
-            "ama_bracketed",
             "cse_parenthesized",  # removed from in_text
         ]
         for name in forbidden_patterns:
             assert name not in pattern_names, f"{name} should not be in in_text_patterns"
 
     def test_registered_format_count(self):
-        """Should have exactly 8 formats registered (was 11, removed MLA+ACS+AMA)."""
+        """Should have all 11 citation formats registered."""
         from integrity_checker.extraction.patterns import get_all_formats
 
         formats = get_all_formats()
         format_names = [f.name for f in formats]
-        # MLA, ACS, AMA removed → 8 formats (was 11)
-        assert len(formats) == 8, f"Expected 8 formats, got {len(formats)}: {format_names}"
-        expected = {"APA", "IEEE", "Vancouver", "Chicago", "Harvard", "ACM", "Nature", "CSE"}
+        assert len(formats) == 11, f"Expected 11 formats, got {len(formats)}: {format_names}"
+        expected = {
+            "APA", "IEEE", "Vancouver", "Chicago", "Harvard",
+            "ACM", "Nature", "CSE", "MLA", "ACS", "AMA",
+        }
         assert set(format_names) == expected
 
 

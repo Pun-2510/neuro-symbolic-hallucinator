@@ -235,7 +235,7 @@ class SectionSegmenter:
         }
 
     def _find_implicit_bibliography(self, doc: Document) -> int:
-        """Tìm trang bắt đầu bibliography ẩn (không có header).
+        r"""Tìm trang bắt đầu bibliography ẩn (không có header).
 
         Heuristic: sau page đầu tiên, tìm trang có ≥3 dòng khớp `^\s*\[\d+\]`
         với IEEE ratio ≥ 0.30. Continue until we hit a page with no [N] markers

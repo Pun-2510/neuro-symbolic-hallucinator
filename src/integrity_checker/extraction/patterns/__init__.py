@@ -131,10 +131,23 @@ try:
 except ImportError:
     pass
 
-# NOTE: MLA, ACS, AMA, AMA, Chicago were removed from auto-registration
-# as they contain overly permissive patterns that cause false positive
-# citation matches. Only APA, IEEE, Numeric, Vancouver, Harvard, ACM, Nature,
-# CSE are registered by default for scientific/technical papers.
+try:
+    from integrity_checker.extraction.patterns import mla  # noqa: F401
+    from integrity_checker.extraction.patterns.mla import MLAFormat
+except ImportError:
+    pass
+
+try:
+    from integrity_checker.extraction.patterns import acs  # noqa: F401
+    from integrity_checker.extraction.patterns.acs import ACSFormat
+except ImportError:
+    pass
+
+try:
+    from integrity_checker.extraction.patterns import ama  # noqa: F401
+    from integrity_checker.extraction.patterns.ama import AMAFormat
+except ImportError:
+    pass
 
 
 # =============================================================================
@@ -174,4 +187,7 @@ __all__ = [
     "ACMFormat",
     "NatureFormat",
     "CSEFormat",
+    "MLAFormat",
+    "ACSFormat",
+    "AMAFormat",
 ]

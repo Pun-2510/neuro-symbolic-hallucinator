@@ -432,19 +432,28 @@ def _parse_ieee_format(text: str) -> list[Author]:
     authors: list[Author] = []
 
     # Split by semicolon (et al. replacement) or comma
-    if ";" in text:
-        pieces = [p.strip() for p in text.split(";") if p.strip()]
-        for piece in pieces:
-            a = normalize_author(piece)
-            if a.last_name:
-                authors.append(a)
-    else:
-        # IEEE uses comma-separated authors
-        pieces = [p.strip() for p in text.split(",") if p.strip()]
-        for piece in pieces:
-            a = normalize_author(piece)
-            if a.last_name:
-                authors.append(a)
+    pieces = (
+        [p.strip() for p in text.split(";") if p.strip()]
+        if ";" in text
+        else [p.strip() for p in text.split(",") if p.strip()]
+    )
+    for piece in pieces:
+        tokens = piece.split()
+        if (
+            "," not in piece
+            and len(tokens) >= 2
+            and not _INITIAL_RE.match(tokens[0])
+            and not _is_initial_token(tokens[-1])
+            and tokens[0].lower() not in _VN_FAMILY_NAMES
+            and tokens[0].lower() not in _PARTICLES
+        ):
+            fn_authors = _parse_firstname_lastname_no_et_al(piece)
+            if fn_authors:
+                authors.extend(fn_authors)
+                continue
+        a = normalize_author(piece)
+        if a.last_name:
+            authors.append(a)
 
     return authors
 
@@ -596,11 +605,11 @@ _APA_AUTHOR_RE = re.compile(
         { _PARTICLES_GROUP }\s*  # optional particles
         {_UPPER_VN}[a-zà-ỹ\-\']+(?:[A-ZÀ-Ý][a-zà-ỹ\-\']+)*   # last name MUST start with uppercase + lowercase
         ,\s*
-        (?:{_UPPER_VN}\.(?:\s*{_UPPER_VN}\.)*|{_UPPER_VN}(?:\s+{_UPPER_VN})*)(?![A-Za-zÀ-ỹ])
+        (?:{_UPPER_VN}\.(?:\s*{_UPPER_VN}\.?)*|{_UPPER_VN}(?:\s+{_UPPER_VN})*)(?![A-Za-zÀ-ỹ])
     |
         {_UPPER_VN}[a-zà-ỹ\-\']+(?:[A-ZÀ-Ý][a-zà-ỹ\-\']+)*   # last name start with uppercase + lowercase
         ,\s*
-        (?:{_UPPER_VN}\.(?:\s*{_UPPER_VN}\.)*|{_UPPER_VN}(?:\s+{_UPPER_VN})*)(?![A-Za-zÀ-ỹ])
+        (?:{_UPPER_VN}\.(?:\s*{_UPPER_VN}\.?)*|{_UPPER_VN}(?:\s+{_UPPER_VN})*)(?![A-Za-zÀ-ỹ])
     )
     """,
     re.VERBOSE,

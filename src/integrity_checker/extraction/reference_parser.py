@@ -731,12 +731,38 @@ class ReferenceListParser:
                 book_citation.numeric_index = numeric_index
             return book_citation
 
-        # Try format modules from registry first
+        # Try format modules from registry first (Two-pass: strict patterns before fallbacks)
         # Require title for a meaningful match (year alone is not enough)
         # IEEE entries with [N] prefix are an exception - they should be accepted with just year
-        for fmt in get_all_formats():
-            citation = fmt.parse_reference_entry(entry)
-            if citation:
+        all_formats = get_all_formats()
+        is_ama_specific = bool(
+            re.match(r"^\s*\d+\.\s+", entry)
+            and (
+                re.search(r"\bdoi:\s*10\.\d{4,9}/", entry, re.IGNORECASE)
+                or re.search(r"[^.:]+:\s*[^;]+;\s*(?:19|20)\d{2}\b", entry)
+            )
+        )
+        is_cse_nameyear_specific = bool(
+            not re.match(r"^\s*(?:\[\s*\d+\s*\]|\d+\.)", entry)
+            and re.match(
+                r"^[A-ZÀ-Ý][a-zA-ZÀ-ÿ'-]+\s+[A-Z]{1,3}(?:,\s+[A-ZÀ-Ý][a-zA-ZÀ-ÿ'-]+\s+[A-Z]{1,3})*\.\s+(?:19|20)\d{2}\.\s+",
+                entry,
+            )
+        )
+
+        for allow_fallback in (False, True):
+            for fmt in all_formats:
+                if not allow_fallback:
+                    if is_ama_specific and fmt.name in ("Vancouver", "CSE", "ACS"):
+                        continue
+                    if is_cse_nameyear_specific and fmt.name in ("Vancouver", "Chicago", "Harvard"):
+                        continue
+                citation = fmt.parse_reference_entry(entry)
+                if not citation:
+                    continue
+                is_fallback = "fallback" in (citation.matched_pattern or "")
+                if is_fallback != allow_fallback:
+                    continue
                 has_title = bool(citation.title)
                 has_year = bool(citation.year)
                 has_numeric_index = citation.numeric_index is not None
