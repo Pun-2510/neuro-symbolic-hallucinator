@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import secrets
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from datetime import datetime, timezone
 
 from integrity_checker.db.models import (
     AuditLog,
+    AuthToken,
     CitationCache,
     CitationRecord,
     Class,
@@ -295,7 +299,12 @@ class Repository:
         return self.session.query(User).filter(User.username == username).first()
 
     def get_user_by_email(self, email: str) -> User | None:
-        return self.session.query(User).filter(User.email == email).first()
+        normalized = email.strip().lower()
+        return (
+            self.session.query(User)
+            .filter(func.lower(User.email) == normalized)
+            .first()
+        )
 
     def get_user_by_id(self, user_id: int) -> User | None:
         return self.session.get(User, user_id)
@@ -310,6 +319,7 @@ class Repository:
         is_active: bool = True,
         institution: str | None = None,
         can_override_verdicts: bool = False,
+        email_verified: bool = True,
     ) -> User:
         user = User(
             username=username,
@@ -320,6 +330,7 @@ class Repository:
             is_active=1 if is_active else 0,
             institution=institution,
             can_override_verdicts=1 if can_override_verdicts else 0,
+            email_verified=1 if email_verified else 0,
         )
         self.session.add(user)
         self.session.flush()
@@ -334,7 +345,7 @@ class Repository:
                 # Skip None values to keep partial-update semantics; avatar_path
                 # may be set to None to clear.
                 continue
-            if key in ("is_active", "can_override_verdicts") and isinstance(value, bool):
+            if key in ("is_active", "can_override_verdicts", "email_verified") and isinstance(value, bool):
                 value = 1 if value else 0
             if hasattr(user, key):
                 setattr(user, key, value)
@@ -377,6 +388,87 @@ class Repository:
         self.session.delete(session)
         self.session.flush()
         return True
+
+    def delete_user_sessions(self, user_id: int) -> int:
+        """Revoke all active JWT sessions for a user (e.g. after password reset)."""
+        deleted = (
+            self.session.query(Session)
+            .filter(Session.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
+        self.session.flush()
+        return deleted
+
+    # -- Auth Tokens (Account Activation & Password Reset) --
+
+    @staticmethod
+    def hash_token(raw_token: str) -> str:
+        """Compute deterministic SHA-256 hex digest of a raw URL-safe token."""
+        return hashlib.sha256(raw_token.strip().encode("utf-8")).hexdigest()
+
+    def create_auth_token(
+        self,
+        user_id: int,
+        token_type: str,
+        expires_at: datetime,
+    ) -> tuple[str, AuthToken]:
+        """Issue a new one-time token and invalidate prior unused tokens of the same type."""
+        now = datetime.now(timezone.utc)
+        prior_unused = (
+            self.session.query(AuthToken)
+            .filter(
+                AuthToken.user_id == user_id,
+                AuthToken.token_type == token_type,
+                AuthToken.used_at.is_(None),
+            )
+            .all()
+        )
+        for old_tok in prior_unused:
+            old_tok.used_at = now
+
+        raw_token = secrets.token_urlsafe(32)
+        token_row = AuthToken(
+            user_id=user_id,
+            token_hash=self.hash_token(raw_token),
+            token_type=token_type,
+            expires_at=expires_at,
+        )
+        self.session.add(token_row)
+        self.session.flush()
+        return raw_token, token_row
+
+    def get_auth_token(self, raw_token: str, token_type: str) -> AuthToken | None:
+        """Look up an AuthToken by its raw token string and expected type."""
+        if not raw_token or not raw_token.strip():
+            return None
+        token_hash = self.hash_token(raw_token)
+        return (
+            self.session.query(AuthToken)
+            .filter(
+                AuthToken.token_hash == token_hash,
+                AuthToken.token_type == token_type,
+            )
+            .first()
+        )
+
+    def get_latest_auth_token_for_user(
+        self, user_id: int, token_type: str
+    ) -> AuthToken | None:
+        """Return the most recently created token of ``token_type`` for ``user_id``."""
+        return (
+            self.session.query(AuthToken)
+            .filter(
+                AuthToken.user_id == user_id,
+                AuthToken.token_type == token_type,
+            )
+            .order_by(AuthToken.created_at.desc(), AuthToken.id.desc())
+            .first()
+        )
+
+    def mark_auth_token_used(self, token_row: AuthToken) -> None:
+        """Mark a token as consumed."""
+        token_row.used_at = datetime.now(timezone.utc)
+        self.session.flush()
 
     # -- Essays with user_id --
 

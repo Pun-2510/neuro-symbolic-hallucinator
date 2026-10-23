@@ -43,8 +43,13 @@ class User(Base):
     # v1.15 (Phase 3) — teacher-specific fields
     institution: Mapped[str | None] = mapped_column(String(255), nullable=True)
     can_override_verdicts: Mapped[bool] = mapped_column(Integer, default=0)
+    # v1.17 — email verification status (1 for admin/demo/verified, 0 for pending activation)
+    email_verified: Mapped[bool] = mapped_column(Integer, default=1)
 
     sessions: Mapped[list["Session"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    auth_tokens: Mapped[list["AuthToken"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     essays: Mapped[list["EssayRecord"]] = relationship(back_populates="user")
     taught_classes: Mapped[list["Class"]] = relationship(
         "Class", back_populates="teacher", foreign_keys="Class.teacher_id"
@@ -67,6 +72,26 @@ class Session(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user: Mapped["User"] = relationship(back_populates="sessions")
+
+
+class AuthToken(Base):
+    """One-time cryptographic tokens for account activation and password reset."""
+
+    __tablename__ = "auth_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    token_type: Mapped[str] = mapped_column(String(30), nullable=False)  # "activation" | "password_reset"
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
+    user: Mapped["User"] = relationship(back_populates="auth_tokens")
 
 
 class CitationCache(Base):

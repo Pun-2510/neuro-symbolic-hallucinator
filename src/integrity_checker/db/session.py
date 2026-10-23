@@ -151,6 +151,11 @@ def _run_inline_migrations(engine: Engine) -> None:
             conn.exec_driver_sql(
                 "ALTER TABLE users ADD COLUMN can_override_verdicts INTEGER DEFAULT 0"
             )
+        # --- users (v1.17 — email verification) ---
+        if "email_verified" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 1"
+            )
 
         # --- Clean up any historical orphan rows ---
         conn.exec_driver_sql(
