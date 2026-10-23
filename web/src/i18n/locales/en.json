@@ -78,7 +78,7 @@
     "sessionExpired": "Your session has expired. Please login again.",
     "heroTitle1": "Verify Every Citation.",
     "heroTitle2": "Trace Every Source.",
-    "heroDesc": "Detect invalid, mismatched and potentially hallucinated academic references with explainable source verification.",
+    "heroDesc": "Detect unverified, mismatched and potentially hallucinated academic references with explainable source verification.",
     "featureExtraction": "Citation Extraction",
     "featureExtractionDesc": "Automatically extract in-text citations and references from documents",
     "featureRetrieval": "Multi-Source Retrieval",
