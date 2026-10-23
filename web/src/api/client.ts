@@ -292,6 +292,41 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /**
+ * Auth-specific request helper that extracts human-readable FastAPI `detail`
+ * messages instead of raw JSON strings.
+ */
+async function authRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const resp = await fetch(`${BASE_URL}${path}`, init);
+  if (!resp.ok) {
+    let detail = `Request failed (HTTP ${resp.status})`;
+    try {
+      const contentType = resp.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        const err = await resp.json();
+        if (typeof err?.detail === 'string') {
+          detail = err.detail;
+        } else if (Array.isArray(err?.detail)) {
+          detail =
+            err.detail
+              .map((d: { msg?: string }) => d?.msg)
+              .filter(Boolean)
+              .join('; ') || detail;
+        } else if (typeof err?.message === 'string') {
+          detail = err.message;
+        }
+      } else {
+        const text = (await resp.text()).trim();
+        if (text) detail = text;
+      }
+    } catch {
+      // Keep fallback message
+    }
+    throw new Error(detail);
+  }
+  return resp.json();
+}
+
+/**
  * Fetch the analysis report, tolerating HTTP 425 (pipeline still running).
  * Returns null when the backend returns 425 so callers can detect "not ready yet".
  *
@@ -364,6 +399,39 @@ export interface UserSelfUpdate {
 export interface PasswordChange {
   current_password: string;
   new_password: string;
+}
+
+export interface RegisterPayload {
+  username: string;
+  email: string;
+  password: string;
+  full_name?: string;
+  institution?: string;
+  lang?: string;
+}
+
+export interface RegisterResponse {
+  message: string;
+  username: string;
+  email: string;
+  requires_activation: boolean;
+  email_sent: boolean;
+}
+
+export interface ActivateAccountResponse {
+  message: string;
+  username: string;
+  email: string;
+  activated: boolean;
+  already_active: boolean;
+}
+
+export interface VerifyResetTokenResponse {
+  valid: boolean;
+  username?: string | null;
+  email?: string | null;
+  reason?: string | null;
+  message: string;
 }
 
 // --- Class types (v1.15 / Phase 3) ---
@@ -450,6 +518,42 @@ export interface AuditLogEntry {
 
 export const api = {
   health: () => request<HealthResponse>('/health'),
+
+  // Public authentication flows (register, activate, forgot/reset password)
+  register: (data: RegisterPayload) =>
+    authRequest<RegisterResponse>('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  activateAccount: (token: string) =>
+    authRequest<ActivateAccountResponse>('/auth/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    }),
+  resendActivation: (identifier: string, lang: string = 'vi') =>
+    authRequest<{ message: string }>('/auth/resend-activation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier, lang }),
+    }),
+  forgotPassword: (email: string, lang: string = 'vi') =>
+    authRequest<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, lang }),
+    }),
+  verifyResetToken: (token: string) =>
+    authRequest<VerifyResetTokenResponse>(
+      `/auth/verify-reset-token?token=${encodeURIComponent(token)}`,
+    ),
+  resetPassword: (data: { token: string; new_password: string; lang?: string }) =>
+    authRequest<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
 
   // User management (admin)
   listUsers: () => request<User[]>('/users'),

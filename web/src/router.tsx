@@ -6,6 +6,10 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { PageSkeleton } from './components/PageSkeleton';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { ActivateAccountPage } from './pages/ActivateAccountPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 
 /* ============================================================
    SourceLogic — Router Configuration
@@ -74,6 +78,30 @@ export const router = createBrowserRouter([
         <LoginPage />
       </PublicRoute>
     ),
+  },
+  {
+    path: '/register',
+    element: (
+      <PublicRoute>
+        <RegisterPage />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: '/forgot-password',
+    element: (
+      <PublicRoute>
+        <ForgotPasswordPage />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: '/activate-account',
+    element: <ActivateAccountPage />,
+  },
+  {
+    path: '/reset-password',
+    element: <ResetPasswordPage />,
   },
 
   // Protected routes with AppLayout (sidebar navigation) — all lazy
