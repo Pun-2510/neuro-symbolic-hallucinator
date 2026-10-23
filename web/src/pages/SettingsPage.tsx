@@ -1,5 +1,5 @@
 /**
- * Settings Page
+ * Settings Page (Scholarly Precision shadcn/ui v2.0)
  * Central configuration hub for user preferences
  */
 import { useState } from 'react';
@@ -12,13 +12,16 @@ import {
   Info,
   ChevronRight,
   Check,
+  ShieldCheck,
+  Terminal,
+  AlertTriangle,
 } from 'lucide-react';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
-import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 // ============================================================
 // Types
@@ -67,16 +70,28 @@ export function SettingsPage(): JSX.Element {
   const toggleSetting = (key: keyof SettingsState): void => {
     setSettings((prev) => {
       const newValue = !prev[key];
-      const storageKey = `settings_${key === 'autoVerify' ? 'auto_verify' : key === 'compactView' ? 'compact_view' : key}`;
+      const storageKey = `settings_${
+        key === 'autoVerify'
+          ? 'auto_verify'
+          : key === 'compactView'
+          ? 'compact_view'
+          : key
+      }`;
       localStorage.setItem(storageKey, String(newValue));
 
       toast.success(
         t('settings.settingsSaved'),
         key === 'notifications'
-          ? newValue ? t('settings.notificationsEnabled') : t('settings.notificationsDisabled')
+          ? newValue
+            ? t('settings.notificationsEnabled')
+            : t('settings.notificationsDisabled')
           : key === 'autoVerify'
-          ? newValue ? t('settings.autoVerifyEnabled') : t('settings.autoVerifyDisabled')
-          : newValue ? t('settings.compactViewEnabled') : t('settings.compactViewDisabled')
+          ? newValue
+            ? t('settings.autoVerifyEnabled')
+            : t('settings.autoVerifyDisabled')
+          : newValue
+          ? t('settings.compactViewEnabled')
+          : t('settings.compactViewDisabled')
       );
 
       return { ...prev, [key]: newValue };
@@ -89,7 +104,10 @@ export function SettingsPage(): JSX.Element {
     localStorage.setItem('language', langCode);
     localStorage.setItem('i18nextLng', langCode);
     const fixedT = i18n.getFixedT(langCode);
-    toast.success(fixedT('settings.languageUpdated'), langCode === 'vi' ? 'Tiếng Việt' : 'English');
+    toast.success(
+      fixedT('settings.languageUpdated'),
+      langCode === 'vi' ? 'Tiếng Việt' : 'English'
+    );
   };
 
   // Clear local cache (only after explicit user confirmation)
@@ -102,110 +120,163 @@ export function SettingsPage(): JSX.Element {
   };
 
   return (
-    <div className="container-page py-8">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-          <Settings className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-        </div>
-        <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {t('settings.title')}
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400">
-            {t('settings.subtitle')}
-          </p>
+    <div className="space-y-6 w-full max-w-4xl pb-10">
+      {/* Executive Header Card */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-xs">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2.5 flex-wrap mb-2.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                {currentLang === 'vi'
+                  ? 'CẤU HÌNH MÔI TRƯỜNG LÀM VIỆC'
+                  : 'WORKSPACE ENVIRONMENT CONFIG'}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/70 dark:border-emerald-800/70 text-[11px] font-mono text-emerald-700 dark:text-emerald-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                v1.11.0
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 flex items-center justify-center shrink-0">
+                <Settings className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div>
+                <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                  {t('settings.title')}
+                </h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                  {t('settings.subtitle')}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-2xl space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Appearance Section */}
-        <Card className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Palette className="w-5 h-5 text-slate-500" />
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              {t('settings.appearance')}
-            </h2>
+        <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
+              </div>
+              <Separator orientation="vertical" className="h-4" />
+              <Palette className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <h2 className="text-sm font-display font-semibold text-slate-900 dark:text-slate-100">
+                {t('settings.appearance')}
+              </h2>
+            </div>
+            <span className="text-[11px] font-mono text-slate-400">01</span>
           </div>
 
-          <div className="space-y-4">
-            {/* Theme Selection */}
+          <div className="p-6 flex-1">
             <div>
               <Label className="input-label">{t('settings.theme')}</Label>
-              <div className="mt-2">
+              <div className="mt-2.5">
                 <ThemeToggle showLabel />
               </div>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-slate-500 mt-2.5 leading-relaxed">
                 {t('settings.themeDescription')}
               </p>
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Language Section */}
-        <Card className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Globe className="w-5 h-5 text-slate-500" />
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              {t('settings.language')}
-            </h2>
+        <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
+              </div>
+              <Separator orientation="vertical" className="h-4" />
+              <Globe className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <h2 className="text-sm font-display font-semibold text-slate-900 dark:text-slate-100">
+                {t('settings.language')}
+              </h2>
+            </div>
+            <span className="text-[11px] font-mono text-slate-400">02</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {languages.map((lang) => (
-              <button
-                key={lang.code}
-                onClick={() => changeLanguage(lang.code)}
-                className={`
-                  flex items-center gap-3 p-4 rounded-xl border-2 transition-all
-                  ${
+          <div className="p-6 flex-1 flex flex-col justify-center">
+            <div className="grid grid-cols-2 gap-3">
+              {languages.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => changeLanguage(lang.code)}
+                  className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
                     currentLang === lang.code
-                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-                  }
-                `}
-              >
-                <span className={`
-                  font-medium
-                  ${currentLang === lang.code
-                    ? 'text-indigo-700 dark:text-indigo-300'
-                    : 'text-slate-700 dark:text-slate-300'
-                  }
-                `}>
-                  {lang.label}
-                </span>
-                {currentLang === lang.code && (
-                  <Check className="w-5 h-5 text-indigo-500 ml-auto" />
-                )}
-              </button>
-            ))}
+                      ? 'border-indigo-500 bg-indigo-50/80 dark:bg-indigo-950/60 shadow-2xs'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                  }`}
+                >
+                  <span
+                    className={`font-medium text-sm ${
+                      currentLang === lang.code
+                        ? 'text-indigo-700 dark:text-indigo-300'
+                        : 'text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    {lang.label}
+                  </span>
+                  {currentLang === lang.code && (
+                    <Check className="w-4 h-4 text-indigo-500 ml-auto" />
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
-        </Card>
+        </div>
+      </div>
 
-        {/* Notifications Section */}
-        <Card className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Bell className="w-5 h-5 text-slate-500" />
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+      {/* Notifications Section */}
+      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
+            </div>
+            <Separator orientation="vertical" className="h-4" />
+            <Bell className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <h2 className="text-sm font-display font-semibold text-slate-900 dark:text-slate-100">
               {t('settings.notifications')}
             </h2>
           </div>
+          <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
+            <Terminal className="w-3 h-3" />
+            workspace_preferences.json
+          </span>
+        </div>
 
-          <div className="space-y-4">
+        <div className="p-6 divide-y divide-slate-100 dark:divide-slate-800/80">
+          <div className="pb-4">
             <ToggleSetting
               label={t('settings.enableNotifications')}
               description={t('settings.enableNotificationsDesc')}
               checked={settings.notifications}
               onChange={() => toggleSetting('notifications')}
             />
+          </div>
 
+          <div className="py-4">
             <ToggleSetting
               label={t('settings.autoVerify')}
               description={t('settings.autoVerifyDesc')}
               checked={settings.autoVerify}
               onChange={() => toggleSetting('autoVerify')}
             />
+          </div>
 
+          <div className="pt-4">
             <ToggleSetting
               label={t('settings.compactView')}
               description={t('settings.compactViewDesc')}
@@ -213,54 +284,74 @@ export function SettingsPage(): JSX.Element {
               onChange={() => toggleSetting('compactView')}
             />
           </div>
-        </Card>
+        </div>
+      </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* About Section */}
-        <Card className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Info className="w-5 h-5 text-slate-500" />
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              {t('settings.about')}
-            </h2>
+        <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
+              </div>
+              <Separator orientation="vertical" className="h-4" />
+              <Info className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <h2 className="text-sm font-display font-semibold text-slate-900 dark:text-slate-100">
+                {t('settings.about')}
+              </h2>
+            </div>
+            <span className="text-[11px] font-mono text-slate-400">04</span>
           </div>
 
-          <div className="space-y-3">
+          <div className="p-6 space-y-3">
             <InfoRow label={t('settings.version')} value="1.11.0" />
-            <InfoRow label={t('settings.buildDate')} value={new Date().toLocaleDateString()} />
+            <InfoRow
+              label={t('settings.buildDate')}
+              value={new Date().toLocaleDateString()}
+            />
 
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
               <a
                 href="https://github.com/iannwendy/essay-integrity-checker"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
               >
                 {t('settings.viewSourceCode')}
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </a>
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Danger Zone */}
-        <Card className="p-6 border-red-200 dark:border-red-900/50">
-          <h2 className="text-lg font-semibold text-red-700 dark:text-red-400 mb-4">
-            {t('settings.dangerZone')}
-          </h2>
+        <div className="rounded-2xl border border-red-200/90 dark:border-red-900/60 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 bg-red-50/70 dark:bg-red-950/30 border-b border-red-200/70 dark:border-red-900/50">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+              <h2 className="text-sm font-display font-semibold text-red-700 dark:text-red-400">
+                {t('settings.dangerZone')}
+              </h2>
+            </div>
+            <span className="text-[11px] font-mono text-red-500">05</span>
+          </div>
 
-          <div className="space-y-3">
+          <div className="p-6">
             <button
               onClick={() => setConfirmClear(true)}
-              className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-red-300 dark:hover:border-red-800 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-colors"
               aria-label="Clear local cache"
             >
-              <span className="text-slate-700 dark:text-slate-300">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 {t('settings.clearLocalCache')}
               </span>
-              <ChevronRight className="w-5 h-5 text-slate-400" />
+              <ChevronRight className="w-4 h-4 text-slate-400" />
             </button>
           </div>
-        </Card>
+        </div>
       </div>
 
       <ConfirmationModal
@@ -291,19 +382,25 @@ interface ToggleSettingProps {
   onChange: () => void;
 }
 
-function ToggleSetting({ label, description, checked, onChange }: ToggleSettingProps): JSX.Element {
+function ToggleSetting({
+  label,
+  description,
+  checked,
+  onChange,
+}: ToggleSettingProps): JSX.Element {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-4">
       <div>
-        <p className="font-medium text-slate-900 dark:text-slate-100">{label}</p>
+        <p className="font-medium text-sm text-slate-900 dark:text-slate-100">
+          {label}
+        </p>
         {description && (
-          <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            {description}
+          </p>
         )}
       </div>
-      <Switch
-        checked={checked}
-        onCheckedChange={onChange}
-      />
+      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }
@@ -315,9 +412,11 @@ interface InfoRowProps {
 
 function InfoRow({ label, value }: InfoRowProps): JSX.Element {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between text-sm">
       <span className="text-slate-600 dark:text-slate-400">{label}</span>
-      <span className="font-medium font-mono text-slate-900 dark:text-slate-100">{value}</span>
+      <span className="font-medium font-mono text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+        {value}
+      </span>
     </div>
   );
 }
