@@ -34,10 +34,10 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # --- In-text IEEE patterns ---
 
-# IEEE numeric: [1], [1,2], [1-5], [1, 2, 3]
+# IEEE numeric: [1], [1,2], [1-5], [1, 2, 3] (1-based positive integers only; excludes [0, 1] intervals)
 _IEEE_NUMERIC = CompiledPattern.create(
     name="ieee_numeric",
-    pattern=r"\[(\d+(?:[,\s\-]+\d+)*)\]",
+    pattern=r"\[([1-9]\d{0,2}(?:[,\s\-–—]+[1-9]\d{0,2})*)\]",
     pattern_type=PatternType.IN_TEXT,
     description="IEEE numeric in-text: [1] | [1,2] | [1-5] | [1, 2, 3]",
 )

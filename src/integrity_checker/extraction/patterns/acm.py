@@ -157,8 +157,8 @@ _ACM_JOURNAL = CompiledPattern.create(
     name="acm_journal",
     pattern=(
         r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
-        r'(?P<authors>.+?[A-Za-zÀ-ÿ]{2,})\.\s+'  # Authors (ends with surname, not initial).
-        r'(?P<title>[^.]+?)\.\s+'  # Title.
+        r'(?P<authors>.+?)(?<!\bvol)(?<!\bno)(?<!\bpp)\.\s+(?!(?:[A-ZÀ-Ý]\.|[A-ZÀ-Ý][a-zà-ÿ\'-]+\.\s|and\b|&|et\s+al\.))'  # Authors (don't stop at initial).
+        r'(?P<title>[^.]*[A-Za-z]{3,}[^.]*?)\.\s+'  # Title.
         r'(?P<venue>.+?)'  # Venue
         r'(?:,\s*(?P<year>(?:19|20)\d{2}))?'  # Optional trailing year
         r'\.?$'
@@ -190,8 +190,8 @@ _ACM_FULL_NAME = CompiledPattern.create(
     name="acm_full_name",
     pattern=(
         r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
-        r'(?P<authors>.+?[A-Za-zÀ-ÿ]{2,})\.\s+'  # Authors (ends with surname).
-        r'(?P<title>[^.]+?)\.\s+'  # Title.
+        r'(?P<authors>.+?)(?<!\bvol)(?<!\bno)(?<!\bpp)\.\s+(?!(?:[A-ZÀ-Ý]\.|[A-ZÀ-Ý][a-zà-ÿ\'-]+[.,]\s|and\b|&|et\s+al\.))'  # Authors (ends with surname).
+        r'(?P<title>[^.]*[A-Za-z]{3,}[^.]*?)\.\s+'  # Title.
         r'(?P<venue>.+?)'  # Venue
         r'(?:\s+(?P<year>(?:19|20)\d{2}))?'  # Optional year
         r'\.?$'
@@ -536,6 +536,8 @@ class ACMFormat:
         authors_str = match.group('authors')
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
+        if not citation.authors:
+            return None
 
         # Extract title (remove quotes and trailing period)
         title = match.group('title').strip()
@@ -590,11 +592,17 @@ class ACMFormat:
 
         # Extract authors
         authors_str = match.group('authors')
+        title = match.group('title').strip()
+        if re.search(r',\s*(?:vol|no|pp)\s*$', title, re.IGNORECASE):
+            return None
+        if re.search(r'\b(?:vol|no|pp)\b', authors_str or '', re.IGNORECASE):
+            return None
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
+        if not citation.authors:
+            return None
 
         # Extract title (remove quotes and trailing period)
-        title = match.group('title').strip()
         # Strip ASCII and curly quotes
         for q in ['"', '"', '"', '"', '"', '"']:
             if title.startswith(q) and title.endswith(q):
@@ -640,11 +648,17 @@ class ACMFormat:
 
         # Extract authors
         authors_str = match.group('authors')
+        title = match.group('title').strip()
+        if re.search(r',\s*(?:vol|no|pp)\s*$', title, re.IGNORECASE):
+            return None
+        if re.search(r'\b(?:vol|no|pp)\b', authors_str or '', re.IGNORECASE):
+            return None
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
+        if not citation.authors:
+            return None
 
         # Extract title (remove quotes and trailing period)
-        title = match.group('title').strip()
         # Strip ASCII and curly quotes
         for q in ['"', '"', '"', '"', '"', '"']:
             if title.startswith(q) and title.endswith(q):
@@ -692,6 +706,8 @@ class ACMFormat:
         authors_str = match.group('authors')
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
+        if not citation.authors:
+            return None
 
         # Extract title (remove quotes and trailing period)
         title = match.group('title').strip()
@@ -742,6 +758,8 @@ class ACMFormat:
         authors_str = match.group('authors')
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
+        if not citation.authors:
+            return None
 
         # Extract chapter title
         title = match.group('title').strip()
@@ -790,6 +808,8 @@ class ACMFormat:
         authors_str = match.group('authors')
         if authors_str:
             citation.authors = self._parse_authors(authors_str)
+        if not citation.authors:
+            return None
 
         # Extract title (remove quotes and trailing period)
         title = match.group('title').strip()

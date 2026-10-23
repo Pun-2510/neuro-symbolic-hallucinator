@@ -62,3 +62,31 @@ def test_no_false_positive_on_plain_text() -> None:
     citations = CitationExtractor().extract_from_document(doc)
     # Should be empty (no DOI, no APA, no numeric brackets)
     assert len(citations) == 0 or all(c.citation_type.value == "unknown" for c in citations)
+
+
+def test_line_wrapped_numeric_intext_preserved() -> None:
+    """Regression (thesis.pdf p20, p21, p27): [N] wrapped to line start before comma/period/lowercase verb."""
+    text = (
+        "In the bibliographic domain it has a long history\n"
+        "[9], and the key insight is shared by Sadasivan and colleagues\n"
+        "[14] show that detectors can be evaded, see also\n"
+        "[23].\n"
+        "[9] Fellegi, I. P., & Sunter, A. B. (1969). A theory for record linkage."
+    )
+    doc = _make_doc(text)
+    citations = CitationExtractor(preserve_occurrences=True).extract_from_document(doc)
+    raws = [c.raw_text for c in citations]
+    assert raws.count("[9]") == 1
+    assert "[14]" in raws
+    assert "[23]" in raws
+
+
+def test_math_intervals_and_placeholder_authors_ignored() -> None:
+    """Regression (thesis.pdf p40, p52, p53): [0, 1], [0, 100], and (Author et al., 2020) ignored."""
+    text = (
+        "Each verdict carries a confidence in [0, 1] and a score in [0, 100]. "
+        "Examples include (Author et al., 2020) and Author (2020)."
+    )
+    doc = _make_doc(text)
+    citations = CitationExtractor(preserve_occurrences=True).extract_from_document(doc)
+    assert citations == []

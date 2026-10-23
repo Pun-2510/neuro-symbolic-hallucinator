@@ -64,25 +64,36 @@ _SEASON_NAMES = ["Spring", "Summer", "Fall", "Autumn", "Winter"]
 _SEASON_NAMES_LOWER = [s.lower() for s in _SEASON_NAMES]
 
 
-def _is_reference_list_marker(text: str, match_start: int) -> bool:
+def _is_reference_list_marker(
+    text: str, match_start: int, match_end: int | None = None
+) -> bool:
     """Check if the [N] match is a reference list marker (not an in-text citation).
 
     Reference list entries look like: "[4] Xiao, Y., ..." or "    [4] Xiao, Y., ..."
-    In-text citations look like: "According to [4], ..."
+    In-text citations look like: "According to [4], ..." or wrapped "\n[9], and ..."
 
     Returns True if this appears to be a reference list marker.
     """
-    # If [N] is at the start of text (position 0), likely ref marker
+    is_line_start = False
     if match_start == 0:
-        return True
+        is_line_start = True
+    else:
+        prefix = text[:match_start]
+        if prefix.isspace() or re.search(r"\n\s*$", prefix):
+            is_line_start = True
 
-    # Check the full prefix - if it's all whitespace (including newlines), it's a ref marker
-    # This handles cases like "    [4]" (indented) or "\n[4]"
-    prefix = text[:match_start]
-    if prefix.isspace() or re.search(r"\n\s*$", prefix):
-        return True
+    if not is_line_start:
+        return False
 
-    return False
+    # Even if [N] is at the start of a line (due to PDF line wrapping), check what follows:
+    # An in-text citation wrapped to the start of a line is followed by punctuation
+    # (",", ".", ";", ":", ")") or a lowercase word (e.g. "\n[9], and", "\n[14] show", "\n[23].").
+    if match_end is not None and match_end < len(text):
+        suffix = text[match_end:]
+        if re.match(r"^\s*[,.;:)\]]", suffix) or re.match(r"^\s+[a-z]", suffix):
+            return False
+
+    return True
 
 
 def _is_in_test_scenario_context(text: str, match_start: int) -> bool:
@@ -117,6 +128,10 @@ def _is_in_test_scenario_context(text: str, match_start: int) -> bool:
 
     # Check if preceded by "In-text:" or "Reference:" in the same line
     if re.search(r'(?:In-text|Reference)\s*:', line_prefix, re.IGNORECASE):
+        return True
+
+    # Check if in a syntax template table (e.g. Table 4.2 showing "Author, A. (2020)" / "A. Author, 'Title'")
+    if re.search(r"\bAuthor,\s*A\.|\bA\.\s*Author\b|\bIn-text\s+marker\s+form\b", context):
         return True
 
     return False
@@ -332,13 +347,17 @@ class CitationExtractor:
                     continue
                 seen_spans.add(span_key)
 
-                # Bug fix 1: Filter out IEEE [N] reference list markers and array/year brackets ([0], [2020])
+                # Bug fix 1: Filter out IEEE [N] reference list markers and array/year/interval brackets ([0], [0, 1], [2020])
                 # "[4] Xiao, Y., ..." at start of line is a reference list entry, not in-text citation
                 if citation_type == CitationType.NUMERIC or raw.startswith("["):
-                    if re.fullmatch(r"\[\s*(?:0|(?:19|20)\d{2})\s*\]", raw):
+                    if re.fullmatch(r"\[\s*(?:0|(?:19|20)\d{2})\s*\]", raw) or re.match(r"^\[\s*0\b", raw):
                         continue
-                    if _is_reference_list_marker(raw_text, raw_start):
+                    if _is_reference_list_marker(raw_text, raw_start, m.end()):
                         continue
+
+                # Filter out template placeholder citations like "(Author et al., 2020)", "Author (2020)"
+                if re.match(r"^\(?\s*authors?\b", raw, re.IGNORECASE):
+                    continue
 
                 # Bug fix 2: Filter out essay titles being extracted as citations
                 # Titles like "Deep Learning for Natural Language Processing: A Comprehensive Survey..."
@@ -356,7 +375,7 @@ class CitationExtractor:
                 if _is_date_only_citation(raw):
                     continue
                 if citation_type == CitationType.IN_TEXT and raw.startswith("("):
-                    if not re.search(r"\b(?:19|20)\d{2}[a-z]?\b", raw):
+                    if style != CitationStyle.MLA and not re.search(r"\b(?:19|20)\d{2}[a-z]?\b", raw):
                         continue
                     inner_head = raw[1:].split(",")[0].strip()
                     if not inner_head or not any(ch.isupper() for ch in inner_head) or inner_head[0].isdigit() or inner_head[0].islower():
