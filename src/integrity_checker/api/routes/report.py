@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 from integrity_checker.api.deps import get_db, get_current_user
 from integrity_checker.api.progress import get_tracker
 from integrity_checker.config import get_settings
+from integrity_checker.db.models import User
 from integrity_checker.db.repository import Repository
 from integrity_checker.export.docx_exporter import export_report_to_docx
 from integrity_checker.pipeline.integrity_pipeline import _serialize_citation_link
@@ -38,7 +39,7 @@ router = APIRouter()
 async def get_report(
     essay_id: int,
     format: str = "json",
-    authorization: str | None = Header(None),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """Export report theo format: json | csv | pdf."""
@@ -47,9 +48,8 @@ async def get_report(
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
 
-    # SECURITY: Ownership / teacher class check
-    current_user = get_current_user(authorization, db) if authorization else None
-    if current_user and not repo.can_user_access_essay(current_user, essay):
+    # SECURITY: Mandatory ownership / teacher class check
+    if not repo.can_user_access_essay(current_user, essay):
         raise HTTPException(status_code=403, detail="Access denied")
 
     # If the pipeline is still running, return 425 so the frontend knows to keep polling.

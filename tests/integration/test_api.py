@@ -76,3 +76,23 @@ def test_upload_rejects_non_pdf() -> None:
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 400
+
+
+def test_report_and_verdicts_require_authentication() -> None:
+    """GET /api/essays/{id}/report và /verdicts bắt buộc có Authorization header."""
+    from integrity_checker.api.main import app
+    from integrity_checker.db.repository import Repository
+
+    session = get_session()
+    repo = Repository(session)
+    essay = repo.create_essay_with_user("protected.pdf", 2, None)
+    session.commit()
+    essay_id = essay.id
+    session.close()
+
+    client = TestClient(app)
+    resp_report = client.get(f"/api/essays/{essay_id}/report")
+    assert resp_report.status_code in (401, 422)
+
+    resp_verdicts = client.get(f"/api/essays/{essay_id}/verdicts")
+    assert resp_verdicts.status_code in (401, 422)

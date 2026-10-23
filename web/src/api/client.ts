@@ -675,6 +675,30 @@ export const api = {
   downloadReport: (id: number, format: 'json' | 'csv' | 'pdf' | 'docx' = 'json') =>
     `${BASE_URL}/essays/${id}/report?format=${format}`,
 
+  downloadReportFile: async (
+    id: number,
+    format: 'json' | 'csv' | 'pdf' | 'docx' = 'json',
+    baseFilename?: string,
+  ): Promise<void> => {
+    const token = localStorage.getItem('token');
+    const resp = await fetch(`${BASE_URL}/essays/${id}/report?format=${format}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!resp.ok) {
+      throw new Error(`API ${resp.status}: ${await resp.text()}`);
+    }
+    const blob = await resp.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const cleanName = (baseFilename || `essay_${id}`).replace(/\.[^/.]+$/, '');
+    link.href = url;
+    link.download = `${cleanName}_report.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+
   overrideVerdict: (id: number, body: OverrideRequest) =>
     request<Verdict>(`/essays/${id}/verdicts/${body.verdict_id}/override`, {
       method: 'POST',

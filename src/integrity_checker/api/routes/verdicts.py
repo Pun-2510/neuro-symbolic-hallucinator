@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from integrity_checker.api.deps import get_db, get_current_user
-from integrity_checker.db.models import ClassMembership
+from integrity_checker.db.models import ClassMembership, User
 from integrity_checker.db.repository import Repository
 from integrity_checker.models.api_schemas import VerdictSchema
 
@@ -27,7 +27,7 @@ class OverrideRequest(BaseModel):
 @router.get("/{essay_id}/verdicts")
 async def get_verdicts(
     essay_id: int,
-    authorization: str | None = Header(None),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[VerdictSchema]:
     repo = Repository(db)
@@ -35,9 +35,8 @@ async def get_verdicts(
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
 
-    # SECURITY: Ownership / teacher class check
-    current_user = get_current_user(authorization, db) if authorization else None
-    if current_user and not repo.can_user_access_essay(current_user, essay):
+    # SECURITY: Mandatory ownership / teacher class check
+    if not repo.can_user_access_essay(current_user, essay):
         raise HTTPException(status_code=403, detail="Access denied")
 
     records = repo.get_verdicts(essay_id)

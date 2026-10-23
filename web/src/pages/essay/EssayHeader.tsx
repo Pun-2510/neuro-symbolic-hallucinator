@@ -30,6 +30,14 @@ export function EssayHeader({
   const { isUser } = useRole();
   const lang = i18n.language?.startsWith('vi') ? 'vi' : 'en';
 
+  const handleDownload = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    fmt: 'json' | 'csv' | 'pdf' | 'docx',
+  ) => {
+    e.preventDefault();
+    void api.downloadReportFile(essayId, fmt, filename);
+  };
+
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-xs">
       <div className="flex items-start justify-between flex-wrap gap-4">
@@ -93,6 +101,7 @@ export function EssayHeader({
                 <Button asChild variant="outline" size="sm" className="h-8 font-mono text-xs rounded-xl">
                   <a
                     href={api.downloadReport(essayId, 'json')}
+                    onClick={(e) => handleDownload(e, 'json')}
                     download
                     aria-label={`Download ${filename} as JSON`}
                   >
@@ -103,6 +112,7 @@ export function EssayHeader({
                 <Button asChild variant="outline" size="sm" className="h-8 font-mono text-xs rounded-xl">
                   <a
                     href={api.downloadReport(essayId, 'csv')}
+                    onClick={(e) => handleDownload(e, 'csv')}
                     download
                     aria-label={`Download ${filename} as CSV`}
                   >
@@ -115,6 +125,7 @@ export function EssayHeader({
             <Button asChild size="sm" className="h-8 font-mono text-xs rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white">
               <a
                 href={api.downloadReport(essayId, 'pdf')}
+                onClick={(e) => handleDownload(e, 'pdf')}
                 download
                 aria-label={`Download ${filename} as PDF`}
               >
@@ -125,6 +136,7 @@ export function EssayHeader({
             <Button asChild variant="outline" size="sm" className="h-8 font-mono text-xs rounded-xl">
               <a
                 href={api.downloadReport(essayId, 'docx')}
+                onClick={(e) => handleDownload(e, 'docx')}
                 download
                 aria-label={`Download ${filename} as DOCX`}
               >
