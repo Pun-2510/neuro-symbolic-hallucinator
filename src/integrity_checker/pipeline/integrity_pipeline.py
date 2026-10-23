@@ -628,9 +628,16 @@ class IntegrityPipeline:
             citations_found=len(all_citations),
             message=f"Querying academic databases for {len(unique_list)} unique papers...",
         )
-        # FIX v1.7: Only retrieve for verifiable citations (references, not in-text)
+        # FIX v1.7: Only retrieve for verifiable citations (references, not in-text).
+        # Limit concurrent paper retrievals to avoid HTTP 429 bursts on scholarly APIs.
+        retrieval_sem = asyncio.Semaphore(4)
+
+        async def _bounded_retrieve(cit: Citation) -> SourceResult:
+            async with retrieval_sem:
+                return await self.orchestrator.retrieve(cit)
+
         unique_sources = await asyncio.gather(
-            *(self.orchestrator.retrieve(c) for c in unique_list),
+            *(_bounded_retrieve(c) for c in unique_list),
             return_exceptions=False,
         )
         # FIX v1.7: source_by_key maps verifiable keys → sources

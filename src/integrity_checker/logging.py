@@ -5,6 +5,7 @@ Dùng `loguru` để có log format đẹp + level + rotation. Mọi module impo
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,25 @@ from typing import Any
 from loguru import logger as _loguru
 
 from integrity_checker.config import get_settings
+
+
+class InterceptHandler(logging.Handler):
+    """Route stdlib logging records (e.g. from extraction/linking/matching) to loguru."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            level: str | int = _loguru.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        frame, depth = logging.currentframe(), 2
+        while frame and frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        _loguru.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
 
 
 def configure_logging() -> None:
@@ -44,6 +64,12 @@ def configure_logging() -> None:
         retention="7 days",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} — {message}",
     )
+
+    # Route stdlib integrity_checker.* loggers into loguru
+    pkg_logger = logging.getLogger("integrity_checker")
+    pkg_logger.handlers = [InterceptHandler()]
+    pkg_logger.setLevel(getattr(logging, level, logging.INFO))
+    pkg_logger.propagate = False
 
 
 # Module-level logger (đã configure ở entry-point)
