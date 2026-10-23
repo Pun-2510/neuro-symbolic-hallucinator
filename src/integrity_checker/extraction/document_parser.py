@@ -527,6 +527,15 @@ class DocumentParser:
                 target.title_normalized = donor.title_normalized
             if donor.numeric_index is not None:
                 target.numeric_index = donor.numeric_index
+            if donor.style and donor.style.value != "unknown":
+                target.style = donor.style
+            if donor.matched_pattern and not target.matched_pattern:
+                target.matched_pattern = donor.matched_pattern
+            if donor.raw_text and re.match(r"^\s*\[\s*\d+\s*\]", donor.raw_text):
+                if not re.match(r"^\s*\[\s*\d+\s*\]", target.raw_text or ""):
+                    idx_label = donor.numeric_index or target.numeric_index
+                    if idx_label is not None:
+                        target.raw_text = f"[{idx_label}] {target.raw_text}"
             if donor.raw_text:
                 arxiv_m = re.search(
                     r"\barXiv\s*:\s*\d{4}\.\d{4,5}(?:v\d+)?\b",

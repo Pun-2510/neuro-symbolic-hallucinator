@@ -197,6 +197,16 @@ class StyleDetector:
 
         # Bib signals (dùng Citation.style đã được ReferenceListParser set, hoặc registry nếu có)
         for c in bib_citations:
+            # Skip synthetic GROBID bibliography entries that were not enriched by
+            # regex reference patterns when body citations are present, because
+            # GROBID hardcodes style=CitationStyle.APA on all TEI bib entries.
+            if (
+                body_citations
+                and getattr(c, "source", None) == "grobid"
+                and not c.matched_pattern
+            ):
+                continue
+
             f.bib_total_entries += 1
 
             # Use Citation.style if already set, otherwise try registry
@@ -206,7 +216,12 @@ class StyleDetector:
                 if detected_style:
                     style = detected_style
 
-            if style in {CitationStyle.APA, CitationStyle.HARVARD, CitationStyle.MLA}:
+            # If a bibliography entry is explicitly bracket-numbered "[1] ...",
+            # it participates in numeric [N] linking (IEEE-like) even if its
+            # internal fields put (Year) after the author.
+            if re.match(r"^\s*\[\s*\d+\s*\]", c.raw_text or ""):
+                f.bib_ieee_style += 1
+            elif style in {CitationStyle.APA, CitationStyle.HARVARD, CitationStyle.MLA}:
                 f.bib_apa_style += 1
             elif style in {
                 CitationStyle.IEEE,

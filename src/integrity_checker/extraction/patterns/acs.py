@@ -157,19 +157,19 @@ _ACS_BOOK_CHAPTER = CompiledPattern.create(
     name="acs_book_chapter",
     pattern=(
         _ACS_PREFIX
-        + r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|;|and\b))"
-        + r"(?P<chapter_title>[^.]+?)\.\s+"
+        + r"(?P<authors>[A-ZÀ-Ý][^\n]{2,120}?)\.\s+(?!(?:[A-ZÀ-Ý]\.|;|and\b))"
+        + r"(?P<chapter_title>[^.]{3,200}?)\.\s+"
         + r"In\s+"
         + r"(?P<book_title>[^;]+?)(?:;\s*|,\s*)"
         + r"(?:(?P<editor>[^;]+),\s*(?:Eds?\.?|eds?\.?))?"
         + r"(?:;\s*(?P<publisher>[^:;]+?))?"
         + r"(?::\s*(?P<place>[^,;]+?))?"
-        + r"(?:,\s*(?P<year>(?:19|20)\d{2}))?"
+        + r",\s*(?P<year>(?:19|20)\d{2})\b"
         + r"(?:;\s*pp?\.\s*(?P<pages>[\d–-]+))?"
         + r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
-    description="ACS book chapter: (N) Authors. Chapter. In Book; Editor, Ed.; Publisher.",
+    description="ACS book chapter: (N) Authors. Chapter. In Book; Editor, Ed.; Publisher, Year.",
 )
 
 # ACS tech report:

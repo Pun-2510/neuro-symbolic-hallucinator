@@ -774,8 +774,10 @@ class ReferenceListParser:
                     and (not has_year or len((citation.title or "").strip()) < 8)
                 ):
                     continue
-                # Accept if: has title, OR (has year AND is IEEE with [N] prefix)
-                if has_title or (has_year and has_numeric_index):
+                # Accept if: (has title AND (has year OR doi OR url)), OR (has year AND has numeric_index)
+                if (has_title and (has_year or citation.doi or citation.url)) or (
+                    has_year and has_numeric_index
+                ):
                     # Set common fields
                     citation.page_num = page_num
                     citation.order_index = order_index
