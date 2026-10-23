@@ -283,22 +283,10 @@ def get_essay_status(
     """
     repo = Repository(db)
     essay = repo.get_essay(essay_id)
-    persisted_pdf = _get_persisted_upload_path(essay_id)
     if not essay:
-        if not is_test_runtime() and persisted_pdf.is_file():
-            from integrity_checker.db.models import EssayRecord
+        raise HTTPException(status_code=404, detail="Essay not found")
 
-            essay = EssayRecord(
-                id=essay_id,
-                filename=f"uploaded_{essay_id}.pdf",
-                num_pages=0,
-                user_id=current_user.id,
-            )
-            db.add(essay)
-            db.commit()
-            db.refresh(essay)
-        else:
-            raise HTTPException(status_code=404, detail="Essay not found")
+    persisted_pdf = _get_persisted_upload_path(essay_id)
 
     if not repo.can_user_access_essay(current_user, essay):
         raise HTTPException(status_code=403, detail="Access denied")

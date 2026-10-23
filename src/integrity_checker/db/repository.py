@@ -728,18 +728,40 @@ class Repository:
 
     def get_cache_stats(self) -> dict:
         total = self.session.query(CitationCache).count()
-        by_source = {}
-        for src in ["crossref", "openalex", "semantic_scholar", "arxiv"]:
+        by_source: dict[str, int] = {}
+        for src in ["crossref", "openalex", "semantic_scholar", "arxiv", "core"]:
             count = self.session.query(CitationCache).filter(CitationCache.source == src).count()
             by_source[src] = count
         total_hits = sum(
             (e.hit_count or 0) for e in self.session.query(CitationCache).all()
         )
+
+        local_papers_count = 0
+        local_queries_count = 0
+        local_hit_rate_percent = 0.0
+        try:
+            from integrity_checker.database import LocalDatabase
+
+            local_stats = LocalDatabase().get_stats()
+            local_papers_count = int(local_stats.get("total_papers", 0) or 0)
+            local_queries_count = int(local_stats.get("total_queries", 0) or 0)
+            local_hit_rate_percent = float(local_stats.get("hit_rate_percent", 0.0) or 0.0)
+            for src, count in (local_stats.get("source_counts") or {}).items():
+                key = str(src or "unknown")
+                by_source[key] = by_source.get(key, 0) + int(count or 0)
+        except Exception:
+            pass
+
+        combined_total = total + local_papers_count
+        combined_hits = total_hits + local_queries_count
         return {
-            "total": total,
+            "total": combined_total,
             "by_source": by_source,
-            "total_hits": total_hits,
-            "avg_hit_count": total_hits / total if total > 0 else 0,
+            "total_hits": combined_hits,
+            "avg_hit_count": round(combined_hits / combined_total, 2) if combined_total > 0 else 0.0,
+            "local_papers_count": local_papers_count,
+            "local_queries_count": local_queries_count,
+            "local_hit_rate_percent": local_hit_rate_percent,
         }
 
     def clear_cache(self) -> int:

@@ -23,6 +23,9 @@ class CacheStatsResponse(BaseModel):
     by_source: dict
     total_hits: int
     avg_hit_count: float
+    local_papers_count: int = 0
+    local_queries_count: int = 0
+    local_hit_rate_percent: float = 0.0
 
 
 class CacheClearResponse(BaseModel):
