@@ -109,6 +109,19 @@ class TestBibliographyHeader:
         )
         assert biblio.start_page == 2
 
+    def test_lowercase_singular_reference_in_table_ignored(self):
+        """Regression (thesis.pdf p57): wrapped 'reference' word in table cell is not a header."""
+        doc = _doc(
+            "Chapter 1",
+            "44\nTable 5.1: Implementation status\nSubsystem\nExtraction\nregex\nreference\nparser",
+            "55\nREFERENCES\n[1] Lopez, P. (2009). GROBID.",
+        )
+        sections = SectionSegmenter().segment(doc)
+        biblio = next(
+            s for s in sections if s.section_type == SectionType.BIBLIOGRAPHY
+        )
+        assert biblio.start_page == 3
+
 
 class TestAppendixHeader:
     def test_appendix_after_bibliography(self):
@@ -124,6 +137,18 @@ class TestAppendixHeader:
         assert SectionType.APPENDIX in types
         appendix = next(s for s in sections if s.section_type == SectionType.APPENDIX)
         assert appendix.start_page == 3
+
+    def test_appendix_prose_reference_ignored(self):
+        """Regression (thesis.pdf p64): wrapped 'Appendix C, chance-corrected...' is prose, not header."""
+        doc = _doc(
+            "Body",
+            "References\n[1] Lopez, P. (2009). GROBID.",
+            "51\nFollowing\nAppendix C, chance-corrected inter-annotator agreement will be computed",
+            "58\nAPPENDIX\nAppendix A. Runtime Configuration",
+        )
+        sections = SectionSegmenter().segment(doc)
+        appendix = next(s for s in sections if s.section_type == SectionType.APPENDIX)
+        assert appendix.start_page == 4
 
     def test_appendix_vietnamese(self):
         doc = _doc(

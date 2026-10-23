@@ -68,8 +68,8 @@ class SectionType(str, Enum):
 # Pattern ở ĐẦU dòng (line-start), case-insensitive, cho phép số + whitespace trước.
 
 _BIBLIOGRAPHY_HEADERS = re.compile(
-    r"^\s*(?:\d+\.?\s+)?(?:"
-    r"references?|bibliography|works?\s+cited|"
+    r"^\s*(?:(?:\d+|I{1,3}|IV|V|VI{0,3}|IX|X)\.?\s+)?(?:"
+    r"references|reference\s+list|bibliography|works?\s+cited|literature\s+cited|"
     r"danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?|tài\s+liệu\s+tham\s+khảo|"
     r"参考文献|参考文献$"
     r")\s*[:.]?\s*$",
@@ -77,7 +77,11 @@ _BIBLIOGRAPHY_HEADERS = re.compile(
 )
 
 _APPENDIX_HEADERS = re.compile(
-    r"^\s*(?:\d+\.?\s+)?(?:appendix|phụ\s+lục|annex|附件)\b",
+    r"^\s*(?:(?:\d+|I{1,3}|IV|V|VI{0,3}|IX|X)\.?\s+)?(?:"
+    r"(?:appendix|appendices|phụ\s+lục|annex)"
+    r"(?:\s+for\b[^,;]*|\s+[A-Z0-9]{1,3}(?:\s*[:.\-—–]\s*[^,;]{1,80})?|\s*[:.\-—–]\s*[^,;]{1,80})?|"
+    r"附件.*"
+    r")\s*$",
     re.IGNORECASE,
 )
 
@@ -197,16 +201,26 @@ class SectionSegmenter:
         appendix_start = 0
 
         # ── Pass 1: explicit header ──────────────────────────────────────────
-        for page in doc.pages:
-            if biblio_start == 0 and self._page_has_bibliography_header(page):
-                biblio_start = page.page_num
-                logger.debug("Bibliography starts at page %d (header)", page.page_num)
-                continue
+        bib_candidates = [
+            page.page_num
+            for page in doc.pages
+            if self._page_has_bibliography_header(page)
+        ]
+        if bib_candidates:
+            # In long documents (>= 15 pages), ignore early TOC/front-matter false hits
+            if doc.num_pages >= 15 and len(bib_candidates) > 1:
+                later = [p for p in bib_candidates if p > doc.num_pages * 0.35]
+                biblio_start = later[-1] if later else bib_candidates[-1]
+            else:
+                biblio_start = bib_candidates[0]
+            logger.debug("Bibliography starts at page %d (header)", biblio_start)
 
-            if biblio_start > 0 and appendix_start == 0 and self._page_has_appendix_header(page):
-                appendix_start = page.page_num
-                logger.debug("Appendix starts at page %d", page.page_num)
-                break
+        if biblio_start > 0:
+            for page in doc.pages:
+                if page.page_num > biblio_start and self._page_has_appendix_header(page):
+                    appendix_start = page.page_num
+                    logger.debug("Appendix starts at page %d", page.page_num)
+                    break
 
         # ── Pass 2: implicit bibliography (no header found) ────────────────────
         if biblio_start == 0 and doc.num_pages >= 2:
@@ -319,7 +333,10 @@ class SectionSegmenter:
         # many PDFs put a running header + page number (plus blank lines) above
         # the "References" heading, pushing it past the 5th line.
         for line in page.text.splitlines()[:15]:
-            if _BIBLIOGRAPHY_HEADERS.match(line):
+            stripped = line.strip()
+            if not stripped or stripped.islower():
+                continue
+            if _BIBLIOGRAPHY_HEADERS.match(stripped):
                 return True
         return False
 
@@ -327,7 +344,10 @@ class SectionSegmenter:
     def _page_has_appendix_header(page: Page) -> bool:
         """True nếu page có dòng khớp appendix header."""
         for line in page.text.splitlines()[:15]:
-            if _APPENDIX_HEADERS.match(line):
+            stripped = line.strip()
+            if not stripped or stripped.islower():
+                continue
+            if _APPENDIX_HEADERS.match(stripped):
                 return True
         return False
 
