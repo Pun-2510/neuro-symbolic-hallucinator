@@ -6,11 +6,23 @@ import {
   Upload,
   FileText,
   AlertTriangle,
-  CheckCircle,
+  CheckCircle2,
   BookOpen,
+  ShieldCheck,
+  Sparkles,
+  Globe,
+  HelpCircle,
+  ChevronRight,
+  Gauge,
+  FileSearch,
+  Database,
+  BarChart3,
+  Download,
+  Clock,
+  XCircle,
 } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface HelpModalProps {
   isOpen: boolean;
@@ -41,7 +53,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
   const sections = [
     { id: 'overview', label: t('help.overview'), icon: BookOpen },
     { id: 'getting-started', label: t('help.gettingStarted'), icon: Upload },
-    { id: 'verdicts', label: t('help.understandingVerdicts'), icon: AlertTriangle },
+    { id: 'verdicts', label: t('help.understandingVerdicts'), icon: ShieldCheck },
     { id: 'keyboard', label: t('help.keyboardShortcuts'), icon: Keyboard },
   ];
 
@@ -52,227 +64,400 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
     { keys: ['Ctrl', 'D'], description: t('help.shortcutDark') },
   ];
 
+  const workflowIcons = [Upload, FileSearch, Database, BarChart3, Download];
+  const gettingStartedIcons = [Upload, Clock, CheckCircle2, Download];
+
+  const verdictItems = [
+    {
+      code: 'VERIFIED',
+      badge: t('verdict.verified'),
+      badgeVariant: 'verified' as const,
+      desc: t('verdict.verifiedDesc'),
+      icon: CheckCircle2,
+      accentBar: 'bg-emerald-500',
+      iconBox:
+        'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20',
+    },
+    {
+      code: 'METADATA_ERROR',
+      badge: t('verdict.metadataError'),
+      badgeVariant: 'metadata_error' as const,
+      desc: t('verdict.metadataErrorDesc'),
+      icon: AlertTriangle,
+      accentBar: 'bg-amber-500',
+      iconBox:
+        'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20',
+    },
+    {
+      code: 'SUSPECTED_HALLUCINATION',
+      badge: t('verdict.likelyHallucinated'),
+      badgeVariant: 'hallucination' as const,
+      desc: t('verdict.suspectedHallucinationDesc'),
+      icon: XCircle,
+      accentBar: 'bg-rose-500',
+      iconBox:
+        'bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/20',
+    },
+    {
+      code: 'UNRESOLVED',
+      badge: t('verdict.unresolved'),
+      badgeVariant: 'muted' as const,
+      desc: t('verdict.unresolvedDesc'),
+      icon: HelpCircle,
+      accentBar: 'bg-slate-400 dark:bg-slate-500',
+      iconBox:
+        'bg-slate-500/10 text-slate-600 dark:text-slate-300 ring-1 ring-slate-500/20',
+    },
+    {
+      code: 'RESOURCE',
+      badge: t('verdict.resource'),
+      badgeVariant: 'default' as const,
+      desc: t('verdict.resourceDesc'),
+      icon: Globe,
+      accentBar: 'bg-indigo-500',
+      iconBox:
+        'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-500/20',
+    },
+  ];
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label={t('help.title')}
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs animate-fade-in"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex animate-scale-in">
-        {/* Sidebar */}
-        <div className="w-64 shrink-0 bg-slate-50/90 dark:bg-slate-800/70 border-r border-slate-200 dark:border-slate-700 p-4">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display font-semibold text-slate-900 dark:text-white">
-              {t('help.title')}
-            </h2>
+      {/* Modal Container */}
+      <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xl w-full max-w-4xl h-[620px] max-h-[86vh] overflow-hidden flex flex-col animate-scale-in">
+        {/* Full-Width Executive Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/90 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-indigo-600/10 dark:bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-2xs">
+              <BookOpen className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-base font-semibold text-slate-900 dark:text-white tracking-tight">
+                  {t('help.title')}
+                </h2>
+                <span className="inline-flex items-center rounded-md bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-600/20">
+                  SourceLogic Docs
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {t('nav.academicVerification')} · {t('nav.footerSystem')}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 mr-1">
+              <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[11px] font-mono text-slate-600 dark:text-slate-300 shadow-2xs">
+                Ctrl
+              </kbd>
+              <span>+</span>
+              <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[11px] font-mono text-slate-600 dark:text-slate-300 shadow-2xs">
+                /
+              </kbd>
+            </div>
             <button
               onClick={onClose}
               aria-label="Close"
-              className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
             >
-              <X className="h-4 w-4 text-slate-500" />
+              <X className="h-4 w-4" />
             </button>
           </div>
-
-          <nav className="space-y-1">
-            {sections.map((section) => {
-              const Icon = section.icon;
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left whitespace-nowrap transition-colors ${
-                    activeSection === section.id
-                      ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-semibold'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/70'
-                  }`}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span>{section.label}</span>
-                </button>
-              );
-            })}
-          </nav>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {activeSection === 'overview' && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">
-                  {t('help.welcomeTitle')}
-                </h3>
-                <p className="text-slate-600 dark:text-slate-400">
-                  {t('help.welcomeDesc')}
-                </p>
-              </div>
-
-              <Alert variant="info">
-                <AlertTriangle className="h-5 w-5" />
-                <AlertTitle>{t('help.decisionSupportTitle')}</AlertTitle>
-                <AlertDescription>{t('help.decisionSupportDesc')}</AlertDescription>
-              </Alert>
-
-              <div>
-                <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
-                  {t('help.howItWorksTitle')}
-                </h4>
-                <ol className="space-y-2 text-slate-600 dark:text-slate-400 list-decimal list-inside">
-                  <li>{t('help.step1')}</li>
-                  <li>{t('help.step2')}</li>
-                  <li>{t('help.step3')}</li>
-                  <li>{t('help.step4')}</li>
-                  <li>{t('help.step5')}</li>
-                </ol>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'getting-started' && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                {t('help.gettingStarted')}
-              </h3>
-
-              <div className="space-y-3">
-                {[1, 2, 3, 4].map((num) => (
-                  <Card
-                    key={num}
-                    className="flex items-start gap-4 p-4 bg-slate-50/70 dark:bg-slate-800/50"
+        {/* Split Body */}
+        <div className="flex flex-1 min-h-0 overflow-hidden flex-col md:flex-row">
+          {/* Sidebar Navigation */}
+          <div className="w-full md:w-64 shrink-0 bg-slate-50/60 dark:bg-slate-900/50 border-b md:border-b-0 md:border-r border-slate-200/80 dark:border-slate-800 p-3 flex flex-col justify-between">
+            <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible">
+              {sections.map((section) => {
+                const Icon = section.icon;
+                const isActive = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id)}
+                    aria-label={section.label}
+                    className={`group w-full flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left whitespace-nowrap transition-all ${
+                      isActive
+                        ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold shadow-xs ring-1 ring-slate-200/90 dark:ring-slate-700'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/50'
+                    }`}
                   >
-                    <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 text-white rounded-full text-sm font-bold shrink-0">
-                      {num}
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-slate-900 dark:text-white">
-                        {t(`help.gs${num}Title`)}
+                    <span className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-2xs'
+                            : 'bg-slate-200/70 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300'
+                        }`}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="truncate">{section.label}</span>
+                    </span>
+                    <ChevronRight
+                      className={`hidden md:block h-3.5 w-3.5 shrink-0 transition-transform ${
+                        isActive
+                          ? 'text-indigo-600 dark:text-indigo-400 translate-x-0.5'
+                          : 'text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100'
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Sidebar Bottom Engine Card */}
+            <div className="hidden md:block rounded-xl bg-slate-100/80 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 p-3.5">
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  Neuro-Symbolic Engine
+                </span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                Crossref · OpenAlex · Semantic Scholar · CORE
+              </p>
+            </div>
+          </div>
+
+          {/* Scrollable Content Pane */}
+          <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-slate-950/30">
+            {activeSection === 'overview' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-display font-semibold text-slate-900 dark:text-white tracking-tight">
+                    {t('help.welcomeTitle')}
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                    {t('help.welcomeDesc')}
+                  </p>
+                </div>
+
+                {/* Executive Decision Support Banner */}
+                <div className="rounded-xl border border-indigo-200/80 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/25 p-4 flex items-start gap-3.5">
+                  <div className="h-8 w-8 rounded-lg bg-indigo-600/10 dark:bg-indigo-500/20 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5">
+                    <ShieldCheck className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {t('help.decisionSupportTitle')}
+                    </h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      {t('help.decisionSupportDesc')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* How It Works Pipeline */}
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+                    {t('help.howItWorksTitle')}
+                  </h4>
+                  <div className="space-y-2.5">
+                    {[1, 2, 3, 4, 5].map((step) => {
+                      const StepIcon = workflowIcons[step - 1] || FileText;
+                      return (
+                        <div
+                          key={step}
+                          className="flex items-center gap-3.5 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50"
+                        >
+                          <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-400 shrink-0 shadow-2xs">
+                            0{step}
+                          </div>
+                          <StepIcon className="h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0" />
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                            {t(`help.step${step}`)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'getting-started' && (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-lg font-display font-semibold text-slate-900 dark:text-white tracking-tight">
+                    {t('help.gettingStarted')}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {t('upload.subtitle')}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {[1, 2, 3, 4].map((num) => {
+                    const StepIcon = gettingStartedIcons[num - 1] || FileText;
+                    return (
+                      <div
+                        key={num}
+                        className="group relative flex flex-col justify-between p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900/70 shadow-2xs hover:border-indigo-300 dark:hover:border-indigo-800/80 transition-all"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60">
+                              STEP 0{num}
+                            </span>
+                            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
+                              <StepIcon className="h-4 w-4" />
+                            </div>
+                          </div>
+                          <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+                            {t(`help.gs${num}Title`)}
+                          </h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                            {t(`help.gs${num}Desc`)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'verdicts' && (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-lg font-display font-semibold text-slate-900 dark:text-white tracking-tight">
+                    {t('help.understandingVerdicts')}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {t('essay.cisSubtitle')}
+                  </p>
+                </div>
+
+                {/* Structured Executive Verdict Cards */}
+                <div className="space-y-2.5">
+                  {verdictItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div
+                        key={item.code}
+                        className="flex items-start gap-3.5 p-3.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                      >
+                        <div
+                          className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${item.iconBox}`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                            <Badge variant={item.badgeVariant} className="text-[11px]">
+                              {item.badge}
+                            </Badge>
+                            <h4 className="font-mono text-[11px] font-medium px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700">
+                              {item.code}
+                            </h4>
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                            {item.desc}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* CIS Score Breakdown Card */}
+                <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-4">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-indigo-600/10 dark:bg-indigo-500/15 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                        <Gauge className="h-4 w-4" />
+                      </div>
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+                        {t('help.cisTitle')}
                       </h4>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                        {t(`help.gs${num}Desc`)}
-                      </p>
                     </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'verdicts' && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                {t('help.understandingVerdicts')}
-              </h3>
-
-              <div className="space-y-3.5">
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                    <h4 className="font-mono font-semibold text-emerald-900 dark:text-emerald-300">
-                      VERIFIED
-                    </h4>
+                    <span className="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800/60">
+                      0 – 100%
+                    </span>
                   </div>
-                  <p className="text-sm text-emerald-700 dark:text-emerald-400">
-                    {t('verdict.verifiedDesc')}
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+                    {t('help.cisDesc')}
                   </p>
-                </div>
-
-                <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                    <h4 className="font-mono font-semibold text-amber-900 dark:text-amber-300">
-                      METADATA_ERROR
-                    </h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-lg bg-white dark:bg-slate-900 p-2.5 border border-slate-200/80 dark:border-slate-800">
+                      <div className="flex items-center justify-between text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
+                        <span>80–100%</span>
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      </div>
+                      <div className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                        {t('essay.cisExcellent')}
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-white dark:bg-slate-900 p-2.5 border border-slate-200/80 dark:border-slate-800">
+                      <div className="flex items-center justify-between text-[11px] font-mono font-semibold text-amber-600 dark:text-amber-400 mb-1">
+                        <span>50–79%</span>
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      </div>
+                      <div className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                        {t('essay.cisFair')}
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-white dark:bg-slate-900 p-2.5 border border-slate-200/80 dark:border-slate-800">
+                      <div className="flex items-center justify-between text-[11px] font-mono font-semibold text-rose-600 dark:text-rose-400 mb-1">
+                        <span>0–49%</span>
+                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                      </div>
+                      <div className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                        {t('essay.cisCritical')}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-amber-700 dark:text-amber-400">
-                    {t('verdict.metadataErrorDesc')}
-                  </p>
-                </div>
-
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                    <h4 className="font-mono font-semibold text-red-900 dark:text-red-300">
-                      SUSPECTED_HALLUCINATION
-                    </h4>
-                  </div>
-                  <p className="text-sm text-red-700 dark:text-red-400">
-                    {t('verdict.suspectedHallucinationDesc')}
-                  </p>
-                </div>
-
-                <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-300 dark:border-slate-700">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <FileText className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                    <h4 className="font-mono font-semibold text-slate-900 dark:text-slate-300">
-                      UNRESOLVED
-                    </h4>
-                  </div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    {t('verdict.unresolvedDesc')}
-                  </p>
-                </div>
-
-                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                    <h4 className="font-mono font-semibold text-purple-900 dark:text-purple-300">
-                      RESOURCE
-                    </h4>
-                  </div>
-                  <p className="text-sm text-purple-700 dark:text-purple-400">
-                    {t('verdict.resourceDesc')}
-                  </p>
                 </div>
               </div>
+            )}
 
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 mt-6 border border-slate-200 dark:border-slate-700">
-                <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
-                  {t('help.cisTitle')}
-                </h4>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  {t('help.cisDesc')}
-                </p>
-              </div>
-            </div>
-          )}
+            {activeSection === 'keyboard' && (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-lg font-display font-semibold text-slate-900 dark:text-white tracking-tight">
+                    {t('help.keyboardShortcuts')}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {t('help.shortcutsIntro')}
+                  </p>
+                </div>
 
-          {activeSection === 'keyboard' && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                {t('help.keyboardShortcuts')}
-              </h3>
-
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                  {t('help.shortcutsIntro')}
-                </p>
-
-                <div className="space-y-3">
+                <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900/70 divide-y divide-slate-200/70 dark:divide-slate-800 overflow-hidden shadow-2xs">
                   {shortcuts.map((shortcut, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between py-1"
+                      className="flex items-center justify-between px-4 py-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
                     >
-                      <span className="text-sm text-slate-700 dark:text-slate-300">
-                        {shortcut.description}
-                      </span>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-3">
+                        <div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                          <Keyboard className="h-3.5 w-3.5" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                          {shortcut.description}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
                         {shortcut.keys.map((key, keyIndex) => (
-                          <span key={keyIndex}>
-                            <kbd className="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-xs font-mono text-slate-700 dark:text-slate-200 shadow-sm">
+                          <span key={keyIndex} className="inline-flex items-center gap-1.5">
+                            <kbd className="px-2.5 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 border-b-2 rounded-md text-xs font-mono font-semibold text-slate-700 dark:text-slate-200 shadow-2xs">
                               {key}
                             </kbd>
                             {keyIndex < shortcut.keys.length - 1 && (
-                              <span className="text-slate-400 mx-1">+</span>
+                              <span className="text-xs text-slate-400 font-medium">+</span>
                             )}
                           </span>
                         ))}
@@ -281,8 +466,19 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                   ))}
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/80 shrink-0">
+          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <ShieldCheck className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>{t('auth.footerNote')}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs">
+            {t('common.close')}
+          </Button>
         </div>
       </div>
     </div>
