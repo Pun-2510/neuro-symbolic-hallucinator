@@ -77,6 +77,14 @@ def analyze_consensus(source: SourceResult) -> ConsensusBreakdown:
         if c.source_name not in fingerprint_groups[fp]:
             fingerprint_groups[fp].append(c.source_name)
 
+    # When RetrievalOrchestrator deduplicated agreeing candidates into a single
+    # fingerprint while recording multiple sources_succeeded, preserve those sources.
+    if len(fingerprint_groups) == 1 and source.sources_succeeded:
+        only_fp = next(iter(fingerprint_groups))
+        for src_name in source.sources_succeeded:
+            if src_name not in fingerprint_groups[only_fp]:
+                fingerprint_groups[only_fp].append(src_name)
+
     # Strongest consensus: fingerprint with most distinct sources
     strongest: tuple[int, str] = (0, "")
     for fp, sources in fingerprint_groups.items():

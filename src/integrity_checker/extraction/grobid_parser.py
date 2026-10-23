@@ -253,8 +253,9 @@ def compute_sha256_hash(text: str) -> str:
 def _extract_header(header: ET.Element) -> dict:
     """Trích title + DOI + journal từ teiHeader/fileDesc."""
     result: dict = {}
-    # Note: Using `or` pattern for fallback - this is intentional for GROBID XML parsing
-    title_el = header.find(f".//{_TEI}title[@level='a']") or header.find(f".//{_TEI}title")
+    title_el = header.find(f".//{_TEI}title[@level='a']")
+    if title_el is None:
+        title_el = header.find(f".//{_TEI}title")
     if title_el is not None:
         result["title"] = "".join(title_el.itertext()).strip()
 

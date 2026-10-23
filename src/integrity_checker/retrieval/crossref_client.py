@@ -215,10 +215,13 @@ class CrossrefClient(BaseScholarClient):
                 if last:
                     parts.append(last)
             elif isinstance(first_author, str):
-                # Plain string - extract last name
-                author_str = first_author.replace(',', ' ').split()
+                # Plain string - extract surname (handle "Surname, F." and "First Surname")
+                if "," in first_author:
+                    author_str = first_author.split(",")[0].strip().split()
+                else:
+                    author_str = first_author.strip().split()
                 if author_str:
-                    parts.append(author_str[-1])  # Last name is usually last
+                    parts.append(author_str[-1])
         if citation.year:
             parts.append(citation.year)
         return " ".join(parts) if parts else ""

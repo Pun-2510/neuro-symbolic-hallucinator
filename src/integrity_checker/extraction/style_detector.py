@@ -38,10 +38,11 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # Optional import for patterns registry
 try:
-    from .patterns import get_format
+    from .patterns import get_all_formats, get_format
     REGISTRY_AVAILABLE = True
 except ImportError:
     REGISTRY_AVAILABLE = False
+    get_all_formats = None
     get_format = None
 
 logger = logging.getLogger(__name__)
@@ -122,18 +123,22 @@ class StyleDetector:
 
     def _detect_style_from_registry(self, text: str) -> Optional[CitationStyle]:
         """Detect citation style using patterns registry (if available)."""
-        if not REGISTRY_AVAILABLE or get_format is None:
+        if not REGISTRY_AVAILABLE or get_all_formats is None:
             return None
         try:
-            style_name = get_format(text)
-            if style_name:
-                style_map = {
-                    "apa": CitationStyle.APA,
-                    "ieee": CitationStyle.IEEE,
-                    "vancouver": CitationStyle.VANCOUVER,
-                    "chicago": CitationStyle.CHICAGO,
-                }
-                return style_map.get(style_name.lower())
+            style_map = {
+                "apa": CitationStyle.APA,
+                "ieee": CitationStyle.IEEE,
+                "vancouver": CitationStyle.VANCOUVER,
+                "chicago": CitationStyle.CHICAGO,
+            }
+            for fmt in get_all_formats():
+                mapped = style_map.get(fmt.name.lower())
+                if mapped is None:
+                    continue
+                for pat in fmt.reference_patterns:
+                    if pat.regex.search(text):
+                        return mapped
         except Exception:
             pass
         return None

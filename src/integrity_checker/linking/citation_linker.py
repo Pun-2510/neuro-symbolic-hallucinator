@@ -404,8 +404,7 @@ class CitationLinker:
         best_bib_idx = None
         best_score = 0.0
 
-        for doi, bib in bib_by_doi.items():
-            bib_idx = self._find_bib_index(bib, bib_citations)
+        for bib_idx, bib in enumerate(bib_citations):
             if bib.title_normalized:
                 score = self._title_similarity(cit.title_normalized, bib.title_normalized)
                 if score > best_score:

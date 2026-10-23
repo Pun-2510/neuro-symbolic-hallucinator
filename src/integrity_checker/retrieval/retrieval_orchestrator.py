@@ -943,38 +943,25 @@ class RetrievalOrchestrator:
         Returns:
             Tuple of (is_known, paper_info) if found, (False, None) otherwise.
         """
-        # 1. Check venue-year whitelist first (for citations like "(NIPS 2017)")
-        venue, venue_year = RetrievalOrchestrator._extract_venue_from_raw(citation)
-        if venue and venue_year:
-            venue_key = (venue.lower(), str(venue_year))
-            if venue_key in _VENUE_YEAR_KNOWN:
-                known_key = _VENUE_YEAR_KNOWN[venue_key]
-                if known_key in _KNOWN_PAPERS:
-                    logger.debug(f"Venue-year match: {venue_key} → {known_key}")
-                    return True, {**_KNOWN_PAPERS[known_key], "year": str(venue_year)}
-
-        # 2. Check author-year whitelist (standard case)
+        # 1. Check author-year whitelist first (standard case)
         parsed_author = author_key(citation.authors[0]) if citation.authors else ""
         parsed_year = str(citation.year)[:4] if citation.year else ""
 
         # In-text extraction often intentionally stores only raw text.  Keep
         # the known-paper safeguard useful even before metadata enrichment.
+        raw_text = citation.raw_text or ""
         if not parsed_author or not parsed_year:
-            raw_text = citation.raw_text or ""
             # Normalize: remove line breaks, extra spaces, and parentheses
-            raw_text = re.sub(r'[\r\n]+', ' ', raw_text)
-            raw_text = re.sub(r'\s+', ' ', raw_text)
-            raw_text = raw_text.strip()
+            norm_raw = re.sub(r'[\r\n]+', ' ', raw_text)
+            norm_raw = re.sub(r'\s+', ' ', norm_raw).strip()
 
             # Try to extract first author (before "and", "et al.", or comma)
-            # Pattern: AuthorName (Year) or AuthorName, Year or AuthorName et al. (Year)
-            # Handle cases like "(Dolan and Brockett, 2005)" or "Dolan and Brockett, 2005"
             match = re.search(
                 r"[\(\s]*([A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÿ'-]+)"  # First author (after optional parenthesis/space)
                 r"(?:\s+(?:and|et\s+al\.?))?"     # Optional "and X" or "et al."
                 r"(?:\s+[^,]+)?"                   # Skip middle names if present
                 r".*?\(?((?:19|20)\d{2})[a-z]?\)?",  # Year
-                raw_text,
+                norm_raw,
                 flags=re.IGNORECASE | re.DOTALL,
             )
             if match:
@@ -986,7 +973,7 @@ class RetrievalOrchestrator:
                     r"\b([A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÿ'-]+)"
                     r"(?:\s+et\s+al\.?)?\s*"
                     r"(?:\(|,\s*|\s+)?((?:19|20)\d{2})[a-z]?\b",
-                    raw_text,
+                    norm_raw,
                     flags=re.IGNORECASE,
                 )
                 if match:
@@ -997,6 +984,36 @@ class RetrievalOrchestrator:
 
         if key and key in _KNOWN_PAPERS:
             return True, {**_KNOWN_PAPERS[key], "year": parsed_year}
+
+        # 2. Check venue-year whitelist ONLY when there is no conflicting author/title
+        venue, venue_year = RetrievalOrchestrator._extract_venue_from_raw(citation)
+        if venue and venue_year:
+            venue_key = (venue.lower(), str(venue_year))
+            if venue_key in _VENUE_YEAR_KNOWN:
+                known_key = _VENUE_YEAR_KNOWN[venue_key]
+                if known_key in _KNOWN_PAPERS:
+                    known_info = _KNOWN_PAPERS[known_key]
+                    expected_author = known_key[0].lower()
+                    known_title = (known_info.get("title") or "").lower()
+                    raw_lower = raw_text.lower()
+                    cit_title_lower = (citation.title or "").lower()
+
+                    # If an explicit author was parsed (that isn't the venue name itself)
+                    # and doesn't match the known paper's first author, do NOT force-match.
+                    has_conflicting_author = (
+                        bool(parsed_author)
+                        and parsed_author != venue.lower()
+                        and parsed_author != expected_author
+                        and expected_author not in raw_lower
+                    )
+                    has_conflicting_title = (
+                        bool(cit_title_lower)
+                        and known_title[:15] not in cit_title_lower
+                        and cit_title_lower[:15] not in known_title
+                    )
+                    if not has_conflicting_author and not has_conflicting_title:
+                        logger.debug(f"Venue-year match: {venue_key} → {known_key}")
+                        return True, {**known_info, "year": str(venue_year)}
 
         return False, None
 
@@ -1072,8 +1089,8 @@ class RetrievalOrchestrator:
             (r'\bKDD\s+(\d{4})\b', 'kdd'),
 
             # Nature / Science
-            (r'\bNature\b', 'nature'),
-            (r'\bScience\b', 'science'),
+            (r'\bNature[\s,]+(\d{4})\b', 'nature'),
+            (r'\bScience[\s,]+(\d{4})\b', 'science'),
 
             # Other common ML/AI venues
             (r'\bAISTATS\s+(\d{4})\b', 'aistats'),
