@@ -38,10 +38,16 @@ from integrity_checker.models.validation import CitationLink, MappingMethod
 
 logger = logging.getLogger(__name__)
 
-# Regex cho in-text APA pattern: (Author, Year) / (Author A và Author B, Year) / (Author, Year, tr. 15)
+# Regex cho in-text APA / Harvard / Chicago / CSE pattern:
+# (Author, Year) / (Author Year) / (Author A và Author B, Year) / (Author, Year, tr. 15) / (Author 2020, 25) / (Author, 2020: 25)
 _APA_YEAR_RE = re.compile(
-    r"\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'.\s,&\-]*),\s*((?:19|20)\d{2}[a-z]?)"
-    r"(?:\s*,\s*(?:pp?\.?|tr\.?|trang)\s*\d+(?:\s*[-–]\s*\d+)?)?\)"
+    r"\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'.\s,&\-]*?)(?:,\s*|\s+)((?:19|20)\d{2}[a-z]?)"
+    r"(?:\s*[,:]\s*(?:pp?\.?|tr\.?|trang)?\s*\d+(?:\s*[-–]\s*\d+)?)?\)"
+)
+# Regex cho MLA in-text author-page: (Smith 25), (Smith and Doe 42), (Smith et al. 105), (Smith, p. 25), (" Smith (p. 25) ")
+_MLA_AUTHOR_PAGE_RE = re.compile(
+    r"^\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'.\s,&\-]*?)(?:,\s*pp?\.?\s*|\s+)(?!(?:19|20)\d{2}\b)\d{1,4}(?:[-–]\d{1,4})?\)$"
+    r"|^([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'.\s,&\-]*?)\s+\(pp?\.?\s*\d{1,4}(?:[-–]\d{1,4})?\)$"
 )
 # Regex cho Author et al. / và cộng sự (Year) format (no parens around author)
 _APA_ETAL_YEAR_RE = re.compile(
@@ -159,23 +165,52 @@ class CitationLinker:
                             if (bib.reference_id or f"ref-{idx:04d}") == link.reference_id:
                                 bib_matched.add(idx)
                                 break
+                cit.mapping_status = (
+                    links[0].status.value
+                    if hasattr(links[0].status, "value")
+                    else str(links[0].status)
+                )
+                cit.mapping_confidence = links[0].confidence
+                cit.citation_link = links[0]
+                cit.citation_links = list(links)
             else:
                 # No match → MISSING_REFERENCE. Also set raw so lookups succeed.
-                result.add_link(
-                    CitationLink(
-                        occurrence_id=occ_id,
-                        reference_id=None,
-                        status=CitationMappingStatus.MISSING_REFERENCE,
-                        confidence=0.0,
-                        method=MappingMethod.NO_KEYS,
-                        evidence={"raw": cit.raw_text},
-                    )
+                missing_link = CitationLink(
+                    occurrence_id=occ_id,
+                    reference_id=None,
+                    status=CitationMappingStatus.MISSING_REFERENCE,
+                    confidence=0.0,
+                    method=MappingMethod.NO_KEYS,
+                    evidence={"raw": cit.raw_text},
                 )
+                result.add_link(missing_link)
+                cit.mapping_status = CitationMappingStatus.MISSING_REFERENCE.value
+                cit.mapping_confidence = 0.0
+                cit.citation_link = missing_link
+                cit.citation_links = [missing_link]
 
-        # Find unmatched bib entries → UNCITED_REFERENCE
+        # Find unmatched bib entries → UNCITED_REFERENCE, and populate mapping
+        # metadata on matched/unmatched bib entries.
         for i, bib in enumerate(bib_citations):
-            if i not in bib_matched:
-                result.unmatched_reference_ids.append(bib.reference_id or f"ref-{i:04d}")
+            ref_id = bib.reference_id or f"ref-{i:04d}"
+            matched_links = [
+                l
+                for l in result.links
+                if l.reference_id == ref_id
+                and getattr(l.status, "value", l.status) == "matched"
+            ]
+            if i in bib_matched and matched_links:
+                bib.mapping_status = CitationMappingStatus.MATCHED.value
+                bib.mapping_confidence = max(l.confidence for l in matched_links)
+                bib.citation_link = matched_links[0]
+                bib.citation_links = list(matched_links)
+            else:
+                result.unmatched_reference_ids.append(ref_id)
+                if body_citations:
+                    bib.mapping_status = CitationMappingStatus.UNCITED_REFERENCE.value
+                    bib.mapping_confidence = 1.0
+                    bib.citation_link = None
+                    bib.citation_links = []
 
         return result
 
@@ -359,6 +394,25 @@ class CitationLinker:
             org = self._try_org_author(cit, occ_id, author, year, bib_citations)
             if org is not None:
                 return _one(org)
+
+        # 3c. MLA Author-Page linking: "(Smith 25)", "(Smith and Doe 42)", "(Smith et al. 105)"
+        if cit.citation_type == CitationType.IN_TEXT and not year:
+            mla_m = _MLA_AUTHOR_PAGE_RE.match(cit.raw_text.strip())
+            if mla_m:
+                raw_mla_author = (mla_m.group(1) or mla_m.group(2) or "").strip()
+                norm_mla_author = self._clean_intext_author(raw_mla_author).lower().strip()
+                if norm_mla_author:
+                    for bib in bib_citations:
+                        if not bib.authors:
+                            continue
+                        first_last = self._normalize_last_name(bib.authors[0]).lower().strip()
+                        short_last = first_last.split()[-1] if " " in first_last else first_last
+                        if norm_mla_author in (first_last, short_last):
+                            return _bib_link(
+                                bib,
+                                self.author_year_confidence,
+                                MappingMethod.AUTHOR_YEAR,
+                            )
 
         # 4. FUZZY — title similarity (if bib entries have title_normalized)
         best = self._try_fuzzy(cit, occ_id, bib_by_doi, bib_citations)
@@ -609,17 +663,29 @@ class CitationLinker:
         return None
 
     def _extract_numeric_indices(self, text: str) -> list[int]:
-        """Trích numeric indices từ IEEE-style [N] hoặc [N, M] hoặc [N-M]."""
+        """Trích numeric indices từ [N], [N, M], [N-M], hoặc superscript ^N, ^N-M."""
         m = _IEEE_NUM_RE.search(text)
-        if not m:
+        raw_spec = m.group(1) if m else None
+        if raw_spec is None:
+            sup_m = re.search(r"\^(\d+(?:\s*[-–,]\s*\d+)*)", text)
+            if sup_m:
+                raw_spec = sup_m.group(1)
+        if not raw_spec:
             return []
-        parts = re.split(r"[\s,\-–]+", m.group(1))
-        indices = []
-        for p in parts:
-            try:
-                indices.append(int(p.strip()))
-            except ValueError:
-                pass
+        indices: list[int] = []
+        for token in re.split(r"\s*,\s*", raw_spec.strip()):
+            range_m = re.match(r"^(\d+)\s*[-–]\s*(\d+)$", token.strip())
+            if range_m:
+                start, end = int(range_m.group(1)), int(range_m.group(2))
+                if start <= end and (end - start) <= 50:
+                    indices.extend(range(start, end + 1))
+                else:
+                    indices.extend([start, end])
+            else:
+                try:
+                    indices.append(int(token.strip()))
+                except ValueError:
+                    pass
         return indices
 
     def _clean_intext_author(self, raw_author: str) -> str:

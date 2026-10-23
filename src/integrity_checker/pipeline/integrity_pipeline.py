@@ -540,7 +540,7 @@ class IntegrityPipeline:
         ]
         academic_references = [
             citation for citation in ref_citations
-            if citation.citation_type not in {CitationType.URL, CitationType.REFERENCE_LIST}
+            if citation.citation_type != CitationType.URL
         ]
         style_profile = self._detect_style(academic_in_text, academic_references)
         style_profile_dict = self._serialize_style_profile(style_profile)
@@ -678,24 +678,48 @@ class IntegrityPipeline:
             # NEW v1.2 §3.2.2 (task #33) — compute mapping_status TRƯỚC rules
             # để SymbolicRules có input cho AMBIGUOUS_MAPPING rule.
             if citation.citation_type.value == "reference_list":
-                # Do not treat every bibliography entry as a verified mapping.
-                # A reference-list entry has no in-text edge by itself; only an
-                # exact DOI match provides strong mapping evidence here.
-                best = source.best_candidate()
-                if best and best.doi and citation.doi and best.doi.lower() == citation.doi.lower():
+                # First honour the bidirectional CitationLinker mapping if this
+                # reference entry was linked (or flagged uncited) against in-text
+                # occurrences. Fall back to DOI check only when no in-text
+                # citations were present in the document.
+                ref_links = [
+                    l
+                    for l in linking_result.links
+                    if citation.reference_id
+                    and l.reference_id == citation.reference_id
+                    and getattr(l.status, "value", l.status) == "matched"
+                ]
+                if ref_links:
                     mapping_status = CitationMappingStatus.MATCHED
-                    mapping_confidence = 0.95
+                    mapping_confidence = max(l.confidence for l in ref_links)
+                    citation_link = ref_links[0]
+                    citation_links_verdict: list = list(ref_links)
+                elif (
+                    in_text_citations
+                    and citation.reference_id
+                    and citation.reference_id in (linking_result.unmatched_reference_ids or [])
+                ):
+                    mapping_status = CitationMappingStatus.UNCITED_REFERENCE
+                    mapping_confidence = 1.0
+                    citation_link = None
+                    citation_links_verdict = []
                 else:
-                    mapping_status = CitationMappingStatus.UNRESOLVED
-                    mapping_confidence = 0.5
-                citation_link = None
-                # v1.7 — reference entries are matched by definition, so they
-                # carry no in-text link edges. Still initialise the name here:
-                # this branch falls through to ``verdict.citation_links =
-                # citation_links_verdict`` below, and the old code only bound
-                # it in the ``else`` branch → UnboundLocalError for every
-                # reference-list verdict (all 11 pipeline tests).
-                citation_links_verdict: list = []
+                    # Do not treat every bibliography entry as a verified mapping
+                    # when there are no in-text citations; only an exact DOI match
+                    # provides strong mapping evidence here.
+                    best = source.best_candidate()
+                    if best and best.doi and citation.doi and best.doi.lower() == citation.doi.lower():
+                        mapping_status = CitationMappingStatus.MATCHED
+                        mapping_confidence = 0.95
+                    else:
+                        mapping_status = CitationMappingStatus.UNRESOLVED
+                        mapping_confidence = 0.5
+                    citation_link = None
+                    citation_links_verdict = []
+                citation.mapping_status = mapping_status.value
+                citation.mapping_confidence = mapping_confidence
+                citation.citation_link = citation_link
+                citation.citation_links = list(citation_links_verdict)
             else:
                 citation_links_verdict = []
                 # Normalize the raw_text to handle newlines/whitespace variations

@@ -508,3 +508,19 @@ class TestTeiLink:
         assert all(l.status == CitationMappingStatus.MATCHED for l in result.links)
         assert all(l.method == MappingMethod.TEI_LINK for l in result.links)
 
+    def test_bib_citations_populate_mapping_status(self):
+        """Matched and uncited bibliography entries get mapping_status populated."""
+        bibs = [
+            cit("[1] Vaswani et al. (2017).", CitationType.REFERENCE_LIST, num_idx=1, ref_id="ref-0001"),
+            cit("[2] Devlin et al. (2019).", CitationType.REFERENCE_LIST, num_idx=2, ref_id="ref-0002"),
+        ]
+        body = [cit("[1]", CitationType.NUMERIC, ref_id="occ-0001")]
+        result = CitationLinker().link(body, bibs)
+
+        assert bibs[0].mapping_status == "matched"
+        assert bibs[0].mapping_confidence == 0.90
+        assert len(bibs[0].citation_links) == 1
+        assert bibs[1].mapping_status == "uncited_reference"
+        assert result.unmatched_reference_ids == ["ref-0002"]
+
+
