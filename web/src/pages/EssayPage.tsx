@@ -644,7 +644,9 @@ function enrichVerdictItem(
   // Find corresponding in-text Citation entry for page number & manuscript context
   const matchedInText = extractedCitations.find(
     (c) =>
-      c.citation_link?.reference_id === refId ||
+      (refId &&
+        (c.citation_link?.reference_id === refId ||
+          c.citation_links?.some((l) => l.reference_id === refId))) ||
       c.raw_text.trim() === verdict.citation_raw.trim() ||
       (matchedRef?.authors?.[0] &&
         c.raw_text.toLowerCase().includes(matchedRef.authors[0].split(',')[0].toLowerCase()))

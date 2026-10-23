@@ -439,9 +439,13 @@ test.describe('Essay Page - Citation Graph View', () => {
 
     await page.waitForTimeout(2000);
 
-    const citationsTabBtn = page.getByRole('button', { name: /citations/i }).first();
-    await expect(citationsTabBtn).toBeVisible();
-    await citationsTabBtn.click();
+    const verifiedFilterBtn = page.getByRole('button', { name: /verified/i }).first();
+    await expect(verifiedFilterBtn).toBeVisible();
+    await verifiedFilterBtn.click();
+    await expect(page.getByText(/lecun/i).first()).toBeVisible();
+
+    const allFilterBtn = page.getByRole('button', { name: /^all/i }).first();
+    await allFilterBtn.click();
     await expect(page.getByText(/lecun/i).first()).toBeVisible();
   });
 });

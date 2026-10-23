@@ -225,14 +225,14 @@ export function MyClassesPage() {
                         className="font-mono font-normal text-xs bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700"
                       >
                         <Users className="inline h-3 w-3 mr-1 text-emerald-500" />
-                        {c.student_count} SV
+                        {c.student_count} {lang === 'vi' ? 'SV' : t('teacher.students').toLowerCase()}
                       </Badge>
                       <Badge
                         variant="secondary"
                         className="font-mono font-normal text-xs bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700"
                       >
                         <FileCheck className="inline h-3 w-3 mr-1 text-indigo-500" />
-                        {c.essay_count} bài
+                        {c.essay_count} {lang === 'vi' ? 'bài' : t('teacher.submissions').toLowerCase()}
                       </Badge>
                     </div>
                   </div>

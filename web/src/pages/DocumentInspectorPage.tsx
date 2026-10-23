@@ -81,22 +81,66 @@ function ContextWithHighlight({
 function buildInlineCitations(
   verdicts: Verdict[],
   extractedCitations?: Citation[],
+  references?: Citation[],
 ): InlineCitation[] {
   const pageByRaw = new Map<string, number>();
   for (const c of extractedCitations ?? []) {
-    if (c.raw_text && c.page_num && c.page_num > 0 && !pageByRaw.has(c.raw_text)) {
-      pageByRaw.set(c.raw_text, c.page_num);
+    if (c.raw_text && c.page_num && c.page_num > 0 && !pageByRaw.has(c.raw_text.trim())) {
+      pageByRaw.set(c.raw_text.trim(), c.page_num);
     }
   }
-  return verdicts.map((v) => ({
-    id: v.citation_id,
-    raw: v.citation_raw,
-    label: isUrlResource(v) ? 'resource' : v.label,
-    mapping_status: v.mapping_status,
-    page: pageByRaw.get(v.citation_raw) ?? 1,
-    line: v.citation_raw,
-    context: v.context,
-  }));
+  const refs = references ?? [];
+  const inTextList = extractedCitations ?? [];
+
+  return verdicts.map((v) => {
+    const refId =
+      v.citation_link?.reference_id ?? v.citation_links?.[0]?.reference_id;
+    let matchedRef: Citation | undefined;
+    if (refId) {
+      const idxNum = parseInt(refId.replace(/^ref-/, ''), 10);
+      if (!Number.isNaN(idxNum) && idxNum >= 1 && idxNum <= refs.length) {
+        matchedRef = refs[idxNum - 1];
+      }
+    }
+    if (!matchedRef) {
+      matchedRef = refs.find(
+        (r) =>
+          r.raw_text.trim() === v.citation_raw.trim() ||
+          (r.title &&
+            v.citation_raw.toLowerCase().includes(r.title.toLowerCase().slice(0, 35))),
+      );
+    }
+
+    const matchedInText = inTextList.find(
+      (c) =>
+        (refId &&
+          (c.citation_link?.reference_id === refId ||
+            c.citation_links?.some((l) => l.reference_id === refId))) ||
+        c.raw_text.trim() === v.citation_raw.trim() ||
+        (v.context && c.context && c.context.trim() === v.context.trim()) ||
+        (matchedRef?.authors?.[0] &&
+          c.raw_text
+            .toLowerCase()
+            .includes(matchedRef.authors[0].split(',')[0].toLowerCase())),
+    );
+
+    const resolvedPage =
+      pageByRaw.get(v.citation_raw.trim()) ||
+      matchedInText?.page_num ||
+      matchedRef?.cited_on_pages?.[0] ||
+      matchedRef?.page_num ||
+      1;
+
+    return {
+      id: v.citation_id,
+      raw: v.citation_raw,
+      label: isUrlResource(v) ? 'resource' : v.label,
+      mapping_status: v.mapping_status,
+      page: resolvedPage,
+      line: v.citation_raw,
+      context: v.context || matchedInText?.context || undefined,
+    };
+  });
 }
 
 function getInlineStatusBadge(label: string): {
@@ -364,7 +408,11 @@ export function DocumentInspectorPage() {
   );
 
   const inlineCitations = report
-    ? buildInlineCitations(report.verdicts, report.extracted_citations)
+    ? buildInlineCitations(
+        report.verdicts,
+        report.extracted_citations,
+        report.references,
+      )
     : [];
 
   const filteredCitations =
