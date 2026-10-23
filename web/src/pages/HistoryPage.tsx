@@ -13,6 +13,8 @@ import {
   ChevronRight,
   AlertTriangle,
   CheckCircle2,
+  Archive,
+  Layers,
 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
@@ -21,10 +23,12 @@ import { useEssays, useDeleteEssay } from '@/hooks/useEssays';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 /* ============================================================
-   SourceLogic — History Page Component (shadcn/ui v2.0)
+   SourceLogic — History Page Component (Scholarly Precision v2.0)
    ============================================================ */
 
 export function HistoryPage() {
@@ -41,6 +45,8 @@ export function HistoryPage() {
   const deleteMutation = useDeleteEssay();
   const [searchQuery, setSearchQuery] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  const lang = i18n.language?.startsWith('vi') ? 'vi' : 'en';
 
   const errorMessage = error
     ? error instanceof Error
@@ -67,17 +73,29 @@ export function HistoryPage() {
     item.filename.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const dateLocale = i18n.language?.startsWith('vi') ? 'vi-VN' : 'en-US';
+  const dateLocale = lang === 'vi' ? 'vi-VN' : 'en-US';
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
+    <div className="space-y-6 pb-10">
+      {/* Executive Header Banner */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
+              <Archive className="h-3 w-3" />
+              {lang === 'vi'
+                ? 'KHO LƯU TRỮ BÁO CÁO KIỂM CHỨNG'
+                : 'VERIFICATION REPORTS ARCHIVE'}
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200/70 dark:border-emerald-800/70 text-[11px] font-mono font-semibold text-emerald-700 dark:text-emerald-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {t('history.autoRefreshActive')}
+            </span>
+          </div>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             {t('history.title')}
           </h1>
-          <p className="text-slate-600 dark:text-slate-300 mt-1">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             {t(
               items.length === 1
                 ? 'history.documentCountOne'
@@ -86,192 +104,238 @@ export function HistoryPage() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button asChild size="sm">
+
+        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+          {(isTeacher || isAdmin) && (
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-10 rounded-xl font-medium"
+            >
+              <Link to="/batch-upload">
+                <Layers className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <span>{t('nav.batchCheck')}</span>
+              </Link>
+            </Button>
+          )}
+          <Button
+            asChild
+            size="sm"
+            className="h-10 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm shadow-indigo-600/20 btn-shimmer"
+          >
             <Link to="/upload">
               <Upload className="h-4 w-4" />
               {t('dashboard.newCheck')}
             </Link>
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
             onClick={() => refetch()}
             disabled={isFetching}
             aria-label="Refresh history"
             title={t('common.refresh')}
-            className="min-h-10 min-w-10"
+            className="h-10 w-10 rounded-xl"
           >
-            <RefreshCw className={`h-5 w-5 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search
-          className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-slate-500 pointer-events-none"
-          aria-hidden="true"
-        />
-        <Input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t('dashboard.searchPlaceholder')}
-          aria-label="Search documents"
-          className="h-11 pl-12 pr-10"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            aria-label="Clear search"
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-          >
-            <XCircle className="h-5 w-5" />
-          </button>
-        )}
-      </div>
-
       {/* Error */}
       {errorMessage && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-2xl">
           <AlertTriangle className="h-5 w-5" />
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
       )}
 
-      {/* Loading / Empty / List */}
-      {isLoading && items.length === 0 ? (
-        <Card className="p-12 flex flex-col items-center justify-center">
-          <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            {t('dashboard.loadingDocuments')}
-          </p>
-        </Card>
-      ) : filteredItems.length === 0 ? (
-        <Card className="p-12 text-center">
-          <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-slate-100 dark:bg-slate-800 mx-auto mb-5">
-            <FileText className="h-10 w-10 text-slate-400 dark:text-slate-500" />
-          </div>
-          {searchQuery ? (
-            <>
-              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                {t('dashboard.noDocumentsFound')}
-              </h3>
-              <p className="text-slate-600 dark:text-slate-300 mb-4">
-                {t('dashboard.noDocumentsMatch', { query: searchQuery })}
-              </p>
-              <Button variant="link" onClick={() => setSearchQuery('')}>
-                {t('dashboard.clearSearch')}
-              </Button>
-            </>
-          ) : (
-            <>
-              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                {t('dashboard.noDocumentsYet')}
-              </h3>
-              <p className="text-slate-600 dark:text-slate-300 mb-6">
-                {isAdmin
-                  ? t('dashboard.noDocumentsAdmin')
-                  : isTeacher
-                    ? t('dashboard.noDocumentsTeacher')
-                    : t('dashboard.noDocumentsStudent')}
-              </p>
-              {!(isTeacher || isAdmin) && (
-                <Button asChild>
-                  <Link to="/upload">
-                    <Upload className="h-4 w-4" />
-                    {t('dashboard.uploadDocument')}
-                  </Link>
-                </Button>
-              )}
-            </>
-          )}
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {filteredItems.map((essay) => (
-            <Link
-              key={essay.id}
-              to={`/verification/report/${essay.id}`}
-              className="card-interactive block p-5 group"
+      {/* IDE Window Container for Archive List */}
+      <Card className="p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        {/* Top Window Chrome */}
+        <div className="px-4 sm:px-6 py-3.5 bg-slate-50/80 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-400/80 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80 inline-block" />
+            </div>
+            <Separator orientation="vertical" className="h-4" />
+            <span className="font-mono text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              {lang === 'vi' ? 'DANH MỤC BÁO CÁO ĐÃ LƯU' : 'ARCHIVED VERIFICATION REPORTS'}
+            </span>
+            <Badge
+              variant="secondary"
+              className="font-mono text-[11px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60"
             >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950 group-hover:bg-indigo-600 transition-colors shrink-0">
-                    <FileText className="h-7 w-7 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-colors" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-slate-900 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                      {essay.filename}
-                    </p>
-                    <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300 mt-1">
-                      <span className="flex items-center gap-1.5 font-mono text-xs">
-                        <FileText className="h-3.5 w-3.5" />
-                        {essay.num_pages} {t('history.pages')}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5" />
-                        {new Date(essay.uploaded_at).toLocaleDateString(
-                          dateLocale,
-                          {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          }
-                        )}
-                      </span>
-                      <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
-                        ID #{essay.id}
-                      </span>
+              {filteredItems.length} / {items.length}
+            </Badge>
+          </div>
+
+          {/* Search Input inside Chrome Bar */}
+          <div className="relative w-full sm:w-80">
+            <Search
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 pointer-events-none"
+              aria-hidden="true"
+            />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('dashboard.searchPlaceholder')}
+              aria-label="Search documents"
+              className="h-9 pl-9 pr-8 text-xs rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Loading / Empty / List */}
+        {isLoading && items.length === 0 ? (
+          <div className="p-14 flex flex-col items-center justify-center">
+            <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
+            <p className="text-sm font-mono text-slate-600 dark:text-slate-300">
+              {t('dashboard.loadingDocuments')}
+            </p>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="p-14 text-center">
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 mx-auto mb-4">
+              <FileText className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+            </div>
+            {searchQuery ? (
+              <>
+                <h3 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100 mb-1.5">
+                  {t('dashboard.noDocumentsFound')}
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                  {t('dashboard.noDocumentsMatch', { query: searchQuery })}
+                </p>
+                <Button variant="outline" size="sm" onClick={() => setSearchQuery('')} className="rounded-xl">
+                  {t('dashboard.clearSearch')}
+                </Button>
+              </>
+            ) : (
+              <>
+                <h3 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100 mb-1.5">
+                  {t('dashboard.noDocumentsYet')}
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto">
+                  {isAdmin
+                    ? t('dashboard.noDocumentsAdmin')
+                    : isTeacher
+                      ? t('dashboard.noDocumentsTeacher')
+                      : t('dashboard.noDocumentsStudent')}
+                </p>
+                {!(isTeacher || isAdmin) && (
+                  <Button asChild className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white">
+                    <Link to="/upload">
+                      <Upload className="h-4 w-4" />
+                      {t('dashboard.uploadDocument')}
+                    </Link>
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="p-4 sm:p-5 space-y-3">
+            {filteredItems.map((essay, idx) => (
+              <Link
+                key={essay.id}
+                to={`/verification/report/${essay.id}`}
+                data-testid="essay-item"
+                className="group block p-4 sm:p-5 rounded-2xl bg-slate-50/60 dark:bg-slate-950/60 border border-slate-200/90 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-900 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all duration-200"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/90 border border-indigo-200/70 dark:border-indigo-800/70 group-hover:bg-indigo-600 group-hover:border-indigo-600 transition-colors shrink-0">
+                      <FileText className="h-6 w-6 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          #{idx + 1}
+                        </span>
+                        <p className="font-display font-bold text-base text-slate-900 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {essay.filename}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-500 dark:text-slate-400 mt-1.5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300">
+                          <FileText className="h-3 w-3 text-indigo-500" />
+                          {essay.num_pages} {t('history.pages')}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5 text-slate-400" />
+                          {new Date(essay.uploaded_at).toLocaleDateString(
+                            dateLocale,
+                            {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            }
+                          )}
+                        </span>
+                        <span>ID #{essay.id}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="hidden sm:inline-flex px-3 py-1.5 text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 group-hover:border-indigo-300 dark:group-hover:border-indigo-600 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    {t('dashboard.viewReport')}
-                  </span>
-                  <button
-                    onClickCapture={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setConfirmDeleteId(essay.id);
-                    }}
-                    disabled={deletingId === essay.id}
-                    className="p-2.5 min-h-11 min-w-11 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
-                    title={t('common.delete')}
-                    aria-label={`Delete ${essay.filename}`}
-                  >
-                    {deletingId === essay.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </button>
-                  <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold border border-indigo-200/80 dark:border-indigo-800/80 bg-indigo-50/80 dark:bg-indigo-950/80 rounded-xl text-indigo-700 dark:text-indigo-300 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-colors">
+                      {t('dashboard.viewReport')}
+                    </span>
+                    <button
+                      onClickCapture={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setConfirmDeleteId(essay.id);
+                      }}
+                      disabled={deletingId === essay.id}
+                      className="p-2.5 min-h-10 min-w-10 rounded-xl text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
+                      title={t('common.delete')}
+                      aria-label={`Delete ${essay.filename}`}
+                    >
+                      {deletingId === essay.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                    <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all" />
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+              </Link>
+            ))}
+          </div>
+        )}
 
-      {/* Stats Footer */}
-      {items.length > 0 && (
-        <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300 pt-4 border-t border-slate-200 dark:border-slate-700">
-          <p>
-            {t('dashboard.showingCount', {
-              shown: filteredItems.length,
-              total: items.length,
-            })}
-          </p>
-          <p className="flex items-center gap-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
-            {t('history.autoRefreshActive')}
-          </p>
-        </div>
-      )}
+        {/* Stats Footer */}
+        {items.length > 0 && (
+          <div className="px-5 py-3 bg-slate-50/70 dark:bg-slate-900/70 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400">
+            <p>
+              {t('dashboard.showingCount', {
+                shown: filteredItems.length,
+                total: items.length,
+              })}
+            </p>
+            <p className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {t('history.autoRefreshActive')}
+            </p>
+          </div>
+        )}
+      </Card>
 
       <ConfirmationModal
         isOpen={confirmDeleteId !== null}
