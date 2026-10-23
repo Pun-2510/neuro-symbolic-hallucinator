@@ -321,10 +321,18 @@ function parseRawCitationMeta(rawText: string): MetadataFields {
   };
 }
 
-function formatShortInText(authors: string, year: string, rawText: string): string {
+function formatShortInText(
+  authors: string,
+  year: string,
+  rawText: string,
+  authorList?: string[]
+): string {
   if (authors && authors !== '—') {
     const firstAuthor = authors.split(/,|&|\band\b/i)[0].trim();
-    const hasMore = /,|&|\band\b|\bet\s+al/i.test(authors);
+    const hasMore =
+      authorList && authorList.length > 0
+        ? authorList.length > 1 || /\bet\s+al/i.test(authors)
+        : authors.split(',').length > 2 || /&|\band\b|\bet\s+al/i.test(authors);
     const shortAuthor =
       firstAuthor.length > 28 ? firstAuthor.slice(0, 28) + '…' : firstAuthor;
     const suffix =
@@ -333,7 +341,8 @@ function formatShortInText(authors: string, year: string, rawText: string): stri
       ? `${shortAuthor}${suffix} (${year})`
       : `${shortAuthor}${suffix}`;
   }
-  return rawText.slice(0, 42);
+  const stripped = rawText.replace(/^\s*\[\d+\]\s*/, '').trim();
+  return (stripped || rawText).slice(0, 42);
 }
 
 function getVerdictBadgeVisuals(label: ValidationLabel): {
@@ -667,7 +676,8 @@ function enrichVerdictItem(
   const inTextDisplay = formatShortInText(
     citedMeta.authors,
     citedMeta.year,
-    verdict.citation_raw
+    matchedRef?.raw_text || verdict.citation_raw,
+    matchedRef?.authors
   );
 
   const pageNum =
@@ -763,6 +773,10 @@ function enrichVerdictItem(
     : null;
 
   // Compute field-by-field status
+  const hasExplicitTitleSim =
+    verdict.features?.title_sim_fuzzy !== undefined ||
+    verdict.features?.title_sim_semantic !== undefined;
+  const hasExplicitAuthorSim = verdict.features?.author_jaccard !== undefined;
   const titleSim =
     verdict.features?.title_sim_fuzzy ??
     verdict.features?.title_sim_semantic ??
@@ -779,15 +793,22 @@ function enrichVerdictItem(
       }
       return { status: 'mismatch', label: 'Diff' };
     }
-    if (titleSim >= 0.96 || matchedFieldsSet.has('title')) {
+    if (
+      titleSim >= 0.96 ||
+      (!hasExplicitTitleSim && matchedFieldsSet.has('title')) ||
+      (verdict.label === 'verified' && titleSim >= 0.85)
+    ) {
       return { status: 'match', label: '100% Match' };
     }
-    if (titleSim >= 0.65) {
+    if (titleSim >= 0.5) {
       return { status: 'partial', label: `${Math.round(titleSim * 100)}% Sim` };
     }
     return verdict.label === 'verified'
       ? { status: 'match', label: '100% Match' }
-      : { status: 'mismatch', label: 'Diff' };
+      : {
+          status: 'mismatch',
+          label: titleSim > 0 ? `${Math.round(titleSim * 100)}% Sim` : 'Diff',
+        };
   };
 
   const computeAuthorsStatus = (): { status: FieldStatus; label?: string } => {
@@ -798,13 +819,20 @@ function enrichVerdictItem(
         ? { status: 'partial', label: `${Math.round(authorSim * 100)}% Sim` }
         : { status: 'mismatch', label: 'Diff' };
     }
-    if (authorSim >= 0.95 || matchedFieldsSet.has('authors') || verdict.label === 'verified') {
+    if (
+      authorSim >= 0.95 ||
+      (!hasExplicitAuthorSim && matchedFieldsSet.has('authors')) ||
+      verdict.label === 'verified'
+    ) {
       return { status: 'match', label: '100% Match' };
     }
-    if (authorSim >= 0.5) {
+    if (authorSim >= 0.45) {
       return { status: 'partial', label: `${Math.round(authorSim * 100)}% Sim` };
     }
-    return { status: 'mismatch', label: 'Diff' };
+    return {
+      status: 'mismatch',
+      label: authorSim > 0 ? `${Math.round(authorSim * 100)}% Sim` : 'Diff',
+    };
   };
 
   const computeYearStatus = (): { status: FieldStatus; label?: string } => {
