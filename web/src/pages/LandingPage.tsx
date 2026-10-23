@@ -1823,6 +1823,17 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
    5. 4-Stage End-to-End Pipeline Section (#how-it-works)
    ============================================================ */
 function PipelineSection({ lang }: { lang: Lang }) {
+  const [activeStage, setActiveStage] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (isHovered) return;
+    const timer = window.setInterval(() => {
+      setActiveStage((prev) => (prev + 1) % 4);
+    }, 2400);
+    return () => window.clearInterval(timer);
+  }, [isHovered]);
+
   const stages =
     lang === 'vi'
       ? [
@@ -1892,58 +1903,117 @@ function PipelineSection({ lang }: { lang: Lang }) {
       className="py-16 md:py-24 bg-white dark:bg-slate-900/40 border-b border-slate-200/80 dark:border-slate-800/80"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-14">
-          <div className="inline-flex items-center gap-2 text-xs font-mono font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2.5">
-            <GitBranch className="h-4 w-4" />
-            <span>
-              {lang === 'vi' ? 'Quy trình Kiểm chứng 4 Giai đoạn' : '4-Stage Verification Pipeline'}
-            </span>
-          </div>
-          <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-4">
-            {lang === 'vi'
-              ? 'Từ bản thảo PDF đến bằng chứng học thuật minh bạch'
-              : 'From Raw PDF Manuscript to Auditable Evidence'}
-          </h2>
-          <p className="text-base text-slate-600 dark:text-slate-400">
-            {lang === 'vi'
-              ? 'Quy trình tự động hóa hoàn toàn việc bóc tách, liên kết và xác thực hàng chục trích dẫn chỉ trong vài giây.'
-              : 'An automated, end-to-end verification pipeline designed for academic rigor and complete traceability.'}
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stages.map((stage) => (
-            <div
-              key={stage.step}
-              className="relative rounded-2xl bg-slate-50/70 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-6 flex flex-col justify-between hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all group"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-indigo-600/10 dark:bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                    <stage.icon className="h-6 w-6" />
-                  </div>
-                  <span className="font-mono text-2xl font-bold text-slate-300 dark:text-slate-700">
-                    {stage.step}
-                  </span>
-                </div>
-
-                <span className="inline-block font-mono text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 mb-1.5">
-                  {stage.tech}
-                </span>
-                <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white mb-2.5">
-                  {stage.title}
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                  {stage.desc}
-                </p>
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-slate-200/70 dark:border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
-                <span>STAGE {stage.step}</span>
-                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-indigo-600 dark:text-indigo-400" />
-              </div>
+        <RevealOnScroll>
+          <div className="text-center max-w-3xl mx-auto mb-14">
+            <div className="inline-flex items-center gap-2 text-xs font-mono font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2.5">
+              <GitBranch className="h-4 w-4" />
+              <span>
+                {lang === 'vi'
+                  ? 'Quy trình Kiểm chứng 4 Giai đoạn'
+                  : '4-Stage Verification Pipeline'}
+              </span>
             </div>
-          ))}
+            <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-4">
+              {lang === 'vi'
+                ? 'Từ bản thảo PDF đến bằng chứng học thuật minh bạch'
+                : 'From Raw PDF Manuscript to Auditable Evidence'}
+            </h2>
+            <p className="text-base text-slate-600 dark:text-slate-400">
+              {lang === 'vi'
+                ? 'Quy trình tự động hóa hoàn toàn việc bóc tách, liên kết và xác thực hàng chục trích dẫn chỉ trong vài giây.'
+                : 'An automated, end-to-end verification pipeline designed for academic rigor and complete traceability.'}
+            </p>
+          </div>
+        </RevealOnScroll>
+
+        {/* Animated Horizontal Pipeline Progress Track (Desktop) */}
+        <RevealOnScroll delay={80}>
+          <div className="hidden lg:block relative mb-8 px-12">
+            <div className="h-1.5 w-full rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden relative">
+              <div
+                className="h-full bg-gradient-to-r from-indigo-600 via-violet-500 to-emerald-500 rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${((activeStage + 1) / 4) * 100}%` }}
+              />
+              <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-pipeline-beam" />
+            </div>
+          </div>
+        </RevealOnScroll>
+
+        <div
+          className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {stages.map((stage, idx) => {
+            const isActive = activeStage === idx;
+            return (
+              <RevealOnScroll key={stage.step} delay={idx * 100}>
+                <div
+                  onMouseEnter={() => setActiveStage(idx)}
+                  className={`relative h-full rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 group cursor-pointer ${
+                    isActive
+                      ? 'bg-white dark:bg-slate-900 border-2 border-indigo-500 dark:border-indigo-500 shadow-xl shadow-indigo-500/10 -translate-y-1.5'
+                      : 'bg-slate-50/70 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md hover:-translate-y-1'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-6">
+                      <div
+                        className={`w-12 h-12 rounded-xl border flex items-center justify-center transition-all duration-300 ${
+                          isActive
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/30 scale-105'
+                            : 'bg-indigo-600/10 dark:bg-indigo-500/15 border-indigo-500/20 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white'
+                        }`}
+                      >
+                        <stage.icon className="h-6 w-6" />
+                      </div>
+                      <span
+                        className={`font-mono text-2xl font-bold transition-colors ${
+                          isActive
+                            ? 'text-indigo-600 dark:text-indigo-400'
+                            : 'text-slate-300 dark:text-slate-700'
+                        }`}
+                      >
+                        {stage.step}
+                      </span>
+                    </div>
+
+                    <span className="inline-block font-mono text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 mb-1.5">
+                      {stage.tech}
+                    </span>
+                    <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white mb-2.5">
+                      {stage.title}
+                    </h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                      {stage.desc}
+                    </p>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-slate-200/70 dark:border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
+                    <span className="inline-flex items-center gap-1.5">
+                      {isActive && (
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
+                      )}
+                      <span
+                        className={
+                          isActive
+                            ? 'text-indigo-600 dark:text-indigo-400 font-semibold'
+                            : ''
+                        }
+                      >
+                        STAGE {stage.step}
+                      </span>
+                    </span>
+                    <ArrowRight
+                      className={`h-3.5 w-3.5 transition-transform text-indigo-600 dark:text-indigo-400 ${
+                        isActive ? 'translate-x-1' : 'group-hover:translate-x-1'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </RevealOnScroll>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -1958,6 +2028,7 @@ function TaxonomySection({ lang }: { lang: Lang }) {
     {
       badge: 'VERIFIED',
       badgeClass: 'verdict-badge-verified',
+      accentBar: 'bg-emerald-500',
       icon: CheckCircle2,
       iconColor: 'text-emerald-600 dark:text-emerald-400',
       rule: 'R01 · R02 · R04',
@@ -1970,6 +2041,7 @@ function TaxonomySection({ lang }: { lang: Lang }) {
     {
       badge: 'METADATA_ERROR',
       badgeClass: 'verdict-badge-metadata-error',
+      accentBar: 'bg-amber-500',
       icon: AlertTriangle,
       iconColor: 'text-amber-600 dark:text-amber-400',
       rule: 'R05 · R06 · R07',
@@ -1982,6 +2054,7 @@ function TaxonomySection({ lang }: { lang: Lang }) {
     {
       badge: 'SUSPECTED_HALLUCINATION',
       badgeClass: 'verdict-badge-hallucinated',
+      accentBar: 'bg-red-500',
       icon: Search,
       iconColor: 'text-red-600 dark:text-red-400',
       rule: 'R09 · R10 · R11',
@@ -1994,6 +2067,7 @@ function TaxonomySection({ lang }: { lang: Lang }) {
     {
       badge: 'UNRESOLVED',
       badgeClass: 'verdict-badge-unverifiable',
+      accentBar: 'bg-slate-400',
       icon: FileQuestion,
       iconColor: 'text-slate-600 dark:text-slate-400',
       rule: 'R12 · L01',
@@ -2005,7 +2079,9 @@ function TaxonomySection({ lang }: { lang: Lang }) {
     },
     {
       badge: 'RESOURCE',
-      badgeClass: 'bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800',
+      badgeClass:
+        'bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800',
+      accentBar: 'bg-violet-500',
       icon: Globe,
       iconColor: 'text-violet-600 dark:text-violet-400',
       rule: 'R-WEB · URL',
@@ -2018,6 +2094,7 @@ function TaxonomySection({ lang }: { lang: Lang }) {
     {
       badge: 'ORPHAN / MISMATCH',
       badgeClass: 'verdict-badge-source-mismatch',
+      accentBar: 'bg-orange-500',
       icon: Quote,
       iconColor: 'text-orange-600 dark:text-orange-400',
       rule: 'L01 · L02 · L03',
@@ -2035,57 +2112,65 @@ function TaxonomySection({ lang }: { lang: Lang }) {
       className="py-16 md:py-24 border-b border-slate-200/80 dark:border-slate-800/80"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-14">
-          <div className="inline-flex items-center gap-2 text-xs font-mono font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2.5">
-            <Scale className="h-4 w-4" />
-            <span>
+        <RevealOnScroll>
+          <div className="text-center max-w-3xl mx-auto mb-14">
+            <div className="inline-flex items-center gap-2 text-xs font-mono font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2.5">
+              <Scale className="h-4 w-4" />
+              <span>
+                {lang === 'vi'
+                  ? 'Hệ thống Phân loại Nhãn Kiểm chứng'
+                  : 'Explainable Verification Taxonomy'}
+              </span>
+            </div>
+            <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-4">
               {lang === 'vi'
-                ? 'Hệ thống Phân loại Nhãn Kiểm chứng'
-                : 'Explainable Verification Taxonomy'}
-            </span>
+                ? 'Phân loại rõ ràng. Ngôn ngữ học thuật chuẩn mực.'
+                : 'Nuanced Verdicts With Evidence Before Judgment'}
+            </h2>
+            <p className="text-base text-slate-600 dark:text-slate-400">
+              {lang === 'vi'
+                ? 'Thay vì kết luận cảm tính, mỗi trích dẫn được gán nhãn ngữ nghĩa chuẩn xác kèm mã luật kích hoạt.'
+                : 'Every reference is classified into a rigorous semantic taxonomy backed by triggered symbolic rule codes.'}
+            </p>
           </div>
-          <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-4">
-            {lang === 'vi'
-              ? 'Phân loại rõ ràng. Ngôn ngữ học thuật chuẩn mực.'
-              : 'Nuanced Verdicts With Evidence Before Judgment'}
-          </h2>
-          <p className="text-base text-slate-600 dark:text-slate-400">
-            {lang === 'vi'
-              ? 'Thay vì kết luận cảm tính, mỗi trích dẫn được gán nhãn ngữ nghĩa chuẩn xác kèm mã luật kích hoạt.'
-              : 'Every reference is classified into a rigorous semantic taxonomy backed by triggered symbolic rule codes.'}
-          </p>
-        </div>
+        </RevealOnScroll>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {verdicts.map((item) => (
-            <Card
-              key={item.badge}
-              className="p-6 border-slate-200/90 dark:border-slate-800 hover:shadow-md transition-shadow flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-4">
-                  <span
-                    className={`verdict-badge ${item.badgeClass} text-xs font-mono px-3 py-1`}
-                  >
-                    {item.badge}
-                  </span>
-                  <span className="font-mono text-[11px] text-slate-400">
-                    {item.rule}
-                  </span>
-                </div>
+          {verdicts.map((item, idx) => (
+            <RevealOnScroll key={item.badge} delay={idx * 70}>
+              <Card className="group relative h-full p-0 overflow-hidden border-slate-200/90 dark:border-slate-800 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 flex flex-col justify-between">
+                <div
+                  className={`h-1 w-full ${item.accentBar} opacity-75 group-hover:opacity-100 transition-opacity`}
+                />
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-4">
+                      <span
+                        className={`verdict-badge ${item.badgeClass} text-xs font-mono px-3 py-1`}
+                      >
+                        {item.badge}
+                      </span>
+                      <span className="font-mono text-[11px] text-slate-400">
+                        {item.rule}
+                      </span>
+                    </div>
 
-                <div className="flex items-center gap-2.5 mb-2">
-                  <item.icon className={`h-5 w-5 ${item.iconColor} shrink-0`} />
-                  <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                    {item.title}
-                  </h3>
-                </div>
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <item.icon
+                        className={`h-5 w-5 ${item.iconColor} shrink-0 transition-transform duration-300 group-hover:scale-110`}
+                      />
+                      <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                        {item.title}
+                      </h3>
+                    </div>
 
-                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                  {item.desc}
-                </p>
-              </div>
-            </Card>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                      {item.desc}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </RevealOnScroll>
           ))}
         </div>
       </div>
@@ -2196,86 +2281,95 @@ function RoleWorkspacesSection({ lang }: { lang: Lang }) {
       className="py-16 md:py-24 bg-white dark:bg-slate-900/40 border-b border-slate-200/80 dark:border-slate-800/80"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-          <div>
-            <div className="inline-flex items-center gap-2 text-xs font-mono font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2.5">
-              <Users className="h-4 w-4" />
-              <span>
+        <RevealOnScroll>
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 text-xs font-mono font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2.5">
+                <Users className="h-4 w-4" />
+                <span>
+                  {lang === 'vi'
+                    ? 'Kiến trúc Phân quyền 3 Vai trò (RBAC)'
+                    : 'Role-Based Workspace Architecture'}
+                </span>
+              </div>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
                 {lang === 'vi'
-                  ? 'Kiến trúc Phân quyền 3 Vai trò (RBAC)'
-                  : 'Role-Based Workspace Architecture'}
-              </span>
+                  ? 'Thiết kế chuyên biệt cho Sinh viên, Giảng viên & Quản trị'
+                  : 'Tailored Workspaces for Every Academic Role'}
+              </h2>
             </div>
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+            <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md">
               {lang === 'vi'
-                ? 'Thiết kế chuyên biệt cho Sinh viên, Giảng viên & Quản trị'
-                : 'Tailored Workspaces for Every Academic Role'}
-            </h2>
+                ? 'Giao diện tự động thích ứng theo năng lực phân quyền (Capability-Based Access Control), giữ sự tinh gọn cho sinh viên và mở khóa bộ công cụ chẩn đoán sâu cho giảng viên.'
+                : 'Capability-based access control keeps the student experience effortless while unlocking deep diagnostic and override tools for instructors and administrators.'}
+            </p>
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md">
-            {lang === 'vi'
-              ? 'Giao diện tự động thích ứng theo năng lực phân quyền (Capability-Based Access Control), giữ sự tinh gọn cho sinh viên và mở khóa bộ công cụ chẩn đoán sâu cho giảng viên.'
-              : 'Capability-based access control keeps the student experience effortless while unlocking deep diagnostic and override tools for instructors and administrators.'}
-          </p>
-        </div>
+        </RevealOnScroll>
 
-        <Tabs defaultValue="teacher" className="w-full">
-          <TabsList className="grid grid-cols-3 max-w-xl bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl h-auto mb-8">
-            <TabsTrigger value="student" className="py-2.5 text-xs sm:text-sm font-semibold">
-              {lang === 'vi' ? 'Sinh viên (Workspace)' : 'Student Workspace'}
-            </TabsTrigger>
-            <TabsTrigger value="teacher" className="py-2.5 text-xs sm:text-sm font-semibold">
-              {lang === 'vi' ? 'Giảng viên (Classroom)' : 'Teacher Classroom'}
-            </TabsTrigger>
-            <TabsTrigger value="admin" className="py-2.5 text-xs sm:text-sm font-semibold">
-              {lang === 'vi' ? 'Quản trị (Control)' : 'Admin Control'}
-            </TabsTrigger>
-          </TabsList>
+        <RevealOnScroll delay={100}>
+          <Tabs defaultValue="teacher" className="w-full">
+            <TabsList className="grid grid-cols-3 max-w-xl bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl h-auto mb-8">
+              <TabsTrigger value="student" className="py-2.5 text-xs sm:text-sm font-semibold">
+                {lang === 'vi' ? 'Sinh viên (Workspace)' : 'Student Workspace'}
+              </TabsTrigger>
+              <TabsTrigger value="teacher" className="py-2.5 text-xs sm:text-sm font-semibold">
+                {lang === 'vi' ? 'Giảng viên (Classroom)' : 'Teacher Classroom'}
+              </TabsTrigger>
+              <TabsTrigger value="admin" className="py-2.5 text-xs sm:text-sm font-semibold">
+                {lang === 'vi' ? 'Quản trị (Control)' : 'Admin Control'}
+              </TabsTrigger>
+            </TabsList>
 
-          {roles.map((r) => (
-            <TabsContent key={r.key} value={r.key}>
-              <Card className="p-6 sm:p-8 border-slate-200/90 dark:border-slate-800">
-                <div className="grid lg:grid-cols-12 gap-8 items-center">
-                  <div className="lg:col-span-5 space-y-4">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold border ${r.badgeColor}`}
-                    >
-                      <r.icon className="h-3.5 w-3.5" />
-                      {r.badge}
-                    </span>
-                    <h3 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-                      {r.title}
-                    </h3>
-                    <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                      {r.subtitle}
-                    </p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed italic border-l-2 border-indigo-500 pl-3.5">
-                      {r.philosophy}
-                    </p>
-                  </div>
-
-                  <div className="lg:col-span-7">
-                    <div className="rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 p-5 space-y-3.5">
-                      <p className="text-xs font-mono uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">
-                        {lang === 'vi' ? 'Năng lực & Công cụ Mở khóa' : 'Unlocked Capabilities & Views'}
+            {roles.map((r) => (
+              <TabsContent key={r.key} value={r.key} className="animate-debugger-switch">
+                <Card className="p-6 sm:p-8 border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="grid lg:grid-cols-12 gap-8 items-center">
+                    <div className="lg:col-span-5 space-y-4">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold border ${r.badgeColor}`}
+                      >
+                        <r.icon className="h-3.5 w-3.5" />
+                        {r.badge}
+                      </span>
+                      <h3 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+                        {r.title}
+                      </h3>
+                      <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                        {r.subtitle}
                       </p>
-                      {r.capabilities.map((cap, idx) => (
-                        <div key={idx} className="flex items-start gap-3">
-                          <div className="p-1 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0">
-                            <Check className="h-3.5 w-3.5" />
+                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed italic border-l-2 border-indigo-500 pl-3.5">
+                        {r.philosophy}
+                      </p>
+                    </div>
+
+                    <div className="lg:col-span-7">
+                      <div className="rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 p-5 space-y-3.5">
+                        <p className="text-xs font-mono uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">
+                          {lang === 'vi'
+                            ? 'Năng lực & Công cụ Mở khóa'
+                            : 'Unlocked Capabilities & Views'}
+                        </p>
+                        {r.capabilities.map((cap, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-start gap-3 p-2 rounded-lg hover:bg-white dark:hover:bg-slate-900 transition-colors"
+                          >
+                            <div className="p-1 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0">
+                              <Check className="h-3.5 w-3.5" />
+                            </div>
+                            <span className="text-sm text-slate-700 dark:text-slate-300">
+                              {cap}
+                            </span>
                           </div>
-                          <span className="text-sm text-slate-700 dark:text-slate-300">
-                            {cap}
-                          </span>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
+                </Card>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </RevealOnScroll>
       </div>
     </section>
   );
@@ -2295,93 +2389,97 @@ function CTASection({
     <section className="py-16 md:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Mandatory Academic Decision-Support Disclaimer Banner */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-400">
-                <Shield className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                    {lang === 'vi'
-                      ? 'Nguyên tắc Hỗ trợ Ra Quyết định (Decision-Support System)'
-                      : 'Decision-Support Principle & Academic Integrity'}
-                  </h3>
-                  <Badge variant="outline" className="text-[10px] font-mono">
-                    COMPLIANCE
-                  </Badge>
+        <RevealOnScroll>
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-400">
+                  <Shield className="h-5 w-5" />
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
-                  {lang === 'vi'
-                    ? 'SourceLogic cung cấp bằng chứng truy xuất từ cơ sở dữ liệu và chuỗi suy diễn luật để hỗ trợ con người rà soát. Hệ thống tuyệt đối không tự động kết luận gian lận học thuật và không chấm điểm nội dung bài viết. Quyết định cuối cùng luôn thuộc về giảng viên và hội đồng chuyên môn.'
-                    : 'SourceLogic provides verifiable bibliographic evidence and formal rule traces to assist human reviewers. It never automatically concludes academic misconduct and is not an automated essay grader. Final judgment always remains with instructors and academic committees.'}
-                </p>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                      {lang === 'vi'
+                        ? 'Nguyên tắc Hỗ trợ Ra Quyết định (Decision-Support System)'
+                        : 'Decision-Support Principle & Academic Integrity'}
+                    </h3>
+                    <Badge variant="outline" className="text-[10px] font-mono">
+                      COMPLIANCE
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
+                    {lang === 'vi'
+                      ? 'SourceLogic cung cấp bằng chứng truy xuất từ cơ sở dữ liệu và chuỗi suy diễn luật để hỗ trợ con người rà soát. Hệ thống tuyệt đối không tự động kết luận gian lận học thuật và không chấm điểm nội dung bài viết. Quyết định cuối cùng luôn thuộc về giảng viên và hội đồng chuyên môn.'
+                      : 'SourceLogic provides verifiable bibliographic evidence and formal rule traces to assist human reviewers. It never automatically concludes academic misconduct and is not an automated essay grader. Final judgment always remains with instructors and academic committees.'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </RevealOnScroll>
 
         {/* High-Contrast Dark Indigo CTA Card */}
-        <div className="relative rounded-3xl overflow-hidden bg-slate-900 dark:bg-slate-900 border border-slate-800 px-6 py-14 sm:px-12 sm:py-16 text-center shadow-2xl">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-20"
-            style={{
-              backgroundImage:
-                'radial-gradient(rgb(129 140 248 / 0.6) 1px, transparent 1px)',
-              backgroundSize: '24px 24px',
-            }}
-          />
-          <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-indigo-600/30 blur-3xl rounded-full" />
+        <RevealOnScroll delay={120}>
+          <div className="relative rounded-3xl overflow-hidden bg-slate-900 dark:bg-slate-900 border border-slate-800 px-6 py-14 sm:px-12 sm:py-16 text-center shadow-2xl">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-20"
+              style={{
+                backgroundImage:
+                  'radial-gradient(rgb(129 140 248 / 0.6) 1px, transparent 1px)',
+                backgroundSize: '24px 24px',
+              }}
+            />
+            <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-indigo-600/30 blur-3xl rounded-full animate-float-slow" />
 
-          <div className="relative max-w-2xl mx-auto">
-            <Badge className="mb-5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-mono text-xs px-3 py-1">
-              SOURCELOGIC WORKSPACE v2.0
-            </Badge>
-            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-5">
-              {lang === 'vi'
-                ? 'Sẵn sàng kiểm chứng danh mục trích dẫn của bạn?'
-                : 'Ready to Verify Your Academic Citations?'}
-            </h2>
-            <p className="text-base sm:text-lg text-slate-300 mb-8 leading-relaxed">
-              {lang === 'vi'
-                ? 'Tải lên bản thảo PDF và nhận báo cáo kiểm chứng 2 lớp kèm đối chiếu metadata chi tiết và đồ thị suy diễn Neuro-Symbolic.'
-                : 'Upload any PDF manuscript and receive a comprehensive two-layer verification report with field-level metadata diffs and symbolic rule traces.'}
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5">
-              <Button
-                asChild
-                size="lg"
-                className="w-full sm:w-auto h-12 px-8 rounded-xl text-base bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30"
-              >
-                <Link to={isAuthenticated ? '/upload' : '/login'}>
-                  <span>
-                    {isAuthenticated
-                      ? lang === 'vi'
-                        ? 'Vào Workspace Kiểm chứng'
-                        : 'Go to Verification Workspace'
-                      : lang === 'vi'
-                        ? 'Đăng nhập để Bắt đầu'
-                        : 'Sign in to Start Verification'}
-                  </span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="w-full sm:w-auto h-12 px-7 rounded-xl text-base bg-slate-800/80 hover:bg-slate-800 text-slate-100 border-slate-700"
-              >
-                <a href="#interactive-demo">
-                  <span>
-                    {lang === 'vi' ? 'Xem lại Trình gỡ lỗi' : 'Review Live Debugger'}
-                  </span>
-                </a>
-              </Button>
+            <div className="relative max-w-2xl mx-auto">
+              <Badge className="mb-5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-mono text-xs px-3 py-1">
+                SOURCELOGIC WORKSPACE v2.0
+              </Badge>
+              <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-5">
+                {lang === 'vi'
+                  ? 'Sẵn sàng kiểm chứng danh mục trích dẫn của bạn?'
+                  : 'Ready to Verify Your Academic Citations?'}
+              </h2>
+              <p className="text-base sm:text-lg text-slate-300 mb-8 leading-relaxed">
+                {lang === 'vi'
+                  ? 'Tải lên bản thảo PDF và nhận báo cáo kiểm chứng 2 lớp kèm đối chiếu metadata chi tiết và đồ thị suy diễn Neuro-Symbolic.'
+                  : 'Upload any PDF manuscript and receive a comprehensive two-layer verification report with field-level metadata diffs and symbolic rule traces.'}
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5">
+                <Button
+                  asChild
+                  size="lg"
+                  className="btn-shimmer w-full sm:w-auto h-12 px-8 rounded-xl text-base bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all hover:-translate-y-0.5"
+                >
+                  <Link to={isAuthenticated ? '/upload' : '/login'}>
+                    <span>
+                      {isAuthenticated
+                        ? lang === 'vi'
+                          ? 'Vào Workspace Kiểm chứng'
+                          : 'Go to Verification Workspace'
+                        : lang === 'vi'
+                          ? 'Đăng nhập để Bắt đầu'
+                          : 'Sign in to Start Verification'}
+                    </span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="w-full sm:w-auto h-12 px-7 rounded-xl text-base bg-slate-800/80 hover:bg-slate-800 text-slate-100 border-slate-700 transition-all hover:-translate-y-0.5"
+                >
+                  <a href="#interactive-demo">
+                    <span>
+                      {lang === 'vi' ? 'Xem lại Trình gỡ lỗi' : 'Review Live Debugger'}
+                    </span>
+                  </a>
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        </RevealOnScroll>
       </div>
     </section>
   );
