@@ -128,17 +128,21 @@ class CompiledPattern:
 
         name_lower = self.name.lower()
 
-        # Check if this is a numeric-style pattern based on name
-        # Numeric patterns match [N], [N,M], [N-M] citation formats
-        is_numeric_pattern = 'numeric' in name_lower
+        if self.pattern_type == PatternType.REFERENCE_ENTRY:
+            return CitationType.REFERENCE_LIST
+
+        # Check if this is a numeric-style in-text pattern based on name
+        # Numeric patterns match [N], [N,M], [N-M], ^N, (N) citation formats
+        is_numeric_pattern = any(
+            kw in name_lower
+            for kw in ("numeric", "bracketed", "superscript", "parenthesized")
+        )
 
         # Map PatternType to CitationType
-        if is_numeric_pattern:
+        if is_numeric_pattern and self.pattern_type == PatternType.IN_TEXT:
             return CitationType.NUMERIC
         elif self.pattern_type == PatternType.IN_TEXT:
             return CitationType.IN_TEXT
-        elif self.pattern_type == PatternType.REFERENCE_ENTRY:
-            return CitationType.REFERENCE_LIST
         elif self.pattern_type == PatternType.UTILITY:
             # For utility patterns, infer from pattern name
             if 'doi' in name_lower:
@@ -165,7 +169,23 @@ class CompiledPattern:
             return CitationStyle.IEEE
         elif 'vancouver' in name_lower:
             return CitationStyle.VANCOUVER
-        elif 'numeric' in name_lower and 'ieee' not in name_lower and 'vancouver' not in name_lower:
+        elif 'chicago' in name_lower:
+            return CitationStyle.CHICAGO
+        elif 'mla' in name_lower:
+            return CitationStyle.MLA
+        elif 'harvard' in name_lower:
+            return CitationStyle.HARVARD
+        elif 'acm' in name_lower:
+            return CitationStyle.ACM
+        elif 'nature' in name_lower:
+            return CitationStyle.NATURE
+        elif 'acs' in name_lower:
+            return CitationStyle.ACS
+        elif 'ama' in name_lower:
+            return CitationStyle.AMA
+        elif 'cse' in name_lower:
+            return CitationStyle.CSE
+        elif 'numeric' in name_lower:
             # Standalone numeric patterns could be either IEEE or Vancouver
             # Default to IEEE for bracketed, Vancouver for parenthesized
             if 'bracketed' in name_lower or 'bracket' in name_lower:

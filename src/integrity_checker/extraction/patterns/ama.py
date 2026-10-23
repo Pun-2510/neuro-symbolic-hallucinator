@@ -42,10 +42,10 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # --- In-text AMA patterns ---
 
-# Superscript numbers: ^1, ^2
+# Superscript numbers: ^1, ^2 (math-safe)
 _AMA_SUPERSCRIPT = CompiledPattern.create(
     name="ama_superscript",
-    pattern=r"\^(\d+)",
+    pattern=r"(?:(?<=^)|(?<=[A-Za-zÀ-ÿ]{2})|(?<=[A-Za-zÀ-ÿ]{2}[.,;:\])]))\^(\d{1,3}(?:\s*[,–-]\s*\d{1,3})*)",
     pattern_type=PatternType.IN_TEXT,
     description="AMA superscript: ^1 | ^2",
 )
@@ -58,17 +58,16 @@ _AMA_BRACKETED = CompiledPattern.create(
     description="AMA bracketed: [1] | [2]",
 )
 
-# Parenthesized numbers: (1), (2)
+# Parenthesized numbers: (1), (2) — kept only as utility/reference marker, NOT in in_text_patterns
 _AMA_PARENTHESIZED = CompiledPattern.create(
     name="ama_parenthesized",
     pattern=r"\((\d+)\)",
-    pattern_type=PatternType.IN_TEXT,
+    pattern_type=PatternType.UTILITY,
     description="AMA parenthesized: (1) | (2)",
 )
 
 # FIX: removed _AMA_COMMA_SEPARATED — same issue as ACS: pattern matches data like
-# 100,000 / 1,371, not just citation [1,2]. AMA already has AMA bracketed [N]
-# and AMA parenthesized (N) for legitimate numeric citations.
+# 100,000 / 1,371, not just citation [1,2].
 
 # --- Reference list AMA patterns ---
 
@@ -78,15 +77,15 @@ _AMA_REFERENCE_ARTICLE = CompiledPattern.create(
     name="ama_reference_article",
     pattern=(
         r"^"
-        r"\d+\.?\s*"  # Number. or just Number
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?)\.\s+"  # Title.
-        r"(?P<venue>.+?)\.\s*"  # Journal.
-        r"(?P<year>\d{4})"  # Year
+        r"(?:(?P<index>\d+)\.\s*)?"  # Optional Number.
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors.
+        r"(?P<title>[^\"“]+?)\.\s+"  # Title.
+        r"(?P<venue>[^;\"“]+?)\.\s*"  # Journal.
+        r"(?P<year>(?:19|20)\d{2})"  # Year
         r"(?:;(?P<volume>\d+)"  # ;Volume
-        r"(?:\((?P<issue>\d+)\))?"  # (Issue)
-        r":(?P<pages>[\d–-]+))?"  # :Pages
-        r"(?P<rest>.*)$"
+        r"(?:\((?P<issue>[^)]+)\))?"  # (Issue)
+        r"(?::(?P<pages>[\d–-]+))?)?"  # :Pages
+        r"(?:\.\s*(?P<rest>(?:doi:\s*\S+|https?://\S+)?)|\.?)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="AMA article: N. Authors. Title. Journal. YEAR;Vol(Issue):Pages.",
@@ -98,15 +97,15 @@ _AMA_REFERENCE_ARTICLE_DOI = CompiledPattern.create(
     name="ama_reference_article_doi",
     pattern=(
         r"^"
-        r"\d+\.?\s*"  # Number.
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?)\.\s+"  # Title.
-        r"(?P<venue>.+?)\.\s*"  # Journal.
-        r"(?P<year>\d{4})"  # Year
+        r"(?:(?P<index>\d+)\.\s*)?"  # Optional Number.
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors.
+        r"(?P<title>[^\"“]+?)\.\s+"  # Title.
+        r"(?P<venue>[^;\"“]+?)\.\s*"  # Journal.
+        r"(?P<year>(?:19|20)\d{2})"  # Year
         r"(?:;(?P<volume>\d+)"  # ;Volume
-        r"(?:\((?P<issue>\d+)\))?"  # (Issue)
-        r":(?P<pages>[\d–-]+))?"  # :Pages
-        r"(?:doi:(?P<doi>.+))?"  # doi:...
+        r"(?:\((?P<issue>[^)]+)\))?"  # (Issue)
+        r"(?::(?P<pages>[\d–-]+))?)?"  # :Pages
+        r"\.?\s*doi:\s*(?P<doi>\S+?)\.?"  # doi:...
         r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -114,15 +113,16 @@ _AMA_REFERENCE_ARTICLE_DOI = CompiledPattern.create(
 )
 
 # AMA book:
-# Authors. Title. Place: Publisher; Year.
+# [2.] Authors. Title. [3rd ed.] Place: Publisher; Year.
 _AMA_BOOK = CompiledPattern.create(
     name="ama_book",
     pattern=(
-        r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?)\.\s*"  # Title.
-        r"(?P<place_pub>(?:.+?:\s*)?[^;]+)?"  # Place: Publisher (optional)
-        r"(?:;\s*(?P<year>\d{4}))?"  # ; Year (optional)
+        r"^(?:(?:\[\s*(?P<b_idx>\d+)\s*\]|(?P<index>\d+)\.)\s*)?"
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors.
+        r"(?P<title>[^.\"“]+?)\.\s+"  # Title.
+        r"(?:(?:\d+(?:st|nd|rd|th)\s+ed\.?|[A-Za-z]+\s+ed\.?)\s+)?"  # Optional edition
+        r"(?P<place_pub>[^;]+?)"  # Place: Publisher
+        r";\s*(?P<year>(?:19|20)\d{2})\.?"  # ; Year (required for AMA book)
         r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -130,19 +130,19 @@ _AMA_BOOK = CompiledPattern.create(
 )
 
 # AMA book chapter:
-# Authors. Chapter title. In: Editor, ed(s). Book title. Place: Publisher; Year. Pages.
+# Authors. Chapter title. In: Editor, ed(s). Book title. Place: Publisher; Year:Pages.
 _AMA_BOOK_CHAPTER = CompiledPattern.create(
     name="ama_book_chapter",
     pattern=(
-        r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<chapter_title>.+?)\.\s*"  # Chapter title.
+        r"^(?:(?:\[\s*(?P<b_idx>\d+)\s*\]|(?P<index>\d+)\.)\s*)?"
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors.
+        r"(?P<chapter_title>[^.\"“]+?)\.\s+"  # Chapter title.
         r"In:\s*"  # In:
-        r"(?P<editor>.+?)"  # Editor
-        r"(?:\s*\(?eds?\.?\)?)?,?\s*"  # ed(s). (optional)
+        r"(?P<editor>[^.]+?)"  # Editor
+        r"(?:,\s*\(?eds?\.?\)?\.?\s*|\.\s+)"  # ed(s).
         r"(?P<book_title>.+?)"  # Book title
-        r"(?:;\s*(?P<year>\d{4}))?"  # ; Year (optional)
-        r"(?:,\s*(?P<pages>[\d–-]+))?"  # , Pages (optional)
+        r";\s*(?P<year>(?:19|20)\d{2})"  # ; Year
+        r"(?:[:;,]\s*(?:pp?\.\s*)?(?P<pages>[\d–-]+))?\.?"  # :Pages
         r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -155,14 +155,14 @@ _AMA_NUMBERED = CompiledPattern.create(
     name="ama_numbered",
     pattern=(
         r"^\[\s*(?P<index>\d+)\s*\]\s*"  # [N]
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?)\.\s+"  # Title.
-        r"(?P<venue>.+?)\.\s*"  # Journal.
-        r"(?P<year>\d{4})"  # Year
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors.
+        r"(?P<title>[^\"“]+?)\.\s+"  # Title.
+        r"(?P<venue>[^;\"“]+?)\.\s*"  # Journal.
+        r"(?P<year>(?:19|20)\d{2})"  # Year
         r"(?:;(?P<volume>\d+)"  # ;Volume
-        r"(?:\((?P<issue>\d+)\))?"  # (Issue)
-        r":(?P<pages>[\d–-]+))?"  # :Pages
-        r"(?P<rest>.*)$"
+        r"(?:\((?P<issue>[^)]+)\))?"  # (Issue)
+        r"(?::(?P<pages>[\d–-]+))?)?"  # :Pages
+        r"(?:\.\s*(?P<rest>(?:doi:\s*\S+|https?://\S+)?)|\.?)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="AMA numbered: [1] Authors. Title. Journal. YEAR.",
@@ -198,7 +198,7 @@ class AMAFormat:
         - Semicolon separators in references
 
     This implementation handles:
-        - In-text numeric citations: ^1, [1], (1)
+        - In-text numeric citations: ^1, [1]
         - Reference list entries for articles, books, chapters
         - Both numbered and bracketed formats
     """
@@ -223,8 +223,7 @@ class AMAFormat:
         return [
             _AMA_SUPERSCRIPT,
             _AMA_BRACKETED,
-            _AMA_PARENTHESIZED,
-            # FIX: removed _AMA_COMMA_SEPARATED (see above)
+            # FIX: removed _AMA_PARENTHESIZED and _AMA_COMMA_SEPARATED
         ]
 
     @property
@@ -467,6 +466,10 @@ class AMAFormat:
             matched_pattern="ama_book",
         )
 
+        idx = match.groupdict().get('index') or match.groupdict().get('b_idx')
+        if idx:
+            citation.numeric_index = int(idx)
+
         # Extract authors
         authors_str = match.group('authors')
         if authors_str:
@@ -486,15 +489,9 @@ class AMAFormat:
 
         if place_pub:
             place_pub = place_pub.strip()
-            if ';' in place_pub:
-                parts = place_pub.split(';')
-                pub_info = parts[0].strip()
-                if not year_str and len(parts) > 1:
-                    # Year might be after semicolon
-                    year_m = re.search(r'(\d{4})', parts[1])
-                    if year_m:
-                        citation.year = year_m.group(1)
-                citation.venue = pub_info
+            if ':' in place_pub:
+                parts = place_pub.split(':', 1)
+                citation.venue = parts[1].strip() if len(parts) > 1 else place_pub
             else:
                 citation.venue = place_pub
 
@@ -516,6 +513,10 @@ class AMAFormat:
             style=CitationStyle.AMA,
             matched_pattern="ama_book_chapter",
         )
+
+        idx = match.groupdict().get('index') or match.groupdict().get('b_idx')
+        if idx:
+            citation.numeric_index = int(idx)
 
         # Extract authors
         authors_str = match.group('authors')
@@ -551,6 +552,10 @@ class AMAFormat:
 
     def _parse_ama_fallback(self, text: str) -> Optional[Citation]:
         """Fallback parser: extract whatever metadata possible."""
+        # AMA fallback only applies if entry has AMA semicolon-year / year-semicolon-vol structure
+        if not re.search(r'(?:;\s*(?:19|20)\d{2}|\b(?:19|20)\d{2};\d+)', text):
+            return None
+
         citation = Citation(
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
@@ -682,8 +687,7 @@ register_format(AMAFormat())
 AMA_IN_TEXT_PATTERNS = [
     _AMA_SUPERSCRIPT,
     _AMA_BRACKETED,
-    _AMA_PARENTHESIZED,
-    # FIX: removed _AMA_COMMA_SEPARATED
+    # FIX: removed _AMA_PARENTHESIZED and _AMA_COMMA_SEPARATED
 ]
 
 AMA_REFERENCE_PATTERNS = [

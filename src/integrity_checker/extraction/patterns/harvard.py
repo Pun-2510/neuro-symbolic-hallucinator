@@ -54,7 +54,14 @@ _HARVARD_PARENTHETICAL_COMMA = CompiledPattern.create(
 # Parenthetical without comma: (Author 2020), (Author et al. 2020)
 _HARVARD_PARENTHETICAL = CompiledPattern.create(
     name="harvard_parenthetical",
-    pattern=r"\(([^)]+)\s+(\d{4}[a-z]?)(?:,\s*(?:p\.?\s*)?(\d+(?:[-–]\d+)?))?\)",
+    pattern=(
+        r"\((?!(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|"
+        r"Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|"
+        r"Spring|Summer|Fall|Autumn|Winter|In|From|Since|Until|Before|After|During|"
+        r"Between|Around|Circa|See|Table|Figure|Fig|Section|Chapter|Part|Page|Vol|No)\b)"
+        r"([A-ZÀ-Ý][A-Za-zÀ-ÿ'-]+(?:\s+(?:and|&|và)\s+[A-ZÀ-Ý][A-Za-zÀ-ÿ'-]+|\s+et\s+al\.?)?)\s+"
+        r"((?:19|20)\d{2}[a-z]?)(?:,\s*(?:pp?\.?\s*)?(\d+(?:[-–]\d+)?))?\)"
+    ),
     pattern_type=PatternType.IN_TEXT,
     description="Harvard parenthetical: (Author 2020) | (Author 2020, p. 25)",
 )
@@ -69,20 +76,32 @@ _HARVARD_NARRATIVE = CompiledPattern.create(
 
 # --- Reference list Harvard patterns ---
 
+# Harvard article with single/double quoted title (UK Harvard standard):
+# Smith, J. A. and Doe, B. (2020) 'Deep learning in medicine', Nature Medicine, 26(3), pp. 123-135.
+# or Smith, J., 2020. 'Deep learning in medicine', Nature Medicine, 26(3), pp. 123-135.
+_HARVARD_ARTICLE_QUOTED = CompiledPattern.create(
+    name="harvard_article_quoted",
+    pattern=(
+        r"^(?:\[\s*(?P<index>\d+)\s*\]\s*)?"
+        r"(?P<authors>.+?)(?:\s+\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)\.?\s*|,\s*(?P<year2>(?:19|20)\d{2}[a-z]?)\.\s*)"
+        r"['\u2018\u2019\"\u201c](?P<title>.+?)['\u2018\u2019\"\u201d],?\s+"
+        r"(?P<venue>.+)$"
+    ),
+    pattern_type=PatternType.REFERENCE_ENTRY,
+    description="Harvard quoted article: Author (Year) 'Title', Journal, Vol(Issue), pp. X-Y.",
+)
+
 # Harvard book:
-# Author, A.A. and Author, B.B. (Year) Title. Place: Publisher.
+# Author, A.A. and Author, B.B. (Year) Title. [2nd edn.] Place: Publisher.
+# or Author, A.A., Year. Title. Place: Publisher.
 _HARVARD_BOOK = CompiledPattern.create(
     name="harvard_book",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)\s+\("  # Authors (
-        r"(?P<year>\d{4})"  # Year
-        r"\)\s+"  # ).
-        r"(?P<title>.+?)"  # Title
-        r"\.\s*"  # Period
-        r"(?P<place_pub>(?:.+?:\s*)?[^.]+?)?"  # Place: Publisher (optional)
-        r"(?:\.\s*(?P<rest>.*))?"
-        r"$"
+        r"(?P<authors>.+?)(?:\s+\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)\.?\s+|,\s*(?P<year2>(?:19|20)\d{2}[a-z]?)\.\s+)"
+        r"(?P<title>[^.]+?)\.\s+"
+        r"(?:(?:\d+(?:st|nd|rd|th)\s+edn?\.?|[A-Za-z]+\s+edn?\.?)\s+)?"
+        r"(?P<place_pub>[^.:]+:\s*[^.]+)\.?$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="Harvard book: Author (Year) Title. Place: Publisher.",
@@ -90,17 +109,14 @@ _HARVARD_BOOK = CompiledPattern.create(
 
 # Harvard article:
 # Author, A.A. and Author, B.B. (Year) Title. Journal, Volume(Issue), Pages.
+# or Author, A.A., Year. Title. Journal, Volume(Issue), Pages.
 _HARVARD_ARTICLE = CompiledPattern.create(
     name="harvard_article",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)\s+\("  # Authors (
-        r"(?P<year>\d{4})"  # Year
-        r"\)\s+"  # ).
-        r"(?P<title>.+?)"  # Title (captured until period before journal)
-        r"\.\s+"  # Period before journal
-        r"(?P<venue>.+)"  # Venue (rest)
-        r"$"
+        r"(?P<authors>.+?)(?:\s+\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)\.?\s+|,\s*(?P<year2>(?:19|20)\d{2}[a-z]?)\.\s+)"
+        r"(?P<title>[^.]+?)\.\s+"
+        r"(?P<venue>.+)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="Harvard article: Author (Year) Title. Journal, Vol(Issue), Pages.",
@@ -114,7 +130,7 @@ _HARVARD_NUMBERED = CompiledPattern.create(
         r"(?P<authors>.+?)\s+\("  # Authors (
         r"(?P<year>\d{4})"  # Year
         r"\)\.?\s*"  # ).
-        r"(?P<title>.+?)\.?\s*"  # Title
+        r"(?P<title>[^.]+?)\.?\s*"  # Title
         r"(?P<rest>(?:.+$)?)"  # Rest (optional)
         r"$"
     ),
@@ -128,15 +144,13 @@ _HARVARD_BOOK_CHAPTER = CompiledPattern.create(
     name="harvard_book_chapter",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)\s+\("  # Authors (
-        r"(?P<year>\d{4})"  # Year
-        r"\)\.?\s*"  # ).
-        r"(?P<chapter_title>.+?)\.?\s*"  # Chapter title
-        r"In:\s*"  # In:
-        r"(?P<editor>.+?)"  # Editor
-        r"(?:\s*\(eds?\.?\)|\(ed\.?\))?,?\s*"  # (ed.) or (eds.)
-        r"(?P<book_title>.+?)"  # Book title
-        r"(?:,\s*pp?\.\s*(?P<pages>[\d–-]+))?"  # Optional pages
+        r"(?P<authors>.+?)(?:\s+\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)\.?\s+|,\s*(?P<year2>(?:19|20)\d{2}[a-z]?)\.\s+)"
+        r"['\u2018\u2019\"\u201c]?(?P<chapter_title>[^.'\u2019\"\u201d]+?)['\u2018\u2019\"\u201d]?[.,]?\s+"
+        r"In:?\s+"
+        r"(?P<editor>.+?)"
+        r"(?:\s*\(eds?\.?\)|\(ed\.?\)),?\s*"
+        r"(?P<book_title>[^,]+?)"
+        r"(?:,\s*pp?\.\s*(?P<pages>[\d–-]+))?"
         r"(?:\.\s*(?P<rest>.*))?"
         r"$"
     ),
@@ -206,10 +220,11 @@ class HarvardFormat:
     def reference_patterns(self) -> list[CompiledPattern]:
         """Patterns for extracting Harvard reference list entries."""
         return [
-            _HARVARD_ARTICLE,
-            _HARVARD_BOOK,
-            _HARVARD_NUMBERED,
+            _HARVARD_ARTICLE_QUOTED,
             _HARVARD_BOOK_CHAPTER,
+            _HARVARD_BOOK,
+            _HARVARD_ARTICLE,
+            _HARVARD_NUMBERED,
         ]
 
     def parse_reference_entry(self, text: str) -> Optional[Citation]:
@@ -238,22 +253,29 @@ class HarvardFormat:
         if idx_match:
             numeric_index = int(idx_match.group(1))
 
-        # Try article format first (most common)
-        citation = self._try_parse_article(text)
+        # Try quoted article format first (UK Harvard: Author (Year) 'Title', Journal...)
+        citation = self._try_parse_article_quoted(text)
         if citation:
             if numeric_index and citation.numeric_index is None:
                 citation.numeric_index = numeric_index
             return citation
 
-        # Try book format
+        # Try book chapter format (has "In:" marker)
+        citation = self._try_parse_book_chapter(text)
+        if citation:
+            if numeric_index and citation.numeric_index is None:
+                citation.numeric_index = numeric_index
+            return citation
+
+        # Try book format (has Place: Publisher)
         citation = self._try_parse_book(text)
         if citation:
             if numeric_index and citation.numeric_index is None:
                 citation.numeric_index = numeric_index
             return citation
 
-        # Try book chapter format
-        citation = self._try_parse_book_chapter(text)
+        # Try unquoted article format
+        citation = self._try_parse_article(text)
         if citation:
             if numeric_index and citation.numeric_index is None:
                 citation.numeric_index = numeric_index
@@ -266,6 +288,19 @@ class HarvardFormat:
 
         # Fallback
         return self._parse_harvard_fallback(text)
+
+    def _try_parse_article_quoted(self, text: str) -> Optional[Citation]:
+        """Try to parse Harvard quoted article format."""
+        match = _HARVARD_ARTICLE_QUOTED.search(text)
+        if match:
+            citation = self._parse_article_entry(match, text)
+            if citation:
+                citation.matched_pattern = "harvard_article_quoted"
+                idx = match.groupdict().get("index")
+                if idx and citation.numeric_index is None:
+                    citation.numeric_index = int(idx)
+            return citation
+        return None
 
     def _try_parse_article(self, text: str) -> Optional[Citation]:
         """Try to parse Harvard article format."""
@@ -312,12 +347,14 @@ class HarvardFormat:
             citation.authors = self._parse_authors(authors_str)
 
         # Extract year
-        year_str = match.group('year')
+        year_str = match.group('year') or match.groupdict().get('year2')
         if year_str:
-            citation.year = year_str
+            citation.year = year_str[:4]
+            if len(year_str) > 4:
+                citation.year_suffix = year_str[4:]
 
         # Extract title
-        title = match.group('title').strip()
+        title = match.group('title').strip().strip("'\"\u2018\u2019\u201c\u201d").rstrip('.')
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
@@ -350,9 +387,11 @@ class HarvardFormat:
             citation.authors = self._parse_authors(authors_str)
 
         # Extract year
-        year_str = match.group('year')
+        year_str = match.group('year') or match.groupdict().get('year2')
         if year_str:
-            citation.year = year_str
+            citation.year = year_str[:4]
+            if len(year_str) > 4:
+                citation.year_suffix = year_str[4:]
 
         # Extract title
         title = match.group('title').strip()
@@ -394,9 +433,11 @@ class HarvardFormat:
             citation.authors = self._parse_authors(authors_str)
 
         # Extract year
-        year_str = match.group('year')
+        year_str = match.group('year') or match.groupdict().get('year2')
         if year_str:
-            citation.year = year_str
+            citation.year = year_str[:4]
+            if len(year_str) > 4:
+                citation.year_suffix = year_str[4:]
 
         # Extract chapter title
         chapter_title = match.group('chapter_title').strip()

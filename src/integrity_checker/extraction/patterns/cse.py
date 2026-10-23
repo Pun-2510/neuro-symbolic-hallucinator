@@ -48,10 +48,10 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # --- In-text CSE patterns (Citation-Sequence / Citation-Name) ---
 
-# Superscript numbers: ^1, ^2
+# Superscript numbers: ^1, ^2 (math-safe)
 _CSE_SUPERSCRIPT = CompiledPattern.create(
     name="cse_superscript",
-    pattern=r"\^(\d+)",
+    pattern=r"(?:(?<=^)|(?<=[A-Za-zÀ-ÿ]{2})|(?<=[A-Za-zÀ-ÿ]{2}[.,;:\])]))\^(\d{1,3}(?:\s*[,–-]\s*\d{1,3})*)",
     pattern_type=PatternType.IN_TEXT,
     description="CSE superscript: ^1 | ^2",
 )
@@ -85,7 +85,14 @@ _CSE_NAMEYEAR_PARENTHETICAL = CompiledPattern.create(
 # Parenthetical without comma: (Author 2020)
 _CSE_NAMEYEAR_PARENTHETICAL_NOCOMMA = CompiledPattern.create(
     name="cse_nameyear_parenthetical_nocomma",
-    pattern=r"\(([^)]+)\s+(\d{4}[a-z]?)\)",
+    pattern=(
+        r"\((?!(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|"
+        r"Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|"
+        r"Spring|Summer|Fall|Autumn|Winter|In|From|Since|Until|Before|After|During|"
+        r"Between|Around|Circa|See|Table|Figure|Fig|Section|Chapter|Part|Page|Vol|No)\b)"
+        r"([A-ZÀ-Ý][A-Za-zÀ-ÿ'-]+(?:\s+(?:and|&|và)\s+[A-ZÀ-Ý][A-Za-zÀ-ÿ'-]+|\s+et\s+al\.?)?)\s+"
+        r"((?:19|20)\d{2}[a-z]?)\)"
+    ),
     pattern_type=PatternType.IN_TEXT,
     description="CSE Name-Year: (Author 2020)",
 )
@@ -99,14 +106,14 @@ _CSE_NUMBERED_ARTICLE = CompiledPattern.create(
     pattern=(
         r"^"
         r"(?:\d+\.?\s*)?"  # Optional number.
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?)\.\s+"  # Title.
-        r"(?P<venue>.+?)\.\s*"  # Journal.
-        r"(?P<year>\d{4})"  # Year
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors.
+        r"(?P<title>[^\"“]+?)\.\s+"  # Title.
+        r"(?P<venue>[^;\"“]+?)\.\s*"  # Journal.
+        r"(?P<year>(?:19|20)\d{2})"  # Year
         r"(?:;(?P<volume>\d+)"  # ;Volume
-        r"(?:\((?P<issue>\d+)\))?"  # (Issue)
-        r":(?P<pages>[\d–-]+))?"  # :Pages
-        r"(?P<rest>.*)$"
+        r"(?:\((?P<issue>[^)]+)\))?"  # (Issue)
+        r"(?::(?P<pages>[\d–-]+))?)?"  # :Pages
+        r"(?:\.\s*(?P<rest>(?:doi:\s*\S+|https?://\S+)?)|\.?)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="CSE article: N. Authors. Title. Journal. Year;Vol(Issue):Pages.",
@@ -118,14 +125,14 @@ _CSE_BRACKETED_REFERENCE = CompiledPattern.create(
     name="cse_bracketed_reference",
     pattern=(
         r"^\[\s*(?P<index>\d+)\s*\]\s*"  # [N]
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?)\.\s+"  # Title.
-        r"(?P<venue>.+?)\.\s*"  # Journal.
-        r"(?P<year>\d{4})"  # Year
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors.
+        r"(?P<title>[^\"“]+?)\.\s+"  # Title.
+        r"(?P<venue>[^;\"“]+?)\.\s*"  # Journal.
+        r"(?P<year>(?:19|20)\d{2})"  # Year
         r"(?:;(?P<volume>\d+)"  # ;Volume
-        r"(?:\((?P<issue>\d+)\))?"  # (Issue)
-        r":(?P<pages>[\d–-]+))?"  # :Pages
-        r"(?P<rest>.*)$"
+        r"(?:\((?P<issue>[^)]+)\))?"  # (Issue)
+        r"(?::(?P<pages>[\d–-]+))?)?"  # :Pages
+        r"(?:\.\s*(?P<rest>(?:doi:\s*\S+|https?://\S+)?)|\.?)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="CSE bracketed: [N] Authors. Title. Journal. Year;Vol:Pages.",
@@ -138,14 +145,14 @@ _CSE_NUMBERED_DOI = CompiledPattern.create(
     pattern=(
         r"^"
         r"(?:\d+\.?\s*)?"  # Optional number.
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?)\.\s+"  # Title.
-        r"(?P<venue>.+?)\.\s*"  # Journal.
-        r"(?P<year>\d{4})"  # Year
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors.
+        r"(?P<title>[^\"“]+?)\.\s+"  # Title.
+        r"(?P<venue>[^;\"“]+?)\.\s*"  # Journal.
+        r"(?P<year>(?:19|20)\d{2})"  # Year
         r"(?:;(?P<volume>\d+)"  # ;Volume
-        r"(?:\((?P<issue>\d+)\))?"  # (Issue)
-        r":(?P<pages>[\d–-]+))?"  # :Pages
-        r"(?:.\s*doi:(?P<doi>.+))?"  # . doi:...
+        r"(?:\((?P<issue>[^)]+)\))?"  # (Issue)
+        r"(?::(?P<pages>[\d–-]+))?)?"  # :Pages
+        r"\.?\s*doi:\s*(?P<doi>\S+?)\.?"  # . doi:...
         r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -159,11 +166,11 @@ _CSE_NUMBERED_DOI = CompiledPattern.create(
 _CSE_NAMEYEAR_BOOK = CompiledPattern.create(
     name="cse_nameyear_book",
     pattern=(
-        r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<year>\d{4})\.\s+"  # Year.
-        r"(?P<title>.+?)\.\s*"  # Title.
-        r"(?P<place_pub>(?:.+?:\s*)?[^.]+?)?"  # Optional Place: Publisher
+        r"^(?!\d+\.\s)(?!\[\s*\d+\s*\])(?!\(\s*\d+\s*\))"
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors.
+        r"(?P<year>(?:19|20)\d{2}[a-z]?)\.\s+"  # Year.
+        r"(?P<title>[^.\"“]+?)\.\s+"  # Title.
+        r"(?P<place_pub>[^.:]+:\s*[^.]+)\.?"  # Required Place: Publisher
         r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -175,10 +182,10 @@ _CSE_NAMEYEAR_BOOK = CompiledPattern.create(
 _CSE_NAMEYEAR_ARTICLE = CompiledPattern.create(
     name="cse_nameyear_article",
     pattern=(
-        r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<year>\d{4})\.\s+"  # Year.
-        r"(?P<title>.+?)\.\s+"  # Title.
+        r"^(?!\d+\.\s)(?!\[\s*\d+\s*\])(?!\(\s*\d+\s*\))"
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors.
+        r"(?P<year>(?:19|20)\d{2}[a-z]?)\.\s+"  # Year.
+        r"(?P<title>[^.\"“]+?)\.\s+"  # Title.
         r"(?P<venue>.+)"  # Venue
         r"$"
     ),
@@ -189,16 +196,16 @@ _CSE_NAMEYEAR_ARTICLE = CompiledPattern.create(
 # --- Reference list CSE patterns (Books) ---
 
 # CSE book:
-# Authors. Year. Title. Place: Publisher.
+# 1. Authors. Year. Title. Place: Publisher.
 _CSE_BOOK = CompiledPattern.create(
     name="cse_book",
     pattern=(
         r"^"
         r"(?:\d+\.?\s*)?"  # Optional number.
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<year>\d{4})\.\s+"  # Year.
-        r"(?P<title>.+?)\.\s*"  # Title.
-        r"(?P<place_pub>(?:.+?:\s*)?[^.]+?)?"  # Optional Place: Publisher
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors.
+        r"(?P<year>(?:19|20)\d{2}[a-z]?)\.\s+"  # Year.
+        r"(?P<title>[^.\"“]+?)\.\s+"  # Title.
+        r"(?P<place_pub>[^.:]+:\s*[^.]+)\.?"  # Required Place: Publisher
         r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -299,6 +306,9 @@ class CSEFormat:
         # Normalize whitespace
         text = re.sub(r'\s+', ' ', text.strip())
 
+        if self._is_non_cse_structure(text):
+            return None
+
         # Extract numeric index first
         numeric_index = None
         idx_match = re.search(r'\[\s*(\d+)\s*\]', text)
@@ -329,15 +339,15 @@ class CSEFormat:
                 citation.numeric_index = numeric_index
             return citation
 
-        # Try Name-Year article format (year comes before title)
-        citation = self._try_parse_nameyear_article(text)
+        # Try Name-Year book format BEFORE Name-Year article (book requires Place: Publisher)
+        citation = self._try_parse_nameyear_book(text)
         if citation:
             if numeric_index and citation.numeric_index is None:
                 citation.numeric_index = numeric_index
             return citation
 
-        # Try Name-Year book format
-        citation = self._try_parse_nameyear_book(text)
+        # Try Name-Year article format (year comes before title)
+        citation = self._try_parse_nameyear_article(text)
         if citation:
             if numeric_index and citation.numeric_index is None:
                 citation.numeric_index = numeric_index
@@ -352,6 +362,21 @@ class CSEFormat:
 
         # Fallback
         return self._parse_cse_fallback(text)
+
+    @staticmethod
+    def _is_non_cse_structure(text: str) -> bool:
+        """Reject entries belonging to ACS, Nature, Chicago, or MLA."""
+        if re.match(r'^\(\s*\d+\s*\)', text):
+            return True
+        if re.search(r'["\u201c][^"\u201d]{4,}["\u201d]', text):
+            return True
+        if re.search(r'\b\d+\s*,\s*(?:[\d–-]+|[a-zA-Z]?\d+)\s*\(\s*(?:19|20)\d{2}[a-z]?\s*\)\.?$', text):
+            return True
+        if re.search(r'\b(?:19|20)\d{2}\s*,\s*\d+', text):
+            return True
+        if re.match(r'^(?:\[\s*\d+\s*\]\s*|\d+\.\s*)?[A-ZÀ-Ý][a-zà-ÿ]+,\s+[A-ZÀ-Ý][a-zà-ÿ]{2,}', text):
+            return True
+        return False
 
     def _try_parse_numbered_doi(self, text: str) -> Optional[Citation]:
         """Try to parse CSE numbered with DOI format."""
@@ -736,16 +761,16 @@ class CSEFormat:
 
         venue_text = venue_text.strip()
 
-        # Extract volume and issue: "Journal 10 (2): 1-15"
+        # Extract volume and issue: "Journal 10 (2): 1-15" or "Nat Med. 26(3):123-135."
         vol_match = re.search(
-            r'(?P<journal>.+?)\s+'
+            r'(?P<journal>.+?)\.?\s+'
             r'(?P<vol>\d+)\s*'
-            r'(?:\((?P<issue>\d+)\))?'
+            r'(?:\((?P<issue>[^)]+)\))?'
             r'(?::\s*(?P<pages>[\d–-]+))?',
             venue_text
         )
         if vol_match:
-            citation.venue = vol_match.group('journal').strip()
+            citation.venue = vol_match.group('journal').strip().rstrip('.')
             citation.volume = vol_match.group('vol')
             if vol_match.group('issue'):
                 citation.issue = vol_match.group('issue')

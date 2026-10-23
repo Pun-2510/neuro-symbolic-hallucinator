@@ -105,10 +105,10 @@ _ACM_BOOK = CompiledPattern.create(
     name="acm_book",
     pattern=(
         r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
-        r'(?P<authors>.+?),?\s*'  # Authors
-        r'(?P<title>[^,]+),?\s*'  # Book title
-        r'(?P<publisher>.+?),?\s*'  # Publisher
-        r'(?P<year>\d{4})?'  # Optional year
+        r'(?P<authors>[^.]+?),\s+'  # Authors,
+        r'(?P<title>[^,.]+?)[.,]\s+'  # Book title. or ,
+        r'(?P<publisher>[^,.]+?),\s*'  # Publisher,
+        r'(?P<year>(?:19|20)\d{2})'  # Required 4-digit year
         r'\.?$'
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -122,7 +122,7 @@ _ACM_BOOK_CHAPTER = CompiledPattern.create(
     pattern=(
         r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
         r'(?P<authors>.+?),?\s*'  # Authors
-        r'[""](?P<title>[^""]+)[""],?\s*'  # "title,"
+        r'[""\u201c](?P<title>[^""\u201d]+)[""\u201d],?\s*'  # "title,"
         r'in\s+'  # in
         r'(?P<book_title>[^,]+)'  # Book title
         r'(?:,\s*(?P<publisher>[^,]+))?'  # Optional publisher
@@ -134,16 +134,33 @@ _ACM_BOOK_CHAPTER = CompiledPattern.create(
     description="ACM book chapter: [N] Authors, \"Title,\" in Book, Publisher, Year.",
 )
 
+# ACM 2017+ official reference format (year after authors):
+# [N] Authors. Year. Title. Venue...
+_ACM_YEAR_FIRST = CompiledPattern.create(
+    name="acm_year_first",
+    pattern=(
+        r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
+        r'(?P<authors>.+?)\.\s+'  # Authors.
+        r'(?P<year>(?:19|20)\d{2}[a-z]?)\.\s+'  # Year.
+        r'(?P<title>[^.]+?)\.\s+'  # Title.
+        r'(?P<venue>.+?)'  # Venue
+        r'\.?$'
+    ),
+    pattern_type=PatternType.REFERENCE_ENTRY,
+    description="ACM 2017+ format: [N] Authors. Year. Title. Venue.",
+)
+
 # ACM journal article:
 # [N] Authors. Title. Journal, vol. X, no. Y, pp. Z-Z, Year.
+# OR [N] Authors. Title. J. ACM 63, 4 (2020), 100-110.
 _ACM_JOURNAL = CompiledPattern.create(
     name="acm_journal",
     pattern=(
         r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
-        r'(?P<authors>.+?)\.\s*'  # Authors.
-        r'(?P<title>.+?)\.\s*'  # Title.
+        r'(?P<authors>.+?[A-Za-zÀ-ÿ]{2,})\.\s+'  # Authors (ends with surname, not initial).
+        r'(?P<title>[^.]+?)\.\s+'  # Title.
         r'(?P<venue>.+?)'  # Venue
-        r'(?:,\s*(?P<year>\d{4}))?'  # Optional year
+        r'(?:,\s*(?P<year>(?:19|20)\d{2}))?'  # Optional trailing year
         r'\.?$'
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -157,7 +174,7 @@ _ACM_TECH_REPORT = CompiledPattern.create(
     pattern=(
         r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
         r'(?P<authors>.+?),?\s*'  # Authors
-        r'[""](?P<title>[^""]+)[""],?\s*'  # "title,"
+        r'[""\u201c](?P<title>[^""\u201d]+)[""\u201d],?\s*'  # "title,"
         r'(?P<type>Tech\.\s*Rep\.?|Technical\s+Report)'  # Type
         r'(?:,\s*(?P<institution>[^,]+))?'  # Optional institution
         r'(?:,\s*(?P<year>\d{4}))?'  # Optional year
@@ -173,10 +190,10 @@ _ACM_FULL_NAME = CompiledPattern.create(
     name="acm_full_name",
     pattern=(
         r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
-        r'(?P<authors>.+?)\.\s*'  # Authors.
-        r'(?P<title>.+?)\.\s*'  # Title.
+        r'(?P<authors>.+?[A-Za-zÀ-ÿ]{2,})\.\s+'  # Authors (ends with surname).
+        r'(?P<title>[^.]+?)\.\s+'  # Title.
         r'(?P<venue>.+?)'  # Venue
-        r'(?:\s+(?P<year>\d{4}))?'  # Optional year
+        r'(?:\s+(?P<year>(?:19|20)\d{2}))?'  # Optional year
         r'\.?$'
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -246,6 +263,7 @@ class ACMFormat:
     def reference_patterns(self) -> list[CompiledPattern]:
         """Patterns for extracting ACM reference list entries."""
         return [
+            _ACM_YEAR_FIRST,
             _ACM_REFERENCE_ENTRY,
             _ACM_CONFERENCE,
             _ACM_JOURNAL,
@@ -254,6 +272,17 @@ class ACMFormat:
             _ACM_BOOK,
             _ACM_TECH_REPORT,
         ]
+
+    @staticmethod
+    def _is_non_acm_structure(text: str) -> bool:
+        """Reject Nature (`... 580, 100-105 (2020).`) and Vancouver (`... 2020;395...`)."""
+        # Nature: Volume, Pages (Year). at end
+        if re.search(r'\b\d+\s*,\s*(?:[\d–-]+|[a-zA-Z]?\d+)\s*\(\s*(?:19|20)\d{2}[a-z]?\s*\)\.?$', text):
+            return True
+        # Vancouver / CSE / AMA: Year;Volume
+        if re.search(r'\b(?:19|20)\d{2};\s*\d+', text):
+            return True
+        return False
 
     def parse_reference_entry(self, text: str) -> Optional[Citation]:
         """Parse ACM reference entry into Citation object.
@@ -275,11 +304,21 @@ class ACMFormat:
         # Normalize whitespace
         text = re.sub(r'\s+', ' ', text.strip())
 
+        if self._is_non_acm_structure(text):
+            return None
+
         # Extract numeric index first
         numeric_index = None
         idx_match = re.search(r'\[\s*(\d+)\s*\]', text)
         if idx_match:
             numeric_index = int(idx_match.group(1))
+
+        # Try ACM 2017+ official year-first format first ([N] Authors. Year. Title. Venue.)
+        citation = self._try_parse_year_first(text)
+        if citation:
+            if numeric_index and citation.numeric_index is None:
+                citation.numeric_index = numeric_index
+            return citation
 
         # Try quote-based parsing first (most reliable for ACM with titles)
         citation = self._parse_acm_quote_based(text)
@@ -332,6 +371,35 @@ class ACMFormat:
 
         # Fallback
         return self._parse_acm_fallback(text)
+
+    def _try_parse_year_first(self, text: str) -> Optional[Citation]:
+        """Try to parse ACM 2017+ official year-first format."""
+        match = _ACM_YEAR_FIRST.search(text)
+        if not match:
+            return None
+        year_raw = match.group('year')
+        year = year_raw[:4]
+        year_suffix = year_raw[4:] if len(year_raw) > 4 else None
+        title = match.group('title').strip().rstrip('.')
+        citation = Citation(
+            raw_text=text,
+            citation_type=CitationType.REFERENCE_LIST,
+            style=CitationStyle.ACM,
+            matched_pattern='acm_year_first',
+            numeric_index=int(match.group('index')),
+            authors=self._parse_authors(match.group('authors')),
+            year=year,
+            year_suffix=year_suffix,
+            title=title,
+            title_normalized=self._normalize_title(title),
+        )
+        venue = match.group('venue').strip()
+        self._parse_venue(citation, venue)
+        doi_m = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', text)
+        if doi_m:
+            citation.doi = doi_m.group(0).rstrip('.')
+        citation.confidence = self._estimate_confidence(citation)
+        return citation
 
     def _parse_acm_quote_based(self, text: str) -> Optional[Citation]:
         """Parse ACM entry using quote-based heuristic."""
@@ -756,17 +824,17 @@ class ACMFormat:
 
     def _parse_acm_fallback(self, text: str) -> Optional[Citation]:
         """Fallback parser: extract whatever metadata possible."""
+        idx_match = re.match(r'^\[\s*(\d+)\s*\]', text)
+        if not idx_match:
+            return None
+
         citation = Citation(
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
             style=CitationStyle.ACM,
             matched_pattern='acm_fallback',
+            numeric_index=int(idx_match.group(1)),
         )
-
-        # Extract numeric index
-        idx_match = re.search(r'\[\s*(\d+)\s*\]', text)
-        if idx_match:
-            citation.numeric_index = int(idx_match.group(1))
 
         # Try to extract year
         year_m = re.search(r'\b((?:19|20)\d{2})([a-z]?)\b', text)
@@ -776,7 +844,7 @@ class ACMFormat:
                 citation.year_suffix = year_m.group(2)
 
         # Try to extract title from quoted text
-        quote_m = re.search(r'["""]([^""""]+)["""]', text)
+        quote_m = re.search(r'["""\u201c]([^""""\u201d]+)["""\u201d]', text)
         if quote_m:
             title = quote_m.group(1).strip()
             citation.title = title
@@ -808,6 +876,25 @@ class ACMFormat:
 
         venue_text = venue_text.strip()
 
+        # ACM 2017+ / Classic journal style: "Commun. ACM 63, 4 (April 2020), 123-135." or "J. ACM 63, 4 (2020), 100-110."
+        acm_j_m = re.search(
+            r'^(?P<venue>.+?)\s+(?P<vol>\d+)(?:,\s*(?P<issue>\d+))?\s*\([^)]*?\b(?P<year>(?:19|20)\d{2}[a-z]?)\b[^)]*\)(?:,\s*(?:pp?\.\s*|Article\s+\d+,\s*)?(?P<pages>[\d–-]+))?',
+            venue_text,
+        )
+        if acm_j_m:
+            citation.venue = acm_j_m.group('venue').strip().rstrip('.,')
+            citation.volume = acm_j_m.group('vol')
+            if acm_j_m.group('issue'):
+                citation.issue = acm_j_m.group('issue')
+            if not citation.year and acm_j_m.group('year'):
+                yr = acm_j_m.group('year')
+                citation.year = yr[:4]
+                if len(yr) > 4:
+                    citation.year_suffix = yr[4:]
+            if acm_j_m.group('pages'):
+                citation.pages = acm_j_m.group('pages')
+            return
+
         # Extract volume: "vol. 22" or "vol. 22, no. 10"
         vol_match = re.search(
             r'(?:^|,?\s*)vol\.\s*(?P<vol>\d+[A-Z]?)', venue_text, re.IGNORECASE
@@ -822,22 +909,33 @@ class ACMFormat:
         if issue_match:
             citation.issue = issue_match.group('issue')
 
-        # Extract pages: "pp. 1345-1359" or "p. 42"
+        # Extract pages: "pp. 1345-1359" or "p. 42" or range "1-12" (do not match bare years/volumes)
         pages_match = re.search(
-            r'(?:^|,?\s*)(?:pp?\.\s*)?(?P<pages>[\d–-]+)', venue_text, re.IGNORECASE
+            r'(?:^|,?\s*)(?:pp?\.\s*(?P<pages>[\d–-]+)|(?<!vol\.\s)(?<!no\.\s)(?P<range>\d+\s*[-–]\s*\d+))',
+            venue_text,
+            re.IGNORECASE,
         )
         if pages_match:
-            citation.pages = pages_match.group('pages')
+            citation.pages = (pages_match.group('pages') or pages_match.group('range')).strip()
+
+        # Extract year from venue if not already set
+        if not citation.year:
+            yr_m = re.search(r'\b((?:19|20)\d{2})\b', venue_text)
+            if yr_m:
+                citation.year = yr_m.group(1)
 
         # Extract venue name (before volume/issue/pages)
         venue_name_match = re.search(
-            r'^(?P<venue>[^,]+?)(?:,\s*(?:vol\.|no\.|pp\.))', venue_text, re.IGNORECASE
+            r'^(?:In\s+|in\s+)?(?P<venue>.+?)(?:,\s*(?:vol\.|no\.|pp?\.|\d+\s*[-–]\s*\d+))',
+            venue_text,
+            re.IGNORECASE,
         )
         if venue_name_match:
-            citation.venue = venue_name_match.group('venue').strip()
+            citation.venue = venue_name_match.group('venue').strip().rstrip('.,')
         else:
             # Clean up venue
-            clean_venue = re.sub(r'\d{4}[a-z]?\s*$', '', venue_text).strip()
+            clean_venue = re.sub(r'^(?:In\s+|in\s+)', '', venue_text).strip()
+            clean_venue = re.sub(r',?\s*\d{4}[a-z]?\s*\.?$', '', clean_venue).strip()
             doi_match = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', clean_venue)
             if doi_match:
                 clean_venue = clean_venue[:doi_match.start()].strip()

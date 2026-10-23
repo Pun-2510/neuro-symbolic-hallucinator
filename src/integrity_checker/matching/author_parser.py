@@ -318,11 +318,13 @@ def parse_authors(raw: str, format_name: str | None = None) -> list[Author]:
     # Format-specific parsing when format_name is provided
     if format_name:
         format_upper = format_name.upper()
-        if format_upper == "APA":
+        if format_upper in ("APA", "HARVARD", "NATURE", "ACS", "CHICAGO", "MLA"):
             return _parse_apa_format(raw_nfc)
-        elif format_upper == "IEEE":
+        elif format_upper in ("IEEE", "ACM"):
+            if re.match(rf"^{_PARTICLES_GROUP}\s*{_UPPER_VN}[a-zà-ỹ'\-]+,", raw_nfc):
+                return _parse_apa_format(raw_nfc)
             return _parse_ieee_format(raw_nfc)
-        elif format_upper == "VANCOUVER":
+        elif format_upper in ("VANCOUVER", "AMA", "CSE"):
             return _parse_vancouver_format(raw_nfc)
         # Unknown format, fall back to heuristic detection
         logger.debug(f"Unknown format_name: {format_name}, using heuristic detection")
@@ -592,13 +594,13 @@ _APA_AUTHOR_RE = re.compile(
     rf"""
     (?P<author>
         { _PARTICLES_GROUP }\s*  # optional particles
-        {_UPPER_VN}[A-Za-zÀ-ỹ\-\']+   # last name MUST start with uppercase
+        {_UPPER_VN}[a-zà-ỹ\-\']+(?:[A-ZÀ-Ý][a-zà-ỹ\-\']+)*   # last name MUST start with uppercase + lowercase
         ,\s*
-        (?:{_UPPER_VN}\.?\s*)+         # initials (1+)
+        (?:{_UPPER_VN}\.(?:\s*{_UPPER_VN}\.)*|{_UPPER_VN}(?:\s+{_UPPER_VN})*)(?![A-Za-zÀ-ỹ])
     |
-        {_UPPER_VN}[A-Za-zÀ-ỹ\-\']+   # last name start with uppercase
+        {_UPPER_VN}[a-zà-ỹ\-\']+(?:[A-ZÀ-Ý][a-zà-ỹ\-\']+)*   # last name start with uppercase + lowercase
         ,\s*
-        (?:{_UPPER_VN}\.?\s*)+         # initials (1+) - MUST have at least one letter
+        (?:{_UPPER_VN}\.(?:\s*{_UPPER_VN}\.)*|{_UPPER_VN}(?:\s+{_UPPER_VN})*)(?![A-Za-zÀ-ỹ])
     )
     """,
     re.VERBOSE,
@@ -777,10 +779,10 @@ def _parse_firstname_lastname_no_et_al(text: str) -> list[Author]:
     IMPORTANT: Handle "and" BEFORE comma split for correct parsing of
     "John Blitzer, Ryan McDonald, and Fernando Pereira"
     """
-    # Replace " and " with semicolon separator FIRST, before splitting by comma
+    # Replace " and " / " và " with semicolon separator FIRST, before splitting by comma
     # This handles "John Blitzer, Ryan McDonald, and Fernando Pereira" correctly
     # where "and Fernando Pereira" needs to be separated from "Ryan McDonald,"
-    normalized = text.replace(" and ", " ; ").replace("&", " ; ")
+    normalized = re.sub(r"\s+(?:and|và)\s+", " ; ", text, flags=re.IGNORECASE).replace("&", " ; ")
 
     # Split by semicolon (our "and" replacement) and comma
     # Each semicolon-separated piece may contain comma-separated author groups
@@ -791,19 +793,45 @@ def _parse_firstname_lastname_no_et_al(text: str) -> list[Author]:
         # Split each semicolon part by comma
         comma_parts = [p.strip() for p in sem_part.split(",") if p.strip()]
 
-        for part in comma_parts:
+        # Handle Chicago/MLA "Last, First [M.]" at the start of comma_parts:
+        # e.g. "Smith, John A." or "Smith, John, Jane Doe"
+        start_idx = 0
+        if len(comma_parts) >= 2:
+            first_toks = [t for t in comma_parts[0].split() if not _is_particle(t)]
+            second_toks = comma_parts[1].split()
+            is_single_surname = (
+                len(first_toks) == 1
+                and not _is_initial_token(first_toks[0])
+                and len(first_toks[0].strip(".,;")) >= 2
+            )
+            second_looks_like_given = bool(second_toks) and (
+                len(comma_parts) == 2
+                or _is_initial_token(second_toks[-1])
+            ) and not _is_initial_token(second_toks[0])
+            # Do not merge if comma_parts[0] or comma_parts[1] is Vancouver "Surname Initials"
+            if (
+                is_single_surname
+                and second_looks_like_given
+                and not (len(second_toks) >= 2 and _is_initial_token(second_toks[-1]) and len(comma_parts) > 2 and all(len(cp.split()) >= 2 and _is_initial_token(cp.split()[-1]) for cp in comma_parts))
+            ):
+                paired = normalize_author(f"{comma_parts[0]}, {comma_parts[1]}")
+                if paired.last_name:
+                    authors.append(paired)
+                start_idx = 2
+
+        for part in comma_parts[start_idx:]:
             if not part or len(part) < 2:
                 continue
 
             tokens = part.split()
 
             if len(tokens) >= 2:
-                # Check if last token is a single letter (likely initial)
-                # "Smith J" -> last_name=Smith, initial=J
-                if len(tokens[-1]) == 1 and tokens[-1].isalpha():
-                    # Format: "LastName Initial"
+                # Check if last token is initials (1-3 uppercase letters with/without dots)
+                # "Smith J" or "Smith JA" -> last_name=Smith, initials=[J] or [J, A]
+                if _is_initial_token(tokens[-1]):
+                    # Format: "LastName Initials" (Vancouver / AMA / CSE)
                     last_name = " ".join(tokens[:-1]).rstrip(".,;|")
-                    initials = [tokens[-1].rstrip(".").upper()]
+                    initials = [c.upper() for c in tokens[-1] if c.isalpha()]
                 else:
                     # Format: "FirstName LastName" or "FirstName Middle LastName"
                     last_name = tokens[-1].rstrip(".,;|")
@@ -886,6 +914,8 @@ def _extract_initials_from_tokens(tokens: list[str]) -> list[str]:
             continue
         if _INITIAL_RE.match(tok_clean):
             initials.append(tok_clean[0].lower())
+        elif _is_initial_token(tok_clean):
+            initials.extend(c.lower() for c in tok_clean if c.isalpha())
         elif _is_initial_like(tok_clean):
             initials.append(tok_clean[0].lower())
     return initials

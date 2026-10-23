@@ -42,10 +42,10 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # --- In-text ACS patterns ---
 
-# Superscript numbers: ^1, ^2
+# Superscript numbers: ^1, ^2 (math-safe)
 _ACS_SUPERSCRIPT = CompiledPattern.create(
     name="acs_superscript",
-    pattern=r"\^(\d+)",
+    pattern=r"(?:(?<=^)|(?<=[A-Za-zÀ-ÿ]{2})|(?<=[A-Za-zÀ-ÿ]{2}[.,;:\])]))\^(\d{1,3}(?:\s*[,–-]\s*\d{1,3})*)",
     pattern_type=PatternType.IN_TEXT,
     description="ACS superscript: ^1 | ^2",
 )
@@ -53,43 +53,45 @@ _ACS_SUPERSCRIPT = CompiledPattern.create(
 # Superscript with author: Smith^1
 _ACS_AUTHOR_SUPERSCRIPT = CompiledPattern.create(
     name="acs_author_superscript",
-    pattern=r"([A-Z][a-zA-ZÀ-žÀ-ž]+)\^(\d+)",
+    pattern=r"([A-Z][a-zA-ZÀ-žÀ-ž]+)\^(\d{1,3}(?:\s*[,–-]\s*\d{1,3})*)",
     pattern_type=PatternType.IN_TEXT,
     description="ACS author-superscript: Smith^1",
 )
 
-# Parenthesized numbers: (1), (2)
+# Parenthesized numbers: (1), (2) — kept only as reference marker, NOT in in_text_patterns
 _ACS_PARENTHESIZED = CompiledPattern.create(
     name="acs_parenthesized",
     pattern=r"\((\d+)\)",
-    pattern_type=PatternType.IN_TEXT,
+    pattern_type=PatternType.UTILITY,
     description="ACS parenthesized: (1) | (2)",
 )
 
 # FIX: removed _ACS_COMMA_SEPARATED — pattern `(\d+)(?:,\s*\d+)+` matches data like
 # 100,000 / 1,371 (population numbers), not just citation [1,2]. IEEE/Vancouver
-# brackets already cover legitimate comma-separated citations. ACS parenthesized
-# covers (1), (2) format.
+# brackets already cover legitimate comma-separated citations.
 
 # --- Reference list ACS patterns ---
 
+_ACS_PREFIX = r"^(?:(?:\(\s*(?P<index>\d+)\s*\)|(?P<num>\d+)\.|\[\s*(?P<b_idx>\d+)\s*\])\s*)?"
+
 # ACS article:
-# (1) Authors. Title. Journal Abbrev. Year, Volume, Pages.
+# (1) Authors. Title. Journal Abbrev. Year, Volume (Issue), Pages.
+# or 1. Authors. Title. Journal Year, Volume, Pages.
 _ACS_REFERENCE_ARTICLE = CompiledPattern.create(
     name="acs_reference_article",
     pattern=(
-        r"^"
-        r"\(\s*(?P<index>\d+)\s*\)\s*"  # (N)
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?)\.\s+"  # Title.
-        r"(?P<venue>.+?)\.\s*"  # Journal.
-        r"(?P<year>\d{4})"  # Year
-        r"(?:,\s*(?P<volume>\d+))?"  # , Volume
-        r"(?:,\s*(?P<pages>[\d–-]+))?"  # , Pages
-        r"(?P<rest>.*)$"
+        _ACS_PREFIX
+        + r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|;|and\b))"  # Authors. (don't stop at initial)
+        + r"(?P<title>[^.]+?)\.\s+"  # Title.
+        + r"(?P<venue>[^;]+?)\.?\s+"  # Journal (with or without abbreviation period)
+        + r"(?P<year>(?:19|20)\d{2})\s*,\s*"  # Year,
+        + r"(?P<volume>\d+)"  # Volume
+        + r"(?:\s*\((?P<issue>[^)]+)\))?"  # Optional (Issue)
+        + r"(?:\s*,\s*(?:pp?\.\s*)?(?P<pages>[\d–-]+|[a-zA-Z]?\d+))?"  # , Pages
+        + r"\.?\s*(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
-    description="ACS article: (N) Authors. Title. Journal. Year, Vol, Pages.",
+    description="ACS article: (N) Authors. Title. Journal Year, Vol, Pages.",
 )
 
 # ACS article with abbreviation:
@@ -97,35 +99,35 @@ _ACS_REFERENCE_ARTICLE = CompiledPattern.create(
 _ACS_REFERENCE_JOURNAL_ABBREV = CompiledPattern.create(
     name="acs_reference_journal_abbrev",
     pattern=(
-        r"^"
-        r"\(\s*(?P<index>\d+)\s*\)\s*"  # (N)
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?)\.\s+"  # Title.
-        r"(?P<venue>.+?)\.\s*"  # Journal.
-        r"(?P<year>\d{4})"  # Year
-        r"(?:,\s*(?P<volume>\d+))?"  # , Volume
-        r"(?:,\s*(?P<pages>[\d–-]+))?"  # , Pages
-        r"(?P<rest>.*)$"
+        _ACS_PREFIX
+        + r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|;|and\b))"
+        + r"(?P<title>[^.]+?)\.\s+"
+        + r"(?P<venue>[^;]+?)\.\s*"
+        + r"(?P<year>(?:19|20)\d{2})"
+        + r"(?:,\s*(?P<volume>\d+))?"
+        + r"(?:\s*\((?P<issue>[^)]+)\))?"
+        + r"(?:,\s*(?:pp?\.\s*)?(?P<pages>[\d–-]+))?"
+        + r"\.?\s*(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="ACS journal: (N) Authors. Title. J. Abbrev. Year, Vol, Pages.",
 )
 
 # ACS article with DOI:
-# (1) Authors. Title. Journal. Year. doi:...
+# (1) Authors. Title. Journal Year, Volume, Pages. doi:...
 _ACS_REFERENCE_DOI = CompiledPattern.create(
     name="acs_reference_doi",
     pattern=(
-        r"^"
-        r"\(\s*(?P<index>\d+)\s*\)\s*"  # (N)
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?)\.\s+"  # Title.
-        r"(?P<venue>.+?)\.\s*"  # Journal.
-        r"(?P<year>\d{4})"  # Year
-        r"(?:,\s*(?P<volume>\d+))?"  # , Volume
-        r"(?:,\s*(?P<pages>[\d–-]+))?"  # , Pages
-        r"(?:.\s*doi:(?P<doi>.+))?"  # . doi:...
-        r"$"
+        _ACS_PREFIX
+        + r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|;|and\b))"
+        + r"(?P<title>[^.]+?)\.\s+"
+        + r"(?P<venue>[^;]+?)\.?\s+"
+        + r"(?P<year>(?:19|20)\d{2})"
+        + r"(?:\s*,\s*(?P<volume>\d+))?"
+        + r"(?:\s*\((?P<issue>[^)]+)\))?"
+        + r"(?:\s*,\s*(?:pp?\.\s*)?(?P<pages>[\d–-]+))?"
+        + r"\.?\s*doi:\s*(?P<doi>\S+?)\.?"
+        + r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="ACS with DOI: (N) Authors. Title. Journal. Year. doi:...",
@@ -136,14 +138,13 @@ _ACS_REFERENCE_DOI = CompiledPattern.create(
 _ACS_BOOK = CompiledPattern.create(
     name="acs_book",
     pattern=(
-        r"^"
-        r"\(\s*(?P<index>\d+)\s*\)\s*"  # (N)
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?);?\s*"  # Title;
-        r"(?P<publisher>.+?):\s*"  # Publisher:
-        r"(?P<place>.+?),?\s*"  # Place,
-        r"(?P<year>\d{4})?"  # Optional Year
-        r"(?P<rest>.*)$"
+        _ACS_PREFIX
+        + r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|;|and\b))"
+        + r"(?P<title>[^;]+?);\s*"
+        + r"(?P<publisher>[^:;]+?):\s*"
+        + r"(?P<place>[^,]+?),\s*"
+        + r"(?P<year>(?:19|20)\d{2})\.?"
+        + r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="ACS book: (N) Authors. Title; Publisher: Place, Year.",
@@ -154,33 +155,31 @@ _ACS_BOOK = CompiledPattern.create(
 _ACS_BOOK_CHAPTER = CompiledPattern.create(
     name="acs_book_chapter",
     pattern=(
-        r"^"
-        r"\(\s*(?P<index>\d+)\s*\)\s*"  # (N)
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<chapter_title>.+?)\.\s+"  # Chapter Title.
-        r"In\s+"  # In
-        r"(?P<book_title>.+?)(?:;\s*|,\s*)"  # Book Title
-        r"(?:(?P<editor>[^;]+),\s*(?:Ed\\.?|eds\\.?))?"  # Editor, Ed.
-        r"(?:;\s*(?P<publisher>.+?))?"  # ; Publisher
-        r"(?::\s*(?P<place>.+?))?"  # : Place
-        r"(?:,\s*(?P<year>\d{4}))?"  # , Year
-        r"(?:;\s*pp?\.\s*(?P<pages>[\d–-]+))?"  # ; pp. Pages
-        r"(?P<rest>.*)$"
+        _ACS_PREFIX
+        + r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|;|and\b))"
+        + r"(?P<chapter_title>[^.]+?)\.\s+"
+        + r"In\s+"
+        + r"(?P<book_title>[^;]+?)(?:;\s*|,\s*)"
+        + r"(?:(?P<editor>[^;]+),\s*(?:Eds?\.?|eds?\.?))?"
+        + r"(?:;\s*(?P<publisher>[^:;]+?))?"
+        + r"(?::\s*(?P<place>[^,;]+?))?"
+        + r"(?:,\s*(?P<year>(?:19|20)\d{2}))?"
+        + r"(?:;\s*pp?\.\s*(?P<pages>[\d–-]+))?"
+        + r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="ACS book chapter: (N) Authors. Chapter. In Book; Editor, Ed.; Publisher.",
 )
 
 # ACS tech report:
-# (1) Authors. Title; Abstract Number, Institution, Year.
+# (1) Authors. Title; Tech. Rep. / Technical Report / Patent, Institution, Year.
 _ACS_TECH_REPORT = CompiledPattern.create(
     name="acs_tech_report",
     pattern=(
-        r"^"
-        r"\(\s*(?P<index>\d+)\s*\)\s*"  # (N)
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?);?\s*"  # Title;
-        r"(?P<rest>.+)"  # Rest (institution, etc.)
+        r"^\(\s*(?P<index>\d+)\s*\)\s*"
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|;|and\b))"
+        r"(?P<title>[^;]+?);\s*"
+        r"(?P<rest>(?:Tech\.\s*Rep\.|Technical\s+Report|Patent|Abstract).+)"
         r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -243,8 +242,8 @@ class ACSFormat:
         return [
             _ACS_SUPERSCRIPT,
             _ACS_AUTHOR_SUPERSCRIPT,
-            _ACS_PARENTHESIZED,
-            # FIX: removed _ACS_COMMA_SEPARATED (see above)
+            # FIX: removed _ACS_PARENTHESIZED and _ACS_COMMA_SEPARATED — matches (1), (2)
+            # and numbers with commas in body text.
         ]
 
     @property
@@ -279,11 +278,11 @@ class ACSFormat:
         # Normalize whitespace
         text = re.sub(r'\s+', ' ', text.strip())
 
-        # Extract numeric index first
+        # Extract numeric index first: (1), 1., or [1]
         numeric_index = None
-        idx_match = re.search(r'\(\s*(\d+)\s*\)', text)
+        idx_match = re.match(r'^(?:\(\s*(\d+)\s*\)|(\d+)\.|\[\s*(\d+)\s*\])\s*', text)
         if idx_match:
-            numeric_index = int(idx_match.group(1))
+            numeric_index = int(idx_match.group(1) or idx_match.group(2) or idx_match.group(3))
 
         # Try article with DOI format first (most specific)
         citation = self._try_parse_article_doi(text)
@@ -384,7 +383,7 @@ class ACSFormat:
         )
 
         # Extract numeric index
-        index = match.group('index')
+        index = match.groupdict().get('index') or match.groupdict().get('num') or match.groupdict().get('b_idx')
         if index:
             citation.numeric_index = int(index)
 
@@ -407,10 +406,13 @@ class ACSFormat:
         if year_str:
             citation.year = year_str
 
-        # Extract volume and pages
+        # Extract volume, issue, and pages
         volume = match.group('volume')
         if volume:
             citation.volume = volume
+            issue = match.groupdict().get('issue')
+            if issue:
+                citation.issue = issue
             pages = match.group('pages')
             if pages:
                 citation.pages = pages
@@ -435,7 +437,7 @@ class ACSFormat:
         )
 
         # Extract numeric index
-        index = match.group('index')
+        index = match.groupdict().get('index') or match.groupdict().get('num') or match.groupdict().get('b_idx')
         if index:
             citation.numeric_index = int(index)
 
@@ -458,10 +460,13 @@ class ACSFormat:
         if year_str:
             citation.year = year_str
 
-        # Extract volume and pages
+        # Extract volume, issue, and pages
         volume = match.group('volume')
         if volume:
             citation.volume = volume
+            issue = match.groupdict().get('issue')
+            if issue:
+                citation.issue = issue
             pages = match.group('pages')
             if pages:
                 citation.pages = pages
@@ -469,7 +474,7 @@ class ACSFormat:
         # Extract DOI
         doi = match.group('doi')
         if doi:
-            citation.doi = doi.strip()
+            citation.doi = doi.strip().rstrip('.')
         else:
             doi_match = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', text)
             if doi_match:
@@ -490,7 +495,7 @@ class ACSFormat:
         )
 
         # Extract numeric index
-        index = match.group('index')
+        index = match.groupdict().get('index') or match.groupdict().get('num') or match.groupdict().get('b_idx')
         if index:
             citation.numeric_index = int(index)
 
@@ -513,10 +518,13 @@ class ACSFormat:
         if year_str:
             citation.year = year_str
 
-        # Extract volume and pages
+        # Extract volume, issue, and pages
         volume = match.group('volume')
         if volume:
             citation.volume = volume
+            issue = match.groupdict().get('issue')
+            if issue:
+                citation.issue = issue
             pages = match.group('pages')
             if pages:
                 citation.pages = pages
@@ -679,17 +687,18 @@ class ACSFormat:
 
     def _parse_acs_fallback(self, text: str) -> Optional[Citation]:
         """Fallback parser: extract whatever metadata possible."""
+        # ACS fallback only applies if entry starts with (N)
+        idx_match = re.match(r'^\(\s*(\d+)\s*\)', text)
+        if not idx_match:
+            return None
+
         citation = Citation(
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
             style=CitationStyle.ACS,
             matched_pattern="acs_fallback",
+            numeric_index=int(idx_match.group(1)),
         )
-
-        # Extract numeric index
-        idx_match = re.search(r'\(\s*(\d+)\s*\)', text)
-        if idx_match:
-            citation.numeric_index = int(idx_match.group(1))
 
         # Try to extract year
         year_m = re.search(r'\b((?:19|20)\d{2})\b', text)
@@ -807,8 +816,7 @@ register_format(ACSFormat())
 ACS_IN_TEXT_PATTERNS = [
     _ACS_SUPERSCRIPT,
     _ACS_AUTHOR_SUPERSCRIPT,
-    _ACS_PARENTHESIZED,
-    # FIX: removed _ACS_COMMA_SEPARATED
+    # FIX: removed _ACS_PARENTHESIZED and _ACS_COMMA_SEPARATED
 ]
 
 ACS_REFERENCE_PATTERNS = [

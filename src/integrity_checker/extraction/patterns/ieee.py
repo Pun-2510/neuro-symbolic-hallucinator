@@ -591,17 +591,23 @@ class IEEEFormat:
 
     def _parse_ieee_fallback(self, text: str) -> Optional[Citation]:
         """Fallback parser: extract whatever metadata possible from unstructured text."""
+        # IEEE entries in fallback must start with [N] marker; otherwise quoted non-IEEE
+        # entries (Chicago, MLA) would be hijacked by IEEE fallback.
+        idx_match = re.match(r'^\[\s*(\d+)\s*\]', text)
+        if not idx_match:
+            return None
+
+        # Do not claim Nature-style [N] entries ending with "Volume, Pages (Year)."
+        if re.search(r'\b\d+\s*,\s*[\d–-]+\s*\(\s*(?:19|20)\d{2}[a-z]?\s*\)\.?$', text):
+            return None
+
         citation = Citation(
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
             style=CitationStyle.IEEE,
             matched_pattern='fallback_ieee_entry',
+            numeric_index=int(idx_match.group(1)),
         )
-
-        # Extract numeric index
-        idx_match = re.search(r'\[\s*(\d+)\s*\]', text)
-        if idx_match:
-            citation.numeric_index = int(idx_match.group(1))
 
         # Try to extract year
         year_m = re.search(r'\b((?:19|20)\d{2})([a-z]?)\b', text)
@@ -611,14 +617,17 @@ class IEEEFormat:
                 citation.year_suffix = year_m.group(2)
 
         # Try to extract title from quoted text
-        quote_m = re.search(r'["""]([^""""]+)["""]', text)
+        quote_m = re.search(r'["""\u201c]([^""""\u201d]+)["""\u201d]', text)
         if quote_m:
-            title = quote_m.group(1).strip()
+            title = quote_m.group(1).strip().rstrip(',.')
             citation.title = title
             citation.title_normalized = self._normalize_title(title)
             before_quote = re.sub(r'^\[\s*\d+\s*\]\s*', '', text[:quote_m.start()]).strip().rstrip(',')
             if before_quote:
                 citation.authors = self._parse_authors(before_quote)
+            after_quote = text[quote_m.end():].strip().lstrip(',.').strip()
+            if after_quote:
+                self._parse_venue(citation, after_quote)
         else:
             # Bracketed-year book references: [N] Flanagan, D., [2020], JavaScript: The Definitive Guide, 7th Edition, O'Reilly Media, USA.
             bracket_yr_m = re.match(
@@ -638,8 +647,9 @@ class IEEEFormat:
                         citation.venue = ', '.join(parts[1:])
             else:
                 # Unquoted book references: [N] B. Settles, Active Learning. Synthesis...
+                # Ensure authors part does not contain a sentence period (which indicates ACM/Vancouver)
                 book_m = re.match(
-                    r'^\[\s*\d+\s*\]\s*(?P<authors>.+?),\s+(?P<title>[^.]{5,})\.\s+(?P<venue>.*)$',
+                    r'^\[\s*\d+\s*\]\s*(?P<authors>(?:[A-Z]\.\s*)+[^,.]+(?:\s*(?:,\s*|\s+and\s+)(?:[A-Z]\.\s*)+[^,.]+)*),\s+(?P<title>[^.]{5,})\.\s+(?P<venue>.*)$',
                     text,
                 )
                 if book_m:
@@ -699,12 +709,14 @@ class IEEEFormat:
         if issue_match:
             citation.issue = issue_match.group('issue')
 
-        # Extract pages: "pp. 1345-1359" or "p. 42"
+        # Extract pages: "pp. 1345-1359" or "p. 42" or range "1345-1359" (not bare vol/no numbers)
         pages_match = re.search(
-            r'(?:^|,?\s*)(?:pp?\.\s*)?(?P<pages>[\d–-]+)', venue_text, re.IGNORECASE
+            r'(?:^|,?\s*)(?:pp?\.\s*(?P<pages>[\d–-]+)|(?<!vol\.\s)(?<!no\.\s)(?P<range>\d+\s*[-–]\s*\d+))',
+            venue_text,
+            re.IGNORECASE,
         )
         if pages_match:
-            citation.pages = pages_match.group('pages')
+            citation.pages = (pages_match.group('pages') or pages_match.group('range')).strip()
 
         # Extract venue name (before volume/issue/pages)
         # Pattern: everything before ", vol." or ", no." or ", pp."

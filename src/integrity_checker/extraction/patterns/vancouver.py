@@ -72,16 +72,16 @@ _VANCOUVER_NARRATIVE = CompiledPattern.create(
 _VANCOUVER_REFERENCE_ENTRY = CompiledPattern.create(
     name="vancouver_reference_entry",
     pattern=(
-        r"^"
-        r"(?P<authors>.+?)\.\s+"  # Authors (ends with period)
-        r"(?P<title>.+?)\.\s+"  # Title (ends with period)
-        r"(?P<venue>.+?)\.\s*"  # Venue (ends with period)
-        r"(?P<year>\d{4})"  # Year
+        r"^(?!\d+\.\s)(?!\[\s*\d+\s*\])(?!\(\s*\d+\s*\))"
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors (ends with period, no semicolons/quotes)
+        r"(?P<title>[^\"“]+?)\.\s+"  # Title (ends with period)
+        r"(?P<venue>[^;\"“]+?)\.\s*"  # Venue (ends with period)
+        r"(?P<year>(?:19|20)\d{2})"  # Year (19xx/20xx)
         r"(?:;(?P<volume>\d+)"  # Volume (after semicolon)
-        r"(?:\((?P<issue>\d+)\))?"  # Optional issue in parens
-        r":(?P<pages>[\d–-]+)"  # Pages
+        r"(?:\((?P<issue>[^)]+)\))?"  # Optional issue in parens
+        r"(?::(?P<pages>[\d–-]+))?"  # Optional pages
         r")?"
-        r"(?P<rest>.*)$"
+        r"(?:\.\s*(?P<rest>(?:doi:\s*\S+|https?://\S+)?)|\.?)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="Vancouver reference: Authors. Title. Venue. YEAR;Vol(Issue):Pages.",
@@ -92,14 +92,14 @@ _VANCOUVER_NUMBERED_REFERENCE = CompiledPattern.create(
     name="vancouver_numbered_reference",
     pattern=(
         r"^\[\s*(?P<index>\d+)\s*\]\s*"  # [N]
-        r"(?P<authors>.+?)\.\s+"  # Authors
-        r"(?P<title>.+?)\.\s+"  # Title
-        r"(?P<venue>.+?)\.\s*"  # Venue
-        r"(?P<year>\d{4})"  # Year
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors
+        r"(?P<title>[^\"“]+?)\.\s+"  # Title
+        r"(?P<venue>[^;\"“]+?)\.\s*"  # Venue
+        r"(?P<year>(?:19|20)\d{2})"  # Year
         r"(?:;(?P<volume>\d+)"
-        r"(?:\((?P<issue>\d+)\))?"
-        r":(?P<pages>[\d–-]+))?"
-        r"(?P<rest>.*)$"
+        r"(?:\((?P<issue>[^)]+)\))?"
+        r"(?::(?P<pages>[\d–-]+))?)?"
+        r"(?:\.\s*(?P<rest>(?:doi:\s*\S+|https?://\S+)?)|\.?)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="Numbered Vancouver: [1] Authors. Title. Venue. YEAR.",
@@ -111,10 +111,10 @@ _VANCOUVER_NUMBERED_REFERENCE = CompiledPattern.create(
 _VANCOUVER_YEAR_FIRST = CompiledPattern.create(
     name="vancouver_year_first",
     pattern=(
-        r"^"
-        r"(?P<authors>.+?)\.\s*"  # Authors (ends with period)
-        r"(?P<year>\d{4})\.\s+"  # Year
-        r"(?P<title>.+?)\.\s+"  # Title
+        r"^(?!\d+\.\s)(?!\[\s*\d+\s*\])(?!\(\s*\d+\s*\))"
+        r"(?P<authors>[^;\"“]+?)\.\s*"  # Authors (ends with period)
+        r"(?P<year>(?:19|20)\d{2})\.\s+"  # Year
+        r"(?P<title>[^\"“]+?)\.\s+"  # Title
         r"(?P<venue>.+)"  # Venue (rest)
         r"$"
     ),
@@ -127,9 +127,9 @@ _VANCOUVER_YEAR_FIRST_NUMBERED = CompiledPattern.create(
     name="vancouver_year_first_numbered",
     pattern=(
         r"^\[\s*(?P<index>\d+)\s*\]\s*"  # [N]
-        r"(?P<authors>.+?)\.\s*"  # Authors
-        r"(?P<year>\d{4})\.\s+"  # Year
-        r"(?P<title>.+?)\.\s+"  # Title
+        r"(?P<authors>[^;\"“]+?)\.\s*"  # Authors
+        r"(?P<year>(?:19|20)\d{2})\.\s+"  # Year
+        r"(?P<title>[^\"“]+?)\.\s+"  # Title
         r"(?P<venue>.+)"  # Venue
         r"$"
     ),
@@ -142,15 +142,15 @@ _VANCOUVER_YEAR_FIRST_NUMBERED = CompiledPattern.create(
 _VANCOUVER_PERIOD_NUMBERED = CompiledPattern.create(
     name="vancouver_period_numbered",
     pattern=(
-        r"^\d+\.\s*"  # N. prefix
-        r"(?P<authors>.+?)\.\s+"  # Authors
-        r"(?P<title>.+?)\.\s+"  # Title
-        r"(?P<venue>.+?)\.\s*"  # Venue
-        r"(?P<year>\d{4})"  # Year
+        r"^(?P<index>\d+)\.\s*"  # N. prefix
+        r"(?P<authors>[^;\"“]+?)\.\s+"  # Authors
+        r"(?P<title>[^\"“]+?)\.\s+"  # Title
+        r"(?P<venue>[^;\"“]+?)\.\s*"  # Venue
+        r"(?P<year>(?:19|20)\d{2})"  # Year
         r"(?:;(?P<volume>\d+)"
-        r"(?:\((?P<issue>\d+)\))?"
-        r":(?P<pages>[\d–-]+))?"
-        r"(?P<rest>.*)$"
+        r"(?:\((?P<issue>[^)]+)\))?"
+        r"(?::(?P<pages>[\d–-]+))?)?"
+        r"(?:\.\s*(?P<rest>(?:doi:\s*\S+|https?://\S+)?)|\.?)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="Period-numbered Vancouver: 1. Authors. Title. Venue. YEAR.",
@@ -243,14 +243,28 @@ class VancouverFormat:
         # Normalize whitespace
         text = re.sub(r'\s+', ' ', text.strip())
 
+        if self._is_non_vancouver_structure(text):
+            return None
+
         # Extract numeric index first
         numeric_index = None
         idx_match = re.search(r'\[\s*(\d+)\s*\]', text)
         if idx_match:
             numeric_index = int(idx_match.group(1))
+        else:
+            num_m = re.match(r'^(\d+)\.\s+', text)
+            if num_m:
+                numeric_index = int(num_m.group(1))
 
         # Try year-first variant first (more specific)
         citation = self._try_parse_year_first(text)
+        if citation:
+            if numeric_index and citation.numeric_index is None:
+                citation.numeric_index = numeric_index
+            return citation
+
+        # Try period-numbered format BEFORE unnumbered standard format
+        citation = self._try_parse_period_numbered(text)
         if citation:
             if numeric_index and citation.numeric_index is None:
                 citation.numeric_index = numeric_index
@@ -263,13 +277,31 @@ class VancouverFormat:
                 citation.numeric_index = numeric_index
             return citation
 
-        # Try period-numbered format
-        citation = self._try_parse_period_numbered(text)
-        if citation:
-            return citation
-
         # Fallback: try to extract whatever we can
         return self._parse_vancouver_fallback(text)
+
+    @staticmethod
+    def _is_non_vancouver_structure(text: str) -> bool:
+        """Reject entries that clearly belong to ACS, Nature, AMA book, Chicago, or MLA."""
+        # ACS parenthesized number prefix: (1) ...
+        if re.match(r'^\(\s*\d+\s*\)', text):
+            return True
+        # Quoted title (Chicago / MLA / IEEE / ACM)
+        if re.search(r'["\u201c][^"\u201d]{4,}["\u201d]', text):
+            return True
+        # Nature: Volume, Pages (Year). at end
+        if re.search(r'\b\d+\s*,\s*(?:[\d–-]+|[a-zA-Z]?\d+)\s*\(\s*(?:19|20)\d{2}[a-z]?\s*\)\.?$', text):
+            return True
+        # ACS: Year, Volume
+        if re.search(r'\b(?:19|20)\d{2}\s*,\s*\d+', text):
+            return True
+        # AMA / Chicago / Harvard / CSE book with Place: Publisher
+        if re.search(r'\b[A-Z][A-Za-z\s,]+:\s*[A-Z][A-Za-z\s]+(?:;\s*(?:19|20)\d{2}|,\s*(?:19|20)\d{2}|\.)', text):
+            return True
+        # Chicago / MLA author format: "Surname, Firstname" (full first name after comma)
+        if re.match(r'^(?:\[\s*\d+\s*\]\s*|\d+\.\s*)?[A-ZÀ-Ý][a-zà-ÿ]+,\s+[A-ZÀ-Ý][a-zà-ÿ]{2,}', text):
+            return True
+        return False
 
     def _try_parse_year_first(self, text: str) -> Optional[Citation]:
         """Try to parse year-first Vancouver variant."""
@@ -416,6 +448,10 @@ class VancouverFormat:
             matched_pattern="vancouver_period_numbered",
         )
 
+        idx = match.groupdict().get('index')
+        if idx:
+            citation.numeric_index = int(idx)
+
         # Extract authors
         authors_str = match.group('authors')
         if authors_str:
@@ -467,6 +503,10 @@ class VancouverFormat:
         idx_match = re.search(r'\[\s*(\d+)\s*\]', text)
         if idx_match:
             citation.numeric_index = int(idx_match.group(1))
+        else:
+            num_m = re.match(r'^(\d+)\.\s+', text)
+            if num_m:
+                citation.numeric_index = int(num_m.group(1))
 
         # Try to extract year
         year_m = re.search(r'\b((?:19|20)\d{2})\b', text)
@@ -535,10 +575,11 @@ class VancouverFormat:
         )
         if vol_match:
             citation.venue = vol_match.group('venue').strip()
+            citation.volume = vol_match.group('vol')
             remaining = venue_text[vol_match.end():]
 
             # Check for (issue) or just pages
-            issue_match = re.search(r'\((?P<issue>\d+)\)', remaining)
+            issue_match = re.search(r'\((?P<issue>[^)]+)\)', remaining)
             if issue_match:
                 citation.issue = issue_match.group('issue')
 

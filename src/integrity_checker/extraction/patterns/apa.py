@@ -482,10 +482,37 @@ class APAFormat:
         # Fallback: try to extract whatever we can from unstructured text
         return self._parse_apa_fallback(text)
 
+    def _is_non_apa_structure(self, authors_str: str, title: str, text: str) -> bool:
+        """Return True if matched groups actually belong to Harvard/ACM/Nature/Chicago."""
+        clean_auth = re.sub(r"^\[\s*\d+\s*\]\s*", "", (authors_str or "")).strip()
+        # Authors block in APA cannot contain quoted titles, volume/issue markers, or trailing numbers
+        if re.search(r'["\u201c\u201d]|\b(?:vol|no|pp)\.\s*\d|\d+\s*,\s*\d+\s*$|:\s*\d+\s*$', clean_auth, re.IGNORECASE):
+            return True
+        if re.search(r"\d\s*$", clean_auth) and not re.search(r"\b(?:19|20)\d{2}\b", clean_auth):
+            return True
+        # Title in APA cannot start with punctuation like ',' or ':'
+        if not title or title[0] in ",:;":
+            return True
+        # Harvard check: no period after (Year) AND (quoted title or Harvard edition/pp./Place:Publisher)
+        no_dot_after_year = bool(
+            re.search(r"\(\s*(?:19|20)\d{2}[a-z]?\s*\)\s+(?!\.)", text)
+        )
+        if no_dot_after_year:
+            if title[0] in "'\"‘“" or re.search(
+                r"\b\d+(?:st|nd|rd|th)\s+edn?\.?\b|,\s*pp?\.\s*\d", text, re.IGNORECASE
+            ):
+                return True
+        return False
+
     def _parse_apa_entry(
         self, match: re.Match, text: str
     ) -> Optional[Citation]:
         """Parse standard APA reference entry."""
+        authors_raw = match.group("authors") or ""
+        title_raw = (match.group("title") or "").strip()
+        if self._is_non_apa_structure(authors_raw, title_raw, text):
+            return None
+
         citation = Citation(
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
@@ -614,6 +641,11 @@ class APAFormat:
         self, match: re.Match, text: str
     ) -> Optional[Citation]:
         """Parse simple APA reference entry."""
+        authors_raw = match.group("authors") or ""
+        title_raw = (match.group("title") or "").strip()
+        if self._is_non_apa_structure(authors_raw, title_raw, text):
+            return None
+
         citation = Citation(
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
@@ -665,14 +697,24 @@ class APAFormat:
         # Try to extract year
         year_match = re.search(r"\((\d{4})([a-z])?\)", text)
         if year_match:
+            before_year = text[:year_match.start()].strip()
+            after_year = text[year_match.end():].strip()
+            # Reject if (Year) is at the end of a Nature/ACM/Chicago entry or preceded by quotes/numbers
+            if re.search(r'["\u201c\u201d]|\d\s*$', before_year):
+                return None
+            if after_year.startswith((":", ",")) or after_year in ("", "."):
+                return None
             citation.year = year_match.group(1)
             if year_match.group(2):
                 citation.year_suffix = year_match.group(2)
+            clean_auth = re.sub(r"^\[\s*\d+\s*\]\s*", "", before_year).strip()
+            if clean_auth:
+                citation.authors = self._parse_authors(clean_auth)
 
         # Try to extract title (text between year and period after it)
         if year_match:
             after_year = text[year_match.end():]
-            title_match = re.search(r"\.?\s*(.+?)\.", after_year)
+            title_match = re.search(r"\.?\s*(.+?)(?:\.|$)", after_year)
             if title_match:
                 title = title_match.group(1).strip()
                 if title and len(title) > 5:

@@ -42,10 +42,10 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # --- In-text Nature patterns ---
 
-# Superscript numbers: ^1, ^2
+# Superscript numbers: ^1, ^2 (math-safe: must follow word/punctuation, not digit/single var)
 _NATURE_SUPERSCRIPT = CompiledPattern.create(
     name="nature_superscript",
-    pattern=r"\^(\d+)",
+    pattern=r"(?:(?<=^)|(?<=[A-Za-zÀ-ÿ]{2})|(?<=[A-Za-zÀ-ÿ]{2}[.,;:\])]))\^(\d{1,3}(?:\s*[,–-]\s*\d{1,3})*)",
     pattern_type=PatternType.IN_TEXT,
     description="Nature superscript: ^1 | ^2",
 )
@@ -61,7 +61,7 @@ _NATURE_BRACKETED = CompiledPattern.create(
 # Comma-separated superscripts: ^1,^2,^3
 _NATURE_SUPERSCRIPT_COMMA = CompiledPattern.create(
     name="nature_superscript_comma",
-    pattern=r"\^(\d+(?:,\s*\^*\d+)+)",
+    pattern=r"(?:(?<=^)|(?<=[A-Za-zÀ-ÿ]{2})|(?<=[A-Za-zÀ-ÿ]{2}[.,;:\])]))\^(\d+(?:,\s*\^*\d+)+)",
     pattern_type=PatternType.IN_TEXT,
     description="Nature superscript comma: ^1,^2 | ^1, ^2",
 )
@@ -69,56 +69,57 @@ _NATURE_SUPERSCRIPT_COMMA = CompiledPattern.create(
 # --- Reference list Nature patterns ---
 
 # Nature compact article:
-# 1. Authors. Title, Journal Volume, Pages (Year).
+# 1. Authors. Title. Journal Volume, Pages (Year).
+# or 1. Authors. Title, Journal Volume, Pages (Year).
 _NATURE_REFERENCE_COMPACT = CompiledPattern.create(
     name="nature_reference_compact",
     pattern=(
         r"^"
-        r"(?:\d+\.?\s*)?"  # Optional number.
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?),"  # Title,
-        r"\s*(?P<venue>[^0-9]+)\s*"  # Journal (no numbers)
+        r"(?:(?P<index>\d+)\.\s*)?"  # Optional number.
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b))"  # Authors. (don't stop at initial)
+        r"(?P<title>[^.]+?)[.,]\s+"  # Title. or Title,
+        r"(?P<venue>[^0-9,;]+?)\s+"  # Journal (no numbers)
         r"(?P<volume>\d+)"  # Volume
-        r"(?:,\s*(?P<pages>[\d–-]+))?"  # , Pages
-        r"\s*\((?P<year>\d{4})\)"  # (Year)
+        r"(?:,\s*(?P<pages>[\d–-]+|[a-zA-Z]?\d+))?"  # , Pages
+        r"\s*\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)\.?"  # (Year)
         r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
-    description="Nature compact: Authors. Title, Journal Volume, Pages (Year).",
+    description="Nature compact: Authors. Title. Journal Volume, Pages (Year).",
 )
 
 # Nature with numbered prefix:
-# [1] Authors. Title, Journal Volume, Pages (Year).
+# [1] Authors. Title. Journal Volume, Pages (Year).
 _NATURE_NUMBERED = CompiledPattern.create(
     name="nature_numbered",
     pattern=(
         r"^\[\s*(?P<index>\d+)\s*\]\s*"  # [N]
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?),"  # Title,
-        r"\s*(?P<venue>[^0-9]+)\s*"  # Journal (no numbers)
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b))"  # Authors.
+        r"(?P<title>[^.]+?)[.,]\s+"  # Title. or Title,
+        r"(?P<venue>[^0-9,;]+?)\s+"  # Journal (no numbers)
         r"(?P<volume>\d+)"  # Volume
-        r"(?:,\s*(?P<pages>[\d–-]+))?"  # , Pages
-        r"\s*\((?P<year>\d{4})\)"  # (Year)
+        r"(?:,\s*(?P<pages>[\d–-]+|[a-zA-Z]?\d+))?"  # , Pages
+        r"\s*\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)\.?"  # (Year)
         r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
-    description="Nature numbered: [1] Authors. Title, Journal Volume, Pages (Year).",
+    description="Nature numbered: [1] Authors. Title. Journal Volume, Pages (Year).",
 )
 
 # Nature article with DOI:
-# 1. Authors. Title, Journal Volume, Pages (Year). doi:...
+# 1. Authors. Title. Journal Volume, Pages (Year). doi:...
 _NATURE_REFERENCE_DOI = CompiledPattern.create(
     name="nature_reference_doi",
     pattern=(
         r"^"
-        r"(?:\d+\.?\s*)?"  # Optional number.
-        r"(?P<authors>.+?)\.\s+"  # Authors.
-        r"(?P<title>.+?),"  # Title,
-        r"\s*(?P<venue>[^0-9]+)\s*"  # Journal (no numbers)
+        r"(?:(?P<index>\d+)\.\s*)?"  # Optional number.
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b))"  # Authors.
+        r"(?P<title>[^.]+?)[.,]\s+"  # Title. or Title,
+        r"(?P<venue>[^0-9,;]+?)\s+"  # Journal (no numbers)
         r"(?P<volume>\d+)"  # Volume
-        r"(?:,\s*(?P<pages>[\d–-]+))?"  # , Pages
-        r"\s*\((?P<year>\d{4})\)"  # (Year)
-        r"(?:\.\s*)?doi:(?P<doi>.+)?"  # . doi:...
+        r"(?:,\s*(?P<pages>[\d–-]+|[a-zA-Z]?\d+))?"  # , Pages
+        r"\s*\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)"  # (Year)
+        r"(?:\.\s*)?doi:\s*(?P<doi>\S+?)\.?"  # . doi:...
         r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -126,20 +127,19 @@ _NATURE_REFERENCE_DOI = CompiledPattern.create(
 )
 
 # Nature book:
-# Authors, Book Title, Publisher, Year.
+# 1. Authors. Book Title (Publisher, Year). OR Authors, Book Title, Publisher, Year.
 _NATURE_BOOK = CompiledPattern.create(
     name="nature_book",
     pattern=(
         r"^"
-        r"(?:\d+\.?\s*)?"  # Optional number.
-        r"(?P<authors>.+?),?\s+"  # Authors,
-        r"(?P<title>.+?),?\s+"  # Title,
-        r"(?P<publisher>.+?),?\s*"  # Publisher,
-        r"(?P<year>\d{4})?"  # Optional year
+        r"(?:(?P<index>\d+)\.\s*)?"  # Optional number.
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b))"  # Authors.
+        r"(?P<title>[^.(]{5,}?)\s*"
+        r"\(\s*(?P<publisher>[^,()]+),\s*(?P<year>(?:19|20)\d{2})\s*\)\.?"
         r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
-    description="Nature book: Authors, Book Title, Publisher, Year.",
+    description="Nature book: Authors. Book Title (Publisher, Year).",
 )
 
 # Nature book chapter:
@@ -148,14 +148,14 @@ _NATURE_BOOK_CHAPTER = CompiledPattern.create(
     name="nature_book_chapter",
     pattern=(
         r"^"
-        r"(?:\d+\.?\s*)?"  # Optional number.
-        r"(?P<authors>.+?),?\s+"  # Authors,
-        r"(?P<chapter_title>.+?),?\s+"  # Chapter title,
+        r"(?:(?P<index>\d+)\.\s*)?"  # Optional number.
+        r"(?P<authors>.+?)(?:\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b))|,\s+)"  # Authors.
+        r"(?P<chapter_title>[^.]+?)[.,]\s+"  # Chapter title,
         r"in\s+"  # in
-        r"(?P<book_title>.+?)"  # Book title
-        r"(?:\s*\(eds?\.?\s+(?P<editor>.+?)\))?"  # (ed. Editor)
-        r"(?:,\s*(?P<publisher>.+?))?"  # , Publisher
-        r"(?:,\s*(?P<year>\d{4}))?"  # , Year
+        r"(?P<book_title>[^()]+?)"  # Book title
+        r"(?:\s*\(eds?\.?\s+(?P<editor>[^)]+?)\))?"  # (ed. Editor)
+        r"(?:,\s*(?P<publisher>[^,()]+?))?"  # , Publisher
+        r"\s*(?:,\s*|\(\s*)(?P<year>(?:19|20)\d{2})\)?\.?"  # , Year or (Year)
         r"(?P<rest>.*)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -386,15 +386,13 @@ class NatureFormat:
         citation.title_normalized = self._normalize_title(title)
 
         # Extract venue and volume
-        venue = match.group('venue').strip()
+        venue = match.group('venue').strip().rstrip('.,')
         volume = match.group('volume')
         pages = match.group('pages')
 
+        citation.venue = venue
         if volume:
-            citation.venue = f"{venue} {volume}"
             citation.volume = volume
-        else:
-            citation.venue = venue
 
         if pages:
             citation.pages = pages
@@ -402,12 +400,14 @@ class NatureFormat:
         # Extract year
         year_str = match.group('year')
         if year_str:
-            citation.year = year_str
+            citation.year = year_str[:4]
+            if len(year_str) > 4:
+                citation.year_suffix = year_str[4:]
 
         # Extract DOI
         doi = match.group('doi')
         if doi:
-            citation.doi = doi.strip()
+            citation.doi = doi.strip().rstrip('.')
 
         citation.confidence = self._estimate_confidence(citation)
         return citation
@@ -439,15 +439,13 @@ class NatureFormat:
         citation.title_normalized = self._normalize_title(title)
 
         # Extract venue and volume
-        venue = match.group('venue').strip()
+        venue = match.group('venue').strip().rstrip('.,')
         volume = match.group('volume')
         pages = match.group('pages')
 
+        citation.venue = venue
         if volume:
-            citation.venue = f"{venue} {volume}"
             citation.volume = volume
-        else:
-            citation.venue = venue
 
         if pages:
             citation.pages = pages
@@ -455,7 +453,9 @@ class NatureFormat:
         # Extract year
         year_str = match.group('year')
         if year_str:
-            citation.year = year_str
+            citation.year = year_str[:4]
+            if len(year_str) > 4:
+                citation.year_suffix = year_str[4:]
 
         # Extract DOI if present
         doi_match = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', text)
@@ -487,15 +487,13 @@ class NatureFormat:
         citation.title_normalized = self._normalize_title(title)
 
         # Extract venue and volume
-        venue = match.group('venue').strip()
+        venue = match.group('venue').strip().rstrip('.,')
         volume = match.group('volume')
         pages = match.group('pages')
 
+        citation.venue = venue
         if volume:
-            citation.venue = f"{venue} {volume}"
             citation.volume = volume
-        else:
-            citation.venue = venue
 
         if pages:
             citation.pages = pages
@@ -503,7 +501,9 @@ class NatureFormat:
         # Extract year
         year_str = match.group('year')
         if year_str:
-            citation.year = year_str
+            citation.year = year_str[:4]
+            if len(year_str) > 4:
+                citation.year_suffix = year_str[4:]
 
         # Extract DOI if present
         doi_match = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', text)
@@ -635,11 +635,17 @@ class NatureFormat:
 
     def _parse_nature_fallback(self, text: str) -> Optional[Citation]:
         """Fallback parser: extract whatever metadata possible."""
+        # Nature fallback only applies when (Year) appears at the end of the entry
+        year_m = re.search(r'\(\s*((?:19|20)\d{2})\s*\)\.?$', text)
+        if not year_m:
+            return None
+
         citation = Citation(
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
             style=CitationStyle.NATURE,
             matched_pattern="nature_fallback",
+            year=year_m.group(1),
         )
 
         # Extract numeric index
@@ -650,11 +656,6 @@ class NatureFormat:
             num_match = re.match(r'^(\d+)\.?\s', text)
             if num_match:
                 citation.numeric_index = int(num_match.group(1))
-
-        # Try to extract year from parentheses
-        year_m = re.search(r'\((?:\d{4})\)', text)
-        if year_m:
-            citation.year = year_m.group(0)[1:-1]
 
         # Try to extract title (usually the longest quoted or capitalized segment)
         # Look for text between author and year
