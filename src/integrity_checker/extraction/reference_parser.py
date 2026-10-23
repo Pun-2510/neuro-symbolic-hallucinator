@@ -127,12 +127,51 @@ _ESSAY_TITLE_RE = re.compile(
 # Long text without year — likely not a citation entry
 _LONG_TEXT_NO_YEAR_RE = re.compile(r"^[A-Za-z]{50,}")
 
-# A line that is only a bibliography header (used to drop it wherever it
-# lands once running headers/page numbers have been stripped).
+# A line that is only a bibliography header or TDTU structural sub-header
+# (used to drop it wherever it lands once running headers/page numbers have been stripped).
 _BIB_HEADER_LINE_RE = re.compile(
-    r"^\s*(?:\d+\.?\s+)?(?:references?|bibliography|works?\s+cited"
-    r"|tài\s+liệu\s+tham\s+khảo|danh\s+mục\s+tài\s+liệu)\s*[:.]?\s*$",
+    r"^\s*(?:(?:\d+|[A-Z]|[IVX]+)\s*[\.\)]\s*)?(?:"
+    r"references?|bibliography|works?\s+cited"
+    r"|danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?|tài\s+liệu\s+tham\s+khảo"
+    r"|văn\s+bản\s+(?:quy\s+phạm\s+)?pháp\s+luật"
+    r"|(?:tài\s+liệu\s+)?(?:tiếng\s+việt|tiếng\s+anh|tiếng\s+pháp|tiếng\s+đức"
+    r"|tiếng\s+nga|tiếng\s+trung|tiếng\s+nhật|nước\s+ngoài)"
+    r")\s*[:.]?\s*$",
     re.IGNORECASE,
+)
+
+_LEADING_SUBHEADER_RE = re.compile(
+    r"^\s*(?:(?:[A-Z]|[IVX]+|\d+)\s*[\.\)]\s*)?(?:"
+    r"văn\s+bản\s+(?:quy\s+phạm\s+)?pháp\s+luật"
+    r"|danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?"
+    r"|tài\s+liệu\s+tham\s+khảo"
+    r"|(?:tài\s+liệu\s+)?(?:tiếng\s+việt|tiếng\s+anh|tiếng\s+pháp|tiếng\s+đức"
+    r"|tiếng\s+nga|tiếng\s+trung|tiếng\s+nhật|nước\s+ngoài)"
+    r")\s*[:.]?\s+",
+    re.IGNORECASE,
+)
+
+_UPPER_VN_R = r"[A-ZÀ-ÝĂÂĐÊÔƠƯĨŨẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ]"
+_PERSONAL_AUTHOR_HEAD_R = (
+    rf"(?:(?:van|de|der|den|von|le|la|du|di|da)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\-]+,\s*"
+    rf"(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+"
+    rf"(?:,\s*(?:&\s*|và\s*|and\s*)?(?:(?:van|de|der|den|von)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\-]+,\s*(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+)*"
+    rf"(?:\s+(?:&|và|and)\s+(?:(?:van|de|der|den|von)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\-]+,\s*(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+)*"
+    r"(?:\s*,?\s*(?:et\s+al\.?|và\s+cộng\s+sự|và\s+cs\.?))?"
+    r"\s*\(\s*(?:(?:19|20)\d{2}[a-z]?|n\.?\s*d\.?)\s*\)"
+)
+_CORP_AUTHOR_HEAD_R = (
+    r"(?:(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Chính\s+phủ|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội"
+    r"|Department|Ministry|Reserve\s+Bank|World\s+Health|United\s+Nations|World\s+Bank)"
+    r"[^().\n]{2,70}?\.?\s*\(\s*(?:19|20)\d{2}[a-z]?\s*\)\.)"
+)
+_LEGAL_HEAD_R = (
+    r"(?:\d+\s*[\.\)]\s*)?(?:Hiến\s+pháp(?:\s+năm|\s+\d{4})"
+    r"|(?:Bộ\s+luật|Luật|Pháp\s+lệnh)\s+[^().\n]{2,80}?(?:\((?:Bộ\s+luật|Luật|Pháp\s+lệnh)?\s*số|\bsố\s+\d|\bngày\s+\d)"
+    r"|(?:Nghị\s+định|Thông\s+tư(?:\s+liên\s+tịch)?|Quyết\s+định|Nghị\s+quyết(?:\s+liên\s+tịch)?|Chỉ\s+thị)\s+(?:số\s+)?\d+/\d{4}/)"
+)
+_INLINE_ENTRY_START_RE = re.compile(
+    rf"(?:{_PERSONAL_AUTHOR_HEAD_R}|{_CORP_AUTHOR_HEAD_R}|{_LEGAL_HEAD_R})"
 )
 
 # URL/DOI terminator — most web-style APA entries end with one of these, which
@@ -147,12 +186,21 @@ def _is_essay_title_entry(entry: str) -> bool:
     """
     text_stripped = entry.strip()
 
+    # Structured reference entries (Author (Year). / [N] / Vietnamese legal docs)
+    # whose paper title contains "A survey of..." or "Introduction to..." are real citations.
+    if (
+        _INLINE_ENTRY_START_RE.match(text_stripped)
+        or re.match(r"^\s*\[\d+\]", text_stripped)
+        or re.search(r"\(\s*(?:19|20)\d{2}[a-z]?\s*\)\.", text_stripped)
+    ):
+        return False
+
     # Very long text without year — likely a title or header
     if len(text_stripped) > 200 and _LONG_TEXT_NO_YEAR_RE.match(text_stripped):
         return True
 
-    # Contains essay/survey/review indicators
-    if _ESSAY_TITLE_RE.search(text_stripped):
+    # Contains essay/survey/review indicators (without a citation year)
+    if _ESSAY_TITLE_RE.search(text_stripped) and not re.search(r"\b(?:19|20)\d{2}\b", text_stripped):
         return True
 
     return False
@@ -332,8 +380,9 @@ class ReferenceListParser:
         """
         # 1. Strip header prefix
         header_strip_re = re.compile(
-            r"^\s*(?:references?|bibliography|tài\s+liệu\s+tham\s+khảo"
-            r"|danh\s+mục\s+tài\s+liệu|works?\s+cited)\s*[:.]?\s*",
+            r"^\s*(?:\d+\.?\s+)?(?:references?|bibliography"
+            r"|danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?|tài\s+liệu\s+tham\s+khảo"
+            r"|works?\s+cited)\s*[:.]?\s*",
             flags=re.IGNORECASE,
         )
         text = header_strip_re.sub("", text, count=1).strip()
@@ -437,41 +486,112 @@ class ReferenceListParser:
 
         return entries if len(entries) >= 2 else []
 
+    @staticmethod
+    def _clean_subheader_prefix(entry: str) -> str:
+        """Strip leading TDTU structural sub-headers (e.g. 'A. Văn bản...', 'Tiếng Việt')."""
+        cleaned = (entry or "").strip()
+        while cleaned:
+            m = _LEADING_SUBHEADER_RE.match(cleaned)
+            if not m:
+                break
+            cleaned = cleaned[m.end():].strip()
+        return cleaned
+
+    def _split_inline_entries(self, chunk: str) -> list[str]:
+        """Split a chunk that may contain multiple APA or Vietnamese legal entries."""
+        cleaned_chunk = self._clean_subheader_prefix(chunk)
+        if not cleaned_chunk:
+            return []
+
+        valid_starts: list[int] = []
+        for m in _INLINE_ENTRY_START_RE.finditer(cleaned_chunk):
+            pos = m.start()
+            if pos == 0:
+                valid_starts.append(pos)
+                continue
+            prefix = cleaned_chunk[:pos]
+            # Must follow a sentence-ending period/semicolon, a URL, or a sub-header
+            if re.search(
+                r"(?:[\.;]|https?://\S+)\s+$"
+                r"|(?:văn\s+bản\s+(?:quy\s+phạm\s+)?pháp\s+luật|tài\s+liệu\s+tham\s+khảo"
+                r"|tiếng\s+việt|tiếng\s+anh|tiếng\s+pháp)\s*[:.]?\s+$",
+                prefix,
+                flags=re.IGNORECASE,
+            ):
+                valid_starts.append(pos)
+
+        if len(valid_starts) < 2:
+            return [cleaned_chunk] if (len(cleaned_chunk) > 20 or is_vn_legal_reference(cleaned_chunk)) else []
+
+        sub_entries: list[str] = []
+        if valid_starts[0] > 0:
+            leading = self._clean_subheader_prefix(cleaned_chunk[:valid_starts[0]])
+            if len(leading) > 20 or is_vn_legal_reference(leading):
+                sub_entries.append(leading)
+
+        for idx, start_pos in enumerate(valid_starts):
+            end_pos = valid_starts[idx + 1] if idx + 1 < len(valid_starts) else len(cleaned_chunk)
+            piece = self._clean_subheader_prefix(cleaned_chunk[start_pos:end_pos])
+            # Trim any trailing sub-header that belongs to the next section
+            piece = re.sub(
+                r"\s+(?:[A-Z]\.\s*)?(?:Văn\s+bản\s+(?:quy\s+phạm\s+)?pháp\s+luật"
+                r"|B\.\s*Tài\s+liệu\s+tham\s+khảo|Tiếng\s+Việt|Tiếng\s+Anh|Tiếng\s+Pháp)\s*[:.]?\s*$",
+                "",
+                piece,
+                flags=re.IGNORECASE,
+            ).strip()
+            if len(piece) > 20 or is_vn_legal_reference(piece):
+                sub_entries.append(piece)
+
+        return sub_entries
+
     def _split_by_year_boundary(self, text: str) -> list[str]:
-        """Tach entries bang URL/DOI boundaries.
+        """Tach entries bang URL/DOI boundaries va inline APA/legal entry starts.
 
         Algorithm:
             1. Rejoin hyphen-broken line wraps (PDF splits long URLs as
                ".../how-to-develop-\\nhealthcare-...") WITHOUT inserting a
                space, so the URL stays a single token.
-            2. Flatten remaining whitespace to single spaces.
+            2. Flatten remaining whitespace to single spaces and repair space-broken URLs.
             3. Tim URL/DOI boundaries (http/https/www/doi.org), split tai do.
-            4. Neu 2+ entries -> tra ve. Fallback -> newline/year markers.
+            4. Split each chunk further on inline APA / Vietnamese legal entry boundaries.
+            5. Neu 2+ entries -> tra ve. Fallback -> newline/year markers.
         """
-        # Step 1+2: Rejoin hyphen-broken wraps, then flatten to a single line.
+        # Step 1+2: Rejoin hyphen-broken wraps, flatten to a single line, repair broken URLs.
         flat = re.sub(r"-\s*\n\s*", "-", text)
         flat = re.sub(r"\s+", " ", flat).strip()
+        flat = re.sub(r"(https?://[^\s/]+(?:/[^\s/]+)*/)\s+([A-Za-z0-9_\-]+)", r"\1\2", flat)
 
         # Step 3: Split at every URL/DOI terminator.
         matches = list(_URL_BOUNDARY_RE.finditer(flat))
+        url_chunks: list[str] = []
         if len(matches) >= 1:
-            entries: list[str] = []
             start = 0
             for m in matches:
                 end = m.end()
                 chunk = flat[start:end].strip()
-                if len(chunk) > 20:
-                    entries.append(chunk)
+                if len(chunk) > 20 or is_vn_legal_reference(chunk):
+                    url_chunks.append(chunk)
                 start = end
-            # Last chunk (after last DOI URL)
             last_chunk = flat[start:].strip()
-            if len(last_chunk) > 20:
-                entries.append(last_chunk)
+            if len(last_chunk) > 20 or is_vn_legal_reference(last_chunk):
+                url_chunks.append(last_chunk)
+        else:
+            url_chunks = [flat]
 
-            if len(entries) >= 2:
-                return entries
+        # Step 4: Split each URL-bounded chunk on inline APA / legal entry boundaries.
+        entries: list[str] = []
+        for chunk in url_chunks:
+            sub = self._split_inline_entries(chunk)
+            if sub:
+                entries.extend(sub)
+            elif len(chunk) > 20 or is_vn_legal_reference(chunk):
+                entries.append(chunk)
 
-        # Step 4: Fallback - split on newline / year markers
+        if len(entries) >= 2:
+            return entries
+
+        # Step 5: Fallback - split on newline / year markers
         return self._split_by_year_fallback(text)
 
     @staticmethod
@@ -1114,3 +1234,171 @@ class ReferenceListParser:
             return citation
         except Exception:
             return None
+
+
+# =============================================================================
+# TDTU Bibliography Ordering & Language Compliance Checker (§2.6.1 – §2.6.3)
+# =============================================================================
+
+_VN_ALPHABET_GROUPS: list[str] = [
+    " ",
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+    "aàảãáạ",
+    "ăằẳẵắặ",
+    "âầẩẫấậ",
+    "b",
+    "c",
+    "d",
+    "đ",
+    "eèẻẽéẹ",
+    "êềểễếệ",
+    "f",
+    "g",
+    "h",
+    "iìỉĩíị",
+    "j",
+    "k",
+    "l",
+    "m",
+    "n",
+    "oòỏõóọ",
+    "ôồổỗốộ",
+    "ơờởỡớợ",
+    "p",
+    "q",
+    "r",
+    "s",
+    "t",
+    "uùủũúụ",
+    "ưừửữứự",
+    "v",
+    "w",
+    "x",
+    "yỳỷỹýỵ",
+    "z",
+]
+
+_VN_CHAR_COLLATE_MAP: dict[str, tuple[int, int]] = {}
+for _group_idx, _chars in enumerate(_VN_ALPHABET_GROUPS):
+    for _tone_idx, _ch in enumerate(_chars):
+        _VN_CHAR_COLLATE_MAP[_ch] = (_group_idx, _tone_idx)
+
+_VN_DIACRITIC_RE = re.compile(
+    r"[àáảãạăằắẳẵặâầấẩẫậđèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]",
+    re.IGNORECASE,
+)
+
+
+def vn_alphabetical_sort_key(text: str) -> tuple[list[int], list[int]]:
+    """Return a Vietnamese ABC collation key (base letters first, tones second)."""
+    import unicodedata
+
+    s = unicodedata.normalize("NFC", (text or "").strip().lower())
+    s = re.sub(r"[^\w\s]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    base_ranks: list[int] = []
+    tone_ranks: list[int] = []
+    for ch in s:
+        b_rank, t_rank = _VN_CHAR_COLLATE_MAP.get(ch, (len(_VN_ALPHABET_GROUPS) + ord(ch), 0))
+        base_ranks.append(b_rank)
+        tone_ranks.append(t_rank)
+    return base_ranks, tone_ranks
+
+
+def classify_tdtu_reference_group(citation: Citation) -> str:
+    """Classify a reference into ``'legal'``, ``'vi'``, or ``'foreign'`` per TDTU §2.6."""
+    raw = citation.raw_text or ""
+    if citation.matched_pattern == "vn_legal_document" or is_vn_legal_reference(raw):
+        return "legal"
+    combined = f"{raw} {citation.title or ''} {citation.venue or ''}"
+    if _VN_DIACRITIC_RE.search(combined):
+        return "vi"
+    return "foreign"
+
+
+def _legal_hierarchy_rank(citation: Citation) -> int:
+    """Return TDTU §2.6.1 legal hierarchy rank: 1=Hiến pháp, 2=Bộ luật/Luật, 3=Văn bản dưới luật."""
+    title = (citation.title or citation.raw_text or "").strip()
+    title_clean = re.sub(r"^\s*\d+\s*[\.\)]\s*", "", title)
+    if re.match(r"^Hiến\s+pháp\b", title_clean, re.IGNORECASE):
+        return 1
+    if re.match(r"^(?:Bộ\s+luật|Luật|Pháp\s+lệnh)\b", title_clean, re.IGNORECASE):
+        return 2
+    return 3
+
+
+def _reference_primary_sort_label(citation: Citation) -> str:
+    """Return the author surname or corporate author name used for ABC sorting (§2.6.2b)."""
+    if citation.authors:
+        first = citation.authors[0]
+        if hasattr(first, "last_name") and first.last_name:
+            return first.last_name.strip()
+        if isinstance(first, str) and first.strip():
+            return first.strip()
+    return (citation.title or citation.raw_text or "").strip()
+
+
+class TDTUBibliographyComplianceResult:
+    """Result of checking a reference list against TDTU §2.6 ordering and grouping rules."""
+
+    def __init__(
+        self,
+        is_compliant: bool,
+        groups: list[str],
+        violations: list[str],
+    ) -> None:
+        self.is_compliant = is_compliant
+        self.groups = groups
+        self.violations = violations
+
+
+def check_tdtu_bibliography_compliance(
+    citations: list[Citation],
+) -> TDTUBibliographyComplianceResult:
+    """Check TDTU §2.6 reference list compliance (legal hierarchy, language grouping, ABC order)."""
+    groups = [classify_tdtu_reference_group(c) for c in citations]
+    violations: list[str] = []
+
+    # 1. Check section ordering: legal -> vi -> foreign (no interleaving)
+    group_order = {"legal": 0, "vi": 1, "foreign": 2}
+    seen_groups: set[str] = set()
+    prev_group: str | None = None
+    for idx, grp in enumerate(groups):
+        if prev_group is not None and grp != prev_group:
+            if grp in seen_groups:
+                violations.append(
+                    f"Language/section groups are interleaved at entry #{idx + 1} ('{grp}' appears after '{prev_group}')."
+                )
+            elif group_order[grp] < group_order[prev_group]:
+                violations.append(
+                    f"Section '{grp}' at entry #{idx + 1} should appear before '{prev_group}'."
+                )
+        seen_groups.add(grp)
+        prev_group = grp
+
+    # 2. Check legal hierarchy within legal documents (Hiến pháp -> Luật/Bộ luật -> Văn bản dưới luật)
+    legal_cits = [c for c, g in zip(citations, groups) if g == "legal"]
+    for i in range(len(legal_cits) - 1):
+        r1 = _legal_hierarchy_rank(legal_cits[i])
+        r2 = _legal_hierarchy_rank(legal_cits[i + 1])
+        if r1 > r2:
+            violations.append(
+                f"Legal hierarchy violation: '{legal_cits[i].title}' appears before '{legal_cits[i + 1].title}'."
+            )
+
+    # 3. Check ABC alphabetical sorting within each academic language group ('vi' and 'foreign')
+    for target_grp in ("vi", "foreign"):
+        grp_cits = [c for c, g in zip(citations, groups) if g == target_grp]
+        for i in range(len(grp_cits) - 1):
+            label_a = _reference_primary_sort_label(grp_cits[i])
+            label_b = _reference_primary_sort_label(grp_cits[i + 1])
+            if vn_alphabetical_sort_key(label_a) > vn_alphabetical_sort_key(label_b):
+                violations.append(
+                    f"Alphabetical order violation in '{target_grp}': '{label_a}' appears before '{label_b}'."
+                )
+
+    return TDTUBibliographyComplianceResult(
+        is_compliant=len(violations) == 0,
+        groups=groups,
+        violations=violations,
+    )

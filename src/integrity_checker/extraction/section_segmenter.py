@@ -70,7 +70,7 @@ class SectionType(str, Enum):
 _BIBLIOGRAPHY_HEADERS = re.compile(
     r"^\s*(?:\d+\.?\s+)?(?:"
     r"references?|bibliography|works?\s+cited|"
-    r"tài\s+liệu\s+tham\s+khảo|danh\s+mục\s+tài\s+liệu|"
+    r"danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?|tài\s+liệu\s+tham\s+khảo|"
     r"参考文献|参考文献$"
     r")\s*[:.]?\s*$",
     re.IGNORECASE,

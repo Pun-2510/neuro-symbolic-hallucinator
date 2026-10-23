@@ -21,7 +21,8 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # Header / footer keywords để phát hiện reference section
 _REFERENCE_HEADERS = re.compile(
-    r"^\s*(references?|bibliography|works\s+cited|tài\s+liệu\s+tham\s+khảo)\s*$",
+    r"^\s*(?:\d+\.?\s+)?(references?|bibliography|works?\s+cited"
+    r"|danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?|tài\s+liệu\s+tham\s+khảo)\s*[:.]?\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -246,8 +247,17 @@ class CitationExtractor:
         trong ``_extract_from_text``.
         """
         citations: list[Citation] = []
+        in_bib_section = False
         for page in doc.pages:
+            if in_bib_section:
+                break
             raw_text = page.text  # Keep raw text for whitespace detection
+            ref_header_m = _REFERENCE_HEADERS.search(raw_text)
+            if ref_header_m:
+                raw_text = raw_text[: ref_header_m.start()]
+                in_bib_section = True
+            if not raw_text.strip():
+                continue
             normalized = self.preprocessor.normalize(raw_text)
             page_citations = self._extract_from_text(raw_text, normalized, page.page_num)
             citations.extend(page_citations)
