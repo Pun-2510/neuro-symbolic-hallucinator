@@ -658,7 +658,7 @@ function HeroSection({
   useEffect(() => {
     const timer = window.setInterval(() => {
       setActivePipelineNode((prev) => (prev + 1) % 5);
-    }, 1500);
+    }, 2400);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -737,7 +737,10 @@ function HeroSection({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           {/* Top Announcement Pill */}
-          <div className="animate-slide-up inline-flex items-center gap-2.5 pl-2.5 pr-3.5 py-1 rounded-full bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300 mb-6">
+          <div
+            style={{ animationDelay: '80ms' }}
+            className="animate-hero-reveal inline-flex items-center gap-2.5 pl-2.5 pr-3.5 py-1 rounded-full bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300 mb-6"
+          >
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-indigo-600 text-white">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
               NEURO-SYMBOLIC
@@ -757,20 +760,34 @@ function HeroSection({
           </div>
 
           {/* Main Display Headline */}
-          <h1 className="animate-slide-up animation-delay-100 font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900 dark:text-white leading-[1.08] mb-5">
+          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900 dark:text-white leading-[1.08] mb-5">
             {lang === 'vi' ? (
               <>
-                Kiểm chứng mọi trích dẫn.
-                <br />
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-600 dark:from-indigo-400 dark:via-indigo-300 dark:to-emerald-400 animate-gradient-x">
+                <span
+                  style={{ animationDelay: '300ms', animationDuration: '1350ms' }}
+                  className="block animate-hero-reveal"
+                >
+                  Kiểm chứng mọi trích dẫn.
+                </span>
+                <span
+                  style={{ animationDelay: '680ms', animationDuration: '1450ms' }}
+                  className="block animate-hero-reveal bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-600 dark:from-indigo-400 dark:via-indigo-300 dark:to-emerald-400 animate-gradient-x mt-1"
+                >
                   Truy vết mọi nguồn học thuật.
                 </span>
               </>
             ) : (
               <>
-                Verify Every Citation.
-                <br />
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-600 dark:from-indigo-400 dark:via-indigo-300 dark:to-emerald-400 animate-gradient-x">
+                <span
+                  style={{ animationDelay: '300ms', animationDuration: '1350ms' }}
+                  className="block animate-hero-reveal"
+                >
+                  Verify Every Citation.
+                </span>
+                <span
+                  style={{ animationDelay: '680ms', animationDuration: '1450ms' }}
+                  className="block animate-hero-reveal bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-600 dark:from-indigo-400 dark:via-indigo-300 dark:to-emerald-400 animate-gradient-x mt-1"
+                >
                   Trace Every Source.
                 </span>
               </>
@@ -778,14 +795,20 @@ function HeroSection({
           </h1>
 
           {/* Supporting Copy */}
-          <p className="animate-slide-up animation-delay-200 text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed mb-7">
+          <p
+            style={{ animationDelay: '1080ms', animationDuration: '1500ms' }}
+            className="animate-hero-reveal text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed mb-7"
+          >
             {lang === 'vi'
               ? 'Phát hiện tài liệu tham khảo bịa đặt (AI hallucination), sai lệch metadata năm/tạp chí và trích dẫn mồ côi bằng kiến trúc kiểm chứng 2 lớp kết hợp đối chiếu đa cơ sở dữ liệu với suy diễn luật hình thức.'
               : 'Detect invalid, mismatched, and potentially hallucinated academic references with explainable two-layer verification powered by GROBID extraction, federated scholarly retrieval, and symbolic logic rules.'}
           </p>
 
           {/* CTA Buttons */}
-          <div className="animate-slide-up animation-delay-300 flex flex-col sm:flex-row items-center justify-center gap-3.5 mb-8">
+          <div
+            style={{ animationDelay: '1450ms', animationDuration: '1350ms' }}
+            className="animate-hero-reveal flex flex-col sm:flex-row items-center justify-center gap-3.5 mb-8"
+          >
             <Button
               asChild
               size="lg"
@@ -823,7 +846,10 @@ function HeroSection({
           </div>
 
           {/* Animated Pipeline Micro-Preview Pill Strip */}
-          <div className="relative overflow-hidden inline-flex flex-wrap items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-sm text-xs font-mono text-slate-600 dark:text-slate-400 mb-10">
+          <div
+            style={{ animationDelay: '1750ms', animationDuration: '1350ms' }}
+            className="animate-hero-reveal relative overflow-hidden inline-flex flex-wrap items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-sm text-xs font-mono text-slate-600 dark:text-slate-400 mb-10"
+          >
             {/* Traveling Horizontal Beam */}
             <div className="pointer-events-none absolute bottom-0 h-[2px] w-24 bg-gradient-to-r from-transparent via-indigo-500 to-emerald-500 animate-pipeline-beam" />
 
