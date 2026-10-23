@@ -16,6 +16,7 @@ import {
   ClipboardCheck,
   Activity,
   FileText,
+  Globe,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,12 +25,12 @@ import { useRole, type UserCapability, type UserRole } from '@/hooks/useRole';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import { HelpModal } from './HelpModal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 
 /* ============================================================
-   SourceLogic — App Layout Component (shadcn/ui v2.0)
+   SourceLogic — App Layout Component (Scholarly Precision v2.0)
    Academic Source Verification Workspace
-   Based on SOURCELOGIC_CONCEPT.md Section 5: Global App Shell
    ============================================================ */
 
 interface NavItem {
@@ -85,12 +86,23 @@ const SIDEBAR_GROUPS: NavGroup[] = [
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const { has, role } = useRole();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+
+  const currentLang = (i18n.resolvedLanguage || i18n.language || 'en').startsWith('vi')
+    ? 'vi'
+    : 'en';
+
+  const handleToggleLanguage = () => {
+    const next = currentLang === 'en' ? 'vi' : 'en';
+    void i18n.changeLanguage(next);
+    localStorage.setItem('language', next);
+    localStorage.setItem('i18nextLng', next);
+  };
 
   // Keyboard shortcut: Ctrl+/ to open help
   useEffect(() => {
@@ -104,7 +116,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) =>
+    location.pathname === path ||
+    (path !== '/dashboard' && location.pathname.startsWith(`${path}/`));
 
   const handleLogout = async () => {
     if (loggingOut) return;
@@ -120,7 +134,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 flex">
+    <div className="h-screen overflow-hidden bg-slate-50/80 dark:bg-slate-950 flex selection:bg-indigo-500/20 selection:text-indigo-600 dark:selection:text-indigo-300">
       {/* Skip-to-content — visually hidden until focused. WCAG 2.1 Level A */}
       <a
         href="#main-content"
@@ -156,7 +170,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-50
-          w-72 h-screen shrink-0 overflow-hidden bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800
+          w-72 h-screen shrink-0 overflow-hidden bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800/80
           transform transition-transform duration-300 ease-out
           lg:transform-none
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -173,19 +187,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div className="flex flex-col h-full">
           {/* Logo & Branding */}
-          <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+          <div className="p-5 border-b border-slate-200/80 dark:border-slate-800/80 bg-gradient-to-b from-slate-50/60 to-transparent dark:from-slate-950/40">
             <Link
               to="/dashboard"
               onClick={() => setMobileOpen(false)}
               aria-label="Go to dashboard"
-              className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+              className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
             >
               <div className="flex items-center gap-3.5">
                 {/* SourceLogic [1] -> ✓ Logo */}
-                <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center shadow-md shadow-indigo-600/20 ring-1 ring-indigo-500/30 shrink-0 group-hover:scale-[1.03] transition-transform">
                   <svg
-                    width="24"
-                    height="24"
+                    width="22"
+                    height="22"
                     viewBox="0 0 24 24"
                     fill="none"
                     className="text-white"
@@ -193,43 +207,57 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <path
                       d="M4 8C4 6.89543 4.89543 6 6 6H8"
                       stroke="currentColor"
-                      strokeWidth="2"
+                      strokeWidth="2.2"
                       strokeLinecap="round"
                     />
                     <path
                       d="M4 16C4 17.1046 4.89543 18 6 18H8"
                       stroke="currentColor"
-                      strokeWidth="2"
+                      strokeWidth="2.2"
                       strokeLinecap="round"
                     />
                     <path
                       d="M10 12H14M14 12L12 10M14 12L12 14"
                       stroke="currentColor"
-                      strokeWidth="2"
+                      strokeWidth="2.2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
                     <path
                       d="M17 9L19 11L22 8"
                       stroke="currentColor"
-                      strokeWidth="2"
+                      strokeWidth="2.2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
                   </svg>
                 </div>
-                <div>
-                  <h1 className="font-display text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                    SourceLogic
-                  </h1>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h1 className="font-display text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none">
+                      SourceLogic
+                    </h1>
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] font-mono px-1.5 py-0 h-4 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60"
+                    >
+                      v2.0
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
                     {t('nav.academicVerification')}
                   </p>
                 </div>
               </div>
-              <p className="mt-2.5 text-xs text-slate-500 dark:text-slate-400 italic">
-                {t('nav.tagline')}
-              </p>
+              <div className="mt-3 flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-slate-100/80 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/60">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 italic truncate">
+                  {t('nav.tagline')}
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  5 DBs
+                </span>
+              </div>
             </Link>
           </div>
 
@@ -243,7 +271,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               if (visibleItems.length === 0) return null;
               return (
                 <div key={group.labelKey} className={group.roles ? 'pt-2' : ''}>
-                  <p className="px-3.5 py-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <p className="px-3.5 py-1.5 text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                     {t(group.labelKey)}
                   </p>
                   <div className="space-y-0.5">
@@ -259,11 +287,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                             relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium
                             transition-all duration-200
                             ${active
-                              ? 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-semibold ring-1 ring-indigo-500/15'
+                              ? 'bg-indigo-50/90 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-semibold ring-1 ring-indigo-500/20 shadow-2xs'
                               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60'
                             }
                           `}
                         >
+                          {active && (
+                            <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-indigo-600 dark:bg-indigo-400" />
+                          )}
                           <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-indigo-600 dark:text-indigo-400' : ''}`} />
                           <span>{t(item.labelKey)}</span>
                         </Link>
@@ -277,11 +308,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
           <Separator />
 
-          {/* Theme Toggle & Help */}
+          {/* Theme Toggle, Language & Help */}
           <div className="px-4 py-2.5 space-y-1">
-            <div className="flex items-center justify-between px-2 py-1">
+            <div className="flex items-center justify-between px-2 py-1 gap-2">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('nav.theme')}</span>
-              <ThemeToggle size="sm" showLabel />
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleToggleLanguage}
+                  title="Switch language (VI / EN)"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-[11px] font-mono font-semibold text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
+                >
+                  <Globe className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
+                  <span>{currentLang === 'vi' ? 'VI' : 'EN'}</span>
+                </button>
+                <ThemeToggle size="sm" showLabel />
+              </div>
             </div>
 
             <button
@@ -289,7 +331,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               <span className="flex items-center gap-2">
-                <HelpCircle className="h-4 w-4" />
+                <HelpCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                 {t('nav.helpShortcuts')}
               </span>
               <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-500">
@@ -299,8 +341,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* User Info & Logout */}
-          <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-1.5 bg-slate-50/50 dark:bg-slate-900/50">
-            <div className="flex flex-col gap-1 px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+          <div className="p-3 border-t border-slate-200/80 dark:border-slate-800/80 space-y-1.5 bg-slate-50/60 dark:bg-slate-900/60">
+            <div className="flex flex-col gap-1 px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
               <div className="flex items-center gap-3">
                 <Avatar className="h-9 w-9 border-2 border-indigo-200 dark:border-indigo-800">
                   {user?.avatar_url ? (
@@ -315,7 +357,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                     {user?.full_name || user?.username || 'User'}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 capitalize flex items-center gap-1.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 capitalize flex items-center gap-1.5 font-mono">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500" />
                     {user?.role || 'user'}
                   </p>
@@ -350,11 +392,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative">
+        {/* Subtle Architectural Background Aura */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div
+            className="absolute inset-0 opacity-40 dark:opacity-15"
+            style={{
+              backgroundImage:
+                'radial-gradient(rgb(148 163 184 / 0.28) 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+            }}
+          />
+          <div className="absolute -top-32 right-0 w-[480px] h-[300px] bg-gradient-to-bl from-indigo-500/10 via-indigo-400/5 to-transparent blur-3xl rounded-full" />
+        </div>
+
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 overflow-y-auto p-6 lg:p-10 pt-16 lg:pt-6 focus:outline-none"
+          className="relative z-10 flex-1 overflow-y-auto p-6 lg:p-10 pt-16 lg:pt-8 focus:outline-none"
         >
           <div className="max-w-6xl mx-auto">
             {children}
@@ -362,8 +417,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
 
         {/* Footer */}
-        <footer className="shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3.5">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <footer className="relative z-10 shrink-0 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-6 py-3">
+          <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <p className="flex items-center gap-2 font-medium">
               <BookOpen className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
               {t('nav.footerBrand')}
