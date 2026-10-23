@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, Outlet, useParams } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppLayout } from './components/AppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PageSkeleton } from './components/PageSkeleton';
@@ -22,8 +22,15 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 
 // Public route that redirects to dashboard if already authenticated
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const token = localStorage.getItem('token');
-  if (token) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+      </div>
+    );
+  }
+  if (user) {
     return <Navigate to="/dashboard" replace />;
   }
   return <>{children}</>;
