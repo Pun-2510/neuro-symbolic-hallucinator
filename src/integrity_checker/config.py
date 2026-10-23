@@ -106,9 +106,9 @@ class EmailConfig(BaseModel):
 
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 465
-    smtp_user: str = "wendyxsausage@gmail.com"
+    smtp_user: str = "noreply@citra.edu.vn"
     smtp_password: str = ""
-    from_email: str = "wendyxsausage@gmail.com"
+    from_email: str = "noreply@citra.edu.vn"
     from_name: str = "CITRA — Academic Source Verification"
     frontend_url: str = "http://localhost:5173"
     enabled: bool = True
@@ -293,7 +293,7 @@ class RetrievalConfig(BaseModel):
     parallel: bool = True
     retry: RetryConfig = Field(default_factory=RetryConfig)   # MỚI v1.2
     rate_limits: RateLimitsConfig = Field(default_factory=RateLimitsConfig)
-    contact_email: str = "iannwendii@gmail.com"
+    contact_email: str = "noreply@citra.edu.vn"
 
 
 # --- Matching (giữ nguyên v1.1, sẽ tinh chỉnh ở tuần 10–11) ---
@@ -423,7 +423,7 @@ class Settings(BaseSettings):
     out_of_scope: list[str] = Field(default_factory=lambda: list(_DEFAULT_OUT_OF_SCOPE))
 
     # Env override
-    contact_email: str = "iannwendii@gmail.com"
+    contact_email: str = "noreply@citra.edu.vn"
     s2_api_key: str = ""
     serpapi_api_key: str = ""  # SerpApi API key (SERPAPI_API_KEY)
     coreapi_api_key: str = ""  # CORE API key (COREAPI_API_KEY)
@@ -448,6 +448,8 @@ class Settings(BaseSettings):
         env_app_env = os.getenv("APP_ENV")
         if env_app_env:
             self.app.env = env_app_env
+        if os.getenv("JWT_SECRET"):
+            self.auth.jwt_secret = os.environ["JWT_SECRET"]
 
         # Email / SMTP env overrides
         if os.getenv("SMTP_HOST"):

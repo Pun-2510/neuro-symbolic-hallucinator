@@ -87,22 +87,24 @@ retrieval:
     crossref: true
     openalex: true
     semantic_scholar: true
-    arxiv: true
+    serpapi: true
+    coreapi: false
   per_source_top_k: 5
   parallel: true
   retry:                 # MỚI v1.2
     enabled: true
-    max_attempts: 3
+    max_attempts: 5
     backoff:
-      initial_seconds: 1.0
-      max_seconds: 10.0
+      initial_seconds: 5.0
+      max_seconds: 120.0
       multiplier: 2.0
   rate_limits:
-    crossref_per_sec: 50
-    openalex_per_sec: 10
+    crossref_per_sec: 3.0
+    openalex_per_sec: 50.0
     semantic_scholar_per_sec: 1.0   # polite default
-    arxiv_per_sec: 3.0
-  contact_email: "student@tdtu.edu.vn"   # cho Crossref polite pool
+    serpapi_per_sec: 1.0
+    coreapi_per_sec: 0.5
+  contact_email: "noreply@citra.edu.vn"   # cho Crossref polite pool
 
 # --- Matching thresholds ---
 # TODO(user): tối ưu trên validation set trong tuần 10–11

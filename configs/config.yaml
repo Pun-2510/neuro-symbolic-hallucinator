@@ -88,7 +88,8 @@ retrieval:
     crossref: true
     openalex: true
     semantic_scholar: true
-    arxiv: true
+    serpapi: true
+    coreapi: false
   per_source_top_k: 5
   parallel: true
   retry:                 # FIX Bug 3: Increased for better resilience
@@ -99,13 +100,12 @@ retrieval:
       max_seconds: 120.0   # FIX: Increased from 10.0 to 120.0
       multiplier: 2.0
   rate_limits:
-    # arXiv: VERY conservative - 1 req per 3 seconds max
-    # arXiv enforces 1 request per 3 seconds per IP
     crossref_per_sec: 3.0     # With API key and polite pool
     openalex_per_sec: 50.0    # With API key
     semantic_scholar_per_sec: 1.0
-    arxiv_per_sec: 0.33       # ~1 req per 3 seconds
-  contact_email: "iannwendii@gmail.com"   # cho Crossref polite pool
+    serpapi_per_sec: 1.0
+    coreapi_per_sec: 0.5
+  contact_email: "noreply@citra.edu.vn"   # cho Crossref polite pool
 
 # --- Matching thresholds ---
 # TODO(user): tối ưu trên validation set trong tuần 10–11

@@ -24,7 +24,17 @@ WORKDIR /app
 
 # Cache layer: install deps trước
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && \
+    mkdir -p /opt/mupdf-libs && \
+    cp -a /usr/lib/*-linux-gnu/libmupdf* \
+          /usr/lib/*-linux-gnu/libfreetype* \
+          /usr/lib/*-linux-gnu/libjpeg* \
+          /usr/lib/*-linux-gnu/libopenjp2* \
+          /usr/lib/*-linux-gnu/libtiff* \
+          /usr/lib/*-linux-gnu/libjbig* \
+          /usr/lib/*-linux-gnu/libharfbuzz* \
+          /usr/lib/*-linux-gnu/libglib* \
+          /opt/mupdf-libs/ 2>/dev/null || true
 
 # Stage 2: Runtime
 FROM python:3.11-slim AS runtime
@@ -34,14 +44,11 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Minimal runtime deps (cho editable install cần compile)
+# Minimal runtime deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         libsqlite3-0 \
-        python3-dev \
-        build-essential \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir pytest pytest-asyncio httpx
+    && rm -rf /var/lib/apt/lists/*
 
 # Tạo non-root user cho security
 RUN groupadd --gid 1000 appgroup && \
@@ -58,16 +65,9 @@ ENV TRANSFORMERS_CACHE=/home/appuser/.cache/transformers
 COPY --from=deps /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=deps /usr/local/bin /usr/local/bin
 
-# Copy system libs cần thiết (libmupdf, etc.)
-COPY --from=deps /usr/lib/aarch64-linux-gnu/libmupdf* /usr/lib/aarch64-linux-gnu/
-COPY --from=deps /usr/lib/aarch64-linux-gnu/libfreetype* /usr/lib/aarch64-linux-gnu/
-COPY --from=deps /usr/lib/aarch64-linux-gnu/libjpeg* /usr/lib/aarch64-linux-gnu/
-COPY --from=deps /usr/lib/aarch64-linux-gnu/libopenjp2* /usr/lib/aarch64-linux-gnu/
-COPY --from=deps /usr/lib/aarch64-linux-gnu/libtiff* /usr/lib/aarch64-linux-gnu/
-COPY --from=deps /usr/lib/aarch64-linux-gnu/libjbig* /usr/lib/aarch64-linux-gnu/
-COPY --from=deps /usr/lib/aarch64-linux-gnu/libjpeg62* /usr/lib/aarch64-linux-gnu/
-COPY --from=deps /usr/lib/aarch64-linux-gnu/libharfbuzz* /usr/lib/aarch64-linux-gnu/
-COPY --from=deps /usr/lib/aarch64-linux-gnu/libglib* /usr/lib/aarch64-linux-gnu/
+# Copy multi-arch system libs (x86_64 / aarch64)
+COPY --from=deps /opt/mupdf-libs/ /usr/local/lib/
+RUN ldconfig
 
 # Copy source
 COPY --chown=appuser:appgroup pyproject.toml ./
@@ -89,7 +89,7 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
-    CMD curl -fsS http://localhost:8000/health || exit 1
+    CMD curl -fsS http://localhost:8000/api/health || exit 1
 
 # Default command
 CMD ["uvicorn", "integrity_checker.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
