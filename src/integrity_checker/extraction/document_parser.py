@@ -17,6 +17,7 @@ References:
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -496,8 +497,27 @@ class DocumentParser:
             """Fill in missing fields on a GROBID reference from its regex counterpart."""
             if not target.authors and donor.authors:
                 target.authors = donor.authors
+            elif (
+                donor.authors
+                and len(donor.authors) == 1
+                and len(target.authors) > 1
+                and any(
+                    kw in (getattr(donor.authors[0], "raw", None) or str(donor.authors[0])).lower()
+                    for kw in (
+                        "institute", "foundation", "association", "organization",
+                        "ministry", "department", "committee", "commission",
+                        "council", "society", "team", "center", "centre",
+                        "university", "group", "bank",
+                    )
+                )
+            ):
+                target.authors = [
+                    getattr(a, "raw", None) or str(a) for a in donor.authors
+                ]
             if not target.doi and donor.doi:
                 target.doi = donor.doi
+            if not target.url and donor.url:
+                target.url = donor.url
             if not target.venue and donor.venue:
                 target.venue = donor.venue
             if not target.year and donor.year:
@@ -507,6 +527,16 @@ class DocumentParser:
                 target.title_normalized = donor.title_normalized
             if donor.numeric_index is not None:
                 target.numeric_index = donor.numeric_index
+            if donor.raw_text:
+                arxiv_m = re.search(
+                    r"\barXiv\s*:\s*\d{4}\.\d{4,5}(?:v\d+)?\b",
+                    donor.raw_text,
+                    re.IGNORECASE,
+                )
+                if arxiv_m and arxiv_m.group(0).lower() not in (target.raw_text or "").lower():
+                    target.raw_text = f"{target.raw_text}. {arxiv_m.group(0)}"
+                if target.url and target.url not in (target.raw_text or ""):
+                    target.raw_text = f"{target.raw_text}. Retrieved from {target.url}"
 
         merged: list[Citation] = []
 

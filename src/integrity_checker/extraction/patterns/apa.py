@@ -564,7 +564,7 @@ class APAFormat:
         self._parse_venue(citation, venue)
 
         # Extract DOI if present
-        doi_match = re.search(r"https?://(?:dx\.)?doi\.org/(.+)", text)
+        doi_match = re.search(r"https?://(?:dx\.)?doi\.org/(10\.\d{4,9}/[^\s\]\)\,;]+)", text, re.IGNORECASE)
         if doi_match:
             citation.doi = doi_match.group(1).rstrip(".,;")
         else:
@@ -572,13 +572,22 @@ class APAFormat:
             if doi_match:
                 citation.doi = doi_match.group(1).rstrip(".,;")
 
-        # Extract URL if present (non-DOI internet reference)
-        url_match = re.search(r"(https?://[^\s\]\)\,;]+)", text)
-        if url_match and "doi.org/" not in url_match.group(1).lower():
-            citation.url = url_match.group(1).rstrip(".,;")
+        # Extract URL if present (non-DOI internet reference, including line-wrapped URLs)
+        self._extract_url_into(citation, text)
 
         citation.confidence = self._estimate_confidence(citation)
         return citation
+
+    @staticmethod
+    def _extract_url_into(citation: Citation, text: str) -> None:
+        """Extract non-DOI URL into citation.url, handling line-break spaces after https://."""
+        if citation.url:
+            return
+        url_match = re.search(r"(https?://\s*[^\s\]\)\,;]+)", text, re.IGNORECASE)
+        if url_match:
+            raw_url = re.sub(r"\s+", "", url_match.group(1)).rstrip(".,;")
+            if not re.search(r"doi\.org/10\.\d{4,9}/", raw_url, re.IGNORECASE):
+                citation.url = raw_url
 
     def _parse_apa_numbered_entry(
         self, match: re.Match, text: str
@@ -634,6 +643,7 @@ class APAFormat:
         if doi_match:
             citation.doi = doi_match.group(1).rstrip(".,;")
 
+        self._extract_url_into(citation, text)
         citation.confidence = self._estimate_confidence(citation)
         return citation
 
@@ -682,6 +692,7 @@ class APAFormat:
         if doi_match:
             citation.doi = doi_match.group(1).rstrip(".,;")
 
+        self._extract_url_into(citation, text)
         citation.confidence = self._estimate_confidence(citation)
         return citation
 
@@ -726,6 +737,7 @@ class APAFormat:
         if doi_match:
             citation.doi = doi_match.group(1).rstrip(".,;")
 
+        self._extract_url_into(citation, text)
         citation.confidence = self._estimate_confidence(citation)
         # Only return if we have meaningful data (title OR year with some other field)
         return citation if citation.title or citation.year else None
