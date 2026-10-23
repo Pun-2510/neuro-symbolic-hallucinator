@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 
 interface Field {
   label: string
@@ -17,12 +18,6 @@ interface MetadataDiffProps {
  *
  * Component hiển thị so sánh metadata giữa citation được cung cấp
  * và metadata được truy xuất từ các nguồn học thuật (Crossref, OpenAlex, Semantic Scholar, CORE).
- *
- * Theo design concept: "Debugger cho citation"
- * - Field = field name
- * - Provided = metadata từ citation trong document
- * - Retrieved = metadata được tìm thấy từ academic databases
- * - Mismatch được highlight để dễ phát hiện
  */
 export function MetadataDiff({ fields, title = 'Metadata Comparison' }: MetadataDiffProps) {
   return (
@@ -55,12 +50,12 @@ export function MetadataDiff({ fields, title = 'Metadata Comparison' }: Metadata
               )}
             >
               {/* Field label */}
-              <div className="font-medium text-slate-600 dark:text-slate-300">
-                {field.label}
+              <div className="font-medium text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                <span>{field.label}</span>
                 {field.similarity !== undefined && (
-                  <span className="ml-2 text-xs text-slate-400">
+                  <Badge variant="outline" className="text-[11px] font-mono px-1.5 py-0">
                     {field.similarity}%
-                  </span>
+                  </Badge>
                 )}
               </div>
 

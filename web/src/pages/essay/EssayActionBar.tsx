@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, FileSearch, Link2, GitBranch } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
+import { Button } from '@/components/ui/button';
 
 interface EssayActionBarProps {
   essayId: string;
@@ -9,47 +10,43 @@ interface EssayActionBarProps {
 
 /**
  * Quick navigation row beneath the report header. Links to companion pages
- * (Issues, Document, Consistency, Logic Trace) without consuming any state.
+ * (Issues, Document, Consistency, Logic Trace) using shadcn/ui Button.
  */
 export function EssayActionBar({ essayId }: EssayActionBarProps) {
   const { t } = useTranslation();
   const { has } = useRole();
 
   return (
-    <div className="flex gap-3 flex-wrap">
-      <Link
-        to={`/verification/report/${essayId}/issues`}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
-      >
-        <AlertCircle className="h-4 w-4" />
-        {t('essay.issues')}
-      </Link>
-      {has('view_document_inspector') && (
-        <Link
-          to={`/verification/report/${essayId}/document`}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
-        >
-          <FileSearch className="h-4 w-4" />
-          {t('essay.document')}
+    <div className="flex gap-2.5 flex-wrap">
+      <Button asChild variant="outline" size="sm">
+        <Link to={`/verification/report/${essayId}/issues`}>
+          <AlertCircle className="h-4 w-4 text-amber-500" />
+          {t('essay.issues')}
         </Link>
+      </Button>
+      {has('view_document_inspector') && (
+        <Button asChild variant="outline" size="sm">
+          <Link to={`/verification/report/${essayId}/document`}>
+            <FileSearch className="h-4 w-4 text-indigo-500" />
+            {t('essay.document')}
+          </Link>
+        </Button>
       )}
       {has('view_orphan_detection') && (
-        <Link
-          to={`/verification/report/${essayId}/consistency`}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
-        >
-          <Link2 className="h-4 w-4" />
-          {t('essay.consistency')}
-        </Link>
+        <Button asChild variant="outline" size="sm">
+          <Link to={`/verification/report/${essayId}/consistency`}>
+            <Link2 className="h-4 w-4 text-emerald-500" />
+            {t('essay.consistency')}
+          </Link>
+        </Button>
       )}
       {has('view_logic_trace') && (
-        <Link
-          to={`/verification/report/${essayId}/trace`}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
-        >
-          <GitBranch className="h-4 w-4" />
-          {t('essay.logicTrace')}
-        </Link>
+        <Button asChild variant="outline" size="sm">
+          <Link to={`/verification/report/${essayId}/trace`}>
+            <GitBranch className="h-4 w-4 text-violet-500" />
+            {t('essay.logicTrace')}
+          </Link>
+        </Button>
       )}
     </div>
   );

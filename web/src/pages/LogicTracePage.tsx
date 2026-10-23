@@ -1,25 +1,21 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { type AnalysisReport, type Verdict } from '@/api/client';
-import { RuleInspector, RuleInspectorCompact } from '@/components/RuleInspector';
+import { type Verdict } from '@/api/client';
+import { RuleInspector } from '@/components/RuleInspector';
 import { getSearchStepDescription, getVerdictDisplayName, getVerdictExplanation } from '@/lib/verdictExplanation';
 import { useEssayPolling } from '@/hooks/useEssayPolling';
 import {
   ArrowLeft,
   Loader2,
   AlertCircle,
-  GitBranch,
-  Shield,
-  Search,
-  Database,
   CheckCircle,
   XCircle,
   HelpCircle,
   ChevronRight,
-  FileText,
-  Quote,
   Scale,
 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 /* ============================================================
    SourceLogic — Logic Trace Page
@@ -27,7 +23,6 @@ import {
    Shows step-by-step verification trace for each citation
    ============================================================ */
 
-// Trace step types
 type TraceStepStatus = 'pending' | 'active' | 'completed' | 'error';
 
 interface TraceStep {
@@ -39,7 +34,6 @@ interface TraceStep {
   data?: Record<string, unknown>;
 }
 
-// Get status color
 function getStepStatusColor(status: TraceStepStatus): {
   bg: string;
   border: string;
@@ -78,7 +72,6 @@ function getStepStatusColor(status: TraceStepStatus): {
   }
 }
 
-// Build trace steps for a verdict
 function buildTraceSteps(verdict: Verdict): TraceStep[] {
   const sources = verdict.matched_sources ?? [];
   const steps: TraceStep[] = [
@@ -126,13 +119,11 @@ function buildTraceSteps(verdict: Verdict): TraceStep[] {
   return steps;
 }
 
-// Trace step component
 function TraceStepCard({ step, isLast }: { step: TraceStep; isLast: boolean }) {
   const colors = getStepStatusColor(step.status);
 
   return (
     <div className="flex gap-4">
-      {/* Timeline connector */}
       <div className="flex flex-col items-center">
         <div
           className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 ${colors.bg} ${colors.border}`}
@@ -150,8 +141,7 @@ function TraceStepCard({ step, isLast }: { step: TraceStep; isLast: boolean }) {
         )}
       </div>
 
-      {/* Step content */}
-      <div className={`flex-1 pb-8`}>
+      <div className="flex-1 pb-8">
         <div className={`rounded-xl border p-4 ${colors.bg} ${colors.border}`}>
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -167,14 +157,12 @@ function TraceStepCard({ step, isLast }: { step: TraceStep; isLast: boolean }) {
             )}
           </div>
 
-          {/* Step detail */}
           {step.detail && (
             <p className="text-sm text-slate-700 dark:text-slate-300 mt-2 font-mono bg-white/50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
               {step.detail}
             </p>
           )}
 
-          {/* Step data */}
           {step.data && (
             <div className="mt-3 space-y-2">
               {Object.entries(step.data).map(([key, value]) => (
@@ -208,7 +196,6 @@ function TraceStepCard({ step, isLast }: { step: TraceStep; isLast: boolean }) {
   );
 }
 
-// Single verdict trace view
 function VerdictTrace({
   verdict,
   index,
@@ -229,8 +216,7 @@ function VerdictTrace({
       : 'text-slate-600 dark:text-slate-300';
 
   return (
-    <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-      {/* Header */}
+    <Card className="p-0 overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center gap-4 p-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
@@ -255,10 +241,8 @@ function VerdictTrace({
         </div>
       </button>
 
-      {/* Expanded trace */}
       {expanded && (
         <div className="border-t border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-900">
-          {/* Trace steps */}
           <div className="mb-6">
             <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-4">
               How the result was reached
@@ -274,7 +258,6 @@ function VerdictTrace({
             </div>
           </div>
 
-          {/* Reasoning */}
           <div className="mb-4">
             <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">
               What we found
@@ -284,7 +267,6 @@ function VerdictTrace({
             </p>
           </div>
 
-          {/* Triggered rules */}
           {verdict.triggered_rules.length > 0 && (
             <div>
               <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">
@@ -298,49 +280,39 @@ function VerdictTrace({
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
-
-/* ============================================================
-   Main LogicTracePage Component
-   ============================================================ */
 
 export function LogicTracePage() {
   const { id } = useParams<{ id: string }>();
   const [selectedVerdict, setSelectedVerdict] = useState<Verdict | null>(null);
 
-  // SECURITY: parseInt guard retained — useEssayPolling báo error khi id không hợp lệ
   const numericId = id ? parseInt(id, 10) : null;
   const { report, error } = useEssayPolling(
     numericId !== null && !Number.isNaN(numericId) && numericId > 0 ? numericId : null,
     { errorMessage: 'Failed to load verification trace. Please try again.' },
   );
 
-  // Filter verdicts with issues (show non-verified first)
   const sortedVerdicts = report?.verdicts
     ? [...report.verdicts].sort((a, b) => {
-        // Non-verified first
         if (a.label !== 'verified' && b.label === 'verified') return -1;
         if (a.label === 'verified' && b.label !== 'verified') return 1;
-        // Then by confidence (low first)
         return a.confidence - b.confidence;
       })
     : [];
 
   if (error) {
     return (
-      <div className="card p-6 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-          <div className="min-w-0 flex-1">
-            <p className="font-medium text-red-700 dark:text-red-300">Error: {error}</p>
-            <Link to="/history" className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
-              ← Back to Reports
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Alert variant="destructive" className="card p-6">
+        <AlertCircle className="h-5 w-5" />
+        <AlertTitle className="font-medium">Error: {error}</AlertTitle>
+        <AlertDescription>
+          <Link to="/history" className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
+            ← Back to Reports
+          </Link>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -383,7 +355,7 @@ export function LogicTracePage() {
       </div>
 
       {/* Legend */}
-      <div className="card p-4 bg-slate-50 dark:bg-slate-800/50">
+      <Card className="p-4 bg-slate-50 dark:bg-slate-800/50">
         <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-3">
           Trace Legend
         </h3>
@@ -413,34 +385,34 @@ export function LogicTracePage() {
             <span className="text-slate-600 dark:text-slate-400">Pending</span>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="stat-card text-center">
+        <Card className="stat-card text-center p-4">
           <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
             {report.verdicts.length}
           </p>
           <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Total</p>
-        </div>
-        <div className="stat-card text-center border-emerald-200 dark:border-emerald-800">
+        </Card>
+        <Card className="stat-card text-center p-4 border-emerald-200 dark:border-emerald-800">
           <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
             {report.verdicts.filter((v) => v.label === 'verified').length}
           </p>
           <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Verified</p>
-        </div>
-        <div className="stat-card text-center border-amber-200 dark:border-amber-800">
+        </Card>
+        <Card className="stat-card text-center p-4 border-amber-200 dark:border-amber-800">
           <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
             {report.verdicts.filter((v) => v.label === 'metadata_error').length}
           </p>
           <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Meta Errors</p>
-        </div>
-        <div className="stat-card text-center border-red-200 dark:border-red-800">
+        </Card>
+        <Card className="stat-card text-center p-4 border-red-200 dark:border-red-800">
           <p className="text-2xl font-bold text-red-600 dark:text-red-400">
             {report.verdicts.filter((v) => v.label === 'suspected_hallucination').length}
           </p>
           <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Suspected</p>
-        </div>
+        </Card>
       </div>
 
       {/* Verdict traces */}
@@ -455,7 +427,6 @@ export function LogicTracePage() {
         </div>
       </div>
 
-      {/* Full trace for selected verdict */}
       {selectedVerdict && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" onClick={() => setSelectedVerdict(null)}>
           <div

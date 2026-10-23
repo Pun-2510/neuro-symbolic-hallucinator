@@ -12,6 +12,18 @@ import { EssayStatsGrid } from './essay/EssayStatsGrid';
 import { isUrlResource } from '@/lib/verdictExplanation';
 import { useEssayReport, useOverrideVerdict } from '@/hooks/useEssayReport';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 /* ============================================================
    SourceLogic — Essay/Report Page Component
@@ -56,17 +68,15 @@ export function EssayPage() {
 
   if (errorMessage) {
     return (
-      <div className="card p-6 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-red-700 dark:text-red-300">{t('common.error')}: {errorMessage}</p>
-            <Link to="/history" className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
-              {t('essay.backToReports')}
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Alert variant="destructive" className="card p-6">
+        <AlertCircle className="h-5 w-5" />
+        <AlertTitle className="font-medium">{t('common.error')}: {errorMessage}</AlertTitle>
+        <AlertDescription>
+          <Link to="/history" className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
+            {t('essay.backToReports')}
+          </Link>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -84,15 +94,8 @@ export function EssayPage() {
   // Calculate stats based on UX/UI Concept
   const academicVerdicts = report.verdicts.filter((v) => !isUrlResource(v));
   const references = report.references ?? [];
-  // Use the backend-extracted citation list when available so repeated
-  // occurrences are preserved.  Fall back to deduplicated verdicts only
-  // for legacy reports that do not carry extracted_citations.
   const extractedInText = report.extracted_citations ?? [];
-  // NEW v1.9 — every reference a citation links to.
-  //
-  // One occurrence can cite several references at once ("[9, 10]" → ref-0009
-  // AND ref-0010). The backend now sends ``citation_links``; reports produced
-  // before v1.9 only carry the scalar ``citation_link``, so fall back to it.
+
   const linksOf = (c: { citation_links?: CitationLink[]; citation_link?: CitationLink }) =>
     c.citation_links?.length ? c.citation_links : c.citation_link ? [c.citation_link] : [];
 
@@ -101,21 +104,12 @@ export function EssayPage() {
       .map((l) => l.reference_id)
       .filter((id): id is string => Boolean(id));
 
-  // FIX v1.7: extractedInText now carries mapping_status from CitationLinker.
-  // Map: reference_id → verdict (so in-text can show the linked reference's label).
-  // v1.9: a verdict may itself link to several references, so index every edge.
   const verdictByRefId = new Map(
     (report.verdicts ?? []).flatMap((v) =>
       refIds(v).map((refId) => [refId, v] as const)
     )
   );
 
-  // NEW v1.8 — dedupe in-text citations by raw_text.
-  // The backend stores EVERY occurrence (66 rows for 33 unique in-text on a
-  // typical essay), which made the Citations tab show 4× "[24]". We group by
-  // raw_text, keep the first occurrence's linking data, and count occurrences
-  // so the row can render a "× N" badge. A row may link to several distinct
-  // references (e.g. "[9, 10]"), so we also collect every linked ref id.
   const inTextGroups = new Map<
     string,
     { citation: (typeof extractedInText)[number]; occurrences: number; refIds: string[] }
@@ -128,8 +122,6 @@ export function EssayPage() {
       for (const refId of refIds(citation)) {
         if (!existing.refIds.includes(refId)) existing.refIds.push(refId);
       }
-      // Prefer a group member that actually carries a link — the linker may
-      // match one occurrence but not another with the same raw text.
       if (linksOf(existing.citation).length === 0 && linksOf(citation).length > 0) {
         existing.citation = citation;
       }
@@ -143,25 +135,32 @@ export function EssayPage() {
   }
   const dedupedInText = Array.from(inTextGroups.values());
 
-  // NEW v1.8/FIX — map "ref-NNNN" → the reference it names, and derive the
-  // label from the SAME number so the two can never disagree.
-  //
-  // The backend (``_run_linking``) numbers the bibliography 1-BASED:
-  // ``f"ref-{idx + 1:04d}"``, so ``ref-0003`` IS reference #3 — its suffix is
-  // the number we display. (Verified against a real report: for all 27
-  // references the printed "[N]" marker equals the ``ref-NNNN`` suffix.)
-  // Previously this map was keyed 0-based while the label re-added +1, so
-  // every row displayed "Ref #25" for ``[24]`` and resolved the wrong entry.
   const refByLinkId = new Map<string, (typeof references)[number]>();
   references.forEach((ref, idx) => {
     refByLinkId.set(`ref-${String(idx + 1).padStart(4, '0')}`, ref);
   });
 
+  // Parse author names from citation
+  const parseAuthorDisplay = (rawText: string): string => {
+    const etAlMatch = rawText.match(/(\w+)\s*(?:et\.?\s*al\.?)/i);
+    if (etAlMatch) return etAlMatch[1] + ' et al.';
+    const andMatch = rawText.match(/(\w+)\s*&\s*(\w+)/i);
+    if (andMatch) return `${andMatch[1]} & ${andMatch[2]}`;
+    const parenMatch = rawText.match(/\(([^)]+)\)/);
+    if (parenMatch) return parenMatch[1].split(',')[0].trim();
+    return rawText.slice(0, 40);
+  };
+
+  // Extract year from citation
+  const parseYear = (rawText: string): string | null => {
+    const yearMatch = rawText.match(/\(?(19|20)\d{2}[a-z]?\)?/);
+    return yearMatch ? yearMatch[0].replace(/[()]/g, '') : null;
+  };
+
   /** "Ref #3 — World Health Organization (2023)" for a linked in-text row. */
   const formatLinkedReference = (refIds: string[]): string | null => {
     if (refIds.length === 0) return null;
     const parts = refIds.map((refId) => {
-      // The suffix is already the 1-based reference number — never add 1.
       const num = Number.parseInt(refId.replace(/^ref-/, ''), 10);
       const ref = refByLinkId.get(refId);
       if (!ref || Number.isNaN(num)) return refId;
@@ -177,9 +176,7 @@ export function EssayPage() {
   const inTextVerdicts =
     extractedInText.length > 0
       ? extractedInText.map((citation) => {
-          // NEW v1.7: read real mapping_status from citation (set by CitationLinker)
           const mappingStatus = citation.mapping_status ?? 'matched';
-          // If this in-text citation links to a reference, inherit the reference's label
           const linkedRefIds = refIds(citation);
           const linkedVerdict =
             linkedRefIds.map((id) => verdictByRefId.get(id)).find(Boolean) ?? null;
@@ -187,11 +184,8 @@ export function EssayPage() {
             citation_id: `c${citation.id ?? citation.raw_text}`,
             citation_raw: citation.raw_text,
             citation_type: citation.citation_type,
-            // In-text inherits mapping_status from CitationLinker
             mapping_status: mappingStatus,
             mapping_confidence: citation.mapping_confidence ?? 0,
-            // Inherit label from linked reference verdict if available, otherwise
-            // derive from mapping_status (matched → verified, missing → unresolved)
             label: linkedVerdict?.label
               ?? (mappingStatus === 'matched' ? 'verified' : 'unresolved'),
             confidence: citation.mapping_confidence ?? citation.confidence,
@@ -219,57 +213,6 @@ export function EssayPage() {
   };
 
   const coverage = stats.total > 0 ? Math.round((stats.verified / stats.total) * 100) : 0;
-
-  // Section 8: Citations & References data extraction
-  const getCitationStatus = (v: Verdict) => {
-    if (v.label === 'resource') return 'URL Resource';
-    if (v.label === 'verified') return 'Verified';
-    if (v.label === 'metadata_error') return 'Metadata Issue';
-    if (v.label === 'suspected_hallucination') return 'Hallucination';
-    if (v.mapping_status === 'missing_reference') return 'No Reference';
-    if (v.mapping_status === 'unresolved') return 'Unresolved';
-    return 'Unverifiable';
-  };
-
-  const getCitationStatusColor = (v: Verdict) => {
-    if (v.label === 'verified') return 'text-emerald-600 dark:text-emerald-400';
-    if (v.label === 'metadata_error') return 'text-amber-600 dark:text-amber-400';
-    if (v.label === 'suspected_hallucination') return 'text-red-600 dark:text-red-400';
-    return 'text-slate-500 dark:text-slate-400';
-  };
-
-  const getReferenceStatus = (v: Verdict) => {
-    if (v.label === 'resource') return 'URL Resource';
-    if (v.label === 'verified') return 'Verified';
-    if (v.label === 'metadata_error') return 'Metadata Error';
-    if (v.label === 'suspected_hallucination') return 'Likely Hallucinated';
-    return 'Unverifiable';
-  };
-
-  const getReferenceStatusColor = (v: Verdict) => {
-    if (v.label === 'verified') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-    if (v.label === 'metadata_error') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-    if (v.label === 'suspected_hallucination') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-    return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
-  };
-
-  // Parse author names from citation
-  const parseAuthorDisplay = (rawText: string): string => {
-    // Extract author names from raw citation text
-    const etAlMatch = rawText.match(/(\w+)\s*(?:et\.?\s*al\.?)/i);
-    if (etAlMatch) return etAlMatch[1] + ' et al.';
-    const andMatch = rawText.match(/(\w+)\s*&\s*(\w+)/i);
-    if (andMatch) return `${andMatch[1]} & ${andMatch[2]}`;
-    const parenMatch = rawText.match(/\(([^)]+)\)/);
-    if (parenMatch) return parenMatch[1].split(',')[0].trim();
-    return rawText.slice(0, 40);
-  };
-
-  // Extract year from citation
-  const parseYear = (rawText: string): string | null => {
-    const yearMatch = rawText.match(/\(?(19|20)\d{2}[a-z]?\)?/);
-    return yearMatch ? yearMatch[0].replace(/[()]/g, '') : null;
-  };
 
   return (
     <div className="space-y-6">
@@ -318,118 +261,121 @@ export function EssayPage() {
             </span>
           </div>
 
-          <div className="card p-0 overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          <Card className="p-0 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  <TableHead className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     {t('essay.citation')}
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     {t('essay.linkedReference')}
-                  </th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     {t('essay.status')}
-                  </th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">
+                  </TableHead>
+                  <TableHead className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">
                     {t('essay.action')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                 {dedupedInText.map((group, index) => {
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {dedupedInText.map((group, index) => {
                   const verdict = inTextVerdicts.find(
                     (v) => v.citation_id === `c${group.citation.id ?? group.citation.raw_text}`
                   );
                   if (!verdict) return null;
                   return (
-                  <tr
-                    key={group.citation.id ?? `${group.citation.raw_text}-${index}`}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-slate-400 dark:text-slate-500">
-                          [{index + 1}]
+                    <TableRow
+                      key={group.citation.id ?? `${group.citation.raw_text}-${index}`}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
+                    >
+                      <TableCell className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-slate-400 dark:text-slate-500">
+                            [{index + 1}]
+                          </span>
+                          <span className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
+                            {group.citation.raw_text}
+                          </span>
+                          {group.occurrences > 1 && (
+                            <Badge
+                              variant="secondary"
+                              className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300"
+                              title={`Xuất hiện ${group.occurrences} lần trong bài`}
+                            >
+                              ×{group.occurrences}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-4 py-3">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">
+                          {(() => {
+                            const linked = formatLinkedReference(group.refIds);
+                            if (linked) return linked;
+                            if (verdict.mapping_status === 'missing_reference') {
+                              return t('essay.noReference');
+                            }
+                            return '—';
+                          })()}
                         </span>
-                        <span className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
-                          {group.citation.raw_text}
-                        </span>
-                        {group.occurrences > 1 && (
-                          <span
-                            className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300"
-                            title={`Xuất hiện ${group.occurrences} lần trong bài`}
-                          >
-                            ×{group.occurrences}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-center">
+                        {verdict.label === 'verified' ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            {t('essay.linked')}
+                          </span>
+                        ) : verdict.label === 'metadata_error' ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            {t('essay.metadataIssue')}
+                          </span>
+                        ) : verdict.label === 'suspected_hallucination' ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            {t('essay.hallucination')}
+                          </span>
+                        ) : verdict.label === 'resource' ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 dark:text-violet-400">
+                            {t('essay.urlResource')}
+                          </span>
+                        ) : verdict.mapping_status === 'missing_reference' ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {t('essay.noReferenceShort')}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                            {t('essay.unverifiable')}
                           </span>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-slate-600 dark:text-slate-400">
-                        {(() => {
-                          const linked = formatLinkedReference(group.refIds);
-                          if (linked) return linked;
-                          if (verdict.mapping_status === 'missing_reference') {
-                            return t('essay.noReference');
-                          }
-                          return '—';
-                        })()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {verdict.label === 'verified' ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          {t('essay.linked')}
-                        </span>
-                      ) : verdict.label === 'metadata_error' ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                          </svg>
-                          {t('essay.metadataIssue')}
-                        </span>
-                      ) : verdict.label === 'suspected_hallucination' ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                          {t('essay.hallucination')}
-                        </span>
-                      ) : verdict.label === 'resource' ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 dark:text-violet-400">
-                          {t('essay.urlResource')}
-                        </span>
-                      ) : verdict.mapping_status === 'missing_reference' ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          {t('essay.noReferenceShort')}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                          {t('essay.unverifiable')}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => setSelected(verdict)}
-                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm font-medium"
-                      >
-                        {t('common.view')}
-                      </button>
-                    </td>
-                  </tr>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-center">
+                        <Button
+                          variant="link"
+                          size="sm"
+                          onClick={() => setSelected(verdict)}
+                          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm font-medium h-auto p-0"
+                        >
+                          {t('common.view')}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </Card>
         </div>
       )}
 
@@ -445,59 +391,56 @@ export function EssayPage() {
             </span>
           </div>
 
-          <div className="card p-0 overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">
+          <Card className="p-0 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  <TableHead className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">
                     #
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     {t('essay.reference')}
-                  </th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     {t('essay.citedInText')}
-                  </th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     {t('essay.verification')}
-                  </th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">
+                  </TableHead>
+                  <TableHead className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">
                     {t('essay.action')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                 {references.map((reference, index) => {
-                   const authorDisplay = reference.authors?.join(', ') || parseAuthorDisplay(reference.raw_text);
-                   const yearDisplay = reference.year || parseYear(reference.raw_text);
-                   const matchingVerdict = report.verdicts.find(
-                     (v) => v.citation_raw === reference.raw_text
-                   );
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {references.map((reference, index) => {
+                  const authorDisplay = reference.authors?.join(', ') || parseAuthorDisplay(reference.raw_text);
+                  const yearDisplay = reference.year || parseYear(reference.raw_text);
+                  const matchingVerdict = report.verdicts.find(
+                    (v) => v.citation_raw === reference.raw_text
+                  );
 
                   return (
-                    <tr
-                       key={reference.id ?? `${reference.raw_text}-${index}`}
+                    <TableRow
+                      key={reference.id ?? `${reference.raw_text}-${index}`}
                       className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
                     >
-                      <td className="px-4 py-3">
+                      <TableCell className="px-4 py-3">
                         <span className="text-sm font-mono text-slate-500 dark:text-slate-400">
                           {index + 1}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell className="px-4 py-3">
                         <div className="space-y-1">
                           <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             {authorDisplay}{yearDisplay && ` (${yearDisplay})`}
                           </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-                           {reference.raw_text.slice(0, 160)}
+                            {reference.raw_text.slice(0, 160)}
                           </p>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {/* NEW v1.8 — is this bibliography entry actually cited
-                            anywhere in the body text? Uncited references are a
-                            common integrity signal (padding the bibliography). */}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-center">
                         {(() => {
                           const count = reference.cited_in_text_count ?? 0;
                           const pages = reference.cited_on_pages ?? [];
@@ -529,26 +472,31 @@ export function EssayPage() {
                             </span>
                           );
                         })()}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                           <span className="inline-block px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                           {t('essay.referenceEntry')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                           onClick={() => matchingVerdict && setSelected(matchingVerdict)}
-                          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm font-medium"
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-center">
+                        <Badge
+                          variant="verified"
+                          className="inline-block px-2.5 py-1 text-xs font-medium rounded-full"
+                        >
+                          {t('essay.referenceEntry')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-center">
+                        <Button
+                          variant="link"
+                          size="sm"
+                          onClick={() => matchingVerdict && setSelected(matchingVerdict)}
+                          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm font-medium h-auto p-0"
                         >
                           {t('common.view')}
-                        </button>
-                      </td>
-                    </tr>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </Card>
         </div>
       )}
 

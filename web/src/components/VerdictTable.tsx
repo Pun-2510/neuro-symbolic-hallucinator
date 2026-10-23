@@ -5,6 +5,16 @@ import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Verdict } from '@/api/client';
 import { getSourceSummary, isUrlResource } from '@/lib/verdictExplanation';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 /* ============================================================
    SourceLogic — Verdict Table Component
@@ -104,20 +114,20 @@ export function VerdictTable({ verdicts, onSelect }: VerdictTableProps) {
   };
 
   return (
-    <div className="card p-0 overflow-hidden">
+    <Card className="p-0 overflow-hidden">
       {/* Table Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Search */}
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" aria-hidden="true" />
-            <input
+            <Input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('essay.searchCitations')}
               aria-label="Search citations"
-              className="input pl-9 py-2 text-sm"
+              className="pl-9 py-2 text-sm"
             />
           </div>
 
@@ -163,70 +173,68 @@ export function VerdictTable({ verdicts, onSelect }: VerdictTableProps) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-            <tr>
-              <th className="px-4 py-3 text-left">
-                <button
-                  onClick={() => handleSort('citation_num')}
-                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
-                >
-                  #
-                  <SortIcon sorted={sortField === 'citation_num'} direction={sortDirection} />
-                </button>
-              </th>
-              <th className="px-4 py-3 text-left">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  {t('essay.citation')}
-                </span>
-              </th>
-              <th className="px-4 py-3 text-left">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                   {t('essay.whatWeFound')}
-                </span>
-              </th>
-              <th className="px-4 py-3 text-left">
-                <button
-                  onClick={() => handleSort('label')}
-                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
-                >
-                  {t('essay.status')}
-                  <SortIcon sorted={sortField === 'label'} direction={sortDirection} />
-                </button>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredVerdicts.map((verdict, idx) => (
-              <tr
-                key={verdict.citation_id}
-                onClick={() => onSelect(verdict)}
-                className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+      <Table>
+        <TableHeader className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="px-4 py-3 text-left">
+              <button
+                onClick={() => handleSort('citation_num')}
+                className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
               >
-                <td className="px-4 py-3">
-                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                    [{idx + 1}]
-                  </span>
-                </td>
-                <td className="px-4 py-3 max-w-xs">
-                  <p className="text-sm text-slate-900 dark:text-slate-100 truncate">
-                    {verdict.citation_raw || 'Unknown citation'}
-                  </p>
-                </td>
-                <td className="px-4 py-3 max-w-xs">
-                  <p className="text-sm text-slate-600 dark:text-slate-400 truncate">
-                    {getSourceSummary(verdict)}
-                  </p>
-                </td>
-                <td className="px-4 py-3">
-                   <VerdictBadge verdict={isUrlResource(verdict) ? 'resource' : verdict.label} size="sm" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                #
+                <SortIcon sorted={sortField === 'citation_num'} direction={sortDirection} />
+              </button>
+            </TableHead>
+            <TableHead className="px-4 py-3 text-left">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                {t('essay.citation')}
+              </span>
+            </TableHead>
+            <TableHead className="px-4 py-3 text-left">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                {t('essay.whatWeFound')}
+              </span>
+            </TableHead>
+            <TableHead className="px-4 py-3 text-left">
+              <button
+                onClick={() => handleSort('label')}
+                className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
+              >
+                {t('essay.status')}
+                <SortIcon sorted={sortField === 'label'} direction={sortDirection} />
+              </button>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredVerdicts.map((verdict, idx) => (
+            <TableRow
+              key={verdict.citation_id}
+              onClick={() => onSelect(verdict)}
+              className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+            >
+              <TableCell className="px-4 py-3">
+                <span className="text-sm font-medium font-mono text-slate-600 dark:text-slate-300">
+                  [{idx + 1}]
+                </span>
+              </TableCell>
+              <TableCell className="px-4 py-3 max-w-xs">
+                <p className="text-sm text-slate-900 dark:text-slate-100 truncate">
+                  {verdict.citation_raw || 'Unknown citation'}
+                </p>
+              </TableCell>
+              <TableCell className="px-4 py-3 max-w-xs">
+                <p className="text-sm text-slate-600 dark:text-slate-400 truncate">
+                  {getSourceSummary(verdict)}
+                </p>
+              </TableCell>
+              <TableCell className="px-4 py-3">
+                <VerdictBadge verdict={isUrlResource(verdict) ? 'resource' : verdict.label} size="sm" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
@@ -234,6 +242,6 @@ export function VerdictTable({ verdicts, onSelect }: VerdictTableProps) {
           {t('essay.showingCitations', { shown: filteredVerdicts.length, total: verdicts.length })}
         </p>
       </div>
-    </div>
+    </Card>
   );
 }

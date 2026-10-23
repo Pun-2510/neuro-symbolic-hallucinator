@@ -1,7 +1,10 @@
 import { useMemo } from 'react';
-import { Database, ExternalLink, CheckCircle, XCircle, Loader2, Search, TrendingUp } from 'lucide-react';
+import { Database, ExternalLink, CheckCircle, XCircle, Search, TrendingUp } from 'lucide-react';
 import type { AnalysisReport, MatchedSource } from '@/api/client';
 import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 
 /* ============================================================
    SourceLogic — Source Retrieval UI Component
@@ -14,7 +17,6 @@ interface SourceRetrievalUIProps {
   className?: string;
 }
 
-// Source database configuration
 const SOURCE_CONFIG: Record<string, {
   name: string;
   shortName: string;
@@ -57,10 +59,6 @@ const SOURCE_CONFIG: Record<string, {
   },
 };
 
-/* ============================================================
-   Source Card Component
-   ============================================================ */
-
 function SourceCard({
   sourceKey,
   stats,
@@ -81,9 +79,9 @@ function SourceCard({
   const successRate = stats.total > 0 ? Math.round((stats.verified / stats.total) * 100) : 0;
 
   return (
-    <div
+    <Card
       className={cn(
-        'rounded-xl border p-4 transition-all',
+        'p-4 transition-all',
         hasResults ? config.bgColor : 'bg-slate-50 dark:bg-slate-800',
         hasResults ? config.borderColor : 'border-slate-200 dark:border-slate-700'
       )}
@@ -95,7 +93,8 @@ function SourceCard({
             {config.name}
           </span>
         </div>
-        <span
+        <Badge
+          variant="outline"
           className={cn(
             'text-xs font-mono px-2 py-0.5 rounded-full',
             hasResults
@@ -104,12 +103,11 @@ function SourceCard({
           )}
         >
           {config.shortName}
-        </span>
+        </Badge>
       </div>
 
       {hasResults ? (
         <>
-          {/* Stats */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-slate-500 dark:text-slate-400">Candidates</span>
@@ -133,25 +131,22 @@ function SourceCard({
             )}
           </div>
 
-          {/* Success rate bar */}
           <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="h-3 w-3 text-slate-400" />
               <span className="text-xs text-slate-500 dark:text-slate-400">Success Rate</span>
             </div>
-            <div className="h-2 bg-white dark:bg-slate-900 rounded-full overflow-hidden">
-              <div
-                className={cn(
-                  'h-full rounded-full transition-all',
-                  successRate >= 70
-                    ? 'bg-emerald-500'
-                    : successRate >= 40
-                    ? 'bg-amber-500'
-                    : 'bg-red-500'
-                )}
-                style={{ width: `${successRate}%` }}
-              />
-            </div>
+            <Progress
+              value={successRate}
+              className="h-2 bg-white dark:bg-slate-900"
+              indicatorClassName={cn(
+                successRate >= 70
+                  ? 'bg-emerald-500'
+                  : successRate >= 40
+                  ? 'bg-amber-500'
+                  : 'bg-red-500'
+              )}
+            />
             <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 block">
               {successRate}% match rate
             </span>
@@ -163,20 +158,15 @@ function SourceCard({
           <span className="text-xs text-slate-400 dark:text-slate-500">No results</span>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
-
-/* ============================================================
-   Candidate List Component
-   ============================================================ */
 
 function CandidateList({
   sources,
 }: {
   sources: MatchedSource[];
 }) {
-  // Group by source
   const grouped = useMemo(() => {
     const groups: Record<string, MatchedSource[]> = {};
     for (const src of sources) {
@@ -188,7 +178,6 @@ function CandidateList({
     return groups;
   }, [sources]);
 
-  // Sort by source name
   const sortedSources = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
 
   return (
@@ -209,13 +198,16 @@ function CandidateList({
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 {config.name}
               </span>
-              <span className={cn(
-                'text-xs px-2 py-0.5 rounded-full font-medium',
-                config.bgColor,
-                config.color
-              )}>
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-xs px-2 py-0.5 rounded-full font-medium',
+                  config.bgColor,
+                  config.color
+                )}
+              >
                 {items.length} {items.length === 1 ? 'candidate' : 'candidates'}
-              </span>
+              </Badge>
             </div>
 
             <div className="space-y-2">
@@ -255,7 +247,6 @@ function CandidateList({
                       )}
                     </div>
                     {item.url && (() => {
-                      // SECURITY: Validate URL scheme before rendering to prevent XSS
                       const isSafeUrl = item.url.startsWith('http://') || item.url.startsWith('https://');
                       if (!isSafeUrl) return null;
                       return (
@@ -296,15 +287,10 @@ function CandidateList({
   );
 }
 
-/* ============================================================
-   Main SourceRetrievalUI Component
-   ============================================================ */
-
 export function SourceRetrievalUI({
   report,
   className = '',
 }: SourceRetrievalUIProps) {
-  // Calculate stats per source
   const sourceStats = useMemo(() => {
     const stats: Record<string, { total: number; verified: number; withUrl: number }> = {
       crossref: { total: 0, verified: 0, withUrl: 0 },
@@ -313,7 +299,6 @@ export function SourceRetrievalUI({
       core: { total: 0, verified: 0, withUrl: 0 },
     };
 
-    // Count from all verdicts
     for (const verdict of report.verdicts) {
       for (const source of verdict.matched_sources || []) {
         const key = source.source.toLowerCase();
@@ -332,19 +317,16 @@ export function SourceRetrievalUI({
     return stats;
   }, [report.verdicts]);
 
-  // Total candidates
   const totalCandidates = Object.values(sourceStats).reduce(
     (sum, s) => sum + s.total,
     0
   );
 
-  // Total verified
   const totalVerified = Object.values(sourceStats).reduce(
     (sum, s) => sum + s.verified,
     0
   );
 
-  // All sources for candidate list
   const allSources = report.verdicts.flatMap((v) => v.matched_sources || []);
 
   return (
@@ -366,24 +348,24 @@ export function SourceRetrievalUI({
 
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="card p-4 text-center">
+        <Card className="p-4 text-center">
           <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
             {totalCandidates}
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total Lookups</p>
-        </div>
-        <div className="card p-4 text-center border-emerald-200 dark:border-emerald-800">
+        </Card>
+        <Card className="p-4 text-center border-emerald-200 dark:border-emerald-800">
           <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
             {totalVerified}
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Matches Found</p>
-        </div>
-        <div className="card p-4 text-center">
+        </Card>
+        <Card className="p-4 text-center">
           <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
             {Object.values(sourceStats).filter(s => s.total > 0).length}
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Sources Used</p>
-        </div>
+        </Card>
       </div>
 
       {/* Source cards */}
@@ -404,20 +386,20 @@ export function SourceRetrievalUI({
           <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 uppercase tracking-wide">
             Candidates ({allSources.length})
           </h4>
-          <div className="card p-4">
+          <Card className="p-4">
             <CandidateList sources={allSources} />
-          </div>
+          </Card>
         </div>
       )}
 
       {/* No sources found */}
       {allSources.length === 0 && (
-        <div className="card p-6 text-center bg-slate-50 dark:bg-slate-800/50">
+        <Card className="p-6 text-center bg-slate-50 dark:bg-slate-800/50">
           <Search className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <p className="text-sm text-slate-500 dark:text-slate-400">
             No source lookups were performed for this document.
           </p>
-        </div>
+        </Card>
       )}
 
       {/* Legend */}

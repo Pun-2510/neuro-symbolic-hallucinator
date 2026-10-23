@@ -8,6 +8,9 @@ import { EvidenceGraph } from './CitationGraphView';
 import { OverrideControls } from './OverrideControls';
 import { cn } from '@/lib/utils';
 import { getFieldDisplayName, getRuleDisplayName, getSourceDisplayName, getVerdictDisplayName, getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 /* ============================================================
    SourceLogic — Citation Detail Drawer Component
@@ -37,12 +40,12 @@ function SourceBadge({ src }: { src: MatchedSource }) {
   const matchedFields = src.matched_fields ?? [];
 
   return (
-    <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-800 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors">
+    <Card className="p-4 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className={cn('text-xs font-bold px-2 py-0.5 rounded uppercase', colors.bg, colors.text)}>
+          <Badge variant="outline" className={cn('text-xs font-bold px-2 py-0.5 rounded uppercase border-0', colors.bg, colors.text)}>
             {getSourceDisplayName(src.source)}
-          </span>
+          </Badge>
           {src.checked_at && (
             <span className="text-xs text-slate-500 dark:text-slate-400">
               {new Date(src.checked_at).toLocaleString()}
@@ -67,16 +70,17 @@ function SourceBadge({ src }: { src: MatchedSource }) {
       {matchedFields.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {matchedFields.map((field) => (
-            <span
+            <Badge
               key={field}
-              className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded text-xs font-mono"
+              variant="verified"
+              className="px-2 py-0.5 rounded text-xs font-mono"
             >
               {getFieldDisplayName(field).replace(/^the /, '')}
-            </span>
+            </Badge>
           ))}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -133,8 +137,6 @@ export function CitationDetailDrawer({
         onClose();
         return;
       }
-      // Focus trap: cycle Tab/Shift+Tab inside the drawer so screen-reader
-      // and keyboard users can't escape into the inert page behind.
       if (e.key === 'Tab' && drawerRef.current) {
         const focusable = drawerRef.current.querySelectorAll<HTMLElement>(
           'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input, select, textarea'
@@ -156,15 +158,12 @@ export function CitationDetailDrawer({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  // Move focus into the drawer on open; restore the previous focus on close.
   useEffect(() => {
     previousFocusRef.current = document.activeElement as HTMLElement | null;
-    // Focus the close button so keyboard users land in a sensible spot.
     const closeBtn = drawerRef.current?.querySelector<HTMLButtonElement>(
-      'button[aria-label="Close"]'
+      'button[aria-label="Close citation detail"]'
     );
     closeBtn?.focus();
-    // Lock body scroll while the drawer is open
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
@@ -173,13 +172,10 @@ export function CitationDetailDrawer({
     };
   }, []);
 
-  // Defensive: ensure arrays are always defined
   const triggeredRules = verdict.triggered_rules ?? [];
   const mismatchedFields = verdict.mismatched_fields ?? [];
   const matchedSources = verdict.matched_sources ?? [];
 
-  // A local-only hit means every matched source came from an internal cache
-  // path (local DB / known papers), so no external API was ever queried.
   const isLocalOnly =
     matchedSources.length > 0 &&
     matchedSources.every((s) => ['local_db', 'known_papers'].includes((s.source || '').toLowerCase()));
@@ -227,22 +223,22 @@ export function CitationDetailDrawer({
 
         <div className="p-6 space-y-6">
           {/* Citation Text - Section 10 */}
-          <div className="card p-4">
+          <Card className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <FileText className="h-4 w-4 text-slate-400" />
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {t('essay.inTextCitation')}
               </span>
             </div>
-            <p className="text-sm text-slate-900 dark:text-slate-100 font-medium">
+            <p className="text-sm text-slate-900 dark:text-slate-100 font-medium font-serif">
               {verdict.citation_raw || 'Unknown citation'}
             </p>
             {verdict.citation_id && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+              <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-2">
                 {t('essay.citationId')}: {verdict.citation_id}
               </p>
             )}
-          </div>
+          </Card>
 
           {/* Two-layer badges - Section 11: Verification Status */}
           <div className="flex flex-wrap gap-4">
@@ -275,23 +271,21 @@ export function CitationDetailDrawer({
 
           {/* Override indicator */}
           {verdict.is_overridden && (
-            <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl">
-              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                  {t('essay.humanOverrideApplied')}
-                </p>
-                {verdict.override_record && (
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                    Changed from {verdict.override_record.previous_label} to {verdict.override_record.new_label}
-                  </p>
-                )}
-              </div>
-            </div>
+            <Alert variant="warning" className="rounded-xl">
+              <AlertTriangle className="h-5 w-5" />
+              <AlertTitle className="text-sm font-medium">
+                {t('essay.humanOverrideApplied')}
+              </AlertTitle>
+              {verdict.override_record && (
+                <AlertDescription className="text-xs mt-1">
+                  Changed from {verdict.override_record.previous_label} to {verdict.override_record.new_label}
+                </AlertDescription>
+              )}
+            </Alert>
           )}
 
           {/* Reasoning */}
-          <div className="card p-4">
+          <Card className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <GitBranch className="h-4 w-4 text-slate-400" />
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -301,10 +295,10 @@ export function CitationDetailDrawer({
             <p className="text-sm text-slate-900 dark:text-slate-100 leading-relaxed">
               {getVerdictExplanation(verdict)}
             </p>
-          </div>
+          </Card>
 
           {/* Logic Trace - Section 14 */}
-          <div className="card p-4">
+          <Card className="p-4">
             <div className="flex items-center gap-2 mb-4">
               <Shield className="h-4 w-4 text-slate-400" />
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -331,10 +325,10 @@ export function CitationDetailDrawer({
                 isComplete
               />
             </div>
-          </div>
+          </Card>
 
           {/* Evidence Graph - Section 16: Full visual evidence chain */}
-          <div className="card p-4">
+          <Card className="p-4">
             <div className="flex items-center gap-2 mb-4">
               <Network className="h-4 w-4 text-slate-400" />
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -342,11 +336,11 @@ export function CitationDetailDrawer({
               </span>
             </div>
             <EvidenceGraph verdict={verdict} />
-          </div>
+          </Card>
 
           {/* Triggered Rules */}
           {triggeredRules.length > 0 && (
-            <div className="card p-4">
+            <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {t('essay.rulesTriggered')}
@@ -354,20 +348,21 @@ export function CitationDetailDrawer({
               </div>
               <div className="flex flex-wrap gap-2">
                 {triggeredRules.map((r) => (
-                  <span
+                  <Badge
                     key={r}
-                    className="px-3 py-1 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-mono font-medium"
+                    variant="outline"
+                    className="px-3 py-1 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-mono font-medium"
                   >
                     {r}
-                  </span>
+                  </Badge>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Mismatched Fields - Section 10: Metadata Comparison */}
           {mismatchedFields.length > 0 && (
-            <div className="card p-4">
+            <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -376,20 +371,21 @@ export function CitationDetailDrawer({
               </div>
               <div className="flex flex-wrap gap-2">
                 {mismatchedFields.map((f) => (
-                  <span
+                  <Badge
                     key={f}
-                    className="px-3 py-1 bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg text-xs font-mono"
+                    variant="metadata_error"
+                    className="px-3 py-1 rounded-lg text-xs font-mono"
                   >
                     {f}
-                  </span>
+                  </Badge>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Evidence Sources - Section 10: Sources */}
           {matchedSources.length > 0 && (
-            <div className="card p-4">
+            <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Database className="h-4 w-4 text-slate-400" />
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -401,12 +397,12 @@ export function CitationDetailDrawer({
                   <SourceBadge key={i} src={src} />
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
           {/* No sources found - Section 10 */}
           {matchedSources.length === 0 && (
-            <div className="card p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
+            <Card className="p-4 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800">
               <div className="flex items-center gap-2 mb-2">
                 <XCircle className="h-4 w-4 text-red-500" />
                 <span className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">
@@ -416,12 +412,12 @@ export function CitationDetailDrawer({
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 {t('essay.noEvidenceFoundDesc')}
               </p>
-            </div>
+            </Card>
           )}
 
           {/* Domain Exception */}
           {verdict.domain_exception && (
-            <div className="card p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+            <Card className="p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                 <div>
@@ -433,7 +429,7 @@ export function CitationDetailDrawer({
                   </p>
                 </div>
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Style Penalty */}
@@ -448,7 +444,7 @@ export function CitationDetailDrawer({
 
           {/* Override History */}
           {verdict.override_record && (
-            <div className="card p-4 border-t-4 border-indigo-500">
+            <Card className="p-4 border-t-4 border-t-indigo-500">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {t('essay.overrideHistory')}
@@ -481,7 +477,7 @@ export function CitationDetailDrawer({
                   </p>
                 )}
               </div>
-            </div>
+            </Card>
           )}
         </div>
       </div>

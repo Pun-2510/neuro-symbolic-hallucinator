@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api, type AnalysisReport, type Verdict } from '@/api/client';
+import { type Verdict } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { isUrlResource } from '@/lib/verdictExplanation';
 import { MappingStatusBadge } from '@/components/MappingStatusBadge';
@@ -11,11 +11,12 @@ import {
   AlertCircle,
   Link2Off,
   FileText,
-  Quote,
-  AlertTriangle,
   CheckCircle,
   HelpCircle,
 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 /* ============================================================
    SourceLogic — Orphan Detection Page
@@ -23,7 +24,6 @@ import {
    Shows citations without references and references never cited
    ============================================================ */
 
-// Types
 interface OrphanCitation {
   citation_id: string;
   citation_raw: string;
@@ -37,22 +37,15 @@ interface UncitedReference {
 }
 
 function getOrphanStats(verdicts: Verdict[]) {
-  // Citations without reference
   const citationsWithoutReference = verdicts.filter(
     (v) => v.mapping_status === 'missing_reference'
   );
-
-  // References never cited
   const uncitedReferences = verdicts.filter(
     (v) => v.mapping_status === 'uncited_reference'
   );
-
-  // Correctly linked
   const correctlyLinked = verdicts.filter(
     (v) => v.mapping_status === 'matched'
   );
-
-  // Ambiguous mappings
   const ambiguousMappings = verdicts.filter(
     (v) => v.mapping_status === 'ambiguous_mapping'
   );
@@ -70,7 +63,6 @@ function getOrphanStats(verdicts: Verdict[]) {
   };
 }
 
-// Orphan citation card
 function OrphanCitationCard({
   citation,
   index,
@@ -79,7 +71,7 @@ function OrphanCitationCard({
   index: number;
 }) {
   return (
-    <div className="border border-red-200 dark:border-red-800 rounded-xl p-4 bg-red-50/50 dark:bg-red-950/30 hover:bg-red-100/50 dark:hover:bg-red-950/50 transition-colors">
+    <Card className="border-red-200 dark:border-red-800 p-4 bg-red-50/50 dark:bg-red-950/30 hover:bg-red-100/50 dark:hover:bg-red-950/50 transition-colors">
       <div className="flex items-start gap-3">
         <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/50">
           <Link2Off className="h-4 w-4 text-red-600 dark:text-red-400" />
@@ -89,10 +81,13 @@ function OrphanCitationCard({
             <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
               #{index + 1}
             </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-xs font-medium">
+            <Badge
+              variant="hallucination"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+            >
               <Link2Off className="h-3 w-3" />
               No Reference
-            </span>
+            </Badge>
           </div>
           <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
             {citation.citation_raw}
@@ -103,11 +98,10 @@ function OrphanCitationCard({
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
-// Uncited reference card
 function UncitedReferenceCard({
   reference,
   index,
@@ -116,7 +110,7 @@ function UncitedReferenceCard({
   index: number;
 }) {
   return (
-    <div className="border border-amber-200 dark:border-amber-800 rounded-xl p-4 bg-amber-50/50 dark:bg-amber-950/30 hover:bg-amber-100/50 dark:hover:bg-amber-950/50 transition-colors">
+    <Card className="border-amber-200 dark:border-amber-800 p-4 bg-amber-50/50 dark:bg-amber-950/30 hover:bg-amber-100/50 dark:hover:bg-amber-950/50 transition-colors">
       <div className="flex items-start gap-3">
         <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
           <FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -126,21 +120,23 @@ function UncitedReferenceCard({
             <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
               #{index + 1}
             </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-xs font-medium">
+            <Badge
+              variant="metadata_error"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+            >
               <Link2Off className="h-3 w-3" />
               Uncited
-            </span>
+            </Badge>
           </div>
           <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
             {reference.raw_text}
           </p>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
-// Section header component
 function SectionHeader({
   title,
   icon,
@@ -188,7 +184,7 @@ function SectionHeader({
   const c = colorClasses[color];
 
   return (
-    <div
+    <Card
       className={`flex items-center gap-4 p-4 rounded-xl border ${c.bg} ${c.border}`}
     >
       <div className={`p-3 rounded-xl bg-white/50 dark:bg-slate-900/50 ${c.icon}`}>
@@ -199,13 +195,9 @@ function SectionHeader({
         <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>
       </div>
       <div className={`text-3xl font-bold ${c.count}`}>{count}</div>
-    </div>
+    </Card>
   );
 }
-
-/* ============================================================
-   Main OrphanDetectionPage Component
-   ============================================================ */
 
 export function OrphanDetectionPage() {
   const { id } = useParams<{ id: string }>();
@@ -213,7 +205,7 @@ export function OrphanDetectionPage() {
   const essayId = numericId !== null && !isNaN(numericId) && numericId > 0
     ? numericId
     : null;
-  const { data: report, isLoading, error } = useOrphanReport(essayId);
+  const { data: report, error } = useOrphanReport(essayId);
   const [activeTab, setActiveTab] = useState<'orphans' | 'uncited' | 'all'>('all');
 
   const errorMessage = essayId === null
@@ -222,7 +214,6 @@ export function OrphanDetectionPage() {
       ? (error instanceof Error ? error.message : 'Failed')
       : null;
 
-  // Calculate orphan stats
   const stats = useMemo(() => {
     if (!report) return null;
     return getOrphanStats(report.verdicts);
@@ -230,20 +221,18 @@ export function OrphanDetectionPage() {
 
   if (errorMessage) {
     return (
-      <div className="card p-6 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-          <div className="min-w-0 flex-1">
-            <p className="font-medium text-red-700 dark:text-red-300">Error: {errorMessage}</p>
-            <Link
-              to="/history"
-              className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block"
-            >
-              ← Back to Reports
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Alert variant="destructive" className="card p-6">
+        <AlertCircle className="h-5 w-5" />
+        <AlertTitle className="font-medium">Error: {errorMessage}</AlertTitle>
+        <AlertDescription>
+          <Link
+            to="/history"
+            className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block"
+          >
+            ← Back to Reports
+          </Link>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -283,7 +272,7 @@ export function OrphanDetectionPage() {
         </div>
       </div>
 
-      {/* Summary stats - UX/UI Concept Section 17 */}
+      {/* Summary stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <SectionHeader
           title="Correctly Linked"
@@ -343,7 +332,6 @@ export function OrphanDetectionPage() {
       {/* Content */}
       {hasIssues ? (
         <div className="space-y-6">
-          {/* Citation consistency summary */}
           {(activeTab === 'all' || activeTab === 'orphans') &&
             stats.citationsWithoutReference.length > 0 && (
               <div>
@@ -372,7 +360,6 @@ export function OrphanDetectionPage() {
               </div>
             )}
 
-          {/* Uncited references */}
           {(activeTab === 'all' || activeTab === 'uncited') &&
             stats.uncitedReferences.length > 0 && (
               <div>
@@ -399,7 +386,6 @@ export function OrphanDetectionPage() {
               </div>
             )}
 
-          {/* Ambiguous mappings */}
           {stats.ambiguousMappings.length > 0 && (
             <div>
               <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
@@ -427,7 +413,7 @@ export function OrphanDetectionPage() {
           )}
         </div>
       ) : (
-        <div className="card p-12 text-center">
+        <Card className="p-12 text-center">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
               <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
@@ -440,11 +426,11 @@ export function OrphanDetectionPage() {
             All citations are correctly linked to references and all references are
             cited in the document.
           </p>
-        </div>
+        </Card>
       )}
 
-      {/* Citation Consistency Summary - UX/UI Concept Section 17 */}
-      <div className="card p-5 bg-slate-50 dark:bg-slate-800/50">
+      {/* Citation Consistency Summary */}
+      <Card className="p-5 bg-slate-50 dark:bg-slate-800/50">
         <h3 className="font-display text-sm font-semibold mb-4 text-slate-900 dark:text-slate-100">
           Citation Consistency Summary
         </h3>
@@ -494,7 +480,7 @@ export function OrphanDetectionPage() {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

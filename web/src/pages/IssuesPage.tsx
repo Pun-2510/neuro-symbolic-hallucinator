@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { type AnalysisReport, type Verdict, type ValidationLabel } from '@/api/client';
+import { type Verdict, type ValidationLabel } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { getSourceDisplayName, getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
 import { useEssayPolling } from '@/hooks/useEssayPolling';
@@ -12,13 +12,14 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
   Database,
   XCircle,
-  FileText,
   CheckCircle,
-  HelpCircle
 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 /* ============================================================
    SourceLogic — Issues Page Component
@@ -26,10 +27,8 @@ import {
    Shows all verification issues grouped by severity
    ============================================================ */
 
-// Severity levels
 type Severity = 'critical' | 'warning' | 'info';
 
-// Map validation labels to severity
 function getSeverity(label: ValidationLabel): Severity {
   switch (label) {
     case 'suspected_hallucination':
@@ -45,7 +44,6 @@ function getSeverity(label: ValidationLabel): Severity {
   }
 }
 
-// Severity configuration
 const severityConfig = {
   critical: {
     label: 'Critical',
@@ -82,7 +80,6 @@ const severityConfig = {
   },
 };
 
-// Get source icon
 function SourceIcon({ source }: { source: string }) {
   const lower = source.toLowerCase();
   if (lower.includes('crossref')) return <span className="text-xs font-mono">CR</span>;
@@ -92,16 +89,13 @@ function SourceIcon({ source }: { source: string }) {
   return <Database className="h-3 w-3" />;
 }
 
-// Issue card component
 function IssueCard({ verdict }: { verdict: Verdict }) {
   const [expanded, setExpanded] = useState(false);
   const severity = getSeverity(verdict.label);
   const config = severityConfig[severity];
 
-  // Extract citation ID from citation_id (format: "cit_001" or similar)
   const citationNum = verdict.citation_id.replace(/[^0-9]/g, '') || verdict.citation_id;
 
-  // Get issue description based on verdict type
   function getIssueDescription(v: Verdict): string {
     if (isUrlResource(v)) {
       return `URL resource: ${v.citation_raw}. Excluded from CIS scoring.`;
@@ -118,17 +112,15 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
     if (v.label === 'unresolved') {
       return 'Unable to verify due to insufficient data.';
     }
-      return getVerdictExplanation(v);
+    return getVerdictExplanation(v);
   }
 
-  // Source results for hallucination cases
   const sourceResults = verdict.matched_sources || [];
 
   return (
-    <div
-      className={`rounded-xl border p-4 transition-all ${config.bgCard} ${config.borderCard}`}
+    <Card
+      className={`p-4 transition-all ${config.bgCard} ${config.borderCard}`}
     >
-      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
@@ -138,7 +130,7 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
             </span>
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">
-            <span className="font-medium">{verdict.citation_raw}</span>
+            <span className="font-medium font-serif">{verdict.citation_raw}</span>
           </p>
           <p className={`text-sm ${config.textColor}`}>
             {getIssueDescription(verdict)}
@@ -157,10 +149,8 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
         </button>
       </div>
 
-      {/* Expanded details */}
       {expanded && (
         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-4">
-          {/* Reasoning */}
           <div className="min-w-0 flex-1">
             <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
               What this means
@@ -170,7 +160,6 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
             </p>
           </div>
 
-          {/* Mismatched fields */}
           {verdict.mismatched_fields.length > 0 && (
             <div>
               <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
@@ -178,18 +167,18 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
               </h4>
               <div className="flex flex-wrap gap-2">
                 {verdict.mismatched_fields.map((field) => (
-                  <span
+                  <Badge
                     key={field}
-                    className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+                    variant="metadata_error"
+                    className="px-2 py-0.5 rounded-md text-xs font-medium"
                   >
                     {field}
-                  </span>
+                  </Badge>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Triggered rules */}
           {verdict.triggered_rules.length > 0 && (
             <div>
               <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
@@ -197,18 +186,18 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
               </h4>
               <div className="flex flex-wrap gap-2">
                 {verdict.triggered_rules.map((rule) => (
-                  <code
+                  <Badge
                     key={rule}
-                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    variant="outline"
+                    className="px-2 py-0.5 rounded text-xs font-mono bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
                   >
                     {rule}
-                  </code>
+                  </Badge>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Source results */}
           {sourceResults.length > 0 && (
             <div>
               <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
@@ -235,25 +224,23 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
             </div>
           )}
 
-          {/* Confidence score */}
           {verdict.confidence > 0 && (
             <div>
               <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
                 Confidence
               </h4>
               <div className="flex items-center gap-2">
-                <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${
-                      verdict.confidence >= 0.8
-                        ? 'bg-emerald-500'
-                        : verdict.confidence >= 0.5
-                        ? 'bg-amber-500'
-                        : 'bg-red-500'
-                    }`}
-                    style={{ width: `${verdict.confidence * 100}%` }}
-                  />
-                </div>
+                <Progress
+                  value={verdict.confidence * 100}
+                  className="flex-1 h-2"
+                  indicatorClassName={
+                    verdict.confidence >= 0.8
+                      ? 'bg-emerald-500'
+                      : verdict.confidence >= 0.5
+                      ? 'bg-amber-500'
+                      : 'bg-red-500'
+                  }
+                />
                 <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
                   {Math.round(verdict.confidence * 100)}%
                 </span>
@@ -261,7 +248,6 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
             </div>
           )}
 
-          {/* Mapping status */}
           {verdict.mapping_status && verdict.mapping_status !== 'matched' && (
             <div>
               <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
@@ -279,11 +265,10 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
-// Severity section component
 function SeveritySection({
   severity,
   verdicts
@@ -298,7 +283,6 @@ function SeveritySection({
 
   return (
     <div className="space-y-3">
-      {/* Section header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full flex items-center justify-between p-3 rounded-xl border ${config.bgCard} ${config.borderCard} transition-all hover:opacity-90`}
@@ -324,7 +308,6 @@ function SeveritySection({
         </div>
       </button>
 
-      {/* Issue cards */}
       {isOpen && (
         <div className="space-y-3 pl-2">
           {verdicts.map((verdict) => (
@@ -336,28 +319,18 @@ function SeveritySection({
   );
 }
 
-/* ============================================================
-   Main IssuesPage Component
-   ============================================================ */
-
 export function IssuesPage() {
   const { id } = useParams<{ id: string }>();
   const [filter, setFilter] = useState<'all' | 'critical' | 'warning' | 'info'>('all');
 
-  // SECURITY: parseInt guard retained — useEssayPolling báo error khi id không hợp lệ
   const numericId = id ? parseInt(id, 10) : null;
   const { report, error } = useEssayPolling(
     numericId !== null && !Number.isNaN(numericId) && numericId > 0 ? numericId : null,
   );
 
-  // Filter and group verdicts by severity
   const issuesBySeverity = useMemo(() => {
     if (!report) return { critical: [], warning: [], info: [] };
-
-    // Filter to only non-verified verdicts
     const issues = report.verdicts.filter((v) => v.label !== 'verified');
-
-    // Group by severity
     return {
       critical: issues.filter((v) => getSeverity(v.label) === 'critical'),
       warning: issues.filter((v) => getSeverity(v.label) === 'warning'),
@@ -365,13 +338,11 @@ export function IssuesPage() {
     };
   }, [report]);
 
-  // Calculate total issues
   const totalIssues = Object.values(issuesBySeverity).reduce(
     (sum, arr) => sum + arr.length,
     0
   );
 
-  // Filtered display
   const displaySections = useMemo(() => {
     if (filter === 'all') {
       return [
@@ -385,18 +356,16 @@ export function IssuesPage() {
 
   if (error) {
     return (
-      <div className="card p-6 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-red-700 dark:text-red-300">Error loading issues</p>
-            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{error}</p>
-            <Link to="/history" className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
-              ← Back to Reports
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Alert variant="destructive" className="card p-6">
+        <AlertCircle className="h-5 w-5" />
+        <AlertTitle className="font-medium">Error loading issues</AlertTitle>
+        <AlertDescription>
+          <p className="text-sm mt-1">{error}</p>
+          <Link to="/history" className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
+            ← Back to Reports
+          </Link>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -434,22 +403,22 @@ export function IssuesPage() {
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="stat-card text-center">
+        <Card className="stat-card text-center p-4">
           <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalIssues}</p>
           <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Total Issues</p>
-        </div>
-        <div className="stat-card text-center border-red-200 dark:border-red-800">
+        </Card>
+        <Card className="stat-card text-center p-4 border-red-200 dark:border-red-800">
           <p className="text-2xl font-bold text-red-600 dark:text-red-400">{issuesBySeverity.critical.length}</p>
           <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Critical</p>
-        </div>
-        <div className="stat-card text-center border-amber-200 dark:border-amber-800">
+        </Card>
+        <Card className="stat-card text-center p-4 border-amber-200 dark:border-amber-800">
           <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{issuesBySeverity.warning.length}</p>
           <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Warning</p>
-        </div>
-        <div className="stat-card text-center border-slate-200 dark:border-slate-700">
+        </Card>
+        <Card className="stat-card text-center p-4 border-slate-200 dark:border-slate-700">
           <p className="text-2xl font-bold text-slate-600 dark:text-slate-300">{issuesBySeverity.info.length}</p>
           <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Info</p>
-        </div>
+        </Card>
       </div>
 
       {/* Filter tabs */}
@@ -484,7 +453,7 @@ export function IssuesPage() {
 
       {/* Issues sections */}
       {totalIssues === 0 ? (
-        <div className="card p-12 text-center">
+        <Card className="p-12 text-center">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
               <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
@@ -496,7 +465,7 @@ export function IssuesPage() {
           <p className="text-slate-600 dark:text-slate-300 max-w-sm mx-auto">
             All citations and references have been verified successfully. No critical, warning, or info issues detected.
           </p>
-        </div>
+        </Card>
       ) : (
         <div className="space-y-4">
           {displaySections.map(({ severity, data }) => (
@@ -510,7 +479,7 @@ export function IssuesPage() {
       )}
 
       {/* Legend */}
-      <div className="card p-4 bg-slate-50 dark:bg-slate-800/50">
+      <Card className="p-4 bg-slate-50 dark:bg-slate-800/50">
         <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">
           Severity Legend
         </h3>
@@ -534,7 +503,7 @@ export function IssuesPage() {
             </span>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type {
   ValidationLabel,
@@ -10,6 +10,9 @@ import { cn } from '@/lib/utils';
 import { RefreshCw } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { useToast } from '@/contexts/ToastContext';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 const LABEL_OPTIONS: { value: ValidationLabel; label: string; color: string }[] = [
   { value: 'verified', label: '✓ Verified', color: 'text-green-700 dark:text-green-400' },
@@ -61,25 +64,25 @@ function OverrideForm({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={onClose}
     >
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
-        className="bg-background rounded-xl border shadow-2xl w-full max-w-md mx-4 p-6 space-y-4"
+        className="bg-background rounded-2xl border shadow-2xl w-full max-w-md mx-4 p-6 space-y-4"
         role="dialog"
         aria-modal="true"
         aria-labelledby="override-title"
       >
         <h3 id="override-title" className="text-base font-bold flex items-center gap-2">
-          <RefreshCw className="h-4 w-4" />
+          <RefreshCw className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
           Override Citation
         </h3>
 
         {/* Source label */}
         <div>
-          <label className="text-sm font-medium block mb-2">Source Label (Nguồn)</label>
+          <Label className="text-sm font-medium block mb-2">Source Label (Nguồn)</Label>
           <div className="grid grid-cols-2 gap-2">
             {LABEL_OPTIONS.map((opt) => (
               <button
@@ -87,7 +90,7 @@ function OverrideForm({
                 type="button"
                 onClick={() => setLabel(opt.value)}
                 className={cn(
-                  'px-3 py-2 border rounded text-sm text-left transition-colors',
+                  'px-3 py-2 border rounded-lg text-sm text-left transition-colors',
                   label === opt.value
                     ? 'border-primary bg-primary/10 font-medium ring-1 ring-primary'
                     : 'hover:bg-muted'
@@ -101,7 +104,7 @@ function OverrideForm({
 
         {/* Mapping status */}
         <div>
-          <label className="text-sm font-medium block mb-2">Mapping Status (Integrity)</label>
+          <Label className="text-sm font-medium block mb-2">Mapping Status (Integrity)</Label>
           <div className="grid grid-cols-4 gap-1">
             {STATUS_OPTIONS.map((opt) => (
               <button
@@ -109,7 +112,7 @@ function OverrideForm({
                 type="button"
                 onClick={() => setStatus(opt.value)}
                 className={cn(
-                  'px-2 py-1.5 border rounded text-xs text-center transition-colors',
+                  'px-2 py-1.5 border rounded-lg text-xs text-center transition-colors',
                   status === opt.value
                     ? 'border-primary bg-primary/10 font-medium ring-1 ring-primary'
                     : 'hover:bg-muted'
@@ -123,33 +126,32 @@ function OverrideForm({
 
         {/* Reason */}
         <div>
-          <label className="text-sm font-medium block mb-1">
+          <Label className="text-sm font-medium block mb-1">
             Lý do <span className="text-muted-foreground font-normal">(tùy chọn)</span>
-          </label>
-          <textarea
+          </Label>
+          <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="VD: Kiểm tra thủ công, tác giả xác nhận..."
             rows={2}
-            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+            className="resize-none"
           />
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={onClose}
-            className="px-4 py-2 text-sm border rounded hover:bg-muted transition-colors"
           >
             Hủy
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             disabled={submitting}
-            className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
             {submitting ? 'Đang lưu...' : done ? 'Đã lưu!' : 'Xác nhận ghi đè'}
-          </button>
+          </Button>
         </div>
       </form>
     </div>,
@@ -166,9 +168,6 @@ export function OverrideControls({
   onOverride: (req: OverrideRequest) => Promise<void>;
   className?: string;
 }) {
-  // Capability gate — only users with override_verdict may see the controls.
-  // Task 18 (Phase 4): centralize the gate here so EssayPage can mount
-  // OverrideControls unconditionally without worrying about role.
   const { has } = useRole();
   if (!has('override_verdict')) return null;
 
@@ -190,8 +189,8 @@ export function OverrideControls({
         onClick={() => setOpen(true)}
         className={cn(
           verdict.is_overridden
-            ? 'flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-1 rounded border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors'
-            : 'flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-muted transition-colors',
+            ? 'flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors'
+            : 'flex items-center gap-1 px-2.5 py-1.5 text-xs border rounded-lg hover:bg-muted transition-colors',
           className
         )}
         title="Ghi đè verdict"

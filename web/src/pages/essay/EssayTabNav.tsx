@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
 
 export type EssayTab = 'overview' | 'citations' | 'references';
 
@@ -13,8 +14,6 @@ const TABS: EssayTab[] = ['overview', 'citations', 'references'];
 
 /**
  * Underlined tab navigation for the Essay report page.
- * Renders an active underline via a 0.5px bottom bar; citations and references
- * show small count badges.
  */
 export function EssayTabNav({
   activeTab,
@@ -31,28 +30,28 @@ export function EssayTabNav({
   };
 
   return (
-    <div className="border-b border-slate-200 dark:border-slate-700">
+    <div className="border-b border-slate-200 dark:border-slate-800">
       <nav className="flex gap-6" aria-label="Report sections">
         {TABS.map((tab) => (
           <button
             key={tab}
             onClick={() => onChange(tab)}
-            className={`relative pb-3 text-sm font-medium transition-colors ${
+            className={`relative pb-3 text-sm font-semibold transition-colors flex items-center gap-2 ${
               activeTab === tab
                 ? 'text-indigo-600 dark:text-indigo-400'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            {tabLabels[tab]}
+            <span>{tabLabels[tab]}</span>
             {tab === 'citations' && (
-              <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+              <Badge variant="secondary" className="font-mono text-xs px-2 py-0">
                 {citationsCount}
-              </span>
+              </Badge>
             )}
             {tab === 'references' && (
-              <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+              <Badge variant="secondary" className="font-mono text-xs px-2 py-0">
                 {referencesCount}
-              </span>
+              </Badge>
             )}
             {activeTab === tab && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full" />

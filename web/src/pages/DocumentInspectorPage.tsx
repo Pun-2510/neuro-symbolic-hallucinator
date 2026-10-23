@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { type AnalysisReport, type Verdict } from '@/api/client';
+import { type Verdict } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { MappingStatusBadge } from '@/components/MappingStatusBadge';
 import { getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
@@ -18,6 +18,10 @@ import {
   XCircle,
   Link2,
 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 /* ============================================================
    SourceLogic — Document Inspector Page
@@ -25,7 +29,6 @@ import {
    Shows document with inline verification status for citations
    ============================================================ */
 
-// Color mapping for inline verification status
 const UNDERLINE_COLORS = {
   verified: 'border-emerald-500 dark:border-emerald-400',
   metadata_error: 'border-amber-500 dark:border-amber-400',
@@ -40,13 +43,9 @@ interface InlineCitation {
   mapping_status: string;
   page: number;
   line: string;
-  // NEW v1.5: surrounding sentence/paragraph context from the PDF
-  // (extracted by the pipeline). Optional — older reports may have null.
   context?: string;
 }
 
-// Render a context string with the citation marker highlighted (<mark>).
-// Falls back to the raw citation if no match is found.
 function ContextWithHighlight({
   context,
   marker,
@@ -59,11 +58,8 @@ function ContextWithHighlight({
   const lowerMarker = marker.toLowerCase();
   const idx = lowerContext.indexOf(lowerMarker);
   if (idx === -1) {
-    // Marker not found verbatim — show the whole context as-is.
     return <>{context}</>;
   }
-  // Split the marker safely: for numeric markers like "[1]" the literal chars
-  // may differ from "[" "1" "]", so we use the original marker string.
   const before = context.slice(0, idx);
   const match = context.slice(idx, idx + marker.length);
   const after = context.slice(idx + marker.length);
@@ -78,20 +74,18 @@ function ContextWithHighlight({
   );
 }
 
-// Build inline citations from verdict data
 function buildInlineCitations(verdicts: Verdict[]): InlineCitation[] {
   return verdicts.map((v) => ({
     id: v.citation_id,
     raw: v.citation_raw,
     label: isUrlResource(v) ? 'resource' : v.label,
     mapping_status: v.mapping_status,
-    page: 1, // Default page, would need from actual extraction
+    page: 1,
     line: v.citation_raw,
     context: v.context,
   }));
 }
 
-// Get inline status badge
 function getInlineStatusBadge(label: string): {
   bg: string;
   text: string;
@@ -137,7 +131,6 @@ function getInlineStatusBadge(label: string): {
   }
 }
 
-// Inline citation marker component
 function InlineCitationMarker({
   citation,
   onClick,
@@ -160,7 +153,6 @@ function InlineCitationMarker({
   );
 }
 
-// Citation detail popup
 function CitationPopup({
   essayId,
   citation,
@@ -183,7 +175,6 @@ function CitationPopup({
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className={`px-6 py-4 ${status.bg}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -204,19 +195,16 @@ function CitationPopup({
           </div>
         </div>
 
-        {/* Content */}
         <div className="p-6 space-y-4">
-          {/* Citation raw text */}
           <div className="min-w-0 flex-1">
             <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
               In-text Citation
             </label>
-            <p className="mt-1 text-sm text-slate-900 dark:text-slate-100 font-medium">
+            <p className="mt-1 text-sm text-slate-900 dark:text-slate-100 font-medium font-serif">
               {citation.raw}
             </p>
           </div>
 
-          {/* Status badges */}
           <div className="flex flex-wrap gap-3">
             <div>
               <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
@@ -236,10 +224,8 @@ function CitationPopup({
             </div>
           </div>
 
-          {/* Verdict details */}
           {verdict && (
             <>
-              {/* Reasoning */}
               <div>
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
                   What we found
@@ -249,31 +235,28 @@ function CitationPopup({
                 </p>
               </div>
 
-              {/* Confidence */}
               <div>
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
                   Confidence
                 </label>
                 <div className="mt-2 flex items-center gap-3">
-                  <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${
-                        verdict.confidence >= 0.8
-                          ? 'bg-emerald-500'
-                          : verdict.confidence >= 0.5
-                          ? 'bg-amber-500'
-                          : 'bg-red-500'
-                      }`}
-                      style={{ width: `${verdict.confidence * 100}%` }}
-                    />
-                  </div>
+                  <Progress
+                    value={verdict.confidence * 100}
+                    className="flex-1 h-2"
+                    indicatorClassName={
+                      verdict.confidence >= 0.8
+                        ? 'bg-emerald-500'
+                        : verdict.confidence >= 0.5
+                        ? 'bg-amber-500'
+                        : 'bg-red-500'
+                    }
+                  />
                   <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
                     {(verdict.confidence * 100).toFixed(0)}%
                   </span>
                 </div>
               </div>
 
-              {/* Mismatched fields */}
               {verdict.mismatched_fields.length > 0 && (
                 <div>
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
@@ -281,18 +264,18 @@ function CitationPopup({
                   </label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {verdict.mismatched_fields.map((field) => (
-                      <span
+                      <Badge
                         key={field}
-                        className="px-2 py-1 bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 rounded text-xs font-medium"
+                        variant="metadata_error"
+                        className="px-2 py-1 rounded text-xs font-medium"
                       >
                         {field}
-                      </span>
+                      </Badge>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Triggered rules */}
               {verdict.triggered_rules.length > 0 && (
                 <div>
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
@@ -300,12 +283,13 @@ function CitationPopup({
                   </label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {verdict.triggered_rules.map((rule) => (
-                      <span
+                      <Badge
                         key={rule}
+                        variant="outline"
                         className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded text-xs font-mono"
                       >
                         {rule}
-                      </span>
+                      </Badge>
                     ))}
                   </div>
                 </div>
@@ -313,7 +297,6 @@ function CitationPopup({
             </>
           )}
 
-          {/* Navigation link */}
           <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
             <Link
               to={`/verification/report/${essayId}`}
@@ -329,33 +312,25 @@ function CitationPopup({
   );
 }
 
-/* ============================================================
-   Main DocumentInspectorPage Component
-   ============================================================ */
-
 export function DocumentInspectorPage() {
   const { id } = useParams<{ id: string }>();
   const [selectedCitation, setSelectedCitation] = useState<InlineCitation | null>(null);
   const [selectedVerdict, setSelectedVerdict] = useState<Verdict | null>(null);
   const [filterLabel, setFilterLabel] = useState<string>('all');
 
-  // SECURITY: parseInt guard retained — useEssayPolling báo error khi id không hợp lệ
   const numericId = id ? parseInt(id, 10) : null;
   const { report, error } = useEssayPolling(
     numericId !== null && !Number.isNaN(numericId) && numericId > 0 ? numericId : null,
     { errorMessage: 'Failed to load document. Please try again.' },
   );
 
-  // Build inline citations
   const inlineCitations = report ? buildInlineCitations(report.verdicts) : [];
 
-  // Filter citations
   const filteredCitations =
     filterLabel === 'all'
       ? inlineCitations
       : inlineCitations.filter((c) => c.label === filterLabel);
 
-  // Get selected verdict
   useEffect(() => {
     if (selectedCitation && report) {
       const verdict = report.verdicts.find(
@@ -365,33 +340,27 @@ export function DocumentInspectorPage() {
     }
   }, [selectedCitation, report]);
 
-  // Count by status
   const statusCounts = {
     verified: inlineCitations.filter((c) => c.label === 'verified').length,
-    metadata_error: inlineCitations.filter((c) => c.label === 'metadata_error')
-      .length,
-    suspected_hallucination: inlineCitations.filter(
-      (c) => c.label === 'suspected_hallucination'
-    ).length,
+    metadata_error: inlineCitations.filter((c) => c.label === 'metadata_error').length,
+    suspected_hallucination: inlineCitations.filter((c) => c.label === 'suspected_hallucination').length,
     unresolved: inlineCitations.filter((c) => c.label === 'unresolved').length,
   };
 
   if (error) {
     return (
-      <div className="card p-6 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-red-700 dark:text-red-300">Error: {error}</p>
-            <Link
-              to="/history"
-              className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block"
-            >
-              ← Back to Reports
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Alert variant="destructive" className="card p-6">
+        <AlertCircle className="h-5 w-5" />
+        <AlertTitle className="font-medium">Error: {error}</AlertTitle>
+        <AlertDescription>
+          <Link
+            to="/history"
+            className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block"
+          >
+            ← Back to Reports
+          </Link>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -436,7 +405,7 @@ export function DocumentInspectorPage() {
       </div>
 
       {/* Status legend */}
-      <div className="card p-4">
+      <Card className="p-4">
         <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-3">
           Inline Status Legend
         </h3>
@@ -466,7 +435,7 @@ export function DocumentInspectorPage() {
             </span>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Filter controls */}
       <div className="flex flex-wrap gap-2">
@@ -498,7 +467,7 @@ export function DocumentInspectorPage() {
       {/* Document view with inline citations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Document panel */}
-        <div className="card p-6 bg-white dark:bg-slate-800">
+        <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
             <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -506,7 +475,6 @@ export function DocumentInspectorPage() {
             </h3>
           </div>
 
-          {/* Simulated document content with inline markers */}
           <div className="prose prose-slate dark:prose-invert max-w-none">
             <div className="space-y-4 text-sm leading-relaxed">
               {filteredCitations.length === 0 ? (
@@ -514,13 +482,11 @@ export function DocumentInspectorPage() {
                   No citations match the current filter.
                 </p>
               ) : (
-                filteredCitations.map((citation, index) => (
+                filteredCitations.map((citation) => (
                   <div key={citation.id} className="relative">
-                    {/* Page indicator */}
                     <span className="absolute -left-8 text-xs text-slate-400 dark:text-slate-500">
                       p{citation.page}
                     </span>
-                    {/* Citation with surrounding sentence/paragraph context */}
                     <p className="pl-6">
                       {citation.context ? (
                         <>
@@ -550,10 +516,10 @@ export function DocumentInspectorPage() {
               )}
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Citation list panel */}
-        <div className="card p-6 bg-white dark:bg-slate-800">
+        <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Quote className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
             <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -599,10 +565,9 @@ export function DocumentInspectorPage() {
               );
             })}
           </div>
-        </div>
+        </Card>
       </div>
 
-      {/* Citation detail popup */}
       {selectedCitation && (
         <CitationPopup
           essayId={id ?? ''}
