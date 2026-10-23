@@ -1,13 +1,24 @@
-import { useState, useEffect, useRef } from 'react';
-import * as Dialog from '@radix-ui/react-dialog';
-import { X, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import type { User, UserCreate, UserUpdate } from '@/api/client';
 import { api } from '@/api/client';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface UserFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user?: User | null;   // undefined = create mode, User = edit mode
+  user?: User | null; // undefined = create mode, User = edit mode
   onSuccess: () => void;
 }
 
@@ -94,152 +105,137 @@ export function UserFormDialog({
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 animate-in fade-in" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl p-6 animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex items-center justify-between mb-6">
-            <Dialog.Title className="font-display text-xl font-bold text-slate-900 dark:text-white">
-              {isEdit ? 'Edit User' : 'Create New User'}
-            </Dialog.Title>
-            <Dialog.Close className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <X className="h-5 w-5" />
-            </Dialog.Close>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader className="mb-2">
+          <DialogTitle className="text-xl font-bold">
+            {isEdit ? 'Edit User' : 'Create New User'}
+          </DialogTitle>
+        </DialogHeader>
+
+        {error && (
+          <Alert variant="destructive" className="mb-2">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Username *</Label>
+            <Input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required={!isEdit}
+              minLength={3}
+              maxLength={50}
+              disabled={loading}
+              placeholder="e.g. john_doe"
+            />
           </div>
 
-          {error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
-              {error}
+          {!isEdit && (
+            <div className="space-y-1.5">
+              <Label>Password *</Label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required={!isEdit}
+                minLength={6}
+                maxLength={128}
+                disabled={loading}
+                placeholder="Minimum 6 characters"
+              />
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="input-label">Username *</label>
-              <input
+          {isEdit && (
+            <Alert variant="warning">
+              <AlertDescription>
+                Leave password blank to keep the current password.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Full Name</Label>
+              <Input
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required={!isEdit}
-                minLength={3}
-                maxLength={50}
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                maxLength={120}
                 disabled={loading}
-                className="input"
-                placeholder="e.g. john_doe"
+                placeholder="e.g. John Doe"
               />
             </div>
 
-            {!isEdit && (
-              <div>
-                <label className="input-label">Password *</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required={!isEdit}
-                  minLength={6}
-                  maxLength={128}
-                  disabled={loading}
-                  className="input"
-                  placeholder="Minimum 6 characters"
-                />
-              </div>
-            )}
-
-            {isEdit && (
-              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-300">
-                Leave password blank to keep the current password.
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="input-label">Full Name</label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  maxLength={120}
-                  disabled={loading}
-                  className="input"
-                  placeholder="e.g. John Doe"
-                />
-              </div>
-
-              <div>
-                <label className="input-label">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading}
-                  className="input"
-                  placeholder="e.g. john@example.com"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="input-label">Role</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as 'user' | 'teacher' | 'admin')}
-                  disabled={loading}
-                  className="input"
-                >
-                  <option value="user">User</option>
-                  <option value="teacher">Teacher</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-3 pt-7">
-                <button
-                  type="button"
-                  onClick={() => setIsActive(!isActive)}
-                  disabled={loading}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    isActive ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                      isActive ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-                <span className="text-sm text-slate-700 dark:text-slate-300">
-                  {isActive ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button type="submit" disabled={loading} className="btn-primary">
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : isEdit ? (
-                  'Save Changes'
-                ) : (
-                  'Create User'
-                )}
-              </button>
+                placeholder="e.g. john@example.com"
+              />
             </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Role</Label>
+              <Select
+                value={role}
+                onChange={(e) =>
+                  setRole(e.target.value as 'user' | 'teacher' | 'admin')
+                }
+                disabled={loading}
+                wrapperClassName="w-full"
+              >
+                <option value="user">User</option>
+                <option value="teacher">Teacher</option>
+                <option value="admin">Admin</option>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-3 pt-7">
+              <Switch
+                checked={isActive}
+                onCheckedChange={setIsActive}
+                disabled={loading}
+              />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                {isActive ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2.5 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : isEdit ? (
+                'Save Changes'
+              ) : (
+                'Create User'
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

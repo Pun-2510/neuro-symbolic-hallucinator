@@ -1,16 +1,35 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FileSearch, Upload, History, Menu, X, BookOpen, LogOut, User, Layers, Users, Settings, HelpCircle, GraduationCap, ClipboardCheck, Activity, FileText } from 'lucide-react';
+import {
+  FileSearch,
+  Upload,
+  History,
+  Menu,
+  X,
+  BookOpen,
+  LogOut,
+  User,
+  Layers,
+  Users,
+  Settings,
+  HelpCircle,
+  GraduationCap,
+  ClipboardCheck,
+  Activity,
+  FileText,
+} from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole, type UserCapability, type UserRole } from '@/hooks/useRole';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import { HelpModal } from './HelpModal';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 
 /* ============================================================
-   SourceLogic — App Layout Component
+   SourceLogic — App Layout Component (shadcn/ui v2.0)
    Academic Source Verification Workspace
-   Based on UX/UI Concept Section 19: Global Navigation
+   Based on SOURCELOGIC_CONCEPT.md Section 5: Global App Shell
    ============================================================ */
 
 interface NavItem {
@@ -102,8 +121,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 flex">
-      {/* Skip-to-content — visually hidden until focused. WCAG 2.1 Level A
-          (Bypass Blocks) requires a way to jump past repeated navigation. */}
+      {/* Skip-to-content — visually hidden until focused. WCAG 2.1 Level A */}
       <a
         href="#main-content"
         className="
@@ -129,7 +147,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40 animate-fade-in"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -162,9 +180,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               aria-label="Go to dashboard"
               className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
             >
-              <div className="flex items-center gap-4">
-                {/* SourceLogic Logo */}
-                <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <div className="flex items-center gap-3.5">
+                {/* SourceLogic [1] -> ✓ Logo */}
+                <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
                   <svg
                     width="24"
                     height="24"
@@ -172,7 +190,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     fill="none"
                     className="text-white"
                   >
-                    {/* Citation bracket [1] */}
                     <path
                       d="M4 8C4 6.89543 4.89543 6 6 6H8"
                       stroke="currentColor"
@@ -185,7 +202,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       strokeWidth="2"
                       strokeLinecap="round"
                     />
-                    {/* Link arrow */}
                     <path
                       d="M10 12H14M14 12L12 10M14 12L12 14"
                       stroke="currentColor"
@@ -193,7 +209,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
-                    {/* Checkmark */}
                     <path
                       d="M17 9L19 11L22 8"
                       stroke="currentColor"
@@ -204,7 +219,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   </svg>
                 </div>
                 <div>
-                  <h1 className="font-display text-xl font-bold text-slate-900 dark:text-white">
+                  <h1 className="font-display text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                     SourceLogic
                   </h1>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -212,100 +227,103 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   </p>
                 </div>
               </div>
-              {/* Tagline */}
-              <p className="mt-3 text-xs text-slate-600 dark:text-slate-400 italic">
+              <p className="mt-2.5 text-xs text-slate-500 dark:text-slate-400 italic">
                 {t('nav.tagline')}
               </p>
             </Link>
           </div>
 
-          {/* Navigation — capability-driven (v1.15 / Phase 3) */}
-          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+          {/* Navigation — capability-driven */}
+          <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
             {SIDEBAR_GROUPS.map((group) => {
-              // Hide whole group if role-restricted and user doesn't match
               if (group.roles && !group.roles.includes(role)) return null;
-              // Hide items lacking required capability
               const visibleItems = group.items.filter(
                 (item) => !item.capability || has(item.capability),
               );
               if (visibleItems.length === 0) return null;
               return (
                 <div key={group.labelKey} className={group.roles ? 'pt-2' : ''}>
-                  <p className="px-4 py-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <p className="px-3.5 py-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                     {t(group.labelKey)}
                   </p>
-                  {visibleItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setMobileOpen(false)}
-                        className={`
-                          flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
-                          transition-all duration-200
-                          ${isActive(item.path)
-                            ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-                          }
-                        `}
-                      >
-                        <Icon className="h-5 w-5" />
-                        {t(item.labelKey)}
-                      </Link>
-                    );
-                  })}
+                  <div className="space-y-0.5">
+                    {visibleItems.map((item) => {
+                      const Icon = item.icon;
+                      const active = isActive(item.path);
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setMobileOpen(false)}
+                          className={`
+                            relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium
+                            transition-all duration-200
+                            ${active
+                              ? 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-semibold ring-1 ring-indigo-500/15'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60'
+                            }
+                          `}
+                        >
+                          <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-indigo-600 dark:text-indigo-400' : ''}`} />
+                          <span>{t(item.labelKey)}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
           </nav>
 
-          {/* Theme Toggle */}
-            <div className="flex items-center justify-between px-4 py-2">
-              <span className="text-xs text-slate-500 dark:text-slate-400">{t('nav.theme')}</span>
+          <Separator />
+
+          {/* Theme Toggle & Help */}
+          <div className="px-4 py-2.5 space-y-1">
+            <div className="flex items-center justify-between px-2 py-1">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('nav.theme')}</span>
               <ThemeToggle size="sm" showLabel />
             </div>
 
-            {/* Help Button */}
-            <div className="px-4 py-2">
-              <button
-                onClick={() => setHelpOpen(true)}
-                className="w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
+            <button
+              onClick={() => setHelpOpen(true)}
+              className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <span className="flex items-center gap-2">
                 <HelpCircle className="h-4 w-4" />
                 {t('nav.helpShortcuts')}
-              </button>
-            </div>
+              </span>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-500">
+                Ctrl+/
+              </kbd>
+            </button>
+          </div>
 
-            {/* User Info & Logout */}
-          <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
-            {/* User Info */}
-            <div className="flex flex-col gap-1 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          {/* User Info & Logout */}
+          <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-1.5 bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="flex flex-col gap-1 px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full overflow-hidden bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0 border-2 border-indigo-200 dark:border-indigo-800">
+                <Avatar className="h-9 w-9 border-2 border-indigo-200 dark:border-indigo-800">
                   {user?.avatar_url ? (
-                    <img
-                      src={user.avatar_url}
-                      alt={user?.username}
-                      className="w-full h-full object-cover"
-                    />
+                    <AvatarImage src={user.avatar_url} alt={user?.username} />
                   ) : (
-                    <User className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                    <AvatarFallback>
+                      <User className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                    </AvatarFallback>
                   )}
-                </div>
+                </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                     {user?.full_name || user?.username || 'User'}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 capitalize flex items-center gap-1">
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400 capitalize flex items-center gap-1.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500" />
                     {user?.role || 'user'}
                   </p>
                 </div>
                 <Link
                   to="/profile"
                   onClick={() => setMobileOpen(false)}
-                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
+                  className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
                   aria-label="View profile"
                 >
                   {t('nav.viewProfile')}
@@ -317,12 +335,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <button
               onClick={handleLogout}
               disabled={loggingOut}
-              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all duration-200 disabled:opacity-50"
+              title="Logout"
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all duration-200 disabled:opacity-50"
             >
               {loggingOut ? (
-                <div className="h-5 w-5 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin" />
+                <div className="h-4 w-4 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin" />
               ) : (
-                <LogOut className="h-5 w-5" />
+                <LogOut className="h-4 w-4" />
               )}
               {loggingOut ? t('nav.signingOut') : t('nav.signOut')}
             </button>
@@ -343,13 +362,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
 
         {/* Footer */}
-        <footer className="shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4">
+        <footer className="shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3.5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <p className="flex items-center gap-2">
-              <BookOpen className="h-3.5 w-3.5" />
+            <p className="flex items-center gap-2 font-medium">
+              <BookOpen className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
               {t('nav.footerBrand')}
             </p>
-            <p>{t('nav.footerSystem')}</p>
+            <p className="font-mono text-[11px]">{t('nav.footerSystem')}</p>
           </div>
         </footer>
       </div>

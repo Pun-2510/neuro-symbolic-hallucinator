@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { api, type Class, type ClassCreate } from '@/api/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export interface CreateClassDialogProps {
   open: boolean;
@@ -9,12 +14,16 @@ export interface CreateClassDialogProps {
 }
 
 /**
- * CreateClassDialog — modal for teachers to create a new class (Phase 4).
+ * CreateClassDialog — modal for teachers to create a new class.
  *
  * Calls `api.createClass` and bubbles the result to the parent via onCreated.
  * Closes on success; surfaces error in-component.
  */
-export function CreateClassDialog({ open, onClose, onCreated }: CreateClassDialogProps) {
+export function CreateClassDialog({
+  open,
+  onClose,
+  onCreated,
+}: CreateClassDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -62,38 +71,38 @@ export function CreateClassDialog({ open, onClose, onCreated }: CreateClassDialo
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-class-title"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl"
+        className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 max-w-md w-full p-6 shadow-2xl animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 id="create-class-title" className="text-lg font-bold text-slate-900 dark:text-white">
+        <div className="flex items-center justify-between mb-5">
+          <h2
+            id="create-class-title"
+            className="font-display text-lg font-bold text-slate-900 dark:text-white"
+          >
             Tạo lớp mới
           </h2>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="h-5 w-5 text-slate-500" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300"
-              htmlFor="class-name"
-            >
+          <div className="space-y-1.5">
+            <Label htmlFor="class-name">
               Tên lớp <span className="text-rose-500">*</span>
-            </label>
-            <input
+            </Label>
+            <Input
               id="class-name"
               type="text"
               value={name}
@@ -101,48 +110,36 @@ export function CreateClassDialog({ open, onClose, onCreated }: CreateClassDialo
               required
               maxLength={120}
               autoFocus
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
-          <div>
-            <label
-              className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300"
-              htmlFor="class-desc"
-            >
-              Mô tả (optional)
-            </label>
-            <textarea
+          <div className="space-y-1.5">
+            <Label htmlFor="class-desc">Mô tả (optional)</Label>
+            <Textarea
               id="class-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               maxLength={1000}
               rows={3}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-              {error}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
+            <Button type="button" variant="outline" onClick={onClose}>
               Hủy
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={submitting || !name.trim()}
-              className="px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? 'Đang tạo…' : 'Tạo'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
