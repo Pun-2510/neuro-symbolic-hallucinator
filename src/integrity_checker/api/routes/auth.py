@@ -612,3 +612,27 @@ def get_me(current_user: User = Depends(get_current_user)):
         institution=current_user.institution,
         can_override_verdicts=bool(current_user.can_override_verdicts),
     )
+
+
+@router.get("/dev/latest-email")
+def get_latest_dev_email(email: str = Query(..., min_length=3)):
+    """Dev/test-only helper to inspect the latest transactional email sent to an address."""
+    settings = get_settings()
+    app_env = os.getenv("APP_ENV", settings.app.env).lower()
+    if app_env in ("production", "prod", "live") and not settings.app.debug:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    target = email.strip().lower()
+    outbox = get_email_service().outbox
+    for msg in reversed(outbox):
+        if msg.to_email.strip().lower() == target:
+            return {
+                "to_email": msg.to_email,
+                "subject": msg.subject,
+                "template_type": msg.template_type,
+                "action_url": msg.action_url,
+                "token": msg.token,
+                "delivered_via_smtp": msg.delivered_via_smtp,
+                "sent_at": msg.sent_at.isoformat(),
+            }
+    raise HTTPException(status_code=404, detail="No email found for recipient")

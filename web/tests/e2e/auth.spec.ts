@@ -120,4 +120,75 @@ test.describe('Authentication', () => {
     // Should show username in sidebar
     await expect(page.getByText('admin').first()).toBeVisible({ timeout: 5000 });
   });
+
+  test('should complete full register, activate account, forgot password, and reset password flow', async ({ page, request }) => {
+    const uniqueSuffix = Date.now().toString().slice(-6);
+    const username = `scholar_${uniqueSuffix}`;
+    const email = `scholar.${uniqueSuffix}@university.edu.vn`;
+    const initialPass = 'InitialScholar2026!';
+    const resetPass = 'UpdatedScholar2026!';
+
+    // 1. Go to /login and click Create account
+    await page.goto('/login');
+    await page.getByRole('link', { name: /create account/i }).click();
+    await expect(page).toHaveURL(/\/register/);
+
+    // 2. Fill registration form and submit
+    await page.getByLabel(/full name/i).fill('Scholar Test User');
+    await page.getByLabel(/username/i).fill(username);
+    await page.getByLabel(/email address/i).fill(email);
+    await page.getByLabel(/^password$/i).fill(initialPass);
+    await page.getByLabel(/confirm password/i).fill(initialPass);
+    await page.getByRole('button', { name: /create account/i }).click();
+
+    // 3. Should display "Check your email inbox" view
+    await expect(page.getByRole('heading', { name: /check your email inbox/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(email)).toBeVisible();
+
+    // 4. Attempting to login before activation should show Account Not Activated banner + Resend button
+    await page.goto('/login');
+    await page.getByLabel(/username/i).fill(username);
+    await page.getByLabel(/password/i).fill(initialPass);
+    await page.getByRole('button', { name: /sign in/i }).click();
+    await expect(page.getByText(/account not activated/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: /resend activation email/i })).toBeVisible();
+
+    // 5. Retrieve activation token from backend outbox and activate account
+    const actMailRes = await request.get(`http://localhost:8000/api/auth/dev/latest-email?email=${encodeURIComponent(email)}`);
+    expect(actMailRes.ok()).toBeTruthy();
+    const actMail = await actMailRes.json();
+    expect(actMail.template_type).toBe('activation');
+    expect(actMail.token).toBeTruthy();
+
+    await page.goto(`/activate-account?token=${actMail.token}`);
+    await expect(page.getByRole('heading', { name: /account activated/i })).toBeVisible({ timeout: 10000 });
+
+    // 6. Forgot password flow
+    await page.goto('/forgot-password');
+    await page.getByLabel(/registered email address/i).fill(email);
+    await page.getByRole('button', { name: /send reset link/i }).click();
+    await expect(page.getByRole('heading', { name: /password reset link sent/i })).toBeVisible({ timeout: 15000 });
+
+    // 7. Retrieve reset token and reset password
+    const resetMailRes = await request.get(`http://localhost:8000/api/auth/dev/latest-email?email=${encodeURIComponent(email)}`);
+    expect(resetMailRes.ok()).toBeTruthy();
+    const resetMail = await resetMailRes.json();
+    expect(resetMail.template_type).toBe('password_reset');
+    expect(resetMail.token).toBeTruthy();
+
+    await page.goto(`/reset-password?token=${resetMail.token}`);
+    await expect(page.getByText(`@${username}`)).toBeVisible({ timeout: 10000 });
+    await page.getByLabel(/^new password$/i).fill(resetPass);
+    await page.getByLabel(/confirm new password/i).fill(resetPass);
+    await page.getByRole('button', { name: /update password/i }).click();
+    await expect(page.getByRole('heading', { name: /password updated/i })).toBeVisible({ timeout: 15000 });
+
+    // 8. Sign in with new password (or email) and verify dashboard redirect
+    await page.goto('/login?reset=1');
+    await expect(page.getByText(/password updated! please sign in/i)).toBeVisible();
+    await page.getByLabel(/username/i).fill(email);
+    await page.getByLabel(/password/i).fill(resetPass);
+    await page.getByRole('button', { name: /sign in/i }).click();
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
+  });
 });
