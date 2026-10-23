@@ -910,12 +910,10 @@
   0% {
     opacity: 0;
     transform: translate3d(0, 26px, 0) scale(0.985);
-    filter: blur(5px);
   }
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
-    filter: blur(0px);
   }
 }
 
@@ -943,8 +941,7 @@
 }
 
 .animate-hero-reveal {
-  opacity: 0;
-  animation: heroReveal 1300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: heroReveal 1350ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-float-slow {

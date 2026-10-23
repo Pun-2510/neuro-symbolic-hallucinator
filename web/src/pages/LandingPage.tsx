@@ -46,7 +46,7 @@ import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 
 /* ============================================================
-   SourceLogic — Scholarly Precision Landing Page (shadcn/ui)
+   CITRA — Scholarly Precision Landing Page (shadcn/ui)
    Academic Source Verification Workspace & Citation Debugger
    ============================================================ */
 
@@ -356,36 +356,15 @@ const DEMO_CITATIONS: DemoCitation[] = [
   },
 ];
 
-function SourceLogicLogo({ size = 22 }: { size?: number }) {
+function SourceLogicLogo({ size = 26 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className="text-white">
-      <path
-        d="M4 8C4 6.89543 4.89543 6 6 6H8"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M4 16C4 17.1046 4.89543 18 6 18H8"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M10 12H14M14 12L12 10M14 12L12 14"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M17 9L19 11L22 8"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <img
+      src="/citra-logo.png"
+      alt="CITRA Logo"
+      width={size}
+      height={size}
+      className="object-contain select-none"
+    />
   );
 }
 
@@ -545,13 +524,13 @@ function LandingHeader({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Brand Identity */}
         <Link to="/" className="flex items-center gap-3 group focus-ring rounded-xl shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center shadow-md shadow-indigo-600/20 ring-1 ring-indigo-500/30 group-hover:scale-105 group-hover:shadow-indigo-500/35 transition-all duration-300">
-            <SourceLogicLogo size={22} />
+          <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/95 p-1.5 flex items-center justify-center shadow-sm ring-1 ring-slate-200/90 dark:ring-white/20 group-hover:scale-105 group-hover:shadow-md transition-all duration-300">
+            <SourceLogicLogo size={28} />
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none whitespace-nowrap">
-                SourceLogic
+                CITRA
               </span>
               <Badge
                 variant="secondary"
@@ -771,9 +750,11 @@ function HeroSection({
                 </span>
                 <span
                   style={{ animationDelay: '680ms', animationDuration: '1450ms' }}
-                  className="block animate-hero-reveal bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-600 dark:from-indigo-400 dark:via-indigo-300 dark:to-emerald-400 animate-gradient-x mt-1"
+                  className="block animate-hero-reveal mt-1"
                 >
-                  Truy vết mọi nguồn học thuật.
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-600 dark:from-indigo-400 dark:via-indigo-300 dark:to-emerald-400 animate-gradient-x">
+                    Truy vết mọi nguồn học thuật.
+                  </span>
                 </span>
               </>
             ) : (
@@ -786,9 +767,11 @@ function HeroSection({
                 </span>
                 <span
                   style={{ animationDelay: '680ms', animationDuration: '1450ms' }}
-                  className="block animate-hero-reveal bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-600 dark:from-indigo-400 dark:via-indigo-300 dark:to-emerald-400 animate-gradient-x mt-1"
+                  className="block animate-hero-reveal mt-1"
                 >
-                  Trace Every Source.
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-600 dark:from-indigo-400 dark:via-indigo-300 dark:to-emerald-400 animate-gradient-x">
+                    Trace Every Source.
+                  </span>
                 </span>
               </>
             )}
@@ -1025,7 +1008,7 @@ function InteractiveInspectorSection({ lang }: { lang: Lang }) {
             </div>
             <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md">
               {lang === 'vi'
-                ? 'Nhấp vào bất kỳ trích dẫn mẫu nào bên dưới để xem cách SourceLogic đối chiếu metadata song song và kích hoạt luật suy diễn R01–R12.'
+                ? 'Nhấp vào bất kỳ trích dẫn mẫu nào bên dưới để xem cách CITRA đối chiếu metadata song song và kích hoạt luật suy diễn R01–R12.'
                 : 'Click any sample citation below to inspect live side-by-side metadata diffs, multi-source latency, and formal symbolic rule triggers.'}
             </p>
           </div>
@@ -1534,8 +1517,8 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
             </h2>
             <p className="text-base text-slate-600 dark:text-slate-400 leading-relaxed">
               {lang === 'vi'
-                ? 'SourceLogic tách biệt rõ ràng giữa kiểm tra cấu trúc liên kết nội bộ trong văn bản (Lớp 1) và đối chiếu học thuật đa nguồn bên ngoài (Lớp 2).'
-                : 'SourceLogic separates internal manuscript consistency (Layer 1) from external bibliographic verification (Layer 2), combining neural fuzzy matching with deterministic symbolic rules.'}
+                ? 'CITRA tách biệt rõ ràng giữa kiểm tra cấu trúc liên kết nội bộ trong văn bản (Lớp 1) và đối chiếu học thuật đa nguồn bên ngoài (Lớp 2).'
+                : 'CITRA separates internal manuscript consistency (Layer 1) from external bibliographic verification (Layer 2), combining neural fuzzy matching with deterministic symbolic rules.'}
             </p>
           </div>
         </RevealOnScroll>
@@ -2215,7 +2198,7 @@ function RoleWorkspacesSection({ lang }: { lang: Lang }) {
       badge: 'ROLE: STUDENT (USER)',
       badgeColor:
         'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800',
-      title: 'SourceLogic Workspace',
+      title: 'CITRA Workspace',
       subtitle:
         lang === 'vi'
           ? 'Dành cho Sinh viên & Nhà nghiên cứu — Tự rà soát trước khi nộp bài'
@@ -2245,7 +2228,7 @@ function RoleWorkspacesSection({ lang }: { lang: Lang }) {
       badge: 'ROLE: TEACHER (INSTRUCTOR)',
       badgeColor:
         'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
-      title: 'SourceLogic Classroom',
+      title: 'CITRA Classroom',
       subtitle:
         lang === 'vi'
           ? 'Dành cho Giảng viên hướng dẫn & Phản biện — Quản lý lớp học & Thẩm định chuyên sâu'
@@ -2275,7 +2258,7 @@ function RoleWorkspacesSection({ lang }: { lang: Lang }) {
       badge: 'ROLE: ADMINISTRATOR',
       badgeColor:
         'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800',
-      title: 'SourceLogic Control',
+      title: 'CITRA Control',
       subtitle:
         lang === 'vi'
           ? 'Dành cho Quản trị viên — Giám sát dịch vụ GROBID, Tài khoản & Nhật ký Kiểm toán'
@@ -2435,8 +2418,8 @@ function CTASection({
                   </div>
                   <p className="text-sm text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
                     {lang === 'vi'
-                      ? 'SourceLogic cung cấp bằng chứng truy xuất từ cơ sở dữ liệu và chuỗi suy diễn luật để hỗ trợ con người rà soát. Hệ thống tuyệt đối không tự động kết luận gian lận học thuật và không chấm điểm nội dung bài viết. Quyết định cuối cùng luôn thuộc về giảng viên và hội đồng chuyên môn.'
-                      : 'SourceLogic provides verifiable bibliographic evidence and formal rule traces to assist human reviewers. It never automatically concludes academic misconduct and is not an automated essay grader. Final judgment always remains with instructors and academic committees.'}
+                      ? 'CITRA cung cấp bằng chứng truy xuất từ cơ sở dữ liệu và chuỗi suy diễn luật để hỗ trợ con người rà soát. Hệ thống tuyệt đối không tự động kết luận gian lận học thuật và không chấm điểm nội dung bài viết. Quyết định cuối cùng luôn thuộc về giảng viên và hội đồng chuyên môn.'
+                      : 'CITRA provides verifiable bibliographic evidence and formal rule traces to assist human reviewers. It never automatically concludes academic misconduct and is not an automated essay grader. Final judgment always remains with instructors and academic committees.'}
                   </p>
                 </div>
               </div>
@@ -2459,7 +2442,7 @@ function CTASection({
 
             <div className="relative max-w-2xl mx-auto">
               <Badge className="mb-5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-mono text-xs px-3 py-1">
-                SOURCELOGIC WORKSPACE v2.0
+                CITRA WORKSPACE v2.0
               </Badge>
               <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-5">
                 {lang === 'vi'
@@ -2520,15 +2503,15 @@ function LandingFooter({ lang }: { lang: Lang }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 pb-8 border-b border-slate-200/80 dark:border-slate-800/80">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm">
-              <SourceLogicLogo size={20} />
+            <div className="w-9 h-9 rounded-xl bg-white dark:bg-white/95 p-1.5 flex items-center justify-center shadow-sm ring-1 ring-slate-200/90 dark:ring-white/20">
+              <SourceLogicLogo size={24} />
             </div>
             <div>
               <span className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                SourceLogic
+                CITRA
               </span>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Essay Integrity Checker · Academic Source Verification Workspace
+                CITRA · Academic Source Verification Workspace
               </p>
             </div>
           </div>
