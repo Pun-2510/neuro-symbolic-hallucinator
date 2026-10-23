@@ -5,23 +5,26 @@ import { VerdictBadge } from '@/components/VerdictBadge';
 import { isUrlResource } from '@/lib/verdictExplanation';
 import { MappingStatusBadge } from '@/components/MappingStatusBadge';
 import { useOrphanReport } from '@/hooks/useOrphanReport';
+import { EssayHeader } from './essay/EssayHeader';
+import { EssayActionBar } from './essay/EssayActionBar';
 import {
-  ArrowLeft,
   Loader2,
   AlertCircle,
   Link2Off,
   FileText,
   CheckCircle,
   HelpCircle,
+  Terminal,
+  GitCompare,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 /* ============================================================
-   SourceLogic — Orphan Detection Page
-   Based on UX/UI Concept Section 17: Orphan Detection
-   Shows citations without references and references never cited
+   SourceLogic — Orphan Detection Page (Scholarly Precision v2.0)
+   Bipartite Citation ↔ Bibliography Consistency Analyzer
    ============================================================ */
 
 interface OrphanCitation {
@@ -71,29 +74,32 @@ function OrphanCitationCard({
   index: number;
 }) {
   return (
-    <Card className="border-red-200 dark:border-red-800 p-4 bg-red-50/50 dark:bg-red-950/30 hover:bg-red-100/50 dark:hover:bg-red-950/50 transition-colors">
+    <Card className="rounded-xl border-red-200/90 dark:border-red-900/70 p-4 bg-red-50/40 dark:bg-red-950/25 hover:bg-red-50/80 dark:hover:bg-red-950/45 transition-colors shadow-2xs">
       <div className="flex items-start gap-3">
-        <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/50">
+        <div className="p-2 rounded-xl bg-red-100/80 dark:bg-red-900/50 border border-red-200/60 dark:border-red-800/60 shrink-0">
           <Link2Off className="h-4 w-4 text-red-600 dark:text-red-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-              #{index + 1}
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">
+              #{String(index + 1).padStart(2, '0')}
             </span>
             <Badge
               variant="hallucination"
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-medium"
             >
               <Link2Off className="h-3 w-3" />
               No Reference
             </Badge>
           </div>
-          <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
+          <p className="text-sm font-serif text-slate-800 dark:text-slate-200 line-clamp-2 leading-relaxed">
             {citation.citation_raw}
           </p>
-          <div className="flex items-center gap-2 mt-2">
-            <VerdictBadge verdict={isUrlResource(citation) ? 'resource' : citation.label} size="sm" />
+          <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+            <VerdictBadge
+              verdict={isUrlResource(citation) ? 'resource' : citation.label}
+              size="sm"
+            />
             <MappingStatusBadge status={citation.mapping_status as any} size="sm" />
           </div>
         </div>
@@ -110,25 +116,25 @@ function UncitedReferenceCard({
   index: number;
 }) {
   return (
-    <Card className="border-amber-200 dark:border-amber-800 p-4 bg-amber-50/50 dark:bg-amber-950/30 hover:bg-amber-100/50 dark:hover:bg-amber-950/50 transition-colors">
+    <Card className="rounded-xl border-amber-200/90 dark:border-amber-900/70 p-4 bg-amber-50/40 dark:bg-amber-950/25 hover:bg-amber-50/80 dark:hover:bg-amber-950/45 transition-colors shadow-2xs">
       <div className="flex items-start gap-3">
-        <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
+        <div className="p-2 rounded-xl bg-amber-100/80 dark:bg-amber-900/50 border border-amber-200/60 dark:border-amber-800/60 shrink-0">
           <FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-              #{index + 1}
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">
+              #{String(index + 1).padStart(2, '0')}
             </span>
             <Badge
               variant="metadata_error"
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-medium"
             >
               <Link2Off className="h-3 w-3" />
               Uncited
             </Badge>
           </div>
-          <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
+          <p className="text-sm font-serif text-slate-800 dark:text-slate-200 line-clamp-2 leading-relaxed">
             {reference.raw_text}
           </p>
         </div>
@@ -138,12 +144,14 @@ function UncitedReferenceCard({
 }
 
 function SectionHeader({
+  indexCode,
   title,
   icon,
   count,
   color,
   description,
 }: {
+  indexCode: string;
   title: string;
   icon: React.ReactNode;
   count: number;
@@ -152,31 +160,27 @@ function SectionHeader({
 }) {
   const colorClasses = {
     red: {
-      bg: 'bg-red-50 dark:bg-red-950',
-      border: 'border-red-200 dark:border-red-800',
-      icon: 'text-red-600 dark:text-red-400',
-      text: 'text-red-700 dark:text-red-300',
+      badge: 'bg-red-50 dark:bg-red-950/80 text-red-600 dark:text-red-400',
+      icon: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/60 border-red-200/70 dark:border-red-800/70',
+      text: 'text-red-600 dark:text-red-400',
       count: 'text-red-600 dark:text-red-400',
     },
     amber: {
-      bg: 'bg-amber-50 dark:bg-amber-950',
-      border: 'border-amber-200 dark:border-amber-800',
-      icon: 'text-amber-600 dark:text-amber-400',
-      text: 'text-amber-700 dark:text-amber-300',
+      badge: 'bg-amber-50 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400',
+      icon: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 border-amber-200/70 dark:border-amber-800/70',
+      text: 'text-amber-600 dark:text-amber-400',
       count: 'text-amber-600 dark:text-amber-400',
     },
     green: {
-      bg: 'bg-emerald-50 dark:bg-emerald-950',
-      border: 'border-emerald-200 dark:border-emerald-800',
-      icon: 'text-emerald-600 dark:text-emerald-400',
-      text: 'text-emerald-700 dark:text-emerald-300',
+      badge: 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400',
+      icon: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200/70 dark:border-emerald-800/70',
+      text: 'text-emerald-600 dark:text-emerald-400',
       count: 'text-emerald-600 dark:text-emerald-400',
     },
     blue: {
-      bg: 'bg-blue-50 dark:bg-blue-950',
-      border: 'border-blue-200 dark:border-blue-800',
-      icon: 'text-blue-600 dark:text-blue-400',
-      text: 'text-blue-700 dark:text-blue-300',
+      badge: 'bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400',
+      icon: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border-blue-200/70 dark:border-blue-800/70',
+      text: 'text-blue-600 dark:text-blue-400',
       count: 'text-blue-600 dark:text-blue-400',
     },
   };
@@ -184,17 +188,24 @@ function SectionHeader({
   const c = colorClasses[color];
 
   return (
-    <Card
-      className={`flex items-center gap-4 p-4 rounded-xl border ${c.bg} ${c.border}`}
-    >
-      <div className={`p-3 rounded-xl bg-white/50 dark:bg-slate-900/50 ${c.icon}`}>
-        {icon}
+    <Card className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className={`p-2.5 rounded-xl border ${c.icon}`}>
+          {icon}
+        </div>
+        <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${c.badge}`}>
+          {indexCode}
+        </span>
       </div>
-      <div className="flex-1">
-        <h3 className={`font-semibold ${c.text}`}>{title}</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className={`text-sm font-semibold ${c.text}`}>{title}</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>
+        </div>
+        <div className={`text-3xl font-bold font-mono tabular-nums shrink-0 ${c.count}`}>
+          {count}
+        </div>
       </div>
-      <div className={`text-3xl font-bold ${c.count}`}>{count}</div>
     </Card>
   );
 }
@@ -202,16 +213,18 @@ function SectionHeader({
 export function OrphanDetectionPage() {
   const { id } = useParams<{ id: string }>();
   const numericId = id ? parseInt(id, 10) : null;
-  const essayId = numericId !== null && !isNaN(numericId) && numericId > 0
-    ? numericId
-    : null;
+  const essayId =
+    numericId !== null && !isNaN(numericId) && numericId > 0 ? numericId : null;
   const { data: report, error } = useOrphanReport(essayId);
   const [activeTab, setActiveTab] = useState<'orphans' | 'uncited' | 'all'>('all');
 
-  const errorMessage = essayId === null
-    ? 'Invalid essay ID'
-    : error
-      ? (error instanceof Error ? error.message : 'Failed')
+  const errorMessage =
+    essayId === null
+      ? 'Invalid essay ID'
+      : error
+      ? error instanceof Error
+        ? error.message
+        : 'Failed'
       : null;
 
   const stats = useMemo(() => {
@@ -221,7 +234,7 @@ export function OrphanDetectionPage() {
 
   if (errorMessage) {
     return (
-      <Alert variant="destructive" className="card p-6">
+      <Alert variant="destructive" className="card p-6 rounded-2xl">
         <AlertCircle className="h-5 w-5" />
         <AlertTitle className="font-medium">Error: {errorMessage}</AlertTitle>
         <AlertDescription>
@@ -240,7 +253,7 @@ export function OrphanDetectionPage() {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin" />
-        <span className="ml-3 text-slate-600 dark:text-slate-400">
+        <span className="ml-3 text-slate-600 dark:text-slate-400 font-mono text-sm">
           Loading citation data...
         </span>
       </div>
@@ -250,195 +263,215 @@ export function OrphanDetectionPage() {
   const hasIssues = stats.orphanCount > 0 || stats.uncitedCount > 0;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <Link
-          to={`/verification/report/${id}`}
-          className="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-3 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Report
-        </Link>
-        <div className="flex items-start justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
-              Citation Consistency
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 truncate" title={report.filename}>
-              {report.filename}
-            </p>
-          </div>
+    <div className="space-y-6 pb-10">
+      {/* Shared Report Header */}
+      <EssayHeader
+        essayId={report.essay_id}
+        filename={report.filename}
+        numPages={report.num_pages}
+        numCitations={report.num_citations}
+        styleName={report.style_profile?.style}
+      />
+
+      {/* Shared Multi-Tab Diagnostic Navigation */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <EssayActionBar essayId={id ?? ''} />
+        <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400">
+          <GitCompare className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          <span>Citation Consistency · {stats.total} entries analyzed</span>
         </div>
       </div>
 
       {/* Summary stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <SectionHeader
+          indexCode="01"
           title="Correctly Linked"
-          icon={<CheckCircle className="h-6 w-6" />}
+          icon={<CheckCircle className="h-5 w-5" />}
           count={stats.correctlyLinkedCount}
           color="green"
           description="Citations with matching references"
         />
         <SectionHeader
+          indexCode="02"
           title="Citations Without Reference"
-          icon={<Link2Off className="h-6 w-6" />}
+          icon={<Link2Off className="h-5 w-5" />}
           count={stats.orphanCount}
           color="red"
           description="In-text citations without bibliography entry"
         />
         <SectionHeader
+          indexCode="03"
           title="Uncited References"
-          icon={<FileText className="h-6 w-6" />}
+          icon={<FileText className="h-5 w-5" />}
           count={stats.uncitedCount}
           color="amber"
           description="Bibliography entries never cited in document"
         />
       </div>
 
-      {/* Tab navigation */}
-      <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
-        {[
-          { id: 'all', label: 'All', count: stats.total },
-          { id: 'orphans', label: 'Orphans', count: stats.orphanCount },
-          { id: 'uncited', label: 'Uncited', count: stats.uncitedCount },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as typeof activeTab)}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
-          >
-            {tab.label}
-            {tab.count > 0 && (
-              <span
-                className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+      {/* IDE Container for Bipartite Consistency */}
+      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+        {/* IDE Window Chrome & Tab Navigation */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
+            </div>
+            <Separator orientation="vertical" className="h-4" />
+            <Terminal className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-200">
+              bipartite_consistency.py
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {[
+              { id: 'all', label: 'All', count: stats.total },
+              { id: 'orphans', label: 'Orphans', count: stats.orphanCount },
+              { id: 'uncited', label: 'Uncited', count: stats.uncitedCount },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
                   activeTab === tab.id
-                    ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300'
-                    : 'bg-slate-100 dark:bg-slate-800'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
-                {tab.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+                {tab.label}
+                {tab.count > 0 && (
+                  <span
+                    className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] ${
+                      activeTab === tab.id
+                        ? 'bg-white/20 text-white'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      {/* Content */}
-      {hasIssues ? (
-        <div className="space-y-6">
-          {(activeTab === 'all' || activeTab === 'orphans') &&
-            stats.citationsWithoutReference.length > 0 && (
-              <div>
-                <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
-                  <Link2Off className="h-5 w-5 text-red-600 dark:text-red-400" />
-                  Citations Without Reference
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                  These citations appear in the document but no matching entry was
-                  found in the bibliography.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {stats.citationsWithoutReference.map((citation, index) => (
-                    <OrphanCitationCard
-                      key={citation.citation_id}
-                      citation={{
-                        citation_id: citation.citation_id,
-                        citation_raw: citation.citation_raw,
-                        label: citation.label,
-                        mapping_status: citation.mapping_status,
-                      }}
-                      index={index}
-                    />
-                  ))}
+        {/* Content */}
+        <div className="p-6">
+          {hasIssues ? (
+            <div className="space-y-8">
+              {(activeTab === 'all' || activeTab === 'orphans') &&
+                stats.citationsWithoutReference.length > 0 && (
+                  <div>
+                    <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1.5 flex items-center gap-2">
+                      <Link2Off className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      Citations Without Reference
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                      These citations appear in the document but no matching entry was
+                      found in the bibliography.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      {stats.citationsWithoutReference.map((citation, index) => (
+                        <OrphanCitationCard
+                          key={citation.citation_id}
+                          citation={{
+                            citation_id: citation.citation_id,
+                            citation_raw: citation.citation_raw,
+                            label: citation.label,
+                            mapping_status: citation.mapping_status,
+                          }}
+                          index={index}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              {(activeTab === 'all' || activeTab === 'uncited') &&
+                stats.uncitedReferences.length > 0 && (
+                  <div>
+                    <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1.5 flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                      References Never Cited
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                      These references exist in the bibliography but are never cited in
+                      the document.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      {stats.uncitedReferences.map((reference, index) => (
+                        <UncitedReferenceCard
+                          key={reference.citation_id}
+                          reference={{
+                            reference_id: reference.citation_id,
+                            raw_text: reference.citation_raw,
+                          }}
+                          index={index}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              {stats.ambiguousMappings.length > 0 && (
+                <div>
+                  <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1.5 flex items-center gap-2">
+                    <HelpCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    Ambiguous Mappings
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                    These citations have multiple possible reference matches.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {stats.ambiguousMappings.map((citation, index) => (
+                      <OrphanCitationCard
+                        key={citation.citation_id}
+                        citation={{
+                          citation_id: citation.citation_id,
+                          citation_raw: citation.citation_raw,
+                          label: citation.label,
+                          mapping_status: citation.mapping_status,
+                        }}
+                        index={index}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-12 text-center">
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/70 dark:border-emerald-800/70 flex items-center justify-center">
+                  <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
                 </div>
               </div>
-            )}
-
-          {(activeTab === 'all' || activeTab === 'uncited') &&
-            stats.uncitedReferences.length > 0 && (
-              <div>
-                <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  References Never Cited
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                  These references exist in the bibliography but are never cited in
-                  the document.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {stats.uncitedReferences.map((reference, index) => (
-                    <UncitedReferenceCard
-                      key={reference.citation_id}
-                      reference={{
-                        reference_id: reference.citation_id,
-                        raw_text: reference.citation_raw,
-                      }}
-                      index={index}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-          {stats.ambiguousMappings.length > 0 && (
-            <div>
-              <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
-                <HelpCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                Ambiguous Mappings
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                These citations have multiple possible reference matches.
+              <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                No Consistency Issues
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                All citations are correctly linked to references and all references are
+                cited in the document.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {stats.ambiguousMappings.map((citation, index) => (
-                  <OrphanCitationCard
-                    key={citation.citation_id}
-                    citation={{
-                      citation_id: citation.citation_id,
-                      citation_raw: citation.citation_raw,
-                      label: citation.label,
-                      mapping_status: citation.mapping_status,
-                    }}
-                    index={index}
-                  />
-                ))}
-              </div>
             </div>
           )}
         </div>
-      ) : (
-        <Card className="p-12 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-              <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-            </div>
-          </div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-            No Consistency Issues
-          </h3>
-          <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-            All citations are correctly linked to references and all references are
-            cited in the document.
-          </p>
-        </Card>
-      )}
+      </div>
 
       {/* Citation Consistency Summary */}
-      <Card className="p-5 bg-slate-50 dark:bg-slate-800/50">
+      <Card className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
         <h3 className="font-display text-sm font-semibold mb-4 text-slate-900 dark:text-slate-100">
           Citation Consistency Summary
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-900 rounded-xl border border-emerald-200 dark:border-emerald-800">
-            <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          <div className="flex items-center gap-3 p-3.5 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-emerald-200/80 dark:border-emerald-900/70">
+            <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div>
-              <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+              <p className="text-xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
                 {stats.correctlyLinkedCount}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -446,10 +479,10 @@ export function OrphanDetectionPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-900 rounded-xl border border-red-200 dark:border-red-800">
-            <Link2Off className="h-5 w-5 text-red-600 dark:text-red-400" />
+          <div className="flex items-center gap-3 p-3.5 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-red-200/80 dark:border-red-900/70">
+            <Link2Off className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
             <div>
-              <p className="text-xl font-bold text-red-600 dark:text-red-400">
+              <p className="text-xl font-bold font-mono tabular-nums text-red-600 dark:text-red-400">
                 {stats.orphanCount}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -457,10 +490,10 @@ export function OrphanDetectionPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-800">
-            <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <div className="flex items-center gap-3 p-3.5 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-amber-200/80 dark:border-amber-900/70">
+            <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
             <div>
-              <p className="text-xl font-bold text-amber-600 dark:text-amber-400">
+              <p className="text-xl font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400">
                 {stats.uncitedCount}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -468,10 +501,10 @@ export function OrphanDetectionPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-900 rounded-xl border border-blue-200 dark:border-blue-800">
-            <HelpCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <div className="flex items-center gap-3 p-3.5 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-blue-200/80 dark:border-blue-900/70">
+            <HelpCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
             <div>
-              <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+              <p className="text-xl font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400">
                 {stats.ambiguousCount}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
