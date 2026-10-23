@@ -278,24 +278,27 @@ class TestClassCrud:
 
 class TestClassOwnership:
     def test_teacher_cannot_view_other_teachers_class_students(self, clean_db):
-        # teacher1 creates a class
+        from integrity_checker.db.session import get_session
+        from integrity_checker.db.repository import Repository
+
+        # Create teacher2 and a class owned by teacher2
+        t2_id = _make_user("teacherbob", role="teacher")
+        s = get_session()
+        c2 = Repository(s).create_class(name="T2Class", teacher_id=t2_id)
+        s.commit()
+        class_id = c2.id
+        s.close()
+
+        # Hardcoded teacher1 tries to view teacher2's class students -> 403
         t1 = get_teacher_token()
         client = TestClient(app)
-        resp = client.post(
-            "/api/teacher/classes", json={"name": "T1Class"}, headers=auth_header(t1),
+        resp_forbidden = client.get(
+            f"/api/teacher/classes/{class_id}/students", headers=auth_header(t1),
         )
-        class_id = resp.json()["id"]
+        assert resp_forbidden.status_code == 403
+        assert "Not your class" in resp_forbidden.json()["detail"]
 
-        # Create teacher2 user and have them try to view t1's class
-        t2_id = _make_user("teacherbob", role="teacher")
-        # Login as teacher (hardcoded) — represents the second teacher
-        # Since we can't have 2 hardcoded teachers, test via ownership check
-        # by trying with admin (should succeed) and verifying ownership works.
-        # For this specific test, we need to simulate teacher2 — skip if can't
-        # Instead, just verify teacher (hardcoded) doesn't see someone else's class
-        # by checking that creating class with different teacher_id blocks access.
-
-        # Admin CAN view any class
+        # Admin CAN view any class -> 200
         token_admin = get_admin_token()
         resp = client.get(
             f"/api/teacher/classes/{class_id}/students", headers=auth_header(token_admin),

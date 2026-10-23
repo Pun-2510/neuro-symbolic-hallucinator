@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 # Regex cho in-text APA pattern: (Author, Year) / (Author A và Author B, Year) / (Author, Year, tr. 15)
 _APA_YEAR_RE = re.compile(
-    r"\(([A-Za-zÀ-ỹ'.\s,&\-]+),\s*((?:19|20)\d{2}[a-z]?)"
+    r"\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'.\s,&\-]*),\s*((?:19|20)\d{2}[a-z]?)"
     r"(?:\s*,\s*(?:pp?\.?|tr\.?|trang)\s*\d+(?:\s*[-–]\s*\d+)?)?\)"
 )
 # Regex cho Author et al. / và cộng sự (Year) format (no parens around author)
@@ -51,7 +51,7 @@ _APA_ETAL_YEAR_RE = re.compile(
 )
 # Narrative citation: ``Author et al. (2018)`` or ``Author (2018)`` or ``Author A và Author B (2018)``.
 _NARRATIVE_YEAR_RE = re.compile(
-    r"([A-Za-zÀ-ỹ'.\s,&\-]+?)\s*\(\s*((?:19|20)\d{2}[a-z]?)(?:\s*,\s*[^)]*)?\s*\)",
+    r"([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'.\s,&\-]*?)\s*\(\s*((?:19|20)\d{2}[a-z]?)(?:\s*,\s*[^)]*)?\s*\)",
     re.IGNORECASE,
 )
 # Secondary citation (trích dẫn gián tiếp): "(Smith, 2005, dẫn theo Tran, 2016)" / "Smith (2005, as cited in Tran, 2016)"
@@ -59,9 +59,10 @@ _SECONDARY_CITATION_RE = re.compile(
     r"(?:dẫn\s+theo|trích\s+dẫn\s+(?:trong|từ)|as\s+cited\s+in|cited\s+in)\s+([^)]+)\)?",
     re.IGNORECASE,
 )
-# Institutional / Corporate author indicator
+# Institutional / Corporate / Legal author indicator
 _INSTITUTIONAL_AUTHOR_RE = re.compile(
-    r"^(?:Bộ|Tổng\s+cục|Ủy\s+ban|Chính\s+phủ|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội"
+    r"^(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Chính\s+phủ|Quốc\s+hội|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội"
+    r"|Hiến\s+pháp|Bộ\s+luật|Luật|Pháp\s+lệnh|Nghị\s+định|Thông\s+tư|Quyết\s+định|Nghị\s+quyết|Chỉ\s+thị"
     r"|Viện|Trường|Cục|Vụ|Sở|Department|Ministry|Association|Organization"
     r"|Institute|Council|World\s+Health|United\s+Nations|Reserve\s+Bank)\b"
     r"|\b(?:of|for)\b",
@@ -279,11 +280,10 @@ class CitationLinker:
                 # Splitting removes the outer closing parenthesis from every
                 # component except the last one.  Parse each component as a
                 # standalone APA key and repair PDF line-break hyphenation.
-                part = re.sub(r"(?<=\w)-\s+(?=\w)", "", part)
-                if not part.lstrip().startswith("("):
-                    part = "(" + part
-                if not part.rstrip().endswith(")"):
-                    part = part + ")"
+                part = re.sub(r"(?<=\w)-\s+(?=\w)", "", part).strip().strip("()")
+                if not part:
+                    continue
+                part = f"({part})"
                 author_part, year_part, suffix_part = self._extract_author_year(part)
                 if not author_part or not year_part:
                     continue
@@ -507,15 +507,21 @@ class CitationLinker:
         for bib in bibs:
             if bib.year:
                 if bib.authors:
-                    last_name = self._normalize_last_name(bib.authors[0])
-                    if last_name:
-                        key = (last_name.lower(), bib.year)
-                        if bib not in out.setdefault(key, []):
-                            out[key].append(bib)
-                        if " " in last_name:
-                            short_key = (last_name.split()[-1].lower(), bib.year)
-                            if bib not in out.setdefault(short_key, []):
-                                out[short_key].append(bib)
+                    authors_to_index = (
+                        bib.authors
+                        if bib.matched_pattern == "vn_legal_document"
+                        else [bib.authors[0]]
+                    )
+                    for auth_obj in authors_to_index:
+                        last_name = self._normalize_last_name(auth_obj)
+                        if last_name:
+                            key = (last_name.lower(), bib.year)
+                            if bib not in out.setdefault(key, []):
+                                out[key].append(bib)
+                            if " " in last_name and bib.matched_pattern != "vn_legal_document":
+                                short_key = (last_name.split()[-1].lower(), bib.year)
+                                if bib not in out.setdefault(short_key, []):
+                                    out[short_key].append(bib)
                 # Also index raw institutional author head before (Year) if present
                 raw_head_m = re.match(r"^([^\(]+?)\s*\(\s*(?:19|20)\d{2}", bib.raw_text or "")
                 if raw_head_m:
@@ -535,15 +541,21 @@ class CitationLinker:
             if bib.year:
                 year_suffix = bib.year_suffix or ""
                 if bib.authors:
-                    last_name = self._normalize_last_name(bib.authors[0])
-                    if last_name:
-                        key = (last_name.lower(), bib.year, year_suffix)
-                        if bib not in out.setdefault(key, []):
-                            out[key].append(bib)
-                        if " " in last_name:
-                            short_key = (last_name.split()[-1].lower(), bib.year, year_suffix)
-                            if bib not in out.setdefault(short_key, []):
-                                out[short_key].append(bib)
+                    authors_to_index = (
+                        bib.authors
+                        if bib.matched_pattern == "vn_legal_document"
+                        else [bib.authors[0]]
+                    )
+                    for auth_obj in authors_to_index:
+                        last_name = self._normalize_last_name(auth_obj)
+                        if last_name:
+                            key = (last_name.lower(), bib.year, year_suffix)
+                            if bib not in out.setdefault(key, []):
+                                out[key].append(bib)
+                            if " " in last_name and bib.matched_pattern != "vn_legal_document":
+                                short_key = (last_name.split()[-1].lower(), bib.year, year_suffix)
+                                if bib not in out.setdefault(short_key, []):
+                                    out[short_key].append(bib)
                 raw_head_m = re.match(r"^([^\(]+?)\s*\(\s*(?:19|20)\d{2}", bib.raw_text or "")
                 if raw_head_m:
                     raw_head = raw_head_m.group(1).strip().rstrip(".,").strip()

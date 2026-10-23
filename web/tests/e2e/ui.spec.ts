@@ -431,7 +431,7 @@ test.describe('Essay Page - Citation Graph View', () => {
     await expect(page.getByText(/lecun/i)).toBeVisible();
   });
 
-  test('should toggle between view modes (Graph/Table)', async ({ page }) => {
+  test('should toggle between report tabs (Overview/Citations)', async ({ page }) => {
     setupMocks(page);
     await page.goto('/login');
     await page.waitForTimeout(500);
@@ -439,21 +439,10 @@ test.describe('Essay Page - Citation Graph View', () => {
 
     await page.waitForTimeout(2000);
 
-    // Look for view toggle buttons
-    const graphBtn = page.getByRole('button', { name: /graph/i });
-    const tableBtn = page.getByRole('button', { name: /table/i });
-
-    // If table button exists, click it
-    if (await tableBtn.isVisible()) {
-      await tableBtn.click();
-      await expect(page.locator('table')).toBeVisible();
-
-      // Switch back to graph
-      if (await graphBtn.isVisible()) {
-        await graphBtn.click();
-        await expect(page.locator('table')).not.toBeVisible();
-      }
-    }
+    const citationsTabBtn = page.getByRole('button', { name: /citations/i }).first();
+    await expect(citationsTabBtn).toBeVisible();
+    await citationsTabBtn.click();
+    await expect(page.getByText(/lecun/i).first()).toBeVisible();
   });
 });
 
@@ -470,14 +459,11 @@ test.describe('Citation Detail Drawer', () => {
 
     await page.waitForTimeout(2000);
 
-    // Click on a citation
-    const citation = page.getByText(/lecun/i);
-    if (await citation.isVisible()) {
-      await citation.click();
+    const citation = page.getByText(/lecun/i).first();
+    await expect(citation).toBeVisible();
+    await citation.click();
 
-      // Should open detail drawer
-      await expect(page.getByRole('heading', { name: /citation detail/i })).toBeVisible({ timeout: 5000 });
-    }
+    await expect(page.getByRole('heading', { name: /citation detail/i })).toBeVisible({ timeout: 5000 });
   });
 
   test('should close on Escape key', async ({ page }) => {
@@ -488,18 +474,14 @@ test.describe('Citation Detail Drawer', () => {
 
     await page.waitForTimeout(2000);
 
-    // Click on a citation to open drawer
-    const citation = page.getByText(/lecun/i);
-    if (await citation.isVisible()) {
-      await citation.click();
+    const citation = page.getByText(/lecun/i).first();
+    await expect(citation).toBeVisible();
+    await citation.click();
 
-      // Wait for drawer
-      await expect(page.getByRole('heading', { name: /citation detail/i })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: /citation detail/i })).toBeVisible({ timeout: 5000 });
 
-      // Press Escape to close
-      await page.keyboard.press('Escape');
-      await expect(page.getByRole('heading', { name: /citation detail/i })).not.toBeVisible({ timeout: 5000 });
-    }
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('heading', { name: /citation detail/i })).not.toBeVisible({ timeout: 5000 });
   });
 });
 

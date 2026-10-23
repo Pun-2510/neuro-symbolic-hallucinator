@@ -5,7 +5,16 @@ from __future__ import annotations
 import os
 import pytest
 from fastapi.testclient import TestClient
-from integrity_checker.db.models import User, Session as SessionModel
+from integrity_checker.db.models import (
+    AuditLog,
+    CitationRecord,
+    Class as ClassModel,
+    ClassMembership,
+    EssayRecord,
+    Session as SessionModel,
+    User,
+    VerdictRecord,
+)
 from integrity_checker.db.session import get_session
 
 
@@ -19,6 +28,12 @@ TEST_ADMIN_PASS = os.environ.get("TEST_ADMIN_PASS", "admin123")
 def clean_db():
     """Clean database before each test."""
     session = get_session()
+    session.query(AuditLog).delete()
+    session.query(VerdictRecord).delete()
+    session.query(CitationRecord).delete()
+    session.query(EssayRecord).delete()
+    session.query(ClassMembership).delete()
+    session.query(ClassModel).delete()
     session.query(SessionModel).delete()
     session.query(User).delete()
     session.commit()

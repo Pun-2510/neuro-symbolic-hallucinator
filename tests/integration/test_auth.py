@@ -4,7 +4,16 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from integrity_checker.api.main import app
-from integrity_checker.db.models import User, Session as SessionModel
+from integrity_checker.db.models import (
+    AuditLog,
+    CitationRecord,
+    Class as ClassModel,
+    ClassMembership,
+    EssayRecord,
+    Session as SessionModel,
+    User,
+    VerdictRecord,
+)
 from integrity_checker.db.session import get_session
 
 
@@ -18,7 +27,13 @@ TEST_USER_PASS = os.environ.get("TEST_USER_PASS", "user123")
 def get_clean_session() -> Session:
     """Get a fresh session for each test."""
     session = get_session()
-    # Clean all data
+    # Clean all data in FK dependency order
+    session.query(AuditLog).delete()
+    session.query(VerdictRecord).delete()
+    session.query(CitationRecord).delete()
+    session.query(EssayRecord).delete()
+    session.query(ClassMembership).delete()
+    session.query(ClassModel).delete()
     session.query(SessionModel).delete()
     session.query(User).delete()
     session.commit()

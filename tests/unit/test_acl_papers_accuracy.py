@@ -106,6 +106,7 @@ def calculate_metrics(tp: int, fn: int) -> dict[str, float]:
     }
 
 
+@pytest.mark.slow
 class TestACLPapersAccuracy:
     """Test retrieval accuracy on 500 ACL papers."""
 

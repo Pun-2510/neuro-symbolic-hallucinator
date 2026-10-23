@@ -366,25 +366,6 @@ export function setupAuthenticatedPage(page: Page): void {
       body: JSON.stringify({ detail: 'Current password is incorrect' }),
     });
   });
-
-  // Mock PATCH /api/users/me (profile update)
-  page.route('**/api/users/me', (route) => {
-    const req = route.request();
-    if (req.method() === 'PATCH') {
-      const body = JSON.parse(req.postData() || '{}');
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ ...MOCK_USER, ...body }),
-      });
-    } else {
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_USER),
-      });
-    }
-  });
 }
 
 /**
