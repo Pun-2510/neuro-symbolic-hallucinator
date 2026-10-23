@@ -318,9 +318,11 @@ class Repository:
         full_name: str | None = None,
         is_active: bool = True,
         institution: str | None = None,
-        can_override_verdicts: bool = False,
+        can_override_verdicts: bool | None = None,
         email_verified: bool = True,
     ) -> User:
+        if can_override_verdicts is None:
+            can_override_verdicts = role in ("admin", "teacher")
         user = User(
             username=username,
             password_hash=password_hash,

@@ -73,7 +73,11 @@ export function useRole(): UseRoleResult {
   // Default to 'user' (least privilege) when unauthenticated so accidental
   // capability checks don't accidentally grant anything.
   const role: UserRole = (user?.role as UserRole) ?? 'user';
-  const capabilities = ROLE_CAPABILITIES[role] ?? [];
+  const baseCapabilities = ROLE_CAPABILITIES[role] ?? [];
+  const capabilities =
+    user?.can_override_verdicts === false
+      ? baseCapabilities.filter((c) => c !== 'override_verdict')
+      : baseCapabilities;
 
   return {
     role,

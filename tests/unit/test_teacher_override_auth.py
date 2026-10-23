@@ -236,6 +236,73 @@ def test_teacher_cannot_override_essay_outside_their_class(clean_db):
     )
 
 
+def test_student_cannot_override_own_essay_verdict(clean_db):
+    """A student (role == 'user') must NOT be able to override verdicts,
+    even on their own uploaded essay.
+    """
+    from integrity_checker.db.session import get_session
+
+    token = get_user_token()
+    session = get_session()
+    try:
+        student = session.query(User).filter(User.username == "user").first()
+        assert student is not None
+        student_id = student.id
+    finally:
+        session.close()
+
+    essay_id, verdict_id = _create_essay_with_verdict(student_id, label="suspected_hallucination")
+
+    client = TestClient(app)
+    resp = client.post(
+        f"/api/essays/{essay_id}/verdicts/{verdict_id}/override",
+        json={
+            "verdict_id": str(verdict_id),
+            "new_label": "verified",
+            "new_mapping_status": "matched",
+            "reason": "student trying to self-verify",
+        },
+        headers=auth_header(token),
+    )
+    assert resp.status_code == 403
+
+
+def test_can_override_verdicts_flag_enforced(clean_db):
+    """When can_override_verdicts is False on a teacher account, override returns 403."""
+    from integrity_checker.db.session import get_session
+    from integrity_checker.db.repository import Repository
+
+    teacher_id = _hardcoded_teacher_id()
+    student_id = _make_user("flag_student", role="user")
+
+    session = get_session()
+    try:
+        repo = Repository(session)
+        cls = repo.create_class(name="FlagClass", teacher_id=teacher_id)
+        repo.add_student_to_class(cls.id, student_id)
+        teacher = session.get(User, teacher_id)
+        assert teacher is not None
+        teacher.can_override_verdicts = False
+        session.commit()
+    finally:
+        session.close()
+
+    essay_id, verdict_id = _create_essay_with_verdict(student_id, label="metadata_error")
+
+    token = get_teacher_token()
+    client = TestClient(app)
+    resp = client.post(
+        f"/api/essays/{essay_id}/verdicts/{verdict_id}/override",
+        json={
+            "verdict_id": str(verdict_id),
+            "new_label": "verified",
+            "reason": "override disabled",
+        },
+        headers=auth_header(token),
+    )
+    assert resp.status_code == 403
+
+
 # ---------------------------------------------------------------------------
 # Fixture — extends clean_db to also wipe VerdictRecord + AuditLog
 # ---------------------------------------------------------------------------

@@ -103,31 +103,36 @@ async def override_verdict(
     """
     repo = Repository(db)
 
-    # SECURITY: Ownership check
+    # SECURITY: Role & ownership check — students ('user') cannot override verdicts
     current_user = get_current_user(authorization, db)
     essay = repo.get_essay(essay_id)
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
+
+    if not getattr(current_user, "can_override_verdicts", True):
+        raise HTTPException(
+            status_code=403,
+            detail="Override permission is disabled for this account",
+        )
+
     if current_user.role == "admin":
         pass  # admins override anything
-    elif essay.user_id == current_user.id:
-        pass  # student owns the essay
     elif current_user.role == "teacher":
-        # Teacher may override if essay belongs to a student in one of
-        # their classes. Intersection of class IDs (owner of essay.user_id
-        # is enrolled in a class the teacher owns).
-        teacher_class_ids = {c.id for c in repo.list_classes_for_teacher(current_user.id)}
-        student_class_ids = {
-            m.class_id for m in repo.session.query(ClassMembership).filter(
-                ClassMembership.student_id == essay.user_id,
-            ).all()
-        } if essay.user_id else set()
-        if teacher_class_ids & student_class_ids:
-            pass
+        if essay.user_id == current_user.id:
+            pass  # teacher's own uploaded essay
         else:
-            raise HTTPException(status_code=403, detail="Access denied")
+            # Teacher may override if essay belongs to a student in one of
+            # their classes.
+            teacher_class_ids = {c.id for c in repo.list_classes_for_teacher(current_user.id)}
+            student_class_ids = {
+                m.class_id for m in repo.session.query(ClassMembership).filter(
+                    ClassMembership.student_id == essay.user_id,
+                ).all()
+            } if essay.user_id else set()
+            if not (teacher_class_ids & student_class_ids):
+                raise HTTPException(status_code=403, detail="Access denied")
     else:
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=403, detail="Students are not permitted to override verdicts")
 
     # Parse verdict_id from string (supports raw id "19" or report id "v19")
     try:

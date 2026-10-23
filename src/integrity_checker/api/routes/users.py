@@ -30,7 +30,7 @@ class UserCreate(BaseModel):
     role: str = "user"
     is_active: bool = True
     institution: str | None = Field(default=None, max_length=255)
-    can_override_verdicts: bool = False
+    can_override_verdicts: bool | None = None
 
 
 class UserUpdate(BaseModel):
