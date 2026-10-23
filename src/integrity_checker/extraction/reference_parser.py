@@ -39,6 +39,7 @@ from typing import Iterable
 from integrity_checker.extraction.base import Document
 from integrity_checker.extraction.citation_extractor import CitationExtractor
 from integrity_checker.extraction.patterns import get_format, get_all_formats
+from integrity_checker.extraction.patterns.apa import is_vn_legal_reference, parse_vn_legal_reference
 from integrity_checker.extraction.patterns.base import CitationFormat
 from integrity_checker.matching.author_parser import parse_authors
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
@@ -202,6 +203,10 @@ def _is_fake_entry(entry: str) -> bool:
     Returns True if the entry should be filtered out as fake/non-citation.
     """
     text_stripped = entry.strip()
+
+    # TDTU §2.6.1 Vietnamese legal documents (e.g. "1. Hiến pháp 2013.") are valid references
+    if is_vn_legal_reference(text_stripped):
+        return False
 
     # Skip very short entries
     if len(text_stripped) < 30:
@@ -525,7 +530,11 @@ class ReferenceListParser:
         # Split by blank lines first (paragraph-style)
         parts = re.split(r"\n\s*\n", text)
         if len(parts) >= 2:
-            result = [p.strip() for p in parts if len(p.strip()) > 20]
+            result = [
+                p.strip()
+                for p in parts
+                if len(p.strip()) > 20 or is_vn_legal_reference(p.strip())
+            ]
             if len(result) >= 2:
                 return result
 
@@ -541,8 +550,11 @@ class ReferenceListParser:
                 if current:
                     entries.append(current.strip())
                     current = ""
-            elif re.match(r"^[A-Z][a-zÀ-ž]", stripped):
-                # Line starts with uppercase - new entry
+            elif re.match(
+                r"^(?:\d+\s*[\.\)]\s*)?[A-ZÀ-ÝĂÂĐÊÔƠƯĨŨẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ][a-zA-ZÀ-ỹ]",
+                stripped,
+            ):
+                # Line starts with uppercase or numbered legal item - new entry
                 if current:
                     entries.append(current.strip())
                 current = stripped
@@ -554,8 +566,8 @@ class ReferenceListParser:
         if current.strip():
             entries.append(current.strip())
 
-        # Filter out very short entries (likely not citations)
-        result = [e for e in entries if len(e) > 20]
+        # Filter out very short entries (likely not citations), keeping valid legal documents
+        result = [e for e in entries if len(e) > 20 or is_vn_legal_reference(e)]
 
         return result if len(result) >= 2 else []
 
@@ -580,6 +592,15 @@ class ReferenceListParser:
         idx_match = re.match(r"^\[\s*(\d+)\s*\]", entry)
         if idx_match:
             numeric_index = int(idx_match.group(1))
+
+        # TDTU §2.6.1 Vietnamese legal document entry
+        legal_citation = parse_vn_legal_reference(entry)
+        if legal_citation is not None:
+            legal_citation.page_num = page_num
+            legal_citation.order_index = order_index
+            if numeric_index and legal_citation.numeric_index is None:
+                legal_citation.numeric_index = numeric_index
+            return legal_citation
 
         # Unquoted book/chapter entry: ``Surname, Initials, Title (Year) venue``.
         # Must run BEFORE the format registry — ``nature_book`` claims these

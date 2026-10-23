@@ -24,7 +24,7 @@ from typing import Optional
 
 from integrity_checker.extraction.patterns.base import CompiledPattern, PatternType
 from integrity_checker.extraction.patterns.registry import register_format
-from integrity_checker.matching.author_parser import parse_authors
+from integrity_checker.matching.author_parser import Author, parse_authors
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
 
@@ -41,7 +41,10 @@ _STOPWORDS_AHEAD = (
 )
 _AUTHOR_TOKEN = rf"(?:(?:van|de|der|von)\s+)*{_UPPER_VN}[a-zA-ZÀ-ỹ'\-]+"
 _CORP_AUTHOR_NARRATIVE = (
-    r"(?:Bộ|Tổng\s+cục|Ủy\s+ban|Chính\s+phủ|Ngân\s+hàng\s+Nhà\s+nước)(?:\s+[A-Za-zÀ-ỹ&]+){1,8}"
+    r"(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Ngân\s+hàng\s+Nhà\s+nước|Tổ\s+chức|Hiệp\s+hội)(?:\s+[A-Za-zÀ-ỹ&]+){1,8}"
+    r"|(?:Chính\s+phủ|Quốc\s+hội|Hiến\s+pháp)(?:\s+[A-Za-zÀ-ỹ&]+){0,6}"
+    r"|(?:Bộ\s+luật|Luật|Pháp\s+lệnh)(?:\s+[A-Za-zÀ-ỹ]+){1,6}"
+    r"|(?:Nghị\s+định|Thông\s+tư(?:\s+liên\s+tịch)?|Quyết\s+định|Nghị\s+quyết|Chỉ\s+thị)(?:\s+số)?\s+\d+[A-Za-zĐđ0-9/\-]+"
     r"|(?:Department|Ministry|World\s+Health\s+Organization|United\s+Nations|Reserve\s+Bank)"
     rf"(?:\s+(?:of|for|and|the|&|{_UPPER_VN}[a-zA-ZÀ-ỹ\-]*)){{1,8}}"
 )
@@ -153,6 +156,227 @@ _APA_SIMPLE_ENTRY = CompiledPattern.create(
 
 
 # =============================================================================
+# Vietnamese Legal Document Helpers (TDTU §2.6.1)
+# =============================================================================
+
+_VN_LEGAL_LIST_PREFIX_RE = re.compile(
+    r"^\s*(?:\[\s*(?P<b_idx>\d+)\s*\]|\d+\s*[\.\)]|[a-z]\s*\)|[-•–])\s*"
+)
+
+_VN_CONSTITUTION_RE = re.compile(
+    r"^Hiến\s+pháp(?:\s+nước\s+Cộng\s+hòa\s+xã\s+hội\s+chủ\s+nghĩa\s+Việt\s+Nam)?"
+    r"(?:\s+năm)?\s*\(?(?P<year>(?:19|20)\d{2})\)?[.,;\s]*$",
+    re.IGNORECASE,
+)
+
+_VN_LAW_RE = re.compile(
+    r"^(?P<law_prefix>Bộ\s+luật|Luật|Pháp\s+lệnh)\s+(?P<rest>.+)$",
+    re.IGNORECASE,
+)
+
+_VN_SUBLAW_RE = re.compile(
+    r"^(?P<doc_type>Nghị\s+định|Thông\s+tư(?:\s+liên\s+tịch)?|Quyết\s+định"
+    r"|Nghị\s+quyết(?:\s+liên\s+tịch)?|Chỉ\s+thị)\s+(?:số\s+)?(?P<doc_code>\d+[\d/A-ZĐa-z\-–]+)",
+    re.IGNORECASE,
+)
+
+_SUBLAW_AGENCY_SUFFIX_MAP = {
+    "NĐ-CP": "Chính phủ",
+    "NQ-CP": "Chính phủ",
+    "QĐ-TTG": "Thủ tướng Chính phủ",
+    "CT-TTG": "Thủ tướng Chính phủ",
+    "NQ-QH": "Quốc hội",
+    "UBTVQH": "Ủy ban Thường vụ Quốc hội",
+    "TT-BTC": "Bộ Tài chính",
+    "TT-NHNN": "Ngân hàng Nhà nước",
+    "TT-BGDĐT": "Bộ Giáo dục và Đào tạo",
+    "TT-BCT": "Bộ Công Thương",
+    "TT-BKHĐT": "Bộ Kế hoạch và Đầu tư",
+    "TT-BTNMT": "Bộ Tài nguyên và Môi trường",
+    "TT-BLĐTBXH": "Bộ Lao động - Thương binh và Xã hội",
+    "TT-BTP": "Bộ Tư pháp",
+    "TT-BYT": "Bộ Y tế",
+    "TT-BXD": "Bộ Xây dựng",
+    "TT-BGTVT": "Bộ Giao thông vận tải",
+    "TT-BNNPTNT": "Bộ Nông nghiệp và Phát triển nông thôn",
+}
+
+
+def _make_corp_author(name: str) -> Author:
+    clean = re.sub(r"\s+", " ", (name or "").strip().rstrip(".,;")).strip()
+    low = clean.lower()
+    return Author(last_name=low, initials=[], full_first_names=[], normalized=low, raw=clean)
+
+
+def parse_vn_legal_reference(text: str) -> Optional[Citation]:
+    """Parse a Vietnamese legal document reference entry per TDTU §2.6.1.
+
+    Supports:
+        1. Hiến pháp: ``Hiến pháp 2013.``
+        2. Đạo luật / Bộ luật: ``Luật Doanh nghiệp (Luật số 68/2014/QH13) ngày 26/12/2014.``
+        3. Văn bản dưới luật: ``Nghị định số 23/2015/NĐ-CP của Chính phủ ngày 16/02/2015 về ...``
+    """
+    if not text:
+        return None
+    normalized_text = re.sub(r"\s+", " ", text.strip())
+    lead_m = _VN_LEGAL_LIST_PREFIX_RE.match(normalized_text)
+    numeric_index = (
+        int(lead_m.group("b_idx"))
+        if lead_m and lead_m.group("b_idx")
+        else None
+    )
+    cleaned = normalized_text[lead_m.end():].strip() if lead_m else normalized_text
+    if not cleaned:
+        return None
+    clean_title = cleaned.rstrip(".,; ").strip()
+    title_norm = re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", clean_title.lower())).strip()
+
+    # 1. Hiến pháp
+    const_m = _VN_CONSTITUTION_RE.match(cleaned)
+    if const_m:
+        year = const_m.group("year")
+        return Citation(
+            raw_text=normalized_text,
+            citation_type=CitationType.REFERENCE_LIST,
+            style=CitationStyle.APA,
+            matched_pattern="vn_legal_document",
+            numeric_index=numeric_index,
+            title=clean_title,
+            title_normalized=title_norm,
+            year=year,
+            venue="Quốc hội",
+            authors=[
+                _make_corp_author("Hiến pháp"),
+                _make_corp_author("Quốc hội"),
+            ],
+            confidence=0.95,
+        )
+
+    # 2. Đạo luật / Bộ luật / Pháp lệnh
+    law_m = _VN_LAW_RE.match(cleaned)
+    if law_m and not re.match(r"^(?:Bộ\s+luật|Luật|Pháp\s+lệnh)\s*\(\s*\d{4}\s*\)\.", cleaned, re.IGNORECASE):
+        has_legal_marker = bool(
+            re.search(
+                r"\((?:Bộ\s+luật|Luật|Pháp\s+lệnh)?\s*(?:số\s*)?\d+[\d/A-ZĐa-z\-–]+\)"
+                r"|\bsố\s+\d+[\d/A-ZĐa-z\-–]+"
+                r"|\bngày\s+\d{1,2}\s*(?:[/-]|tháng)\s*\d{1,2}\s*(?:[/-]|năm)\s*(?:19|20)\d{2}"
+                r"|\bnăm\s+(?:19|20)\d{2}\b",
+                cleaned,
+                re.IGNORECASE,
+            )
+        )
+        if has_legal_marker:
+            # Extract short law name before (Luật số ...), số ..., ngày ..., or năm YYYY
+            name_m = re.match(
+                r"^(?P<name>(?:Bộ\s+luật|Luật|Pháp\s+lệnh)\s+[^().\n]+?)"
+                r"(?=\s*\(|\s+số\s+\d|\s+ngày\s+\d|\s+năm\s+(?:19|20)\d{2}|[.,;]|$)",
+                cleaned,
+                re.IGNORECASE,
+            )
+            law_name = name_m.group("name").strip().rstrip(",") if name_m else clean_title
+
+            # Extract year: prefer enactment date, then code /YYYY/, then any 4-digit year
+            date_y = re.search(
+                r"\bngày\s+\d{1,2}\s*(?:[/-]|tháng)\s*\d{1,2}\s*(?:[/-]|năm)\s*((?:19|20)\d{2})\b",
+                cleaned,
+                re.IGNORECASE,
+            )
+            code_y = re.search(r"/((?:19|20)\d{2})/", cleaned)
+            any_y = re.search(r"\b((?:19|20)\d{2})\b", cleaned)
+            year = (
+                date_y.group(1)
+                if date_y
+                else (code_y.group(1) if code_y else (any_y.group(1) if any_y else None))
+            )
+
+            authors = [_make_corp_author(law_name), _make_corp_author("Quốc hội")]
+            code_full_m = re.search(
+                r"((?:Bộ\s+luật|Luật|Pháp\s+lệnh)\s+số\s+[\d/A-ZĐa-z\-–]+)",
+                cleaned,
+                re.IGNORECASE,
+            )
+            if code_full_m:
+                authors.append(_make_corp_author(code_full_m.group(1)))
+
+            return Citation(
+                raw_text=normalized_text,
+                citation_type=CitationType.REFERENCE_LIST,
+                style=CitationStyle.APA,
+                matched_pattern="vn_legal_document",
+                numeric_index=numeric_index,
+                title=clean_title,
+                title_normalized=title_norm,
+                year=year,
+                venue="Quốc hội",
+                authors=authors,
+                confidence=0.95,
+            )
+
+    # 3. Văn bản dưới luật (Nghị định, Thông tư, Quyết định, Nghị quyết, Chỉ thị)
+    sublaw_m = _VN_SUBLAW_RE.match(cleaned)
+    if sublaw_m:
+        doc_type = re.sub(r"\s+", " ", sublaw_m.group("doc_type")).strip()
+        doc_code = sublaw_m.group("doc_code").strip().rstrip(".,;")
+
+        # Extract issuing agency after "của ..."
+        agency: Optional[str] = None
+        agency_m = re.search(
+            r"\bcủa\s+(?P<agency>[^,.\n]+?)"
+            r"(?=\s+ngày\s+\d|\s+về\s+|\s+ban\s+hành|\s+quy\s+định|\s+hướng\s+dẫn|\s+sửa\s+đổi|[.,]|$)",
+            cleaned,
+            re.IGNORECASE,
+        )
+        if agency_m:
+            agency = agency_m.group("agency").strip()
+        else:
+            code_upper = doc_code.upper()
+            for suffix_key, mapped_agency in _SUBLAW_AGENCY_SUFFIX_MAP.items():
+                if suffix_key in code_upper:
+                    agency = mapped_agency
+                    break
+
+        date_y = re.search(
+            r"\bngày\s+\d{1,2}\s*(?:[/-]|tháng)\s*\d{1,2}\s*(?:[/-]|năm)\s*((?:19|20)\d{2})\b",
+            cleaned,
+            re.IGNORECASE,
+        )
+        code_y = re.search(r"/((?:19|20)\d{2})/", doc_code)
+        any_y = re.search(r"\b((?:19|20)\d{2})\b", cleaned)
+        year = (
+            date_y.group(1)
+            if date_y
+            else (code_y.group(1) if code_y else (any_y.group(1) if any_y else None))
+        )
+
+        authors: list[Author] = []
+        if agency:
+            authors.append(_make_corp_author(agency))
+        authors.append(_make_corp_author(f"{doc_type} số {doc_code}"))
+        authors.append(_make_corp_author(f"{doc_type} {doc_code}"))
+
+        return Citation(
+            raw_text=normalized_text,
+            citation_type=CitationType.REFERENCE_LIST,
+            style=CitationStyle.APA,
+            matched_pattern="vn_legal_document",
+            numeric_index=numeric_index,
+            title=clean_title,
+            title_normalized=title_norm,
+            year=year,
+            venue=agency or doc_type,
+            authors=authors,
+            confidence=0.95,
+        )
+
+    return None
+
+
+def is_vn_legal_reference(text: str) -> bool:
+    """Return True if ``text`` is a Vietnamese legal document reference entry."""
+    return parse_vn_legal_reference(text) is not None
+
+
+# =============================================================================
 # APA Format Implementation
 # =============================================================================
 
@@ -227,6 +451,11 @@ class APAFormat:
         # Normalize whitespace and repair broken URLs with space after slash
         text = re.sub(r'\s+', ' ', text.strip())
         text = re.sub(r"(https?://[^\s/]+(?:/[^\s/]+)*/)\s+([A-Za-z0-9_\-]+)", r"\1\2", text)
+
+        # Check for TDTU Vietnamese legal document entry (§2.6.1)
+        legal_cit = parse_vn_legal_reference(text)
+        if legal_cit is not None:
+            return legal_cit
 
         # Check for numbered reference first (has [N] prefix)
         idx_match = re.search(r"\[\s*(\d+)\s*\]", text)

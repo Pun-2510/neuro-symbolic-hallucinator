@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from integrity_checker.config import get_settings
+from integrity_checker.extraction.patterns.apa import is_vn_legal_reference
 from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate, SourceResult
@@ -192,6 +193,20 @@ class NeuroSymbolicChecker:
                     triggered_rules=["R-WEB-RESOURCE"],
                     mismatched_fields=[],
                 )
+
+        # --- Check 3: Vietnamese legal documents (TDTU §2.6.1) ---
+        if citation.matched_pattern == "vn_legal_document" or is_vn_legal_reference(raw_text):
+            logger.debug(f"Vietnamese legal document detected: raw='{raw_text[:80]}'")
+            return CitationVerdict(
+                citation=citation,
+                label=ValidationLabel.RESOURCE,
+                confidence=0.95,
+                matched_source=source,
+                features=None,
+                reasoning=f"Vietnamese legal document detected: {raw_text[:60]}... (statutory/regulatory source)",
+                triggered_rules=["R-LEGAL-DOCUMENT"],
+                mismatched_fields=[],
+            )
 
         # Debug aid: if raw_text starts with URL scheme but didn't match, log it.
         if re.match(r'^(https?://|www\.)', stripped_text, re.IGNORECASE):
