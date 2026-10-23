@@ -224,8 +224,9 @@ class APAFormat:
         """
         import re
 
-        # Normalize whitespace
+        # Normalize whitespace and repair broken URLs with space after slash
         text = re.sub(r'\s+', ' ', text.strip())
+        text = re.sub(r"(https?://[^\s/]+(?:/[^\s/]+)*/)\s+([A-Za-z0-9_\-]+)", r"\1\2", text)
 
         # Check for numbered reference first (has [N] prefix)
         idx_match = re.search(r"\[\s*(\d+)\s*\]", text)
@@ -278,13 +279,32 @@ class APAFormat:
         suffix = match.group("suffix")
         citation.year_suffix = suffix if suffix else None
 
-        # Extract title
+        # Extract title and venue (rest of the text after title)
         title = match.group("title").strip()
+        venue = match.group("venue").strip()
+
+        # Rejoin title if it was split at a Vietnamese abbreviation like "Tp. HCM."
+        while re.search(r"\b(?:Tp|TP|ThS|TS|PGS|GS)$", title) and ". " in venue:
+            next_part, rest_venue = venue.split(". ", 1)
+            title = f"{title}. {next_part.strip()}"
+            venue = rest_venue.strip()
+
+        # TDTU Vietnamese thesis format uses a comma after (Luận án ...), e.g.:
+        # "Title (Luận án Tiến sĩ kinh tế), Trường Đại học Kinh tế Tp. HCM, Việt Nam."
+        combined_tv = f"{title}. {venue}"
+        thesis_comma_m = re.match(
+            r"^(?P<t>.+?\((?:(?:Luận\s+án|Luận\s+văn|Khóa\s+luận|Đồ\s+án|Tiểu\s+luận)[^)]*"
+            r"|[^)]*(?:thesis|dissertation)[^)]*)\))\s*,\s*(?P<v>.+)$",
+            combined_tv,
+            flags=re.IGNORECASE,
+        )
+        if thesis_comma_m:
+            title = thesis_comma_m.group("t").strip()
+            venue = thesis_comma_m.group("v").strip()
+
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
-        # Extract venue (rest of the text after title)
-        venue = match.group("venue").strip()
         self._parse_venue(citation, venue)
 
         # Extract DOI if present
@@ -295,6 +315,11 @@ class APAFormat:
             doi_match = re.search(r"(10\.\d{4,9}/[^\s\]\)\,;]+)", text)
             if doi_match:
                 citation.doi = doi_match.group(1).rstrip(".,;")
+
+        # Extract URL if present (non-DOI internet reference)
+        url_match = re.search(r"(https?://[^\s\]\)\,;]+)", text)
+        if url_match and "doi.org/" not in url_match.group(1).lower():
+            citation.url = url_match.group(1).rstrip(".,;")
 
         citation.confidence = self._estimate_confidence(citation)
         return citation
@@ -458,9 +483,24 @@ class APAFormat:
 
         venue_text = venue_text.strip()
 
-        # Extract volume and issue: "Journal, 10(2)"
+        # Web retrieval clause (TDTU §2.6.2: "Retrieved March 21, 2011, from ..." / "Truy cập 21/7/2016, từ ...")
+        # Do not mistake the retrieval date's year for a journal volume number.
+        if re.match(r"^(?:Retrieved|Truy\s+cập|Accessed)\b", venue_text, flags=re.IGNORECASE):
+            citation.venue = venue_text.rstrip(".,")
+            return
+
+        # Book chapter / conference proceedings page range: "(pp. 29-43)" or "(tr. 29-43)"
+        chapter_pages_m = re.search(
+            r"\((?:pp?\.?|tr\.?|trang)\s*(?P<pages>\d+\s*[-–]\s*\d+|\d+)\)",
+            venue_text,
+            flags=re.IGNORECASE,
+        )
+        if chapter_pages_m and not citation.pages:
+            citation.pages = re.sub(r"\s+", "", chapter_pages_m.group("pages"))
+
+        # Extract volume and issue: "Journal, 10(2)" or "Journal, 126(5D)"
         vol_issue_match = re.search(
-            r"(?P<journal>.+?),\s*(?P<vol>\d+)\((?P<issue>\d+)\)",
+            r"(?P<journal>.+?),\s*(?P<vol>\d+[A-Za-z0-9\-]*)\((?P<issue>[A-Za-z0-9\-]+)\)",
             venue_text
         )
         if vol_issue_match:

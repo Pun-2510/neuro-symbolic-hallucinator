@@ -91,10 +91,35 @@ class Author:
 
 # --- Regex helpers ---
 
-
-_INITIAL_RE = re.compile(r"^[A-ZÀ-Ý]\.?$")               # chỉ J. / J (1 char + optional dot)
+_UPPER_VN = r"[A-ZÀ-ÝĂÂĐÊÔƠƯĨŨẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ]"
+_INITIAL_RE = re.compile(rf"^{_UPPER_VN}\.?$")               # chỉ J. / J / Đ. (1 char + optional dot)
 _PARTICLE_WORD_RE = re.compile(r"^[a-zà-ỹ]+$")              # một từ đơn lowercase
-_INITIAL_TOKEN_RE = re.compile(r"^[A-ZÀ-Ý]\.?$")
+_INITIAL_TOKEN_RE = re.compile(rf"^{_UPPER_VN}\.?$")
+
+# Corporate / Institutional author indicator (TDTU §2.6.2: hiệp hội, tổ chức, cơ quan ban hành)
+_CORPORATE_AUTHOR_RE = re.compile(
+    r"^(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Chính\s+phủ|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội"
+    r"|Viện|Trường|Đại\s+học|Cục|Vụ|Sở|Ban|Tập\s+đoàn|Công\s+ty|Quốc\s+hội"
+    r"|Department|Ministry|Association|Organization|Organisation|Institute|Institution"
+    r"|Council|Committee|Commission|Agency|Bureau|Office|University|College"
+    r"|World\s+Health|United\s+Nations|World\s+Bank|Reserve\s+Bank|General\s+Statistics"
+    r"|International\s+Monetary|European\s+Union|National\s+Institute|Australian\s+Council)\b"
+    r"|\b(?:of|for)\s+(?:the\s+)?[A-ZÀ-Ý]"
+    r"|\b(?:PTNT|GD&ĐT|KH&CN|GTVT|TN&MT|LĐTB&XH|Association|Organization|Organisation"
+    r"|Ministry|Department|University|Institute|Council|Government|Corporation|Administration)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_corporate_author(raw: str) -> bool:
+    """True if ``raw`` represents an organization/institution rather than personal names."""
+    cleaned = (raw or "").strip().rstrip(".,;").strip()
+    if not cleaned:
+        return False
+    # If it contains "Surname, I." APA initial pattern, it's personal author(s)
+    if re.search(rf"{_UPPER_VN}[a-zà-ỹ'\-]+,\s*{_UPPER_VN}\.", cleaned):
+        return False
+    return bool(_CORPORATE_AUTHOR_RE.search(cleaned))
 
 
 def _strip_particles_from_first_name(tokens: list[str]) -> tuple[list[str], list[str]]:
@@ -155,14 +180,27 @@ def normalize_author(raw: str) -> Author:
     # Chuẩn hoá Unicode (NFC) trước
     raw = unicodedata.normalize("NFC", raw)
 
-    # FIX: Handle "et al." pattern - this is NOT part of the author name
-    # "T. B. Brown et al." → "T. B. Brown"
-    # "A. Vaswani, et al." → "A. Vaswani"
-    et_al_match = re.search(r'\s+et\s+al\.?\s*$', raw, re.IGNORECASE)
+    # FIX: Handle "et al." / "và cộng sự" / "và cs." pattern - NOT part of the author name
+    et_al_match = re.search(
+        r",?\s*(?:et\s+al\.?|và\s+cộng\s+sự|và\s+cs\.?)\s*$",
+        raw,
+        re.IGNORECASE,
+    )
     if et_al_match:
-        raw = raw[:et_al_match.start()].strip().rstrip(',')
+        raw = raw[:et_al_match.start()].strip().rstrip(",")
         if not raw:
             return Author(last_name="", raw=raw)
+
+    # Strategy 0: Corporate / Institutional author (TDTU §2.6.2)
+    if _is_corporate_author(raw):
+        clean_corp = raw.strip().rstrip(".,;").strip()
+        corp_norm = " ".join(clean_corp.lower().split())
+        return Author(
+            last_name=corp_norm,
+            initials=[],
+            normalized=corp_norm,
+            raw=clean_corp,
+        )
 
     # Strategy 1: comma-split (APA / Chicago)
     parts = _split_on_comma(raw)
@@ -272,27 +310,37 @@ def parse_authors(raw: str, format_name: str | None = None) -> list[Author]:
     if not raw:
         return []
 
+    raw_nfc = unicodedata.normalize("NFC", raw.strip())
+    if _is_corporate_author(raw_nfc):
+        corp_author = normalize_author(raw_nfc)
+        return [corp_author] if corp_author.last_name else []
+
     # Format-specific parsing when format_name is provided
     if format_name:
         format_upper = format_name.upper()
         if format_upper == "APA":
-            return _parse_apa_format(raw)
+            return _parse_apa_format(raw_nfc)
         elif format_upper == "IEEE":
-            return _parse_ieee_format(raw)
+            return _parse_ieee_format(raw_nfc)
         elif format_upper == "VANCOUVER":
-            return _parse_vancouver_format(raw)
+            return _parse_vancouver_format(raw_nfc)
         # Unknown format, fall back to heuristic detection
         logger.debug(f"Unknown format_name: {format_name}, using heuristic detection")
 
     # Heuristic detection (default behavior when format_name is None)
     # Chuẩn hoá separator → split-friendly
-    text = raw
+    text = raw_nfc
 
-    # Handle "et al." - replace with separator
-    text = re.sub(r",?\s*et\s+al\.?\s*$", ";", text, flags=re.IGNORECASE)
+    # Handle "et al." / "và cộng sự" / "và cs." - replace with separator
+    text = re.sub(
+        r",?\s*(?:et\s+al\.?|và\s+cộng\s+sự|và\s+cs\.?)\s*$",
+        ";",
+        text,
+        flags=re.IGNORECASE,
+    )
 
-    # Normalize other separators
-    text = re.sub(r"\s+and\s+", " ; ", text, flags=re.IGNORECASE)
+    # Normalize other separators (including Vietnamese "và")
+    text = re.sub(r"\s+(?:and|và)\s+", " ; ", text, flags=re.IGNORECASE)
     text = text.replace("&", ";")
 
     # Bước 1: Nếu có separator chính (;), split piece-by-piece.
@@ -327,11 +375,20 @@ def _parse_apa_format(text: str) -> list[Author]:
     if not text:
         return []
 
-    # Handle "et al." - replace with separator for individual parsing
-    text = re.sub(r",?\s*et\s+al\.?\s*$", ";", text, flags=re.IGNORECASE)
+    if _is_corporate_author(text):
+        corp_author = normalize_author(text)
+        return [corp_author] if corp_author.last_name else []
+
+    # Handle "et al." / "và cộng sự" - replace with separator for individual parsing
+    text = re.sub(
+        r",?\s*(?:et\s+al\.?|và\s+cộng\s+sự|và\s+cs\.?)\s*$",
+        ";",
+        text,
+        flags=re.IGNORECASE,
+    )
 
     # Normalize APA separators
-    text = re.sub(r"\s+and\s+", " ; ", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s+(?:and|và)\s+", " ; ", text, flags=re.IGNORECASE)
     text = text.replace("&", ";")
 
     authors: list[Author] = []
@@ -535,13 +592,13 @@ _APA_AUTHOR_RE = re.compile(
     rf"""
     (?P<author>
         { _PARTICLES_GROUP }\s*  # optional particles
-        [A-ZÀ-Ý][A-Za-zà-ỹ\-\']+   # last name MUST start with uppercase
+        {_UPPER_VN}[A-Za-zÀ-ỹ\-\']+   # last name MUST start with uppercase
         ,\s*
-        (?:[A-ZÀ-Ý]\.?\s*)+         # initials (1+)
+        (?:{_UPPER_VN}\.?\s*)+         # initials (1+)
     |
-        [A-ZÀ-Ý][A-Za-zà-ỹ\-\']+   # last name start with uppercase
+        {_UPPER_VN}[A-Za-zÀ-ỹ\-\']+   # last name start with uppercase
         ,\s*
-        (?:[A-ZÀ-Ý]\.?\s*)+         # initials (1+) - MUST have at least one letter
+        (?:{_UPPER_VN}\.?\s*)+         # initials (1+) - MUST have at least one letter
     )
     """,
     re.VERBOSE,
