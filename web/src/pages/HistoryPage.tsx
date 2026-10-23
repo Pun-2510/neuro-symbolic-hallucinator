@@ -236,14 +236,12 @@ export function HistoryPage() {
                       ? t('dashboard.noDocumentsTeacher')
                       : t('dashboard.noDocumentsStudent')}
                 </p>
-                {!(isTeacher || isAdmin) && (
-                  <Button asChild className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white">
-                    <Link to="/upload">
-                      <Upload className="h-4 w-4" />
-                      {t('dashboard.uploadDocument')}
-                    </Link>
-                  </Button>
-                )}
+                <Button asChild className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white">
+                  <Link to="/upload">
+                    <Upload className="h-4 w-4" />
+                    {t('dashboard.uploadDocument')}
+                  </Link>
+                </Button>
               </>
             )}
           </div>

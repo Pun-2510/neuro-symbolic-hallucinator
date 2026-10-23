@@ -255,6 +255,10 @@ export interface EssaySummary {
   uploaded_at: string;
   user_id: number;
   duplicate_ids?: number[];
+  cis_score?: number | null;
+  num_citations?: number;
+  num_verdicts?: number;
+  num_verified?: number;
 }
 
 // --- Cache stats (admin) ---

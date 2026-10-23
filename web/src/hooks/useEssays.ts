@@ -41,6 +41,23 @@ async function loadDashboardStats(essays: EssaySummary[]): Promise<DashboardStat
 
   await Promise.all(
     essays.map(async (essay) => {
+      // Fast path: use summary fields included in GET /api/essays response (no N+1 call)
+      if (
+        typeof essay.num_citations === 'number' &&
+        typeof essay.num_verdicts === 'number' &&
+        typeof essay.num_verified === 'number'
+      ) {
+        totalCitations += essay.num_citations;
+        if (essay.cis_score != null && essay.cis_score > 0) {
+          totalCIS += essay.cis_score;
+          cisCount++;
+        }
+        totalVerdicts += essay.num_verdicts;
+        totalVerified += essay.num_verified;
+        return;
+      }
+
+      // Fallback path for mocked/legacy essay payloads without summary metrics
       try {
         const report: AnalysisReport | null = await api.getEssay(essay.id);
         if (!report) return;

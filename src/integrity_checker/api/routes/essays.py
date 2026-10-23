@@ -379,6 +379,46 @@ def get_essay_status(
     }
 
 
+def _serialize_essay_summary(repo: Repository, e: Any, dupes: list[int]) -> dict[str, Any]:
+    """Serialize essay summary with aggregated CIS and citation counts."""
+    import json
+
+    verdicts = repo.get_verdicts(e.id)
+    citations = repo.get_citations(e.id)
+    in_text_count = sum(1 for c in citations if c.citation_type in {"in_text", "numeric"})
+    num_citations = in_text_count or len(verdicts)
+    num_verdicts = len(verdicts)
+    num_verified = sum(1 for v in verdicts if v.label == "verified" or v.is_overridden)
+
+    cis_score: float | None = None
+    if e.cis_json:
+        try:
+            cis_dict = json.loads(e.cis_json)
+            if isinstance(cis_dict, dict) and cis_dict.get("score") is not None:
+                cis_score = float(cis_dict["score"])
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+
+    if cis_score is None and verdicts:
+        academic = [v for v in verdicts if v.label != "resource"]
+        if academic:
+            verified_academic = sum(1 for v in academic if v.label == "verified")
+            cis_score = round((verified_academic / len(academic)) * 100.0, 1)
+
+    return {
+        "id": e.id,
+        "filename": e.filename,
+        "num_pages": e.num_pages,
+        "uploaded_at": e.uploaded_at.isoformat() if e.uploaded_at else None,
+        "user_id": e.user_id,
+        "duplicate_ids": dupes,
+        "cis_score": cis_score,
+        "num_citations": num_citations,
+        "num_verdicts": num_verdicts,
+        "num_verified": num_verified,
+    }
+
+
 @router.get("", response_model=list[dict])
 def list_essays(
     current_user: User = Depends(get_current_user),
@@ -403,17 +443,7 @@ def list_essays(
     else:
         grouped = repo.get_all_essays_deduped(user_id=current_user.id)
 
-    return [
-        {
-            "id": e.id,
-            "filename": e.filename,
-            "num_pages": e.num_pages,
-            "uploaded_at": e.uploaded_at.isoformat() if e.uploaded_at else None,
-            "user_id": e.user_id,
-            "duplicate_ids": dupes,
-        }
-        for e, dupes in grouped
-    ]
+    return [_serialize_essay_summary(repo, e, dupes) for e, dupes in grouped]
 
 
 @router.get("/all", response_model=list[dict])
@@ -425,17 +455,7 @@ def list_all_essays(
     repo = Repository(db)
     grouped = repo.get_all_essays_deduped()
 
-    return [
-        {
-            "id": e.id,
-            "filename": e.filename,
-            "num_pages": e.num_pages,
-            "uploaded_at": e.uploaded_at.isoformat() if e.uploaded_at else None,
-            "user_id": e.user_id,
-            "duplicate_ids": dupes,
-        }
-        for e, dupes in grouped
-    ]
+    return [_serialize_essay_summary(repo, e, dupes) for e, dupes in grouped]
 
 
 @router.get("/{essay_id}")

@@ -21,7 +21,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole, type UserCapability, type UserRole } from '@/hooks/useRole';
-import { ThemeToggle } from '@/contexts/ThemeContext';
+import { ThemeToggle, useTheme } from '@/contexts/ThemeContext';
 import { HelpModal } from './HelpModal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
@@ -87,6 +87,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const { has, role } = useRole();
+  const { toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -102,17 +103,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     localStorage.setItem('i18nextLng', next);
   };
 
-  // Keyboard shortcut: Ctrl+/ to open help
+  // Keyboard shortcuts: Ctrl+/ (help), Ctrl+U (upload), Ctrl+D (toggle theme)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const target = e.target as HTMLElement | null;
+      const isEditable =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable;
+
+      if (e.key === '/') {
         e.preventDefault();
         setHelpOpen(true);
+      } else if (!isEditable && e.key.toLowerCase() === 'u') {
+        e.preventDefault();
+        navigate('/upload');
+      } else if (!isEditable && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        toggleTheme();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [navigate, toggleTheme]);
 
   const isActive = (path: string) =>
     location.pathname === path ||

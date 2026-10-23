@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Settings,
   Palette,
@@ -48,6 +49,7 @@ const STORAGE_KEY_COMPACT_VIEW = 'settings_compact_view';
 export function SettingsPage(): JSX.Element {
   const toast = useToast();
   const { t, i18n } = useTranslation();
+  const queryClient = useQueryClient();
   const [confirmClear, setConfirmClear] = useState(false);
 
   // Load saved settings
@@ -115,6 +117,15 @@ export function SettingsPage(): JSX.Element {
     localStorage.removeItem('theme');
     localStorage.removeItem('language');
     localStorage.removeItem('i18nextLng');
+    localStorage.removeItem(STORAGE_KEY_NOTIFICATIONS);
+    localStorage.removeItem(STORAGE_KEY_AUTO_VERIFY);
+    localStorage.removeItem(STORAGE_KEY_COMPACT_VIEW);
+    setSettings({
+      notifications: true,
+      autoVerify: false,
+      compactView: false,
+    });
+    queryClient.clear();
     void i18n.changeLanguage('en');
     toast.success(t('settings.cacheClearedSuccess'));
   };
@@ -134,7 +145,7 @@ export function SettingsPage(): JSX.Element {
               </span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/70 dark:border-emerald-800/70 text-[11px] font-mono text-emerald-700 dark:text-emerald-300">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                v1.11.0
+                v2.0.0
               </span>
             </div>
 
@@ -307,10 +318,10 @@ export function SettingsPage(): JSX.Element {
           </div>
 
           <div className="p-6 space-y-3">
-            <InfoRow label={t('settings.version')} value="1.11.0" />
+            <InfoRow label={t('settings.version')} value="2.0.0" />
             <InfoRow
               label={t('settings.buildDate')}
-              value={new Date().toLocaleDateString()}
+              value="2026-10-23"
             />
 
             <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
