@@ -34,22 +34,46 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # --- In-text APA patterns ---
 
-# Parenthetical: (Author, 2020), (Author et al., 2020)
-# Optimized pattern with proper capture groups
-_APA_INTEXT_PARENTHETICAL = CompiledPattern.create(
-    name="apa_intext_parenthetical",
-    pattern=r"\(([^)]+),\s*(\d{4}[a-z]?)\)",
-    pattern_type=PatternType.IN_TEXT,
-    description="APA in-text parenthetical: (Author, 2020) | (Author et al., 2020)",
+_UPPER_VN = r"[A-ZÀ-ÝĂÂĐÊÔƠƯĨŨẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ]"
+_STOPWORDS_AHEAD = (
+    r"(?!(?:Theo|Trong|Tại|Với|Như|Của|Bởi|Qua|Từ|Khi|Nếu|Vì|Do|Ở|Hoặc|Và"
+    r"|In|For|By|From|See|As|With|According|However|Although)\s+)"
+)
+_AUTHOR_TOKEN = rf"(?:(?:van|de|der|von)\s+)*{_UPPER_VN}[a-zA-ZÀ-ỹ'\-]+"
+_CORP_AUTHOR_NARRATIVE = (
+    r"(?:Bộ|Tổng\s+cục|Ủy\s+ban|Chính\s+phủ|Ngân\s+hàng\s+Nhà\s+nước)(?:\s+[A-Za-zÀ-ỹ&]+){1,8}"
+    r"|(?:Department|Ministry|World\s+Health\s+Organization|United\s+Nations|Reserve\s+Bank)"
+    rf"(?:\s+(?:of|for|and|the|&|{_UPPER_VN}[a-zA-ZÀ-ỹ\-]*)){{1,8}}"
+)
+_PAGE_OR_SECONDARY_SUFFIX = (
+    r"(?:\s*,\s*(?:"
+    r"(?:dẫn\s+theo|trích\s+dẫn\s+(?:trong|từ)|as\s+cited\s+in|cited\s+in)\s+[^)]+"
+    r"|(?:pp?\.?|tr\.?|trang)\s*\d+(?:\s*[-–]\s*\d+)?"
+    r"))?"
 )
 
-# Narrative: Author (2020), Author et al. (2020)
-# Supports single author and "et al." notation
+# Parenthetical: (Author, 2020), (Author et al., 2020), (Author và cộng sự, 2020),
+# (Author A và Author B, 2020), (Author, 2020, tr. 15), (Author, 2005, dẫn theo B, 2016)
+_APA_INTEXT_PARENTHETICAL = CompiledPattern.create(
+    name="apa_intext_parenthetical",
+    pattern=rf"\(([^)]+),\s*(\d{{4}}[a-z]?){_PAGE_OR_SECONDARY_SUFFIX}\)",
+    pattern_type=PatternType.IN_TEXT,
+    description="APA in-text parenthetical: (Author, 2020) | (Author et al., 2020) | (Author và cộng sự, 2020)",
+)
+
+# Narrative: Author (2020), Author et al. (2020), Author và cộng sự (2020),
+# Author A và Author B (2020), Corporate Author (2020)
 _APA_INTEXT_NARRATIVE = CompiledPattern.create(
     name="apa_intext_narrative",
-    pattern=r"([A-Z][a-zA-ZÀ-žÀ-ž]+(?:\s+et\s+al\.?)?(?:[\s,][A-Z][a-zA-ZÀ-žÀ-ž]*)*)\s+\((\d{4}[a-z]?)\)",
+    pattern=(
+        rf"({_CORP_AUTHOR_NARRATIVE}|{_STOPWORDS_AHEAD}{_AUTHOR_TOKEN}"
+        rf"(?:(?:\s*,\s*(?:và|and|&)\s+|\s+(?:và|and|&)\s+|\s*,\s*){_STOPWORDS_AHEAD}{_AUTHOR_TOKEN})*"
+        rf"(?:\s*,?\s*(?:et\s+al\.?|và\s+cộng\s+sự|và\s+cs\.?))?"
+        rf"(?:[\s,]{_UPPER_VN}[a-zA-ZÀ-ỹ'\-]*)*)"
+        rf"\s+\((\d{{4}}[a-z]?){_PAGE_OR_SECONDARY_SUFFIX}\)"
+    ),
     pattern_type=PatternType.IN_TEXT,
-    description="APA narrative: Author (2020) | Author et al. (2020)",
+    description="APA narrative: Author (2020) | Author et al. (2020) | Author và cộng sự (2020)",
 )
 
 # --- Reference list APA patterns ---
@@ -520,8 +544,8 @@ class APAFormat:
         if not re.search(r"\b(19|20)\d{2}\b", text):
             return False
 
-        # Check for author name pattern (capitalized word)
-        author_pattern = r"[A-Z][a-zÀ-ž]"
+        # Check for author name pattern (capitalized word, including Vietnamese uppercase)
+        author_pattern = rf"{_UPPER_VN}[a-zA-ZÀ-ỹ]"
         if not re.search(author_pattern, text):
             return False
 
@@ -543,7 +567,7 @@ class APAFormat:
 
         # For narrative citations: Author (Year) - author outside parens
         # Check if there's a capitalized word followed by (Year)
-        narrative_pattern = r"[A-Z][a-zÀ-ž](?:[a-zÀ-ž]*[A-Z][a-zÀ-ž]*)*\s+\(\d{4}"
+        narrative_pattern = rf"{_UPPER_VN}[a-zA-ZÀ-ỹ]*(?:[\s,&]+(?:và|and|et\s+al\.?|cộng\s+sự|cs\.?|{_UPPER_VN}[a-zA-ZÀ-ỹ]*))*\s+\(\d{{4}}"
         if re.search(narrative_pattern, text):
             return True
 

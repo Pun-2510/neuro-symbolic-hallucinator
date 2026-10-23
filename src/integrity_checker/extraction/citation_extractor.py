@@ -349,7 +349,7 @@ class CitationExtractor:
                     if not re.search(r"\b(?:19|20)\d{2}[a-z]?\b", raw):
                         continue
                     inner_head = raw[1:].split(",")[0].strip()
-                    if not inner_head or not re.search(r"[A-ZÀ-Ý]", inner_head) or inner_head[0].isdigit() or inner_head[0].islower():
+                    if not inner_head or not any(ch.isupper() for ch in inner_head) or inner_head[0].isdigit() or inner_head[0].islower():
                         continue
 
                 accepted_spans.add(span_key)

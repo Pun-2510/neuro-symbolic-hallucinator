@@ -38,16 +38,33 @@ from integrity_checker.models.validation import CitationLink, MappingMethod
 
 logger = logging.getLogger(__name__)
 
-# Regex cho in-text APA pattern: (Author, Year)
-_APA_YEAR_RE = re.compile(r"\(([A-Za-zÀ-ÿ'.\s-]+),\s*((?:19|20)\d{2}[a-z]?)\)")
-# Regex cho Author et al. (Year) format (no parens around author)
+# Regex cho in-text APA pattern: (Author, Year) / (Author A và Author B, Year) / (Author, Year, tr. 15)
+_APA_YEAR_RE = re.compile(
+    r"\(([A-Za-zÀ-ỹ'.\s,&\-]+),\s*((?:19|20)\d{2}[a-z]?)"
+    r"(?:\s*,\s*(?:pp?\.?|tr\.?|trang)\s*\d+(?:\s*[-–]\s*\d+)?)?\)"
+)
+# Regex cho Author et al. / và cộng sự (Year) format (no parens around author)
 _APA_ETAL_YEAR_RE = re.compile(
-    r"([A-Za-zÀ-ÿ'.\s-]+?)\s+et\s+al\.?\s*\(\s*((?:19|20)\d{2}[a-z]?)\s*\)",
+    r"([A-Za-zÀ-ỹ'.\s,&\-]+?)\s+(?:et\s+al\.?|và\s+cộng\s+sự|và\s+cs\.?)\s*"
+    r"\(\s*((?:19|20)\d{2}[a-z]?)(?:\s*,\s*[^)]*)?\s*\)",
     re.IGNORECASE,
 )
-# Narrative citation: ``Author et al. (2018)`` or ``Author (2018)``.
+# Narrative citation: ``Author et al. (2018)`` or ``Author (2018)`` or ``Author A và Author B (2018)``.
 _NARRATIVE_YEAR_RE = re.compile(
-    r"([A-Za-zÀ-ÿ'.\s-]+?)\s*\(\s*((?:19|20)\d{2}[a-z]?)\s*\)",
+    r"([A-Za-zÀ-ỹ'.\s,&\-]+?)\s*\(\s*((?:19|20)\d{2}[a-z]?)(?:\s*,\s*[^)]*)?\s*\)",
+    re.IGNORECASE,
+)
+# Secondary citation (trích dẫn gián tiếp): "(Smith, 2005, dẫn theo Tran, 2016)" / "Smith (2005, as cited in Tran, 2016)"
+_SECONDARY_CITATION_RE = re.compile(
+    r"(?:dẫn\s+theo|trích\s+dẫn\s+(?:trong|từ)|as\s+cited\s+in|cited\s+in)\s+([^)]+)\)?",
+    re.IGNORECASE,
+)
+# Institutional / Corporate author indicator
+_INSTITUTIONAL_AUTHOR_RE = re.compile(
+    r"^(?:Bộ|Tổng\s+cục|Ủy\s+ban|Chính\s+phủ|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội"
+    r"|Viện|Trường|Cục|Vụ|Sở|Department|Ministry|Association|Organization"
+    r"|Institute|Council|World\s+Health|United\s+Nations|Reserve\s+Bank)\b"
+    r"|\b(?:of|for)\b",
     re.IGNORECASE,
 )
 # Regex cho in-text IEEE numeric: [N] or [N, M] or [N-M]
@@ -287,6 +304,33 @@ class CitationLinker:
             if multi_links:
                 return multi_links
 
+        # 3a. Secondary citation (trích dẫn gián tiếp): "(Smith, 2005, dẫn theo Tran, 2016)"
+        # hoặc "Smith (2005, as cited in Tran, 2016)". Ưu tiên link tới nguồn thứ cấp
+        # (tài liệu thực sự được liệt kê trong Danh mục TLTK theo chuẩn TDTU/APA).
+        sec_m = _SECONDARY_CITATION_RE.search(cit.raw_text)
+        if sec_m:
+            sec_raw = sec_m.group(1).strip().strip("()")
+            sec_probe = sec_raw if "(" in sec_raw else f"({sec_raw})"
+            sec_author, sec_year, sec_suffix = self._extract_author_year(sec_probe)
+            if sec_author and sec_year:
+                if sec_suffix:
+                    sec_cands = bib_by_author_year_suffix.get(
+                        (sec_author.lower().strip(), sec_year, sec_suffix), []
+                    )
+                    if sec_cands:
+                        return _bib_link(
+                            sec_cands[0],
+                            self.author_year_confidence,
+                            MappingMethod.AUTHOR_YEAR,
+                        )
+                sec_cands = bib_by_author_year.get((sec_author.lower().strip(), sec_year), [])
+                if sec_cands:
+                    return _bib_link(
+                        sec_cands[0],
+                        self.author_year_confidence,
+                        MappingMethod.AUTHOR_YEAR,
+                    )
+
         author, year, year_suffix = self._extract_author_year(cit.raw_text)
         if author and year:
             # Try exact match first (author + year + suffix)
@@ -309,10 +353,8 @@ class CitationLinker:
                     MappingMethod.AUTHOR_YEAR,
                 )
 
-        # 3b. ORGANIZATION_AS_AUTHOR — web references often cite the publisher
-        # (e.g. "(RevenueCat, 2025)") while the entry stores that name as the
-        # title/venue rather than in the authors list. Match the in-text name
-        # against the whole entry text when the year agrees.
+        # 3b. ORGANIZATION_AS_AUTHOR — web/corporate references often cite the
+        # publisher/institution (e.g. "(RevenueCat, 2025)", "(Bộ nông nghiệp & PTNT, 1996)").
         if author and year:
             org = self._try_org_author(cit, occ_id, author, year, bib_citations)
             if org is not None:
@@ -334,15 +376,17 @@ class CitationLinker:
         year: str,
         bib_citations: list[Citation],
     ) -> Optional[CitationLink]:
-        """Match an organization in-text name against entry title/venue.
+        """Match an organization in-text name against entry title/venue/raw_text.
 
-        Only fires when the in-text name is a single token (organizations are
-        usually one word, e.g. "RevenueCat", "Forbes") and the entry year
-        agrees, to avoid matching ordinary surnames that merely appear in a
-        title.
+        Supports both single-token organizations (e.g. "RevenueCat", "WHO") and
+        multi-word institutional authors (e.g. "Bộ nông nghiệp & PTNT",
+        "Department of Finance and Administration") when the entry year agrees.
         """
         token = author.strip().lower()
-        if not token or len(token) < 3 or " " in token:
+        if not token or len(token) < 3:
+            return None
+        is_multi_word = " " in token
+        if is_multi_word and not _INSTITUTIONAL_AUTHOR_RE.search(token):
             return None
 
         for bib_idx, bib in enumerate(bib_citations):
@@ -352,6 +396,16 @@ class CitationLinker:
                 str(part or "")
                 for part in (bib.title, bib.venue, bib.raw_text)
             ).lower()
+            if is_multi_word:
+                if token in haystack:
+                    return CitationLink(
+                        occurrence_id=occ_id,
+                        reference_id=bib.reference_id or f"ref-{bib_idx:04d}",
+                        status=CitationMappingStatus.MATCHED,
+                        confidence=self.author_year_confidence,
+                        method=MappingMethod.AUTHOR_YEAR,
+                    )
+                continue
             # Also check if token is an acronym of the corporate author (e.g. "who" -> "World Health Organization")
             org_acronyms: set[str] = set()
             for auth in bib.authors or []:
@@ -451,16 +505,25 @@ class CitationLinker:
     ) -> dict[tuple[str, str], list[Citation]]:
         out: dict[tuple[str, str], list[Citation]] = {}
         for bib in bibs:
-            if bib.authors and bib.year:
-                last_name = self._normalize_last_name(bib.authors[0])
-                if last_name:
-                    key = (last_name.lower(), bib.year)
-                    if bib not in out.setdefault(key, []):
-                        out[key].append(bib)
-                    if " " in last_name:
-                        short_key = (last_name.split()[-1].lower(), bib.year)
-                        if bib not in out.setdefault(short_key, []):
-                            out[short_key].append(bib)
+            if bib.year:
+                if bib.authors:
+                    last_name = self._normalize_last_name(bib.authors[0])
+                    if last_name:
+                        key = (last_name.lower(), bib.year)
+                        if bib not in out.setdefault(key, []):
+                            out[key].append(bib)
+                        if " " in last_name:
+                            short_key = (last_name.split()[-1].lower(), bib.year)
+                            if bib not in out.setdefault(short_key, []):
+                                out[short_key].append(bib)
+                # Also index raw institutional author head before (Year) if present
+                raw_head_m = re.match(r"^([^\(]+?)\s*\(\s*(?:19|20)\d{2}", bib.raw_text or "")
+                if raw_head_m:
+                    raw_head = raw_head_m.group(1).strip().rstrip(".,").strip()
+                    if _INSTITUTIONAL_AUTHOR_RE.search(raw_head):
+                        inst_key = (raw_head.lower(), bib.year)
+                        if bib not in out.setdefault(inst_key, []):
+                            out[inst_key].append(bib)
         return out
 
     def _index_by_author_year_suffix(
@@ -469,17 +532,25 @@ class CitationLinker:
         """Index bibs by (last_name, year, year_suffix) for 2020a/2020b matching."""
         out: dict[tuple[str, str, str], list[Citation]] = {}
         for bib in bibs:
-            if bib.authors and bib.year:
-                last_name = self._normalize_last_name(bib.authors[0])
+            if bib.year:
                 year_suffix = bib.year_suffix or ""
-                if last_name:
-                    key = (last_name.lower(), bib.year, year_suffix)
-                    if bib not in out.setdefault(key, []):
-                        out[key].append(bib)
-                    if " " in last_name:
-                        short_key = (last_name.split()[-1].lower(), bib.year, year_suffix)
-                        if bib not in out.setdefault(short_key, []):
-                            out[short_key].append(bib)
+                if bib.authors:
+                    last_name = self._normalize_last_name(bib.authors[0])
+                    if last_name:
+                        key = (last_name.lower(), bib.year, year_suffix)
+                        if bib not in out.setdefault(key, []):
+                            out[key].append(bib)
+                        if " " in last_name:
+                            short_key = (last_name.split()[-1].lower(), bib.year, year_suffix)
+                            if bib not in out.setdefault(short_key, []):
+                                out[short_key].append(bib)
+                raw_head_m = re.match(r"^([^\(]+?)\s*\(\s*(?:19|20)\d{2}", bib.raw_text or "")
+                if raw_head_m:
+                    raw_head = raw_head_m.group(1).strip().rstrip(".,").strip()
+                    if _INSTITUTIONAL_AUTHOR_RE.search(raw_head):
+                        inst_key = (raw_head.lower(), bib.year, year_suffix)
+                        if bib not in out.setdefault(inst_key, []):
+                            out[inst_key].append(bib)
         return out
 
     def _normalize_last_name(self, raw: str | object) -> str:
@@ -539,23 +610,43 @@ class CitationLinker:
                 pass
         return indices
 
+    def _clean_intext_author(self, raw_author: str) -> str:
+        """Strip et al. / và cộng sự / 2nd+ authors (while preserving corporate names)."""
+        author_stripped = re.sub(
+            r",?\s*(?:et\s+al\.?|and\s+others?|và\s+cộng\s+sự|và\s+cs\.?)\s*$",
+            "",
+            raw_author,
+            flags=re.IGNORECASE,
+        ).strip().rstrip(",").strip()
+
+        if _INSTITUTIONAL_AUTHOR_RE.search(author_stripped):
+            return author_stripped.strip(" .,")
+
+        # Multi-author in-text: "Zhang và Hanks", "Carr & Kemmis", "Simon, Smith & West"
+        # Split on " và ", " and ", " & ", or comma followed by another surname (2+ letters)
+        multi_parts = re.split(
+            r"\s*,\s*(?:và|and|&)\s+|\s+(?:và|and|&)\s+|,\s*(?=[A-Za-zÀ-ỹ]{2,})",
+            author_stripped,
+            flags=re.IGNORECASE,
+        )
+        if multi_parts and multi_parts[0].strip():
+            author_stripped = multi_parts[0].strip()
+
+        return self._normalize_last_name(author_stripped)
+
     def _extract_author_year(self, text: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
         """Trích (author, year, year_suffix) từ APA-style (Author, Year).
 
         Handles: (Smith, 2020) → ("smith", "2020", None)
                  (Smith, 2020a) → ("smith", "2020", "a")
-                 (Smith, 2020b) → ("smith", "2020", "b")
-                 (Smith et al., 2020) → ("smith", "2020", None) — strips "et al."
-                 (Smith and Jones, 2020) → ("smith", "2020", None) — strips "and ..."
+                 (Smith et al., 2020) / (Tran và cộng sự, 2019) → ("tran", "2019", None)
+                 (Zhang và Hanks, 2018) / (Carr & Kemmis, 1986) → ("zhang", "2018", None)
+                 (Simon, Smith & West, 2009) → ("simon", "2009", None)
+                 (Bộ nông nghiệp & PTNT, 1996) → ("Bộ nông nghiệp & PTNT", "1996", None)
 
         Returns:
             (normalized_last_name, year, year_suffix) — author đã được normalize
             để khớp với _index_by_author_year.
-
-        Bug fix: Normalize newlines in text to handle cases like "(Vaswani et al.,
-        2017)" where the raw text has a line break.
-
-        Also handles: "Author et al. (Year)" format (no parens around author).
         """
         # Normalize newlines to spaces to handle line breaks in extracted text
         text_normalized = text.replace("\n", " ").replace("\r", " ")
@@ -565,44 +656,35 @@ class CitationLinker:
         if m:
             raw_author = m.group(1).strip()
             year = m.group(2).strip()
-            # Strip common suffixes: "et al.", "et al", "and others", "and ..."
-            author_stripped = re.sub(
-                r"\s+et\s+al\.?\s*$", "", raw_author, flags=re.IGNORECASE
-            )
-            author_stripped = re.sub(
-                r"\s+and\s+(others?|others?)\s*$", "", author_stripped, flags=re.IGNORECASE
-            )
-            author_stripped = re.sub(
-                r",?\s+et\s+al\.?\s*$", "", author_stripped, flags=re.IGNORECASE
-            )
-            author_stripped = author_stripped.strip().rstrip(",").strip()
-            # Check for suffix letter after year: 2020a, 2020b
+            # If raw_author contains a secondary citation ("Smith, 2005, dẫn theo Tran"),
+            # strip everything up to the secondary citation keyword or take primary author.
+            if re.search(r"\b(?:19|20)\d{2}\b", raw_author):
+                raw_author = re.split(r",\s*(?:19|20)\d{2}", raw_author)[0].strip()
             year_suffix = None
             if len(year) == 5 and year[4] in "abcdfgh":
                 year_suffix = year[4]
                 year = year[:4]
-            normalized = self._normalize_last_name(author_stripped)
+            normalized = self._clean_intext_author(raw_author)
             return normalized, year, year_suffix
 
-        # Try "Author et al. (Year)" format (no parens around author)
+        # Try "Author et al. / và cộng sự (Year)" format (no parens around author)
         m2 = _APA_ETAL_YEAR_RE.search(text_normalized)
         if m2:
             raw_author = m2.group(1).strip()
             year = m2.group(2).strip()
-            # Check for suffix letter after year: 2020a, 2020b
             year_suffix = None
             if len(year) == 5 and year[4] in "abcdfgh":
                 year_suffix = year[4]
                 year = year[:4]
-            normalized = self._normalize_last_name(raw_author)
+            normalized = self._clean_intext_author(raw_author)
             return normalized, year, year_suffix
 
         m3 = _NARRATIVE_YEAR_RE.search(text_normalized)
         if m3:
-            raw_author = re.sub(r"\s+et\s+al\.?\s*$", "", m3.group(1), flags=re.I).strip()
+            raw_author = m3.group(1).strip()
             year = m3.group(2)
             year_suffix = year[4:] if len(year) == 5 else None
-            return self._normalize_last_name(raw_author), year[:4], year_suffix
+            return self._clean_intext_author(raw_author), year[:4], year_suffix
 
         return None, None, None
 
