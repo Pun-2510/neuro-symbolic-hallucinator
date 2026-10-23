@@ -1,29 +1,36 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { type Verdict, type ValidationLabel } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
-import { getSourceDisplayName, getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
+import {
+  getSourceDisplayName,
+  getVerdictExplanation,
+  isUrlResource,
+} from '@/lib/verdictExplanation';
 import { useEssayPolling } from '@/hooks/useEssayPolling';
+import { EssayHeader } from './essay/EssayHeader';
+import { EssayActionBar } from './essay/EssayActionBar';
 import {
   AlertTriangle,
   AlertCircle,
   Info,
-  ArrowLeft,
   Loader2,
   ChevronDown,
   ChevronUp,
   Database,
   XCircle,
   CheckCircle,
+  Scale,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 /* ============================================================
-   SourceLogic — Issues Page Component
-   Based on UX/UI Concept Section 12: Issues Page
+   SourceLogic — Issues Page Component (Scholarly Precision v2.0)
    Shows all verification issues grouped by severity
    ============================================================ */
 
@@ -46,50 +53,54 @@ function getSeverity(label: ValidationLabel): Severity {
 
 const severityConfig = {
   critical: {
-    label: 'Critical',
-    color: 'red',
-    bgClass: 'bg-red-50 dark:bg-red-950',
-    borderClass: 'border-red-200 dark:border-red-800',
-    icon: <XCircle className="h-5 w-5" />,
+    labelEn: 'Critical (Suspected Hallucination)',
+    labelVi: 'Nghiêm trọng (Nghi ngờ Bịa đặt)',
+    shortLabel: 'Critical',
+    bgClass: 'bg-red-50 dark:bg-red-950/70',
+    borderClass: 'border-red-200 dark:border-red-800/80',
+    icon: <XCircle className="h-4 w-4" />,
     iconColor: 'text-red-600 dark:text-red-400',
     textColor: 'text-red-700 dark:text-red-300',
-    bgCard: 'bg-red-50/50 dark:bg-red-950/50',
-    borderCard: 'border-red-100 dark:border-red-900',
+    bgCard: 'bg-red-50/40 dark:bg-red-950/25',
+    borderCard: 'border-red-200/80 dark:border-red-900/70',
   },
   warning: {
-    label: 'Warning',
-    color: 'amber',
-    bgClass: 'bg-amber-50 dark:bg-amber-950',
-    borderClass: 'border-amber-200 dark:border-amber-800',
-    icon: <AlertTriangle className="h-5 w-5" />,
+    labelEn: 'Warning (Metadata Drift)',
+    labelVi: 'Cảnh báo (Sai lệch Metadata)',
+    shortLabel: 'Warning',
+    bgClass: 'bg-amber-50 dark:bg-amber-950/70',
+    borderClass: 'border-amber-200 dark:border-amber-800/80',
+    icon: <AlertTriangle className="h-4 w-4" />,
     iconColor: 'text-amber-600 dark:text-amber-400',
     textColor: 'text-amber-700 dark:text-amber-300',
-    bgCard: 'bg-amber-50/50 dark:bg-amber-950/50',
-    borderCard: 'border-amber-100 dark:border-amber-900',
+    bgCard: 'bg-amber-50/40 dark:bg-amber-950/25',
+    borderCard: 'border-amber-200/80 dark:border-amber-900/70',
   },
   info: {
-    label: 'Info',
-    color: 'slate',
-    bgClass: 'bg-slate-50 dark:bg-slate-800',
+    labelEn: 'Info (Unresolved / Web Resource)',
+    labelVi: 'Thông tin (Chưa xác định / Liên kết Web)',
+    shortLabel: 'Info',
+    bgClass: 'bg-slate-100 dark:bg-slate-800',
     borderClass: 'border-slate-200 dark:border-slate-700',
-    icon: <Info className="h-5 w-5" />,
+    icon: <Info className="h-4 w-4" />,
     iconColor: 'text-slate-600 dark:text-slate-300',
     textColor: 'text-slate-700 dark:text-slate-300',
-    bgCard: 'bg-slate-50/50 dark:bg-slate-800/50',
-    borderCard: 'border-slate-100 dark:border-slate-800',
+    bgCard: 'bg-slate-50/60 dark:bg-slate-900/60',
+    borderCard: 'border-slate-200/80 dark:border-slate-800',
   },
 };
 
 function SourceIcon({ source }: { source: string }) {
   const lower = source.toLowerCase();
-  if (lower.includes('crossref')) return <span className="text-xs font-mono">CR</span>;
-  if (lower.includes('openalex')) return <span className="text-xs font-mono">OA</span>;
-  if (lower.includes('semantic') || lower.includes('s2')) return <span className="text-xs font-mono">S2</span>;
-  if (lower.includes('core')) return <span className="text-xs font-mono">CO</span>;
-  return <Database className="h-3 w-3" />;
+  if (lower.includes('crossref')) return <span className="text-[11px] font-mono font-bold">CR</span>;
+  if (lower.includes('openalex')) return <span className="text-[11px] font-mono font-bold">OA</span>;
+  if (lower.includes('semantic') || lower.includes('s2'))
+    return <span className="text-[11px] font-mono font-bold">S2</span>;
+  if (lower.includes('core')) return <span className="text-[11px] font-mono font-bold">CO</span>;
+  return <Database className="h-3.5 w-3.5" />;
 }
 
-function IssueCard({ verdict }: { verdict: Verdict }) {
+function IssueCard({ verdict, lang }: { verdict: Verdict; lang: 'vi' | 'en' }) {
   const [expanded, setExpanded] = useState(false);
   const severity = getSeverity(verdict.label);
   const config = severityConfig[severity];
@@ -98,19 +109,29 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
 
   function getIssueDescription(v: Verdict): string {
     if (isUrlResource(v)) {
-      return `URL resource: ${v.citation_raw}. Excluded from CIS scoring.`;
+      return lang === 'vi'
+        ? `Tài nguyên URL: ${v.citation_raw}. Không tính vào điểm CIS.`
+        : `URL resource: ${v.citation_raw}. Excluded from CIS scoring.`;
     }
     if (v.label === 'suspected_hallucination') {
-      return 'No matching publication was found.';
+      return lang === 'vi'
+        ? 'Không tìm thấy ấn phẩm khớp trong bất kỳ cơ sở dữ liệu học thuật nào.'
+        : 'No matching publication was found in any scholarly database.';
     }
     if (v.label === 'metadata_error') {
       if (v.mismatched_fields.length > 0) {
-        return `${v.mismatched_fields.join(', ')} mismatch`;
+        return lang === 'vi'
+          ? `Sai lệch trường: ${v.mismatched_fields.join(', ')}`
+          : `${v.mismatched_fields.join(', ')} mismatch`;
       }
-      return 'Metadata inconsistency detected.';
+      return lang === 'vi'
+        ? 'Phát hiện không nhất quán trong metadata tài liệu tham khảo.'
+        : 'Metadata inconsistency detected.';
     }
     if (v.label === 'unresolved') {
-      return 'Unable to verify due to insufficient data.';
+      return lang === 'vi'
+        ? 'Không đủ dữ liệu định danh (DOI/Tác giả/Tiêu đề) để xác minh tự động.'
+        : 'Unable to verify due to insufficient data.';
     }
     return getVerdictExplanation(v);
   }
@@ -119,26 +140,32 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
 
   return (
     <Card
-      className={`p-4 transition-all ${config.bgCard} ${config.borderCard}`}
+      className={`p-4 rounded-xl border transition-all ${config.bgCard} ${config.borderCard}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <VerdictBadge verdict={isUrlResource(verdict) ? 'resource' : verdict.label} size="sm" />
-            <span className={`text-sm font-semibold ${config.textColor}`}>
-              Citation #{citationNum}
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+              [{citationNum}]
+            </span>
+            <VerdictBadge
+              verdict={isUrlResource(verdict) ? 'resource' : verdict.label}
+              size="sm"
+            />
+            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+              Conf: <strong>{Math.round(verdict.confidence * 100)}%</strong>
             </span>
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">
-            <span className="font-medium font-serif">{verdict.citation_raw}</span>
+          <p className="text-sm text-slate-900 dark:text-slate-100 mb-1.5 font-serif">
+            {verdict.citation_raw}
           </p>
-          <p className={`text-sm ${config.textColor}`}>
+          <p className={`text-xs font-medium ${config.textColor}`}>
             {getIssueDescription(verdict)}
           </p>
         </div>
         <button
           onClick={() => setExpanded(!expanded)}
-          className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${config.iconColor}`}
+          className={`p-2 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 transition-colors ${config.iconColor}`}
           aria-label={expanded ? 'Collapse details' : 'Expand details'}
         >
           {expanded ? (
@@ -150,73 +177,76 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
       </div>
 
       {expanded && (
-        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-4">
-          <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
-              What this means
-            </h4>
-            <p className="text-sm text-slate-700 dark:text-slate-300">
-              {getVerdictExplanation(verdict)}
-            </p>
+        <div className="mt-4 pt-4 border-t border-slate-200/80 dark:border-slate-800 space-y-4">
+          <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 flex items-start gap-2.5">
+            <Scale className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">
+                {lang === 'vi' ? 'Giải thích Suy diễn' : 'What this means'}
+              </h4>
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+                {getVerdictExplanation(verdict)}
+              </p>
+            </div>
           </div>
 
-          {verdict.mismatched_fields.length > 0 && (
-            <div>
-              <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
-                Mismatched Fields
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {verdict.mismatched_fields.map((field) => (
-                  <Badge
-                    key={field}
-                    variant="metadata_error"
-                    className="px-2 py-0.5 rounded-md text-xs font-medium"
-                  >
-                    {field}
-                  </Badge>
-                ))}
+          <div className="grid sm:grid-cols-2 gap-4">
+            {verdict.mismatched_fields.length > 0 && (
+              <div>
+                <h4 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                  {lang === 'vi' ? 'Trường Không Khớp' : 'Mismatched Fields'}
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {verdict.mismatched_fields.map((field) => (
+                    <Badge
+                      key={field}
+                      variant="metadata_error"
+                      className="px-2 py-0.5 rounded-md text-xs font-mono"
+                    >
+                      {field}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {verdict.triggered_rules.length > 0 && (
-            <div>
-              <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
-                Triggered Rules
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {verdict.triggered_rules.map((rule) => (
-                  <Badge
-                    key={rule}
-                    variant="outline"
-                    className="px-2 py-0.5 rounded text-xs font-mono bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                  >
-                    {rule}
-                  </Badge>
-                ))}
+            {verdict.triggered_rules.length > 0 && (
+              <div>
+                <h4 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                  {lang === 'vi' ? 'Luật Kích Hoạt' : 'Triggered Rules'}
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {verdict.triggered_rules.map((rule) => (
+                    <Badge
+                      key={rule}
+                      variant="outline"
+                      className="px-2 py-0.5 rounded text-xs font-mono bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+                    >
+                      {rule}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {sourceResults.length > 0 && (
             <div>
-              <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
-                Source Lookup
+              <h4 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                {lang === 'vi' ? 'Nguồn Đối Chiếu' : 'Source Lookup'}
               </h4>
-              <div className="space-y-1">
+              <div className="grid sm:grid-cols-2 gap-2">
                 {sourceResults.map((source, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between py-1 text-sm"
+                    className="flex items-center justify-between px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs"
                   >
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-300">
                       <SourceIcon source={source.source} />
-                      <span className="text-slate-700 dark:text-slate-300 capitalize">
-                        {getSourceDisplayName(source.source)}
-                      </span>
+                      <span>{getSourceDisplayName(source.source)}</span>
                     </span>
-                    <span className="text-slate-600 dark:text-slate-300">
-                      Match
+                    <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      MATCH
                     </span>
                   </div>
                 ))}
@@ -226,8 +256,8 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
 
           {verdict.confidence > 0 && (
             <div>
-              <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
-                Confidence
+              <h4 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                {lang === 'vi' ? 'Độ tin cậy' : 'Confidence'}
               </h4>
               <div className="flex items-center gap-2">
                 <Progress
@@ -237,30 +267,14 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
                     verdict.confidence >= 0.8
                       ? 'bg-emerald-500'
                       : verdict.confidence >= 0.5
-                      ? 'bg-amber-500'
-                      : 'bg-red-500'
+                        ? 'bg-amber-500'
+                        : 'bg-red-500'
                   }
                 />
-                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                <span className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300">
                   {Math.round(verdict.confidence * 100)}%
                 </span>
               </div>
-            </div>
-          )}
-
-          {verdict.mapping_status && verdict.mapping_status !== 'matched' && (
-            <div>
-              <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1">
-                Mapping Status
-              </h4>
-              <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium ${
-                verdict.mapping_status === 'missing_reference'
-                  ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                  : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
-              }`}>
-                {verdict.mapping_status === 'missing_reference' && <AlertCircle className="h-3 w-3" />}
-                {verdict.mapping_status.replace(/_/g, ' ')}
-              </span>
             </div>
           )}
         </div>
@@ -271,10 +285,12 @@ function IssueCard({ verdict }: { verdict: Verdict }) {
 
 function SeveritySection({
   severity,
-  verdicts
+  verdicts,
+  lang,
 }: {
   severity: Severity;
   verdicts: Verdict[];
+  lang: 'vi' | 'en';
 }) {
   const config = severityConfig[severity];
   const [isOpen, setIsOpen] = useState(true);
@@ -285,33 +301,39 @@ function SeveritySection({
     <div className="space-y-3">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between p-3 rounded-xl border ${config.bgCard} ${config.borderCard} transition-all hover:opacity-90`}
+        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border ${config.bgCard} ${config.borderCard} transition-all hover:opacity-95`}
       >
         <div className="flex items-center gap-3">
-          <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${config.bgClass} ${config.borderClass} border`}>
+          <div
+            className={`flex items-center justify-center w-8 h-8 rounded-lg ${config.bgClass} ${config.borderClass} border`}
+          >
             <span className={config.iconColor}>{config.icon}</span>
           </div>
           <div className="text-left">
-            <span className={`font-semibold ${config.textColor}`}>{config.label}</span>
-            <span className="ml-2 text-sm text-slate-600 dark:text-slate-300">
-              {verdicts.length} {verdicts.length === 1 ? 'issue' : 'issues'}
+            <span className={`font-display font-bold text-sm ${config.textColor}`}>
+              {lang === 'vi' ? config.labelVi : config.labelEn}
+            </span>
+            <span className="ml-2 text-xs font-mono text-slate-500 dark:text-slate-400">
+              ({verdicts.length} {verdicts.length === 1 ? 'issue' : 'issues'})
             </span>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`text-lg font-bold ${config.textColor}`}>{verdicts.length}</span>
+          <span className={`text-sm font-mono font-bold ${config.textColor}`}>
+            {verdicts.length}
+          </span>
           {isOpen ? (
-            <ChevronUp className={`h-5 w-5 ${config.iconColor}`} />
+            <ChevronUp className={`h-4 w-4 ${config.iconColor}`} />
           ) : (
-            <ChevronDown className={`h-5 w-5 ${config.iconColor}`} />
+            <ChevronDown className={`h-4 w-4 ${config.iconColor}`} />
           )}
         </div>
       </button>
 
       {isOpen && (
-        <div className="space-y-3 pl-2">
+        <div className="space-y-2.5 pl-1">
           {verdicts.map((verdict) => (
-            <IssueCard key={verdict.citation_id} verdict={verdict} />
+            <IssueCard key={verdict.citation_id} verdict={verdict} lang={lang} />
           ))}
         </div>
       )}
@@ -321,11 +343,13 @@ function SeveritySection({
 
 export function IssuesPage() {
   const { id } = useParams<{ id: string }>();
+  const { i18n } = useTranslation();
+  const lang: 'vi' | 'en' = i18n.language?.startsWith('vi') ? 'vi' : 'en';
   const [filter, setFilter] = useState<'all' | 'critical' | 'warning' | 'info'>('all');
 
   const numericId = id ? parseInt(id, 10) : null;
   const { report, error } = useEssayPolling(
-    numericId !== null && !Number.isNaN(numericId) && numericId > 0 ? numericId : null,
+    numericId !== null && !Number.isNaN(numericId) && numericId > 0 ? numericId : null
   );
 
   const issuesBySeverity = useMemo(() => {
@@ -351,17 +375,25 @@ export function IssuesPage() {
         { severity: 'info' as Severity, data: issuesBySeverity.info },
       ];
     }
-    return [{ severity: filter as Severity, data: issuesBySeverity[filter as keyof typeof issuesBySeverity] }];
+    return [
+      {
+        severity: filter as Severity,
+        data: issuesBySeverity[filter as keyof typeof issuesBySeverity],
+      },
+    ];
   }, [filter, issuesBySeverity]);
 
   if (error) {
     return (
-      <Alert variant="destructive" className="card p-6">
+      <Alert variant="destructive" className="card p-6 rounded-2xl">
         <AlertCircle className="h-5 w-5" />
         <AlertTitle className="font-medium">Error loading issues</AlertTitle>
         <AlertDescription>
           <p className="text-sm mt-1">{error}</p>
-          <Link to="/history" className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
+          <Link
+            to="/history"
+            className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block"
+          >
             ← Back to Reports
           </Link>
         </AlertDescription>
@@ -373,135 +405,169 @@ export function IssuesPage() {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin" />
-        <span className="ml-3 text-slate-600 dark:text-slate-300">Loading issues...</span>
+        <span className="ml-3 text-slate-600 dark:text-slate-300 font-mono text-sm">
+          Loading issues...
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <Link
-          to={`/verification/report/${id}`}
-          className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 mb-3 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Report
-        </Link>
-        <div className="flex items-start justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
-              Issues
-            </h1>
-            <p className="text-slate-600 dark:text-slate-300 mt-1 truncate" title={report.filename}>
-              {report.filename}
-            </p>
-          </div>
+    <div className="space-y-6 pb-10">
+      {/* Shared Report Header */}
+      <EssayHeader
+        essayId={report.essay_id}
+        filename={report.filename}
+        numPages={report.num_pages}
+        numCitations={report.num_citations}
+        styleName={report.style_profile?.style}
+      />
+
+      {/* Shared Multi-Tab Diagnostic Navigation */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <EssayActionBar essayId={id ?? ''} />
+        <div className="text-xs font-mono text-slate-500 dark:text-slate-400">
+          {lang === 'vi' ? 'Tổng vấn đề phát hiện:' : 'Total Flagged Issues:'}{' '}
+          <strong className="text-amber-600 dark:text-amber-400">{totalIssues}</strong> /{' '}
+          {report.verdicts.length} citations
         </div>
       </div>
 
-      {/* Summary stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card className="stat-card text-center p-4">
-          <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalIssues}</p>
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Total Issues</p>
-        </Card>
-        <Card className="stat-card text-center p-4 border-red-200 dark:border-red-800">
-          <p className="text-2xl font-bold text-red-600 dark:text-red-400">{issuesBySeverity.critical.length}</p>
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Critical</p>
-        </Card>
-        <Card className="stat-card text-center p-4 border-amber-200 dark:border-amber-800">
-          <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{issuesBySeverity.warning.length}</p>
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Warning</p>
-        </Card>
-        <Card className="stat-card text-center p-4 border-slate-200 dark:border-slate-700">
-          <p className="text-2xl font-bold text-slate-600 dark:text-slate-300">{issuesBySeverity.info.length}</p>
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Info</p>
-        </Card>
-      </div>
-
-      {/* Filter tabs */}
-      <div
-        role="group"
-        aria-label="Filter issues by severity"
-        className="flex gap-2 flex-wrap"
-      >
-        {(['all', 'critical', 'warning', 'info'] as const).map((f) => {
-          const isActive = filter === f;
-          return (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              aria-pressed={isActive}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                isActive
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-              {f !== 'all' && (
-                <span className="ml-2 opacity-75">
-                  ({issuesBySeverity[f as keyof typeof issuesBySeverity].length})
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Issues sections */}
-      {totalIssues === 0 ? (
-        <Card className="p-12 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-              <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-            </div>
+      {/* 4 Summary Metric Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <Card className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              {lang === 'vi' ? 'Tổng vấn đề' : 'Total Issues'}
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              01
+            </span>
           </div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-            No Issues Found
-          </h3>
-          <p className="text-slate-600 dark:text-slate-300 max-w-sm mx-auto">
-            All citations and references have been verified successfully. No critical, warning, or info issues detected.
+          <p className="text-2xl font-bold font-mono tabular-nums text-slate-900 dark:text-slate-100">
+            {totalIssues}
           </p>
         </Card>
-      ) : (
-        <div className="space-y-4">
-          {displaySections.map(({ severity, data }) => (
-            <SeveritySection
-              key={severity}
-              severity={severity}
-              verdicts={data}
-            />
-          ))}
-        </div>
-      )}
 
-      {/* Legend */}
-      <Card className="p-4 bg-slate-50 dark:bg-slate-800/50">
-        <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">
-          Severity Legend
-        </h3>
-        <div className="flex flex-wrap gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-            <span className="text-slate-600 dark:text-slate-300">
-              Critical: Suspected hallucination
+        <Card className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-red-200/80 dark:border-red-900/70 shadow-2xs">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-red-600 dark:text-red-400">
+              Critical
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300">
+              02
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            <span className="text-slate-600 dark:text-slate-300">
-              Warning: Metadata error
+          <p className="text-2xl font-bold font-mono tabular-nums text-red-600 dark:text-red-400">
+            {issuesBySeverity.critical.length}
+          </p>
+        </Card>
+
+        <Card className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-900/70 shadow-2xs">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+              Warning
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
+              03
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <Info className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-            <span className="text-slate-600 dark:text-slate-300">
-              Info: Unresolved
+          <p className="text-2xl font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400">
+            {issuesBySeverity.warning.length}
+          </p>
+        </Card>
+
+        <Card className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Info
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              04
             </span>
           </div>
+          <p className="text-2xl font-bold font-mono tabular-nums text-slate-700 dark:text-slate-200">
+            {issuesBySeverity.info.length}
+          </p>
+        </Card>
+      </div>
+
+      {/* IDE Window Container for Issues List */}
+      <Card className="p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        {/* Top Window Chrome */}
+        <div className="px-4 sm:px-6 py-3.5 bg-slate-50/80 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-400/80 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80 inline-block" />
+            </div>
+            <Separator orientation="vertical" className="h-4" />
+            <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+              anomaly_inspector.py · {lang === 'vi' ? 'Danh mục Vấn đề' : 'Diagnostic Issues'}
+            </span>
+          </div>
+
+          {/* Filter tabs inside Chrome Bar */}
+          <div
+            role="group"
+            aria-label="Filter issues by severity"
+            className="flex gap-1.5 flex-wrap"
+          >
+            {(['all', 'critical', 'warning', 'info'] as const).map((f) => {
+              const isActive = filter === f;
+              return (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  aria-pressed={isActive}
+                  className={`px-3 py-1 rounded-lg text-xs font-mono font-semibold transition-all border ${
+                    isActive
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                  }`}
+                >
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                  {f !== 'all' && (
+                    <span className="ml-1.5 opacity-80">
+                      ({issuesBySeverity[f as keyof typeof issuesBySeverity].length})
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="p-5 sm:p-6">
+          {totalIssues === 0 ? (
+            <div className="p-10 text-center">
+              <div className="flex justify-center mb-4">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                  <CheckCircle className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                </div>
+              </div>
+              <h3 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100 mb-1.5">
+                {lang === 'vi' ? 'Không phát hiện vấn đề nào' : 'No Issues Found'}
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+                {lang === 'vi'
+                  ? 'Tất cả trích dẫn và tài liệu tham khảo đã được xác minh hợp lệ qua cơ sở dữ liệu học thuật.'
+                  : 'All citations and references have been verified successfully. No critical, warning, or info issues detected.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {displaySections.map(({ severity, data }) => (
+                <SeveritySection
+                  key={severity}
+                  severity={severity}
+                  verdicts={data}
+                  lang={lang}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </Card>
     </div>
