@@ -68,6 +68,8 @@ class AuthConfig(BaseModel):
 
     jwt_secret: str = "change-me-in-production-use-env-var"
     token_expire_hours: int = 24
+    activation_expire_hours: int = 24
+    reset_expire_minutes: int = 30
 
     @field_validator("jwt_secret")
     @classmethod
@@ -97,6 +99,24 @@ class AuthConfig(BaseModel):
                     f"JWT_SECRET must be at least 32 characters. Got {len(v)} characters."
                 )
         return v
+
+
+class EmailConfig(BaseModel):
+    """SMTP configuration for transactional HTML emails (activation, password reset)."""
+
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 465
+    smtp_user: str = "wendyxsausage@gmail.com"
+    smtp_password: str = ""
+    from_email: str = "wendyxsausage@gmail.com"
+    from_name: str = "CITRA — Academic Source Verification"
+    frontend_url: str = "http://localhost:5173"
+    enabled: bool = True
+
+    @property
+    def normalized_password(self) -> str:
+        """Return Google App Password with spaces stripped."""
+        return (self.smtp_password or "").replace(" ", "").strip()
 
 
 class PathsConfig(BaseModel):
@@ -390,6 +410,7 @@ class Settings(BaseSettings):
     app: AppConfig = Field(default_factory=AppConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     auth: AuthConfig = Field(default_factory=AuthConfig)
+    email: EmailConfig = Field(default_factory=EmailConfig)
     paths: PathsConfig = Field(default_factory=PathsConfig)
     extraction: ExtractionConfig = Field(default_factory=ExtractionConfig)
     style_detection: StyleDetectionConfig = Field(default_factory=StyleDetectionConfig)
@@ -427,6 +448,27 @@ class Settings(BaseSettings):
         env_app_env = os.getenv("APP_ENV")
         if env_app_env:
             self.app.env = env_app_env
+
+        # Email / SMTP env overrides
+        if os.getenv("SMTP_HOST"):
+            self.email.smtp_host = os.environ["SMTP_HOST"]
+        if os.getenv("SMTP_PORT"):
+            try:
+                self.email.smtp_port = int(os.environ["SMTP_PORT"])
+            except ValueError:
+                pass
+        if os.getenv("SMTP_USER"):
+            self.email.smtp_user = os.environ["SMTP_USER"]
+        if os.getenv("SMTP_PASSWORD"):
+            self.email.smtp_password = os.environ["SMTP_PASSWORD"]
+        if os.getenv("SMTP_FROM_EMAIL"):
+            self.email.from_email = os.environ["SMTP_FROM_EMAIL"]
+        elif os.getenv("SMTP_USER"):
+            self.email.from_email = os.environ["SMTP_USER"]
+        if os.getenv("SMTP_FROM_NAME"):
+            self.email.from_name = os.environ["SMTP_FROM_NAME"]
+        if os.getenv("FRONTEND_URL"):
+            self.email.frontend_url = os.environ["FRONTEND_URL"].rstrip("/")
 
         if is_test_runtime():
             self.app.env = "test"
