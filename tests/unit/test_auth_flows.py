@@ -1,0 +1,330 @@
+"""Unit & Integration tests for Register, Account Activation, Forgot Password, and Reset Password."""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+
+import pytest
+from fastapi.testclient import TestClient
+
+from integrity_checker.api.main import app
+from integrity_checker.api.services.email_service import get_email_service
+from integrity_checker.db.models import AuthToken, Session as SessionModel, User
+from integrity_checker.db.repository import Repository
+from integrity_checker.db.session import get_session
+
+
+@pytest.fixture(autouse=True)
+def clean_auth_db():
+    """Ensure clean DB and email outbox before and after each test."""
+    email_svc = get_email_service()
+    email_svc.clear_outbox()
+    session = get_session()
+    session.query(AuthToken).delete()
+    session.query(SessionModel).delete()
+    session.query(User).delete()
+    session.commit()
+    session.close()
+    yield
+    email_svc.clear_outbox()
+    session = get_session()
+    session.query(AuthToken).delete()
+    session.query(SessionModel).delete()
+    session.query(User).delete()
+    session.commit()
+    session.close()
+
+
+class TestRegisterAndActivateFlow:
+    def test_register_creates_inactive_user_and_sends_html_email(self):
+        client = TestClient(app)
+        email_svc = get_email_service()
+
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "username": "student_minh",
+                "email": "Minh.Student@example.com",
+                "password": "StrongPassword123",
+                "full_name": "Nguyễn Bảo Minh",
+                "institution": "Ton Duc Thang University",
+                "lang": "vi",
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["username"] == "student_minh"
+        assert data["email"] == "minh.student@example.com"
+        assert data["requires_activation"] is True
+        assert data["email_sent"] is True
+
+        # Check HTML activation email in outbox
+        assert len(email_svc.outbox) == 1
+        sent = email_svc.outbox[0]
+        assert sent.template_type == "activation"
+        assert sent.to_email == "minh.student@example.com"
+        assert sent.token is not None
+        assert "Kích hoạt Tài khoản Ngay" in sent.html_body
+
+        # Cannot log in before activating
+        login_before = client.post(
+            "/api/auth/login",
+            json={"username": "student_minh", "password": "StrongPassword123"},
+        )
+        assert login_before.status_code == 403
+        assert "ACCOUNT_NOT_ACTIVATED" in login_before.json()["detail"]
+
+        # Activate account using token from email
+        act_resp = client.post("/api/auth/activate", json={"token": sent.token})
+        assert act_resp.status_code == 200, act_resp.text
+        act_data = act_resp.json()
+        assert act_data["activated"] is True
+        assert act_data["already_active"] is False
+        assert act_data["username"] == "student_minh"
+
+        # Clicking the activation link a second time is idempotent when already active
+        act_again = client.post("/api/auth/activate", json={"token": sent.token})
+        assert act_again.status_code == 200
+        assert act_again.json()["already_active"] is True
+
+        # Can now log in by username AND by email
+        login_after = client.post(
+            "/api/auth/login",
+            json={"username": "student_minh", "password": "StrongPassword123"},
+        )
+        assert login_after.status_code == 200
+        assert login_after.json()["user"]["email_verified"] is True
+
+        login_by_email = client.post(
+            "/api/auth/login",
+            json={"username": "minh.student@example.com", "password": "StrongPassword123"},
+        )
+        assert login_by_email.status_code == 200
+        assert login_by_email.json()["user"]["username"] == "student_minh"
+
+    def test_register_rejects_duplicate_username_or_email_or_bad_username(self):
+        client = TestClient(app)
+
+        # Invalid characters in username
+        bad_user = client.post(
+            "/api/auth/register",
+            json={
+                "username": "bad user space",
+                "email": "a@example.com",
+                "password": "password123",
+            },
+        )
+        assert bad_user.status_code == 400
+
+        # Valid registration
+        ok = client.post(
+            "/api/auth/register",
+            json={
+                "username": "scholar1",
+                "email": "scholar1@example.com",
+                "password": "password123",
+            },
+        )
+        assert ok.status_code == 200
+
+        # Duplicate username
+        dup_u = client.post(
+            "/api/auth/register",
+            json={
+                "username": "scholar1",
+                "email": "other@example.com",
+                "password": "password123",
+            },
+        )
+        assert dup_u.status_code == 400
+        assert "username" in dup_u.json()["detail"].lower()
+
+        # Duplicate email (case-insensitive)
+        dup_e = client.post(
+            "/api/auth/register",
+            json={
+                "username": "scholar2",
+                "email": "SCHOLAR1@EXAMPLE.COM",
+                "password": "password123",
+            },
+        )
+        assert dup_e.status_code == 400
+        assert "email" in dup_e.json()["detail"].lower()
+
+    def test_resend_activation_invalidates_old_token_and_issues_new(self):
+        client = TestClient(app)
+        email_svc = get_email_service()
+
+        client.post(
+            "/api/auth/register",
+            json={
+                "username": "resend_user",
+                "email": "resend@example.com",
+                "password": "password123",
+            },
+        )
+        first_token = email_svc.outbox[-1].token
+        assert first_token is not None
+
+        # Resend activation using username
+        resend_resp = client.post(
+            "/api/auth/resend-activation",
+            json={"identifier": "resend_user", "lang": "en"},
+        )
+        assert resend_resp.status_code == 200
+        second_token = email_svc.outbox[-1].token
+        assert second_token is not None
+        assert second_token != first_token
+
+        # Old token should now be rejected
+        old_act = client.post("/api/auth/activate", json={"token": first_token})
+        assert old_act.status_code == 400
+
+        # New token activates the account
+        new_act = client.post("/api/auth/activate", json={"token": second_token})
+        assert new_act.status_code == 200
+        assert new_act.json()["activated"] is True
+
+        # Resending when already active returns 400
+        already_resp = client.post(
+            "/api/auth/resend-activation",
+            json={"identifier": "resend@example.com"},
+        )
+        assert already_resp.status_code == 400
+
+    def test_expired_or_invalid_activation_token_rejected(self):
+        client = TestClient(app)
+        email_svc = get_email_service()
+
+        # Totally invalid token
+        bad = client.post("/api/auth/activate", json={"token": "nonexistent_token"})
+        assert bad.status_code == 400
+
+        # Expired token
+        client.post(
+            "/api/auth/register",
+            json={
+                "username": "exp_user",
+                "email": "exp@example.com",
+                "password": "password123",
+            },
+        )
+        tok = email_svc.outbox[-1].token
+        assert tok is not None
+
+        session = get_session()
+        repo = Repository(session)
+        row = repo.get_auth_token(tok, "activation")
+        assert row is not None
+        row.expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+        session.commit()
+        session.close()
+
+        exp_resp = client.post("/api/auth/activate", json={"token": tok})
+        assert exp_resp.status_code == 400
+        assert "expired" in exp_resp.json()["detail"].lower()
+
+
+class TestForgotPasswordAndResetFlow:
+    def test_full_forgot_and_reset_password_flow_revokes_sessions(self):
+        client = TestClient(app)
+        email_svc = get_email_service()
+
+        # Register & activate user
+        client.post(
+            "/api/auth/register",
+            json={
+                "username": "prof_lan",
+                "email": "lan@example.com",
+                "password": "OldPassword123",
+                "full_name": "PGS.TS Nguyễn Thị Lan",
+            },
+        )
+        act_tok = email_svc.outbox[-1].token
+        client.post("/api/auth/activate", json={"token": act_tok})
+
+        # Login to create an active JWT session
+        login1 = client.post(
+            "/api/auth/login",
+            json={"username": "prof_lan", "password": "OldPassword123"},
+        )
+        assert login1.status_code == 200
+        old_jwt = login1.json()["token"]
+
+        # Request forgot password
+        email_svc.clear_outbox()
+        forgot_resp = client.post(
+            "/api/auth/forgot-password",
+            json={"email": "lan@example.com", "lang": "vi"},
+        )
+        assert forgot_resp.status_code == 200
+        assert len(email_svc.outbox) == 1
+        reset_email = email_svc.outbox[0]
+        assert reset_email.template_type == "password_reset"
+        reset_token = reset_email.token
+        assert reset_token is not None
+
+        # Verify reset token endpoint
+        verify_resp = client.get(f"/api/auth/verify-reset-token?token={reset_token}")
+        assert verify_resp.status_code == 200
+        vdata = verify_resp.json()
+        assert vdata["valid"] is True
+        assert vdata["username"] == "prof_lan"
+        assert vdata["email"] == "lan@example.com"
+
+        # Reset password
+        reset_resp = client.post(
+            "/api/auth/reset-password",
+            json={
+                "token": reset_token,
+                "new_password": "NewSecurePassword456",
+                "lang": "vi",
+            },
+        )
+        assert reset_resp.status_code == 200
+
+        # Password changed notification email sent
+        assert email_svc.outbox[-1].template_type == "password_changed"
+
+        # Token cannot be reused
+        reuse_verify = client.get(f"/api/auth/verify-reset-token?token={reset_token}")
+        assert reuse_verify.json()["valid"] is False
+        assert reuse_verify.json()["reason"] == "used"
+
+        reuse_reset = client.post(
+            "/api/auth/reset-password",
+            json={"token": reset_token, "new_password": "AnotherPassword789"},
+        )
+        assert reuse_reset.status_code == 400
+
+        # Old JWT session should be revoked (401 on /api/auth/me)
+        me_old = client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {old_jwt}"},
+        )
+        assert me_old.status_code == 401
+
+        # Old password no longer works
+        old_login = client.post(
+            "/api/auth/login",
+            json={"username": "prof_lan", "password": "OldPassword123"},
+        )
+        assert old_login.status_code == 401
+
+        # New password works
+        new_login = client.post(
+            "/api/auth/login",
+            json={"username": "prof_lan", "password": "NewSecurePassword456"},
+        )
+        assert new_login.status_code == 200
+
+    def test_forgot_password_unknown_email_does_not_leak_existence(self):
+        client = TestClient(app)
+        email_svc = get_email_service()
+
+        resp = client.post(
+            "/api/auth/forgot-password",
+            json={"email": "nobody@example.com"},
+        )
+        assert resp.status_code == 200
+        assert len(email_svc.outbox) == 0
