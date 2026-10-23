@@ -231,6 +231,7 @@ class Repository:
         is_overridden: bool = True,
         override_note: str | None = None,
         new_mapping_status: str | None = None,
+        overridden_by: str | None = None,
     ) -> VerdictRecord | None:
         """Update verdict (override by user)."""
         verdict = self.session.get(VerdictRecord, verdict_id)
@@ -242,8 +243,94 @@ class Repository:
             verdict.override_note = override_note
         if new_mapping_status is not None:
             verdict.mapping_status = new_mapping_status
+        if overridden_by is not None:
+            verdict.overridden_by = overridden_by
         self.session.flush()
         return verdict
+
+    def recalculate_essay_cis(self, essay_id: int) -> dict | None:
+        """Recalculate and persist essay.cis_json after verdict overrides."""
+        from integrity_checker.config import get_settings
+        from integrity_checker.logic.cis import MAPPING_PENALTIES
+
+        essay = self.session.get(EssayRecord, essay_id)
+        if not essay:
+            return None
+
+        verdicts = self.get_verdicts(essay_id)
+        academic_verdicts = [v for v in verdicts if v.label != "resource"]
+        n_academic = len(academic_verdicts)
+
+        existing_cis: dict = {}
+        if essay.cis_json:
+            try:
+                existing_cis = json.loads(essay.cis_json) or {}
+            except (json.JSONDecodeError, TypeError):
+                existing_cis = {}
+
+        existing_comps = existing_cis.get("components") or {}
+        w = get_settings().cis.weights
+
+        if n_academic == 0:
+            cis_dict = {
+                "score": 0.0,
+                "components": {
+                    "verified_ratio": 0.0,
+                    "metadata_accuracy": 0.0,
+                    "in_text_bib_consistency": 0.0,
+                    "format_consistency": 0.0,
+                    "identifier_validity": 0.0,
+                },
+                "weights_used": w.model_dump(),
+                "num_citations": 0,
+                "num_unresolved": 0,
+                "disclaimer": existing_cis.get("disclaimer", ""),
+            }
+        else:
+            verified = sum(1 for v in academic_verdicts if v.label == "verified")
+            meta_err = sum(1 for v in academic_verdicts if v.label == "metadata_error")
+            halluc = sum(1 for v in academic_verdicts if v.label == "suspected_hallucination")
+            num_unresolved = sum(1 for v in academic_verdicts if v.label == "unresolved")
+
+            verified_ratio = verified / n_academic
+            metadata_accuracy = max(0.0, 1.0 - (meta_err + halluc) / n_academic)
+            total_penalty = sum(
+                MAPPING_PENALTIES.get(v.mapping_status or "matched", 0.0)
+                for v in academic_verdicts
+            )
+            in_text_bib_consistency = max(0.0, 1.0 - total_penalty / n_academic)
+            format_consistency = float(existing_comps.get("format_consistency", 1.0))
+            identifier_validity = float(existing_comps.get("identifier_validity", verified_ratio))
+
+            score = round(
+                (
+                    verified_ratio * w.verified_ratio
+                    + metadata_accuracy * w.metadata_accuracy
+                    + in_text_bib_consistency * w.in_text_bib_consistency
+                    + format_consistency * w.format_consistency
+                    + identifier_validity * w.identifier_validity
+                )
+                * 100.0,
+                2,
+            )
+            cis_dict = {
+                "score": score,
+                "components": {
+                    "verified_ratio": round(verified_ratio, 4),
+                    "metadata_accuracy": round(metadata_accuracy, 4),
+                    "in_text_bib_consistency": round(in_text_bib_consistency, 4),
+                    "format_consistency": round(format_consistency, 4),
+                    "identifier_validity": round(identifier_validity, 4),
+                },
+                "weights_used": existing_cis.get("weights_used") or w.model_dump(),
+                "num_citations": n_academic,
+                "num_unresolved": num_unresolved,
+                "disclaimer": existing_cis.get("disclaimer", ""),
+            }
+
+        essay.cis_json = json.dumps(cis_dict, ensure_ascii=False)
+        self.session.flush()
+        return cis_dict
 
     def log_audit(
         self,

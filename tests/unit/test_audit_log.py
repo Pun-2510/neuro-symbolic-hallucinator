@@ -146,6 +146,13 @@ def test_override_writes_audit_log(clean_db):
         assert row.new_label == "verified"
         assert row.user == "admin"
         assert row.note == "manually confirmed via DOI check"
+
+        verdict_row = session.get(VerdictRecord, verdict_id)
+        assert verdict_row is not None
+        assert verdict_row.overridden_by == "admin"
+
+        essay_row = session.get(EssayRecord, essay_id)
+        assert essay_row is not None and essay_row.cis_json is not None
     finally:
         session.close()
 

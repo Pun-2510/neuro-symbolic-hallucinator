@@ -140,13 +140,14 @@ async def override_verdict(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid verdict_id")
 
-    # Capture original label BEFORE update so the audit log records the
-    # pre-override value (otherwise ``update_verdict`` mutates the row in
-    # the session and we'd write the new label twice).
-    original_label = next(
-        (r.label for r in repo.get_verdicts(essay_id) if r.id == v_id),
+    # Capture original label and mapping_status BEFORE update so the audit log
+    # records the pre-override values.
+    existing_verdict = next(
+        (r for r in repo.get_verdicts(essay_id) if r.id == v_id),
         None,
     )
+    original_label = existing_verdict.label if existing_verdict else None
+    original_mapping_status = existing_verdict.mapping_status if existing_verdict else None
 
     # Update DB
     updated = repo.update_verdict(
@@ -154,13 +155,22 @@ async def override_verdict(
         new_label=body.new_label,
         override_note=body.reason,
         new_mapping_status=body.new_mapping_status,
+        overridden_by=current_user.username,
     )
 
     if not updated:
         raise HTTPException(status_code=404, detail="Verdict not found")
 
-    # AuditLog: capture original label so the override trail is auditable.
-    if original_label is not None and original_label != body.new_label:
+    # Recalculate essay CIS score so report reflects the override immediately
+    repo.recalculate_essay_cis(essay_id)
+
+    # AuditLog: capture original label/status so the override trail is auditable.
+    label_changed = original_label is not None and original_label != body.new_label
+    mapping_changed = (
+        body.new_mapping_status is not None
+        and original_mapping_status != body.new_mapping_status
+    )
+    if original_label is not None and (label_changed or mapping_changed):
         repo.log_audit(
             verdict_id=v_id,
             original_label=original_label,
