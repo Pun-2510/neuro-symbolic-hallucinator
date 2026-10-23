@@ -15,6 +15,10 @@ import {
   Scale,
   XCircle,
   TrendingUp,
+  Layers,
+  Terminal,
+  GitBranch,
+  AlertCircle,
 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
@@ -28,6 +32,8 @@ import {
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Table,
@@ -39,7 +45,7 @@ import {
 } from '@/components/ui/table';
 
 /* ============================================================
-   SourceLogic — Dashboard Page Component (shadcn/ui v2.0)
+   SourceLogic — Dashboard Page Component (Scholarly Precision v2.0)
    Shows overview of all uploaded documents + aggregate stats
    ============================================================ */
 
@@ -59,6 +65,8 @@ export function DashboardPage() {
   const deleteMutation = useDeleteEssay();
   const [searchQuery, setSearchQuery] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  const lang = i18n.language?.startsWith('vi') ? 'vi' : 'en';
 
   const errorMessage = error
     ? error instanceof Error
@@ -89,152 +97,239 @@ export function DashboardPage() {
   // Stat cards data
   const statCards = [
     {
+      idx: '01',
       label: t('dashboard.totalDocuments'),
       value: stats.total_documents,
+      sub: lang === 'vi' ? 'Bản thảo PDF đã phân tích' : 'Analyzed PDF manuscripts',
       icon: FileText,
       color: 'text-indigo-600 dark:text-indigo-400',
-      bg: 'bg-indigo-50/80 dark:bg-indigo-950/60 border-indigo-200/70 dark:border-indigo-800/70',
+      iconBox:
+        'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+      badgeTone:
+        'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border-indigo-200/60 dark:border-indigo-800/60',
     },
     {
+      idx: '02',
       label: t('dashboard.totalCitations'),
       value: stats.total_citations,
+      sub: lang === 'vi' ? 'Trích dẫn bóc tách qua GROBID' : 'GROBID TEI-XML extractions',
       icon: Scale,
       color: 'text-emerald-600 dark:text-emerald-400',
-      bg: 'bg-emerald-50/80 dark:bg-emerald-950/60 border-emerald-200/70 dark:border-emerald-800/70',
+      iconBox:
+        'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+      badgeTone:
+        'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/60',
     },
     {
+      idx: '03',
       label: t('dashboard.avgCisScore'),
       value: stats.avg_cis_score !== null ? `${stats.avg_cis_score}%` : 'N/A',
+      sub: lang === 'vi' ? 'Chỉ số Toàn vẹn Trích dẫn (0–100)' : 'Citation Integrity Score (0–100)',
       icon: TrendingUp,
       color: 'text-amber-600 dark:text-amber-400',
-      bg: 'bg-amber-50/80 dark:bg-amber-950/60 border-amber-200/70 dark:border-amber-800/70',
+      iconBox:
+        'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+      badgeTone:
+        'bg-amber-50 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/60',
     },
     {
+      idx: '04',
       label: t('dashboard.verifiedRate'),
       value: stats.verified_rate > 0 ? `${stats.verified_rate}%` : 'N/A',
+      sub: lang === 'vi' ? 'Xác thực trên 5 CSDL học thuật' : 'Verified across 5 scholarly indexes',
       icon: CheckCircle2,
-      color: 'text-blue-600 dark:text-blue-400',
-      bg: 'bg-blue-50/80 dark:bg-blue-950/60 border-blue-200/70 dark:border-blue-800/70',
+      color: 'text-sky-600 dark:text-sky-400',
+      iconBox:
+        'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+      badgeTone:
+        'bg-sky-50 text-sky-700 dark:bg-sky-950/80 dark:text-sky-300 border-sky-200/60 dark:border-sky-800/60',
     },
   ];
 
-  const dateLocale = i18n.language?.startsWith('vi') ? 'vi-VN' : 'en-US';
+  const dateLocale = lang === 'vi' ? 'vi-VN' : 'en-US';
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
+    <div className="space-y-6 pb-8">
+      {/* Executive Page Header Banner */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
+              <Terminal className="h-3 w-3" />
+              {lang === 'vi' ? 'TRUNG TÂM KIỂM CHỨNG' : 'VERIFICATION WORKSPACE'}
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-[11px] font-mono text-slate-600 dark:text-slate-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              5 INDEXES READY
+            </span>
+          </div>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             {t('dashboard.title')}
           </h1>
-          <p className="text-slate-600 dark:text-slate-300 mt-1">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             {t('dashboard.subtitle')}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button asChild size="sm">
+
+        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+          {(isTeacher || isAdmin) && (
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-10 rounded-xl font-medium border-slate-200 dark:border-slate-700"
+            >
+              <Link to="/batch-upload">
+                <Layers className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <span>{t('nav.batchCheck')}</span>
+              </Link>
+            </Button>
+          )}
+          <Button
+            asChild
+            size="sm"
+            className="h-10 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm shadow-indigo-600/20 btn-shimmer"
+          >
             <Link to="/upload">
               <Upload className="h-4 w-4" />
               {t('dashboard.newCheck')}
             </Link>
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
             onClick={() => refetch()}
             disabled={isFetching}
             aria-label="Refresh essays list"
             title={t('common.refresh')}
-            className="min-h-10 min-w-10"
+            className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-700"
           >
-            <RefreshCw className={`h-5 w-5 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {statCards.map((card) => (
-          <Card key={card.label} className={`p-5 ${card.bg}`}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+      {/* 4 Architectural Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <Card
+              key={card.label}
+              className="card group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-200"
+            >
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className={`p-2.5 rounded-xl border ${card.iconBox}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <span
+                  className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md border ${card.badgeTone}`}
+                >
+                  {card.idx}
+                </span>
+              </div>
+              <p className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight ${card.color}`}>
+                {card.value}
+              </p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">
                 {card.label}
               </p>
-              <card.icon className={`h-5 w-5 ${card.color}`} />
-            </div>
-            <p className={`text-2xl font-bold font-mono tabular-nums ${card.color}`}>
-              {card.value}
-            </p>
-          </Card>
-        ))}
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <Search
-          className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-slate-500 pointer-events-none"
-          aria-hidden="true"
-        />
-        <Input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t('dashboard.searchPlaceholder')}
-          aria-label="Search documents"
-          className="h-11 pl-12 pr-10"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            aria-label="Clear search"
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-          >
-            <XCircle className="h-5 w-5" />
-          </button>
-        )}
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {card.sub}
+              </p>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Error */}
       {errorMessage && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="rounded-2xl">
           <AlertTriangle className="h-5 w-5" />
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
       )}
 
-      {/* Documents Table */}
-      <Card className="p-0 overflow-hidden">
+      {/* IDE Window Container for Document Registry & Search */}
+      <Card className="p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        {/* Top Window Chrome Bar */}
+        <div className="px-4 sm:px-6 py-3.5 bg-slate-50/80 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-400/80 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80 inline-block" />
+            </div>
+            <Separator orientation="vertical" className="h-4" />
+            <span className="font-mono text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              {t('dashboard.recentActivity')}
+            </span>
+            <Badge
+              variant="secondary"
+              className="font-mono text-[11px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60"
+            >
+              {filteredEssays.length} / {essays.length}
+            </Badge>
+          </div>
+
+          {/* Search Input inside Chrome Bar */}
+          <div className="relative w-full sm:w-80">
+            <Search
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 pointer-events-none"
+              aria-hidden="true"
+            />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('dashboard.searchPlaceholder')}
+              aria-label="Search documents"
+              className="h-9 pl-9 pr-8 text-xs rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Table or Empty State */}
         {isLoading && essays.length === 0 ? (
-          <div className="p-12 flex flex-col items-center justify-center">
+          <div className="p-14 flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
-            <p className="text-sm text-slate-600 dark:text-slate-300">
+            <p className="text-sm font-mono text-slate-600 dark:text-slate-300">
               {t('dashboard.loadingDocuments')}
             </p>
           </div>
         ) : filteredEssays.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-slate-100 dark:bg-slate-800 mx-auto mb-5">
-              <FileText className="h-10 w-10 text-slate-400 dark:text-slate-500" />
+          <div className="p-14 text-center">
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 mx-auto mb-4">
+              <FileText className="h-8 w-8 text-slate-400 dark:text-slate-500" />
             </div>
             {searchQuery ? (
               <>
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                <h3 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100 mb-1.5">
                   {t('dashboard.noDocumentsFound')}
                 </h3>
-                <p className="text-slate-600 dark:text-slate-300 mb-4">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                   {t('dashboard.noDocumentsMatch', { query: searchQuery })}
                 </p>
-                <Button variant="link" onClick={() => setSearchQuery('')}>
+                <Button variant="outline" size="sm" onClick={() => setSearchQuery('')} className="rounded-xl">
                   {t('dashboard.clearSearch')}
                 </Button>
               </>
             ) : (
               <>
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                <h3 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100 mb-1.5">
                   {t('dashboard.noDocumentsYet')}
                 </h3>
-                <p className="text-slate-600 dark:text-slate-300 mb-6">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto">
                   {isAdmin
                     ? t('dashboard.noDocumentsAdmin')
                     : isTeacher
@@ -242,7 +337,7 @@ export function DashboardPage() {
                       : t('dashboard.noDocumentsStudent')}
                 </p>
                 {!(isTeacher || isAdmin) && (
-                  <Button asChild>
+                  <Button asChild className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white">
                     <Link to="/upload">
                       <Upload className="h-4 w-4" />
                       {t('dashboard.uploadDocument')}
@@ -255,39 +350,59 @@ export function DashboardPage() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>{t('dashboard.tableDocument')}</TableHead>
-                <TableHead>{t('dashboard.tablePages')}</TableHead>
-                <TableHead>{t('dashboard.tableUploaded')}</TableHead>
-                <TableHead>{t('dashboard.tableActions')}</TableHead>
+              <TableRow className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200/80 dark:border-slate-800">
+                <TableHead className="font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 py-3 px-5">
+                  {t('dashboard.tableDocument')}
+                </TableHead>
+                <TableHead className="font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 py-3">
+                  {t('dashboard.tablePages')}
+                </TableHead>
+                <TableHead className="font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 py-3">
+                  {t('dashboard.tableUploaded')}
+                </TableHead>
+                <TableHead className="font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 py-3 px-5 text-right">
+                  {t('dashboard.tableActions')}
+                </TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="divide-y divide-slate-100 dark:divide-slate-800/80">
               {filteredEssays.map((essay) => (
-                <TableRow key={essay.id}>
-                  <TableCell className="py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center shrink-0">
-                        <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                <TableRow
+                  key={essay.id}
+                  className="group hover:bg-slate-50/80 dark:hover:bg-slate-900/60 transition-colors"
+                >
+                  <TableCell className="py-3.5 px-5">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:border-indigo-600 transition-colors">
+                        <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-colors" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate max-w-md">
+                        <Link
+                          to={`/verification/report/${essay.id}`}
+                          className="text-sm font-semibold text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 truncate max-w-md block transition-colors"
+                        >
                           {essay.filename}
-                        </p>
-                        <p className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                          ID #{essay.id}
-                        </p>
+                        </Link>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                            ID #{essay.id}
+                          </span>
+                          <span className="text-slate-300 dark:text-slate-700">·</span>
+                          <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+                            GROBID TEI
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm font-mono tabular-nums text-slate-600 dark:text-slate-300">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-xs font-mono tabular-nums font-semibold text-slate-700 dark:text-slate-300">
                       {essay.num_pages}
                     </span>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
-                      <Clock className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1.5 text-xs font-mono text-slate-600 dark:text-slate-300">
+                      <Clock className="h-3.5 w-3.5 text-slate-400" />
                       {new Date(essay.uploaded_at).toLocaleDateString(dateLocale, {
                         month: 'short',
                         day: 'numeric',
@@ -295,13 +410,29 @@ export function DashboardPage() {
                       })}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
+                  <TableCell className="px-5 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Link
+                        to={`/verification/report/${essay.id}/issues`}
+                        title={t('essay.issues')}
+                        className="hidden md:inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-amber-300 dark:hover:border-amber-700 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                      >
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        <span>{t('essay.issues')}</span>
+                      </Link>
+                      <Link
+                        to={`/verification/report/${essay.id}/trace`}
+                        title={t('essay.logicTrace')}
+                        className="hidden lg:inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-violet-300 dark:hover:border-violet-700 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                      >
+                        <GitBranch className="h-3.5 w-3.5" />
+                        <span>Trace</span>
+                      </Link>
                       <Link
                         to={`/verification/report/${essay.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-indigo-50 dark:bg-indigo-950/90 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/70 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all"
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-3.5 w-3.5" />
                         {t('dashboard.viewReport')}
                       </Link>
                       <button
@@ -311,7 +442,7 @@ export function DashboardPage() {
                           setConfirmDeleteId(essay.id);
                         }}
                         disabled={deletingId === essay.id}
-                        className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
+                        className="p-2 rounded-xl text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
                         title={t('common.delete')}
                         aria-label={`Delete ${essay.filename}`}
                       >
@@ -328,19 +459,23 @@ export function DashboardPage() {
             </TableBody>
           </Table>
         )}
-      </Card>
 
-      {/* Stats Footer */}
-      {essays.length > 0 && (
-        <div className="text-sm text-slate-600 dark:text-slate-300">
-          <p>
-            {t('dashboard.showingCount', {
-              shown: filteredEssays.length,
-              total: essays.length,
-            })}
-          </p>
-        </div>
-      )}
+        {/* Footer Bar */}
+        {essays.length > 0 && (
+          <div className="px-5 py-3 bg-slate-50/70 dark:bg-slate-900/70 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400">
+            <p>
+              {t('dashboard.showingCount', {
+                shown: filteredEssays.length,
+                total: essays.length,
+              })}
+            </p>
+            <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {t('history.autoRefreshActive')}
+            </span>
+          </div>
+        )}
+      </Card>
 
       <ConfirmationModal
         isOpen={confirmDeleteId !== null}
