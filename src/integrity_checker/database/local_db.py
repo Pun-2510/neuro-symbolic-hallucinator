@@ -88,17 +88,18 @@ class LocalDatabase:
             for stmt in INIT_STATEMENTS:
                 conn.executescript(stmt)
             # ``PRAGMA journal_mode`` returns a row, so it must be a query (not
-            # part of a script).  WAL keeps readers (API requests) from being
-            # blocked while the importer writes a large batch of papers.
-            conn.execute("PRAGMA journal_mode=WAL")
+            # part of a script). Use DELETE mode for Docker VirtioFS compatibility.
+            conn.execute("PRAGMA journal_mode=DELETE")
             conn.execute("PRAGMA synchronous=NORMAL")
+            conn.execute("PRAGMA busy_timeout=30000")
             conn.commit()
 
     @contextmanager
     def _get_conn(self) -> Generator[sqlite3.Connection, None, None]:
         """Get database connection with row factory."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=30.0)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout=30000")
         try:
             yield conn
         finally:
@@ -380,6 +381,20 @@ class LocalDatabase:
                     LIMIT ?
                     """,
                     (fts_query, max(limit * 20, 50)),
+                ).fetchall()
+
+            if not rows and len(query_tokens) >= 3:
+                # Fallback if first token lost a hyphen (e.g. "Scikitlearn" vs "Scikit-learn")
+                sub_fts = " AND ".join(f'"{token}"' for token in query_tokens[1:])
+                rows = conn.execute(
+                    """
+                    SELECT p.*
+                    FROM papers_fts
+                    JOIN papers p ON papers_fts.rowid = p.id
+                    WHERE papers_fts MATCH ?
+                    LIMIT ?
+                    """,
+                    (sub_fts, max(limit * 20, 50)),
                 ).fetchall()
 
             if not rows and title:

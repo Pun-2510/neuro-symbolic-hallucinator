@@ -435,7 +435,9 @@ class Repository:
         return (has_results, 1 if uploaded else 0, uploaded, essay.id or 0)
 
     def get_all_essays_deduped(
-        self, user_id: int | None = None
+        self,
+        user_id: int | None = None,
+        user_ids: list[int] | None = None,
     ) -> list[tuple[EssayRecord, list[int]]]:
         """Group essays by filename (scoped per user), keeping the best copy.
 
@@ -449,7 +451,11 @@ class Repository:
             canonical essay's ``uploaded_at`` descending.
         """
         query = self.session.query(EssayRecord)
-        if user_id is not None:
+        if user_ids is not None:
+            if not user_ids:
+                return []
+            query = query.filter(EssayRecord.user_id.in_(user_ids))
+        elif user_id is not None:
             query = query.filter(EssayRecord.user_id == user_id)
         essays = list(query.order_by(EssayRecord.uploaded_at.desc()).all())
         if not essays:

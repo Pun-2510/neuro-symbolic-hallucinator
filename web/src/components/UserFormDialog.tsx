@@ -22,6 +22,7 @@ export function UserFormDialog({
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
+  const [institution, setInstitution] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'user' | 'teacher' | 'admin'>('user');
   const [isActive, setIsActive] = useState(true);
@@ -35,6 +36,7 @@ export function UserFormDialog({
         setUsername(user.username);
         setEmail(user.email ?? '');
         setFullName(user.full_name ?? '');
+        setInstitution(user.institution ?? '');
         setPassword('');
         setRole(user.role as 'user' | 'teacher' | 'admin');
         setIsActive(user.is_active);
@@ -42,6 +44,7 @@ export function UserFormDialog({
         setUsername('');
         setEmail('');
         setFullName('');
+        setInstitution('');
         setPassword('');
         setRole('user');
         setIsActive(true);
@@ -59,6 +62,7 @@ export function UserFormDialog({
           username: username || undefined,
           email: email || undefined,
           full_name: fullName || undefined,
+          institution: institution || undefined,
           role: role || undefined,
           is_active: isActive ?? undefined,
           ...(password ? { password } : {}),
@@ -68,6 +72,7 @@ export function UserFormDialog({
           password,
           email: email || undefined,
           full_name: fullName || undefined,
+          institution: institution || undefined,
           role,
           is_active: isActive,
         };

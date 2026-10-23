@@ -79,9 +79,8 @@ async def _run_pipeline_task(
             )
 
         report = await loop.run_in_executor(None, _run_pipeline_sync)
-        tracker.complete(essay_id)
 
-        # Persist to DB using a fresh session
+        # Persist to DB using a fresh session BEFORE marking tracker complete
         session = get_session()
         try:
             repo = Repository(session)
@@ -194,11 +193,11 @@ async def _run_pipeline_task(
 
 @router.post("", response_model=EssayUploadResponse)
 async def upload_essay(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     pipeline: IntegrityPipeline = Depends(get_pipeline),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> EssayUploadResponse:
     """Upload PDF → save → return essay_id immediately.
 
@@ -258,9 +257,9 @@ async def upload_essay(
 @router.get("/{essay_id}/status")
 def get_essay_status(
     essay_id: int,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> dict:
     """Return real-time pipeline progress for the ProcessingScreen.
 
@@ -271,8 +270,22 @@ def get_essay_status(
     """
     repo = Repository(db)
     essay = repo.get_essay(essay_id)
+    persisted_pdf = _get_persisted_upload_path(essay_id)
     if not essay:
-        raise HTTPException(status_code=404, detail="Essay not found")
+        if not is_test_runtime() and persisted_pdf.is_file():
+            from integrity_checker.db.models import EssayRecord
+
+            essay = EssayRecord(
+                id=essay_id,
+                filename=f"uploaded_{essay_id}.pdf",
+                num_pages=0,
+                user_id=current_user.id,
+            )
+            db.add(essay)
+            db.commit()
+            db.refresh(essay)
+        else:
+            raise HTTPException(status_code=404, detail="Essay not found")
 
     if not repo.can_user_access_essay(current_user, essay):
         raise HTTPException(status_code=403, detail="Access denied")
@@ -281,6 +294,24 @@ def get_essay_status(
     state = tracker.get(essay_id)
 
     if state is not None:
+        # Auto-retry if a prior background run failed solely due to transient sqlite I/O error
+        if (
+            state.status == "failed"
+            and state.error
+            and "disk I/O error" in state.error
+            and not is_test_runtime()
+            and persisted_pdf.is_file()
+        ):
+            resumed_state = tracker.init(essay_id)
+            background_tasks.add_task(
+                _run_pipeline_task,
+                essay.id,
+                str(persisted_pdf),
+                essay.user_id or current_user.id,
+                get_pipeline(),
+                False,
+            )
+            return resumed_state.to_snapshot()
         return state.to_snapshot()
 
     # No tracker entry — fall back to DB state
@@ -348,9 +379,16 @@ def list_essays(
     """
     repo = Repository(db)
 
-    grouped = repo.get_all_essays_deduped(
-        user_id=None if current_user.role == "admin" else current_user.id
-    )
+    if current_user.role == "admin":
+        grouped = repo.get_all_essays_deduped()
+    elif current_user.role == "teacher":
+        visible_ids = {current_user.id}
+        for cls in repo.list_classes_for_teacher(current_user.id):
+            for student in repo.list_students_in_class(cls.id):
+                visible_ids.add(student.id)
+        grouped = repo.get_all_essays_deduped(user_ids=list(visible_ids))
+    else:
+        grouped = repo.get_all_essays_deduped(user_id=current_user.id)
 
     return [
         {

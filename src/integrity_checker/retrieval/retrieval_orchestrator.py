@@ -101,9 +101,9 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "authors": ["Raffel", "Shazeer", "Roberts"],
     },
     ("wolf", "2020"): {
-        "title": "Transformers: State-of-the-art models for NLP",
-        "doi": None,
-        "authors": ["Wolf", "Debut", "Sanh"],
+        "title": "Transformers: State-of-the-Art Natural Language Processing",
+        "doi": "10.18653/v1/2020.emnlp-demos.6",
+        "authors": ["Wolf", "Debut", "Sanh", "Chaumond"],
     },
     ("dosovitskiy", "2021"): {
         "title": "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale",
@@ -606,6 +606,7 @@ class RetrievalOrchestrator:
         self.crossref = crossref or CrossrefClient(contact_email=settings.contact_email)
         self.openalex = openalex or OpenAlexClient(contact_email=settings.contact_email)
         self.semantic_scholar = semantic_scholar or SemanticScholarClient()
+        self._coreapi_explicit = coreapi is not None
         self.coreapi = coreapi or CoreAPIClient()
         self.serpapi = serpapi  # Lazy init - không tạo nếu không có API key
         self.parallel = parallel
@@ -693,23 +694,24 @@ class RetrievalOrchestrator:
             return known_result
 
         # ===== 3. Query external APIs =====
-        # arXiv DOIs được resolve qua Semantic Scholar + CoreAPI
-        all_clients = self.clients()
-        coreapi_client = self.coreapi
-        use_coreapi = False
+        # arXiv DOIs được resolve qua Semantic Scholar (+ CoreAPI nếu được bật/inject)
+        use_coreapi = (
+            self._coreapi_explicit or get_settings().retrieval.sources.coreapi
+        )
 
         if self.is_arxiv_doi(citation.doi):
-            # arXiv DOIs: use Semantic Scholar + CoreAPI
-            clients = [self.semantic_scholar, coreapi_client]
-            use_coreapi = True
+            # arXiv DOIs: use Semantic Scholar (+ CoreAPI if enabled)
+            clients = [self.semantic_scholar]
+            if use_coreapi and self.coreapi is not None:
+                clients.append(self.coreapi)
             logger.debug(
                 f"arXiv DOI detected, skipping Crossref/OpenAlex: {citation.doi}"
             )
         else:
-            # Non-arXiv: use Crossref, OpenAlex, Semantic Scholar, CoreAPI
-            # Only use CoreAPI when other APIs fail (to save API calls)
-            clients = [self.crossref, self.openalex, self.semantic_scholar, coreapi_client]
-            use_coreapi = True
+            # Non-arXiv: use Crossref, OpenAlex, Semantic Scholar (+ CoreAPI if enabled)
+            clients = [self.crossref, self.openalex, self.semantic_scholar]
+            if use_coreapi and self.coreapi is not None:
+                clients.append(self.coreapi)
 
         if self.parallel:
             # Parallel lookup
@@ -760,10 +762,6 @@ class RetrievalOrchestrator:
                 elif serpapi_candidate.error:
                     failed["serpapi"] = serpapi_candidate.error
 
-        # ===== 5. Sync to local database =====
-        if self._local_db is not None and deduped:
-            self._sync_to_local_db(deduped, succeeded)
-
         # Health check: nếu tất cả sources fail (không có candidate found nào)
         # → UNRESOLVED sentinel
         any_found = any(c.found for c in deduped)
@@ -791,13 +789,17 @@ class RetrievalOrchestrator:
                 api_exhausted=True,
             )
 
-        # ===== 4. Quality filtering - remove garbage candidates =====
+        # ===== 4. Quality filtering - remove garbage/unrelated candidates =====
         quality_candidates, quality_succeeded = self._filter_quality_candidates(
             deduped, succeeded, citation
         )
         succeeded = quality_succeeded
 
-        # ===== 5. Log successful queries =====
+        # ===== 5. Sync verified quality candidates to local database =====
+        if self._local_db is not None and quality_candidates:
+            self._sync_to_local_db(quality_candidates, succeeded, citation=citation)
+
+        # ===== 6. Log successful queries =====
         if self._local_db is not None:
             for src in succeeded:
                 self._local_db.log_query(
@@ -949,7 +951,7 @@ class RetrievalOrchestrator:
                 known_key = _VENUE_YEAR_KNOWN[venue_key]
                 if known_key in _KNOWN_PAPERS:
                     logger.debug(f"Venue-year match: {venue_key} → {known_key}")
-                    return True, _KNOWN_PAPERS[known_key]
+                    return True, {**_KNOWN_PAPERS[known_key], "year": str(venue_year)}
 
         # 2. Check author-year whitelist (standard case)
         parsed_author = author_key(citation.authors[0]) if citation.authors else ""
@@ -994,7 +996,7 @@ class RetrievalOrchestrator:
         key = (parsed_author, parsed_year) if parsed_author and parsed_year else None
 
         if key and key in _KNOWN_PAPERS:
-            return True, _KNOWN_PAPERS[key]
+            return True, {**_KNOWN_PAPERS[key], "year": parsed_year}
 
         return False, None
 
@@ -1096,7 +1098,13 @@ class RetrievalOrchestrator:
         if not is_known or not paper_info:
             return None
 
-        year_key = str(citation.year) if citation.year else None
+        # If citation provides a full title that does not match the known paper title,
+        # do not short-circuit API retrieval (the author may have published another paper that year).
+        if citation.title and paper_info.get("title"):
+            if title_similarity(citation.title, paper_info["title"]) < 0.65:
+                return None
+
+        year_key = str(citation.year)[:4] if citation.year else paper_info.get("year")
         cand = SourceCandidate(
             source_name="known_papers",
             found=True,
@@ -1339,12 +1347,18 @@ class RetrievalOrchestrator:
             paper_id=data.get("paper_id"),
         )
 
-    def _sync_to_local_db(self, candidates: list[SourceCandidate], succeeded: list[str]) -> None:
-        """Sync found candidates to local database.
+    def _sync_to_local_db(
+        self,
+        candidates: list[SourceCandidate],
+        succeeded: list[str],
+        citation: Citation | None = None,
+    ) -> None:
+        """Sync found candidates to local database only when verified against citation.
 
         Args:
             candidates: List of successful candidates
             succeeded: List of source names that succeeded
+            citation: Original citation queried (used to prevent syncing unrelated search hits)
         """
         from integrity_checker.database import Paper
 
@@ -1355,14 +1369,36 @@ class RetrievalOrchestrator:
             if not cand.found:
                 continue
 
+            # Never sync candidates with missing/empty title
+            if not cand.title or len(cand.title.strip()) < 5:
+                continue
+
+            # Guard against syncing unrelated API search hits into local_papers.db
+            if citation is not None and cand.source_name not in {"local_db", "known_papers"}:
+                doi_matched = bool(
+                    citation.doi
+                    and cand.doi
+                    and normalize_doi(citation.doi) == normalize_doi(cand.doi)
+                )
+                title_matched = bool(
+                    citation.title
+                    and title_similarity(citation.title, cand.title) >= 0.75
+                )
+                if not doi_matched and not title_matched:
+                    logger.debug(
+                        f"Skipping local DB sync for low-similarity search hit: "
+                        f"'{cand.title[:50]}' (query='{str(citation.title)[:50]}')"
+                    )
+                    continue
+
             # Determine the ``source`` column value.  Candidates already
             # resolved from a cache (``local_db`` / ``known_papers``) keep
-            # their provenance; otherwise attribute the row to the first
-            # successful live source.
+            # their provenance; otherwise attribute the row to the candidate's
+            # own source_name (or first succeeded source).
             if cand.source_name in {"local_db", "known_papers"}:
                 source = cand.source_name
             else:
-                source = succeeded[0] if succeeded else "api"
+                source = cand.source_name or (succeeded[0] if succeeded else "api")
 
             # Get arXiv ID from external_ids
             arxiv_id = None

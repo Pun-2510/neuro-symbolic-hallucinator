@@ -45,6 +45,22 @@ _LONE_APOSTROPHE_RE = re.compile(r"\s'|'s\s|'s$|^'|'$", re.UNICODE)
 _WHITESPACE_RE = re.compile(r"\s+", re.UNICODE)
 # Initial pattern: "J", "J.", "JK", "J.K.", "J K"
 _INITIAL_RE = re.compile(r"^[A-Z]\.?$|^[A-Z]\.?[A-Z]\.?$", re.IGNORECASE)
+# Concatenated CamelCase author token from OpenAlex/Crossref (e.g. "PedregosaFabian")
+_CAMEL_AUTHOR_RE = re.compile(r"^([A-ZÀ-ÖØ-Þ][a-zà-ÿ]{2,})([A-ZÀ-ÖØ-Þ][a-zà-ÿ]+)$")
+_SURNAME_PREFIXES = {
+    "mac", "van", "von", "fitz", "del", "dal", "das", "dos",
+    "las", "los", "san", "bin", "abu", "ben",
+}
+
+
+def _split_camel_author(name: str) -> str:
+    """Split concatenated CamelCase 'LastFirst' (e.g. 'PedregosaFabian' -> 'Pedregosa, Fabian')."""
+    stripped = name.strip()
+    if " " not in stripped and "," not in stripped:
+        m = _CAMEL_AUTHOR_RE.match(stripped)
+        if m and m.group(1).lower() not in _SURNAME_PREFIXES:
+            return f"{m.group(1)}, {m.group(2)}"
+    return name
 
 
 def _fold_diacritics(text: str) -> str:
@@ -79,6 +95,7 @@ def _canonicalize_last_name(name: str) -> str:
     """
     if not name:
         return ""
+    name = _split_camel_author(name)
     # Normalize + fold
     s = _fold_diacritics(name).lower()
     has_comma = "," in name
@@ -176,15 +193,22 @@ def author_match_score(
     if not cited_set or not cand_set:
         return 0.0
 
-    # FIX v1.11: If citation has only 1 author, check if it matches any candidate author
-    # This handles cases like "Settles, B" matching "Settles" in a 3-author paper
-    if len(cited_set) == 1:
-        cited_author = list(cited_set)[0]
-        if cited_author in cand_set:
-            return 1.0  # Exact match
+    # FIX v1.11: If all cited authors are present in the candidate's author list
+    # (e.g., "Settles, B" or "Pedregosa, Varoquaux, Gramfort, et al." on a 16-author paper),
+    # treat as full author match.
+    if cited_set <= cand_set:
+        return 1.0  # Exact subset match (et al. truncation)
 
     intersect = len(cited_set & cand_set)
+    # Fallback: check prefix match for concatenated/compound tokens (len >= 5)
     if intersect == 0:
+        prefix_matches = sum(
+            1
+            for ca in cited_set
+            if len(ca) >= 5 and any(len(cb) >= 5 and (ca.startswith(cb) or cb.startswith(ca)) for cb in cand_set)
+        )
+        if prefix_matches > 0:
+            return prefix_matches / len(cited_set)
         return 0.0
     union = len(cited_set | cand_set)
     return intersect / union if union else 0.0

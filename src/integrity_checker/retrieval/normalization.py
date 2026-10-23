@@ -71,13 +71,24 @@ def title_tokens(value: str | None) -> list[str]:
     return [token for token in normalize_text(value).split() if len(token) > 1]
 
 
+_CAMEL_AUTHOR_RE = re.compile(r"^([A-ZÀ-ÖØ-Þ][a-zà-ÿ]{2,})([A-ZÀ-ÖØ-Þ][a-zà-ÿ]+)$")
+_SURNAME_PREFIXES = {
+    "mac", "van", "von", "fitz", "del", "dal", "das", "dos",
+    "las", "los", "san", "bin", "abu", "ben",
+}
+
+
 def author_key(value: object) -> str:
     """Extract a normalized first-author/last-name key from an author value."""
     if value is None:
         return ""
     if hasattr(value, "last_name"):
         value = getattr(value, "last_name", "")
-    text = _ET_AL_RE.sub(" ", str(value))
+    text = _ET_AL_RE.sub(" ", str(value)).strip()
+    if " " not in text and "," not in text:
+        m = _CAMEL_AUTHOR_RE.match(text)
+        if m and m.group(1).lower() not in _SURNAME_PREFIXES:
+            text = f"{m.group(1)}, {m.group(2)}"
     # APA ``Lastname, F.``: the token before the comma is the last name.
     if "," in text:
         text = text.split(",", 1)[0]
@@ -120,7 +131,13 @@ def title_similarity(query: str | None, candidate: str | None) -> float:
     if not query_tokens or not candidate_tokens:
         return 0.0
     if query_tokens <= candidate_tokens:
-        return 0.95
+        norm_q = normalize_text(query)
+        norm_c = normalize_text(candidate)
+        if (
+            len(query_tokens) / len(candidate_tokens) >= 0.60
+            or (len(query_tokens) >= 3 and norm_c.startswith(norm_q))
+        ):
+            return 0.95
     intersection = len(query_tokens & candidate_tokens)
     union = len(query_tokens | candidate_tokens)
     jaccard = intersection / union if union else 0.0
@@ -129,7 +146,15 @@ def title_similarity(query: str | None, candidate: str | None) -> float:
         " ".join(sorted(query_tokens)),
         " ".join(sorted(candidate_tokens)),
     ).ratio()
-    return max(jaccard, sequence)
+    # Also check de-hyphenated similarity (e.g. "Scikitlearn" vs "Scikit-learn")
+    q_dehyph = re.sub(r"(?<=\w)-(?=\w)", "", str(query or "")).casefold()
+    c_dehyph = re.sub(r"(?<=\w)-(?=\w)", "", str(candidate or "")).casefold()
+    dehyph_seq = SequenceMatcher(
+        None,
+        " ".join(title_tokens(q_dehyph)),
+        " ".join(title_tokens(c_dehyph)),
+    ).ratio()
+    return max(jaccard, sequence, dehyph_seq)
 
 
 def citation_key(citation: Citation) -> str:

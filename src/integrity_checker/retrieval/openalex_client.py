@@ -136,10 +136,16 @@ class OpenAlexClient(BaseScholarClient):
         top = results[0]
         cand = self._work_to_candidate(top)
         cand.found = True
-        # Confidence: relevance_score 0–∞, normalize về 0–1
+        # Confidence: relevance_score 0–∞, normalize về 0–1 (kèm kiểm tra title_similarity)
         relevance = float(top.get("relevance_score", 0) or 0)
         cand.score = relevance
         cand.confidence = min(relevance, 1.0)
+        if citation.title and cand.title:
+            from integrity_checker.retrieval.normalization import title_similarity
+
+            t_sim = title_similarity(citation.title, cand.title)
+            if t_sim < 0.85:
+                cand.confidence = round(min(relevance, 1.0) * t_sim, 4)
         return cand
 
     async def _fetch_json_with_retry(

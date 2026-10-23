@@ -13,19 +13,11 @@ export function useEssayReport(
   options: UseEssayReportOptions = {},
 ) {
   const { pollUntilDone = true, intervalMs = 2000 } = options;
-  const queryClient = useQueryClient();
 
   return useQuery({
     queryKey: ['essay-report', essayId],
     queryFn: async (): Promise<AnalysisReport | null> => {
       if (essayId === null) return null;
-      // Once the report has loaded for this essay, don't hit the endpoint again
-      // on remount — a manual invalidation still refreshes it.
-      const cached = queryClient.getQueryData<AnalysisReport | null>([
-        'essay-report',
-        essayId,
-      ]);
-      if (cached) return cached;
       // Try direct report first
       const report = await api.getEssay(essayId);
       if (report) return report;
@@ -37,6 +29,7 @@ export function useEssayReport(
       return null;
     },
     enabled: essayId !== null,
+    staleTime: Infinity,
     refetchInterval: (query) => {
       if (!pollUntilDone) return false;
       const data = query.state.data;
@@ -50,11 +43,20 @@ export function useEssayReport(
 export function useOverrideVerdict() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ verdictId, req }: { verdictId: number | string; req: OverrideRequest }) =>
-      // api.overrideVerdict signature: (verdictId, body) — verdictId may be a citation_id string
-      api.overrideVerdict(verdictId as number, req),
+    mutationFn: ({
+      essayId,
+      verdictId,
+      req,
+    }: {
+      essayId?: number;
+      verdictId?: number | string;
+      req: OverrideRequest;
+    }) => {
+      const targetEssayId = essayId ?? Number(verdictId);
+      return api.overrideVerdict(targetEssayId, req);
+    },
     onSuccess: () => {
-      // Invalidate all essay-report queries (we don't know which one)
+      // Invalidate all essay-report queries so updated verdict reloads
       qc.invalidateQueries({ queryKey: ['essay-report'] });
     },
   });

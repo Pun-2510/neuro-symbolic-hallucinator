@@ -162,10 +162,12 @@ function InlineCitationMarker({
 
 // Citation detail popup
 function CitationPopup({
+  essayId,
   citation,
   verdict,
   onClose,
 }: {
+  essayId: string;
   citation: InlineCitation;
   verdict: Verdict | null;
   onClose: () => void;
@@ -314,7 +316,7 @@ function CitationPopup({
           {/* Navigation link */}
           <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
             <Link
-              to={`/verification/report/${citation.id}`}
+              to={`/verification/report/${essayId}`}
               className="inline-flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
             >
               <ExternalLink className="h-4 w-4" />
@@ -603,6 +605,7 @@ export function DocumentInspectorPage() {
       {/* Citation detail popup */}
       {selectedCitation && (
         <CitationPopup
+          essayId={id ?? ''}
           citation={selectedCitation}
           verdict={selectedVerdict}
           onClose={() => {

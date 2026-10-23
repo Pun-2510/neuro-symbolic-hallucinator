@@ -53,19 +53,6 @@ class FeatureCalculator:
             source: SourceResult từ retrieval
             citation_context: Optional context xung quanh citation (cho content alignment)
         """
-        best = source.best_candidate()
-        if best is None:
-            return MatchFeatures(source_consensus=source.consensus_count())
-
-        # Title sim
-        c_title = (citation.title or citation.raw_text).lower().strip()
-        cand_title = (best.title or "").lower().strip()
-
-        # FIX v1.11: Improved title matching for partial matches
-        # Check for prefix/substring match first (common for short titles)
-        fuzzy_sim = self._compute_title_similarity(c_title, cand_title)
-        semantic_sim = self.semantic.similarity(citation.title or citation.raw_text, best.title or "")
-
         # Author Jaccard -- upgraded to author_matcher (task #29)
         # Fallback: if citation.authors is empty, try to extract from raw_text
         cited_authors = list(citation.authors or [])
@@ -82,6 +69,20 @@ class FeatureCalculator:
                 extracted_author = match.group(1)
                 cited_authors = [extracted_author]
 
+        best = self._select_best_candidate(citation, source, cited_authors)
+        if best is None:
+            return MatchFeatures(source_consensus=source.consensus_count())
+
+        # Title sim
+        c_title = (citation.title or citation.raw_text).lower().strip()
+        cand_title = (best.title or "").lower().strip()
+
+        # FIX v1.11: Improved title matching for partial matches
+        fuzzy_sim = self._compute_title_similarity(
+            c_title, cand_title, is_raw_fallback=not bool(citation.title)
+        )
+        semantic_sim = self.semantic.similarity(citation.title or citation.raw_text, best.title or "")
+
         author_sim = author_match_score(
             cited_authors,
             list(best.authors or []),
@@ -90,10 +91,8 @@ class FeatureCalculator:
         # Year distance
         year_dist = self._year_distance(citation.year, best.year)
 
-        # DOI exact match
-        doi_match = bool(
-            citation.doi and best.doi and citation.doi.lower() == best.doi.lower()
-        )
+        # DOI exact match (normalized + known arXiv/ACL equivalent DOIs)
+        doi_match = self._doi_matches(citation.doi, best.doi)
 
         # Content alignment (NEW v1.3) - Neural layer
         content_alignment_score = 0.0
@@ -132,49 +131,119 @@ class FeatureCalculator:
             return 999
         return abs(int(m1.group(0)) - int(m2.group(0)))
 
-    def _compute_title_similarity(self, citation_title: str, candidate_title: str) -> float:
-        """Compute title similarity with improved partial match support.
+    @staticmethod
+    def _normalize_doi_str(doi: str | None) -> str:
+        if not doi:
+            return ""
+        d = doi.strip().lower()
+        for prefix in ("https://doi.org/", "http://doi.org/", "doi:"):
+            if d.startswith(prefix):
+                d = d[len(prefix):].strip()
+        return d.rstrip(".")
 
-        FIX v1.11: Handles short titles like "Active learning" that should match
-        "Active learning. Synthesis Lectures on Artificial Intelligence..."
+    @classmethod
+    def _doi_matches(cls, doi1: str | None, doi2: str | None) -> bool:
+        d1 = cls._normalize_doi_str(doi1)
+        d2 = cls._normalize_doi_str(doi2)
+        if not d1 or not d2:
+            return False
+        if d1 == d2:
+            return True
+        # Known equivalent canonical DOIs (e.g., BERT NAACL vs arXiv)
+        equiv_sets = (
+            {"10.18653/v1/n19-1423", "10.48550/arxiv.1810.04805"},
+        )
+        for eq in equiv_sets:
+            if d1 in eq and d2 in eq:
+                return True
+        return False
+
+    def _select_best_candidate(
+        self,
+        citation: Citation,
+        source: SourceResult,
+        cited_authors: list,
+    ) -> SourceCandidate | None:
+        """Select the candidate from source.candidates that best matches citation metadata."""
+        valid = [c for c in source.candidates if c.found]
+        if not valid:
+            return None
+        if len(valid) == 1:
+            return valid[0]
+
+        c_title = (citation.title or citation.raw_text or "").lower().strip()
+        is_raw = not bool(citation.title)
+
+        def _score_cand(cand: SourceCandidate) -> float:
+            doi_bonus = 2.0 if self._doi_matches(citation.doi, cand.doi) else 0.0
+            cand_title = (cand.title or "").lower().strip()
+            t_sim = self._compute_title_similarity(c_title, cand_title, is_raw_fallback=is_raw)
+            a_sim = author_match_score(cited_authors, list(cand.authors or []))
+            y_dist = self._year_distance(citation.year, cand.year)
+            y_bonus = 0.2 if y_dist <= 1 else 0.0
+            return doi_bonus + t_sim * 1.0 + a_sim * 0.5 + y_bonus + (cand.confidence or 0.0) * 0.05
+
+        best = max(valid, key=_score_cand)
+        # Ensure source.best_candidate() returns this same candidate downstream
+        max_conf = max((c.confidence or 0.0) for c in valid)
+        if (best.confidence or 0.0) < max_conf:
+            best.confidence = min(1.0, max_conf + 0.01)
+        return best
+
+    def _compute_title_similarity(
+        self,
+        citation_title: str,
+        candidate_title: str,
+        *,
+        is_raw_fallback: bool = False,
+    ) -> float:
+        """Compute title similarity with safe partial match support.
 
         Strategy:
-        1. Exact match (case-insensitive) → 1.0
-        2. Prefix/suffix match (one is prefix of other) → 0.95
-        3. Substring match → 0.9
-        4. Word-order match (all words appear in order) → 0.85
-        5. Fallback to fuzzy token_set_ratio
+        1. Exact match (case/punctuation-insensitive) → 1.0
+        2. Safe prefix match (subtitle delimiter or high length ratio) → 0.95
+        3. Safe substring match (high length ratio, or candidate title inside unparsed raw_text) → 0.90
+        4. Fallback to fuzzy token_set_ratio
         """
         if not citation_title or not candidate_title:
             return 0.0
 
-        # 1. Direct match
-        if citation_title == candidate_title:
+        # Normalize whitespace and trailing punctuation
+        c_clean = re.sub(r"\s+", " ", citation_title.strip().rstrip(".,;:"))
+        cand_clean = re.sub(r"\s+", " ", candidate_title.strip().rstrip(".,;:"))
+        if not c_clean or not cand_clean:
+            return 0.0
+
+        # 1. Direct match (or match after removing hyphens between letters, e.g. Scikitlearn vs Scikit-learn)
+        if c_clean == cand_clean:
+            return 1.0
+        c_dehyph = re.sub(r"(?<=\w)-(?=\w)", "", c_clean)
+        cand_dehyph = re.sub(r"(?<=\w)-(?=\w)", "", cand_clean)
+        if c_dehyph == cand_dehyph:
             return 1.0
 
-        # 2. Prefix/suffix match - one is prefix of other
-        if len(citation_title) >= 5 and (citation_title.startswith(candidate_title) or candidate_title.startswith(citation_title)):
-            return 0.95
+        shorter, longer = (
+            (c_clean, cand_clean)
+            if len(c_clean) <= len(cand_clean)
+            else (cand_clean, c_clean)
+        )
+        len_ratio = len(shorter) / len(longer) if longer else 0.0
 
-        # 3. Substring match - citation is contained in candidate (or vice versa)
-        if len(citation_title) >= 5 and citation_title in candidate_title:
-            return 0.9
-        if len(candidate_title) >= 5 and candidate_title in citation_title:
-            return 0.9
+        # 2. Safe prefix match: either length ratio >= 0.65, or followed by a subtitle separator (':', '.', '-', '(')
+        if len(shorter) >= 12 and longer.startswith(shorter):
+            remainder = longer[len(shorter):].lstrip()
+            if len_ratio >= 0.65 or (remainder and remainder[0] in ".:-—–("):
+                return 0.95
 
-        # 4. Word-order match - all citation words appear in candidate in same order
-        cit_words = citation_title.split()
-        cand_words = candidate_title.split()
-        if len(cit_words) >= 2:
-            word_positions = []
-            for word in cit_words:
-                for i, cw in enumerate(cand_words):
-                    if word in cw or cw in word:
-                        word_positions.append(i)
-                        break
-            if len(word_positions) == len(cit_words):
-                # All words found - high score
-                return 0.85
+        # 3. Safe substring match: require length ratio >= 0.70 (or candidate title in raw_text fallback)
+        if len(shorter) >= 15 and shorter in longer:
+            if len_ratio >= 0.70:
+                return 0.90
+            if is_raw_fallback and cand_clean == shorter and len(cand_clean) >= 15:
+                return 0.90
 
-        # 5. Fallback to fuzzy matching
-        return self.fuzzy.token_set_ratio(citation_title, candidate_title)
+        # 4. Fallback to fuzzy matching
+        return max(
+            self.fuzzy.token_set_ratio(c_clean, cand_clean),
+            self.fuzzy.token_set_ratio(c_dehyph, cand_dehyph),
+        )

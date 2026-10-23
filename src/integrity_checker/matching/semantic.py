@@ -116,8 +116,8 @@ class SemanticMatcher:
         try:
             embs = model.encode([text1, text2], convert_to_tensor=True, normalize_embeddings=True)
             cos = (embs[0] @ embs[1]).item()
-            # clamp về 0–1
-            return max(0.0, min(1.0, (cos + 1.0) / 2.0))
+            # clamp về 0–1 (không dùng (cos+1)/2 vì làm phồng cos=0 lên 0.5)
+            return max(0.0, min(1.0, float(cos)))
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Semantic similarity error: {e}")
             return 0.0
@@ -244,7 +244,7 @@ class SemanticMatcher:
                 show_progress_bar=False,
             )
             cos = (embs[0] @ embs[1]).item()
-            return max(0.0, min(1.0, (cos + 1.0) / 2.0))
+            return max(0.0, min(1.0, float(cos)))
         except Exception:  # noqa: BLE001
             return 0.0
 
@@ -372,7 +372,7 @@ class SemanticMatcher:
             for i in range(0, len(embs), 2):
                 if i + 1 < len(embs):
                     cos = (embs[i] @ embs[i + 1]).item()
-                    similarities.append(max(0.0, min(1.0, (cos + 1.0) / 2.0)))
+                    similarities.append(max(0.0, min(1.0, float(cos))))
                 else:
                     similarities.append(0.0)
 

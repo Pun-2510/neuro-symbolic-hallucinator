@@ -133,9 +133,14 @@ class CoreAPIClient(BaseScholarClient):
         title = citation.title.strip()[:200]
         query_parts.append(title)
 
-        # Add first author last name if available
-        if citation.authors and citation.authors[0].last_name:
-            query_parts.append(citation.authors[0].last_name)
+        # Add first author last name if available (handle both Author object and str)
+        if citation.authors:
+            first_author = citation.authors[0]
+            last_name = getattr(first_author, "last_name", None)
+            if not last_name and isinstance(first_author, str):
+                last_name = first_author.split(",")[0].strip().split()[-1] if first_author.strip() else None
+            if last_name:
+                query_parts.append(last_name)
 
         # Add year if available
         if citation.year:

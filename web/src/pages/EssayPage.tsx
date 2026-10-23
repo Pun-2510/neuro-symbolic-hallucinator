@@ -38,11 +38,20 @@ export function EssayPage() {
         : null;
 
   async function handleOverride(verdict: Verdict, req: Parameters<typeof api.overrideVerdict>[1]) {
-    // Verdict is identified by citation_id (string) in the report
-    await overrideMutation.mutateAsync({
+    const targetEssayId = report?.essay_id ?? essayId ?? 0;
+    const updated = await overrideMutation.mutateAsync({
+      essayId: targetEssayId,
       verdictId: verdict.citation_id,
       req,
     });
+    if (selected && selected.citation_id === verdict.citation_id) {
+      setSelected({
+        ...selected,
+        label: updated?.label ?? req.new_label,
+        mapping_status: updated?.mapping_status ?? req.new_mapping_status ?? selected.mapping_status,
+        is_overridden: true,
+      });
+    }
   }
 
   if (errorMessage) {

@@ -585,7 +585,7 @@ def _docx_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         features_dict = json.loads(v.features or "{}")
         verdict_list.append({
             "citation_raw": v.citation_raw,
-            "citation_type": v.citation_type or "unknown",
+            "citation_type": getattr(v, "citation_type", None) or "reference_list",
             "label": v.label,
             "confidence": v.confidence,
             "reasoning": v.reasoning,

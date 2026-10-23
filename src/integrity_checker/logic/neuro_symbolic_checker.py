@@ -165,6 +165,16 @@ class NeuroSymbolicChecker:
                 r'Google\s+API|Vertex\s+AI|Google\s+Cloud)',
                 re.IGNORECASE
             ),
+            # Product/API documentation anywhere in citation (e.g., "Google. (2024). YouTube Data API v3. Google for Developers.")
+            re.compile(
+                r'\b(YouTube\s+Data\s*API\s+v\d+|Google\s+for\s+Developers)\b',
+                re.IGNORECASE
+            ),
+            # Computer software / GitHub repository without academic venue
+            re.compile(
+                r'(\[Computer\s+software\]|\bGitHub\.\s*Retrieved\b)',
+                re.IGNORECASE
+            ),
         ]
         for pattern in web_resource_patterns:
             if pattern.search(raw_text):
@@ -194,6 +204,9 @@ class NeuroSymbolicChecker:
         # FIX v1.5: Now checks title similarity to detect METADATA_ERROR
         is_known, paper_info = RetrievalOrchestrator.is_known_paper(citation)
         if is_known and paper_info:
+            known_year = paper_info.get("year") or (
+                str(citation.year)[:4] if citation.year else None
+            )
             # Create a synthetic SourceCandidate from known paper info
             known_candidate = SourceCandidate(
                 source_name="known_papers",
@@ -201,31 +214,80 @@ class NeuroSymbolicChecker:
                 title=paper_info.get("title"),
                 doi=paper_info.get("doi"),
                 authors=paper_info.get("authors", []),
-                year=paper_info.get("year"),
+                year=known_year,
                 confidence=0.95,
                 score=1.0,
             )
 
+            # Avoid duplicating known_papers if RetrievalOrchestrator already injected it
+            other_cands = [
+                c for c in source.candidates if c.source_name != "known_papers"
+            ]
+            other_queried = [
+                s for s in source.sources_queried if s != "known_papers"
+            ]
+            other_succeeded = [
+                s for s in source.sources_succeeded if s != "known_papers"
+            ]
+
             # FIX v1.5: Check title similarity to detect METADATA_ERROR
-            # If citation has a title and it doesn't match the known paper's title
-            # → likely METADATA_ERROR (wrong title attributed to the author)
+            # If citation has a title and it doesn't match the known paper's title:
+            # First check if a live/local_db source already found a real paper matching citation.title
+            # (e.g., another paper by the same first author in the same year, like Kaiser & Bengio 2016).
             citation_title = citation.title
             known_title = paper_info.get("title", "")
 
             if citation_title and known_title:
                 # Calculate title similarity using FuzzyMatcher
-                # Use token_set_ratio for better matching of titles with different word orders
-                title_sim = self.rules.fuzzy.token_set_ratio(citation_title, known_title)
+                title_sim = self.rules.fuzzy.token_set_ratio(
+                    citation_title.lower(), known_title.lower()
+                )
                 title_sim_threshold = 0.5  # Below this = likely wrong title
 
                 if title_sim < title_sim_threshold:
-                    # Title doesn't match → METADATA_ERROR
-                    # Create source result for feature calculation
+                    # Check if a live/local_db source already found a real paper matching citation.title
+                    # (e.g., another paper by the same first author in the same year, like Kaiser & Bengio 2016)
+                    has_real_matching_candidate = any(
+                        cand.found
+                        and cand.title
+                        and self.rules.fuzzy.token_set_ratio(
+                            citation_title.lower(), cand.title.lower()
+                        )
+                        >= 0.70
+                        for cand in other_cands
+                    )
+                    if not has_real_matching_candidate:
+                        # Title doesn't match and no other real paper matched → METADATA_ERROR
+                        enhanced_source = SourceResult(
+                            citation_raw=source.citation_raw,
+                            candidates=[known_candidate] + other_cands,
+                            sources_queried=["known_papers"] + other_queried,
+                            sources_succeeded=["known_papers"] + other_succeeded,
+                            sources_failed=source.sources_failed,
+                            api_exhausted=source.api_exhausted,
+                        )
+                        features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
+
+                        return CitationVerdict(
+                            citation=citation,
+                            label=ValidationLabel.METADATA_ERROR,
+                            confidence=0.75,
+                            matched_source=enhanced_source,
+                            features=features,
+                            reasoning=f"Known author '{citation.authors[0] if citation.authors else 'unknown'}' found, "
+                                      f"but title '{citation_title}' does not match known paper '{known_title}' "
+                                      f"(similarity: {title_sim:.2f}). This appears to be a wrong title attribution.",
+                            triggered_rules=["R-KNOWN-PAPER", "R-TITLE-MISMATCH"],
+                            mismatched_fields=["title"],
+                        )
+                    # Otherwise fall through to normal verification of the real matching candidate
+                else:
+                    # Title matches known paper → VERIFIED
                     enhanced_source = SourceResult(
                         citation_raw=source.citation_raw,
-                        candidates=[known_candidate] + source.candidates,
-                        sources_queried=["known_papers"] + source.sources_queried,
-                        sources_succeeded=["known_papers"] + source.sources_succeeded,
+                        candidates=[known_candidate] + other_cands,
+                        sources_queried=["known_papers"] + other_queried,
+                        sources_succeeded=["known_papers"] + other_succeeded,
                         sources_failed=source.sources_failed,
                         api_exhausted=source.api_exhausted,
                     )
@@ -233,40 +295,36 @@ class NeuroSymbolicChecker:
 
                     return CitationVerdict(
                         citation=citation,
-                        label=ValidationLabel.METADATA_ERROR,
-                        confidence=0.75,
+                        label=ValidationLabel.VERIFIED,
+                        confidence=0.90,
                         matched_source=enhanced_source,
                         features=features,
-                        reasoning=f"Known author '{citation.authors[0] if citation.authors else 'unknown'}' found, "
-                                  f"but title '{citation_title}' does not match known paper '{known_title}' "
-                                  f"(similarity: {title_sim:.2f}). This appears to be a wrong title attribution.",
-                        triggered_rules=["R-KNOWN-PAPER", "R-TITLE-MISMATCH"],
-                        mismatched_fields=["title"],
+                        reasoning=f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. APIs failed but paper is well-documented.",
+                        triggered_rules=["R-KNOWN-PAPER"],
+                        mismatched_fields=[],
                     )
+            else:
+                # Citation has no title (in-text citation) → VERIFIED via known paper
+                enhanced_source = SourceResult(
+                    citation_raw=source.citation_raw,
+                    candidates=[known_candidate] + other_cands,
+                    sources_queried=["known_papers"] + other_queried,
+                    sources_succeeded=["known_papers"] + other_succeeded,
+                    sources_failed=source.sources_failed,
+                    api_exhausted=source.api_exhausted,
+                )
+                features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
 
-            # Title matches or citation has no title → VERIFIED
-            # Inject into source result for feature calculation
-            enhanced_source = SourceResult(
-                citation_raw=source.citation_raw,
-                candidates=[known_candidate] + source.candidates,
-                sources_queried=["known_papers"] + source.sources_queried,
-                sources_succeeded=["known_papers"] + source.sources_succeeded,
-                sources_failed=source.sources_failed,
-                api_exhausted=source.api_exhausted,
-            )
-            # Recalculate features with known paper (pass context if available)
-            features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
-
-            return CitationVerdict(
-                citation=citation,
-                label=ValidationLabel.VERIFIED,  # Known papers are VERIFIED
-                confidence=0.90,
-                matched_source=enhanced_source,
-                features=features,
-                reasoning=f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. APIs failed but paper is well-documented.",
-                triggered_rules=["R-KNOWN-PAPER"],
-                mismatched_fields=[],
-            )
+                return CitationVerdict(
+                    citation=citation,
+                    label=ValidationLabel.VERIFIED,
+                    confidence=0.90,
+                    matched_source=enhanced_source,
+                    features=features,
+                    reasoning=f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. APIs failed but paper is well-documented.",
+                    triggered_rules=["R-KNOWN-PAPER"],
+                    mismatched_fields=[],
+                )
 
         # Compute features với context (nếu có) cho Neural content alignment
         features = self.feature_calculator.compute(citation, source, citation_context)

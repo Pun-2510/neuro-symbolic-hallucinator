@@ -8,7 +8,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool, StaticPool
 
 from integrity_checker.config import get_settings, is_main_app_db_url, is_test_runtime
 from integrity_checker.db.models import Base, User
@@ -44,14 +44,18 @@ def get_engine() -> Engine:
         }
         if is_memory:
             kwargs["poolclass"] = StaticPool
+        elif is_sqlite:
+            # Use NullPool for file-backed SQLite so connections are not kept open
+            # across requests over Docker VirtioFS bind mounts.
+            kwargs["poolclass"] = NullPool
         _engine = create_engine(url, **kwargs)
         if is_sqlite and not is_memory:
             @event.listens_for(_engine, "connect")
             def _set_sqlite_pragma(dbapi_connection, _connection_record) -> None:
                 cursor = dbapi_connection.cursor()
-                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA journal_mode=DELETE")
                 cursor.execute("PRAGMA synchronous=NORMAL")
-                cursor.execute("PRAGMA busy_timeout=5000")
+                cursor.execute("PRAGMA busy_timeout=30000")
                 cursor.close()
 
         _engine_url = url
@@ -173,11 +177,15 @@ def _seed_default_users(engine: Engine) -> None:
         ("user", "user123", "user", "user@example.com", "Demo User", 0),
     ]
     with Session(bind=engine) as session:
-        existing_usernames = {u.username for u in session.query(User).all()}
-        existing_emails = {u.email for u in session.query(User).all() if u.email}
+        existing_by_username = {u.username: u for u in session.query(User).all()}
+        existing_emails = {u.email for u in existing_by_username.values() if u.email}
         added = False
         for username, password, role, email, full_name, can_override in defaults:
-            if username in existing_usernames:
+            if username in existing_by_username:
+                existing_user = existing_by_username[username]
+                if can_override and not existing_user.can_override_verdicts:
+                    existing_user.can_override_verdicts = can_override
+                    added = True
                 continue
             pwd_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
             session.add(

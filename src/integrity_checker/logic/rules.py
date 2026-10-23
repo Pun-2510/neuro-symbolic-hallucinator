@@ -201,12 +201,13 @@ class SymbolicRules:
         source: SourceResult,
         features: MatchFeatures,
         style_penalty: float = 0.0,
+        citation_doi: str | None = None,
     ) -> RuleOutcome | None:
         """Rule: LOCAL_DB only with perfect match → VERIFIED.
 
         When local_db (optionally with known_papers) is the only source that found
         a match with:
-        - title_sim >= 0.95
+        - title_sim_fuzzy >= 0.90 and title_sim >= 0.95
         - author_sim >= 0.8
         - year_distance == 0
 
@@ -223,13 +224,13 @@ class SymbolicRules:
         if not best:
             return None
 
-        # Check thresholds
+        # Check thresholds (require fuzzy title match to prevent semantic inflation)
         title_sim = max(features.title_sim_fuzzy, features.title_sim_semantic)
         author_sim = features.author_jaccard
         year_dist = features.year_distance
 
-        # Perfect match: title >= 0.95 AND author >= 0.8 AND year match
-        if title_sim >= 0.95 and author_sim >= 0.8 and year_dist == 0:
+        # Perfect match: fuzzy title >= 0.90, title >= 0.95 AND author >= 0.8 AND year match
+        if features.title_sim_fuzzy >= 0.90 and title_sim >= 0.95 and author_sim >= 0.8 and year_dist == 0:
             # Calculate confidence
             if features.doi_exact_match:
                 confidence = 0.90
@@ -239,8 +240,12 @@ class SymbolicRules:
             confidence = max(0.0, confidence - style_penalty)
 
             mismatched = []
-            if not features.doi_exact_match:
+            doi_note = ""
+            if citation_doi and not features.doi_exact_match:
                 mismatched.append("doi")
+                doi_note = " Note: DOI in citation differs from canonical record."
+            elif not features.doi_exact_match and not citation_doi:
+                doi_note = " DOI not present in citation."
 
             return RuleOutcome(
                 label=ValidationLabel.VERIFIED,
@@ -248,7 +253,7 @@ class SymbolicRules:
                 reasoning=(
                     f"Verified via local knowledge base: "
                     f"title={title_sim:.2f}, author={author_sim:.2f}, year match."
-                    + (f" DOI not present in citation." if mismatched else "")
+                    + doi_note
                 ),
                 triggered_rules=["R-LOCAL_DB_VERIFIED"],
                 mismatched_fields=mismatched,
@@ -262,12 +267,13 @@ class SymbolicRules:
         source: SourceResult,
         features: MatchFeatures,
         style_penalty: float = 0.0,
+        citation_doi: str | None = None,
     ) -> RuleOutcome | None:
         """Rule: LOCAL_DB only with good match → VERIFIED.
 
         When local_db (optionally with known_papers) is the only source that found
         a match with:
-        - title_sim >= 0.95
+        - title_sim_fuzzy >= 0.90 and title_sim >= 0.95
         - author_sim >= 0.5
         - year_distance == 0
 
@@ -288,12 +294,12 @@ class SymbolicRules:
         author_sim = features.author_jaccard
         year_dist = features.year_distance
 
-        # Good match: title >= 0.95 AND author >= 0.5 AND year match
-        if title_sim >= 0.95 and author_sim >= 0.5 and year_dist == 0:
+        # Good match: fuzzy title >= 0.90, title >= 0.95 AND author >= 0.5 AND year match
+        if features.title_sim_fuzzy >= 0.90 and title_sim >= 0.95 and author_sim >= 0.5 and year_dist == 0:
             confidence = max(0.0, 0.75 - style_penalty)
 
             mismatched = ["author"]
-            if not features.doi_exact_match:
+            if citation_doi and not features.doi_exact_match:
                 mismatched.append("doi")
 
             return RuleOutcome(
@@ -667,6 +673,7 @@ class SymbolicRules:
             )
 
         # Extract features for remaining rules
+        best = source.best_candidate()
         title_sim = features.title_sim_max
         consensus = features.source_consensus
         doi_match = features.doi_exact_match
@@ -712,8 +719,7 @@ class SymbolicRules:
         # resolved it.  Require at least one live source before awarding the
         # strongest VERIFIED verdict.
         if (
-            not mapping_is_matched  # Only apply if not already well-linked
-            and doi_match
+            doi_match
             and title_sim >= self.title_sim_verified
             and author_sim >= self.author_jaccard_verified
             and _has_live_source(source, verified_sources)
@@ -736,18 +742,45 @@ class SymbolicRules:
                 style_penalty=style_penalty,
             )
 
+        # === FIX v1.7: LOCAL_DB Perfect Match → VERIFIED ===
+        # Checked BEFORE R-WELL-LINKED so local_db exact matches get accurate
+        # provenance reasoning instead of a generic 'et al.' author-mismatch message.
+        local_verified = self._rule_local_db_verified(
+            source, features, style_penalty, citation_doi=citation_doi
+        )
+        if local_verified:
+            return local_verified
+
+        # === FIX v1.7: LOCAL_DB Good Match → VERIFIED ===
+        local_good = self._rule_local_db_good_match(
+            source, features, style_penalty, citation_doi=citation_doi
+        )
+        if local_good:
+            return local_good
+
         # --- Rule 1b (NEW): Well-linked citation with high title similarity → VERIFIED ---
-        # Priority over consensus rules - handles "et al." citations that are author-year matched
-        if mapping_is_matched and title_sim >= 0.7:
+        # Requires fuzzy title match, non-zero author overlap, compatible year, and no DOI conflict.
+        has_doi_conflict = bool(citation_doi and best.doi and not doi_match)
+        if (
+            mapping_is_matched
+            and features.title_sim_fuzzy >= 0.7
+            and author_sim >= 0.3
+            and year_dist <= self.year_tolerance
+            and not has_doi_conflict
+        ):
             triggered_rules.append("R-WELL-LINKED")
+            author_note = (
+                f"Author overlap={author_sim:.2f} (đầy đủ)."
+                if author_sim >= 0.99
+                else f"Partial author overlap (author_jaccard={author_sim:.2f}, có thể do 'et al.')."
+            )
             return RuleOutcome(
                 label=ValidationLabel.VERIFIED,
                 confidence=max(0.0, 0.85 - style_penalty - provenance_penalty),
                 reasoning=(
-                    f"Citation được link chính xác (author-year match) và title "
-                    f"similarity cao ({title_sim:.2f}). Author mismatch "
-                    f"(author_jaccard={author_sim:.2f}) là do 'et al.' citation "
-                    f"không liệt kê đủ tác giả. Xác minh thành công.{provenance_note}"
+                    f"Citation được link chính xác và title "
+                    f"similarity cao ({features.title_sim_fuzzy:.2f}). {author_note} "
+                    f"Xác minh thành công.{provenance_note}"
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=[],
@@ -757,7 +790,10 @@ class SymbolicRules:
         # --- Rule 1c (NEW): Well-linked with moderate title similarity → VERIFIED ---
         if (
             mapping_is_matched
-            and 0.5 <= title_sim < 0.7
+            and 0.5 <= features.title_sim_fuzzy < 0.7
+            and author_sim >= 0.3
+            and year_dist <= self.year_tolerance
+            and not has_doi_conflict
             and (doi_match or consensus >= 2)
         ):
             triggered_rules.append("R-WELL-LINKED-MODERATE")
@@ -765,28 +801,15 @@ class SymbolicRules:
                 label=ValidationLabel.VERIFIED,
                 confidence=max(0.0, 0.75 - style_penalty - provenance_penalty),
                 reasoning=(
-                    f"Citation được link chính xác (author-year match) và title "
-                    f"similarity trung bình ({title_sim:.2f}). Author mismatch "
-                    f"(author_jaccard={author_sim:.2f}) là do 'et al.' citation. "
+                    f"Citation được link chính xác và title "
+                    f"similarity trung bình ({features.title_sim_fuzzy:.2f}), "
+                    f"author_jaccard={author_sim:.2f}. "
                     f"Có thể xác minh với lưu ý về metadata.{provenance_note}"
                 ),
                 triggered_rules=triggered_rules,
-                mismatched_fields=["author"],
+                mismatched_fields=["author"] if author_sim < self.author_jaccard_verified else [],
                 style_penalty=style_penalty,
             )
-
-        # === FIX v1.7: LOCAL_DB Perfect Match → VERIFIED ===
-        # When local_db is the only source that found a match with perfect title+author
-        # This is a trusted match because local_db is a curated knowledge base.
-        # LOCAL_DB rules are checked BEFORE other rules to ensure they fire correctly
-        # even with moderate title_sim values.
-        if self._rule_local_db_verified(source, features, style_penalty):
-            return self._rule_local_db_verified(source, features, style_penalty)
-
-        # === FIX v1.7: LOCAL_DB Good Match → VERIFIED ===
-        # When local_db found a match with good title but partial author match
-        if self._rule_local_db_good_match(source, features, style_penalty):
-            return self._rule_local_db_good_match(source, features, style_penalty)
 
         # --- Rule 2: DOI + title similarity trung bình → METADATA_ERROR ---
         # Only apply for live sources, not for local_db (which is handled above)
@@ -843,6 +866,29 @@ class SymbolicRules:
                 style_penalty=style_penalty,
             )
 
+        # --- Rule 3b: 1 nguồn live với title + author + year khớp rất cao → VERIFIED ---
+        if (
+            consensus >= 1
+            and _has_live_source(source, verified_sources)
+            and features.title_sim_fuzzy >= 0.90
+            and author_sim >= 0.80
+            and year_dist <= self.year_tolerance
+            and not has_doi_conflict
+        ):
+            triggered_rules.append("R-SINGLE-SOURCE-VERIFIED")
+            return RuleOutcome(
+                label=ValidationLabel.VERIFIED,
+                confidence=max(0.0, 0.78 - style_penalty - provenance_penalty),
+                reasoning=(
+                    f"Xác minh qua nguồn học thuật ({', '.join(source.sources_succeeded)}): "
+                    f"title similarity={features.title_sim_fuzzy:.2f}, "
+                    f"author overlap={author_sim:.2f}, year match.{provenance_note}"
+                ),
+                triggered_rules=triggered_rules,
+                mismatched_fields=[],
+                style_penalty=style_penalty,
+            )
+
         # --- Rule 4 (NEW v1.2 #33): AMBIGUOUS_MAPPING → cap confidence ---
         # Nếu linker không quyết định được → force abstention band
         if mapping_status is not None and hasattr(mapping_status, "value"):
@@ -884,12 +930,18 @@ class SymbolicRules:
         if content_alignment_score > 0 and not is_missing_reference:
             triggered_rules.append("R-CONTENT-ALIGNMENT")
 
-            # Rule: High content alignment + moderate title + strong consensus = VERIFIED
+            # Rule: High content alignment + moderate title + author/year match = VERIFIED
             # Neural can verify ONLY if:
             # 1. Citation has a matched reference entry (not missing_reference)
-            # 2. Title similarity >= 0.5
+            # 2. Fuzzy title similarity >= 0.6 and author_sim >= 0.5 and year_dist <= year_tolerance
             # 3. At least 2 sources confirm OR mapping is matched
-            if content_is_aligned and title_sim >= 0.5:
+            if (
+                content_is_aligned
+                and features.title_sim_fuzzy >= 0.6
+                and author_sim >= 0.5
+                and year_dist <= self.year_tolerance
+                and not has_doi_conflict
+            ):
                 if (
                     consensus >= 2
                     or mapping_status is None
@@ -904,22 +956,27 @@ class SymbolicRules:
                         confidence=max(0.0, 0.85 - style_penalty),
                         reasoning=(
                             f"Neural content alignment verified (score={content_alignment_score:.2f}). "
-                            f"Content semantic match confirmed with title sim={title_sim:.2f}, consensus={consensus}."
+                            f"Content semantic match confirmed with title sim={features.title_sim_fuzzy:.2f}, consensus={consensus}."
                         ),
                         triggered_rules=triggered_rules,
                         mismatched_fields=[],
                         style_penalty=style_penalty,
                     )
 
-            # Rule: Low content alignment + high title sim = SUSPECTED_HALLUCINATION
-            # Also applies to MISSING_REFERENCE cases
-            if not content_is_aligned and content_alignment_score >= 0.3 and title_sim >= 0.7:
+            # Rule: Low content alignment + high fuzzy title & author match = SUSPECTED_HALLUCINATION
+            # Only applies when the candidate actually matches the cited paper's title & author
+            if (
+                not content_is_aligned
+                and content_alignment_score >= 0.3
+                and features.title_sim_fuzzy >= 0.75
+                and author_sim >= 0.5
+            ):
                 triggered_rules.append("R-CONTENT-MISMATCH")
                 return RuleOutcome(
                     label=ValidationLabel.SUSPECTED_HALLUCINATION,
                     confidence=max(0.0, 0.80 - style_penalty),
                     reasoning=(
-                        f"WARNING: Title matches (sim={title_sim:.2f}) but content NOT aligned "
+                        f"WARNING: Title matches (sim={features.title_sim_fuzzy:.2f}) but content NOT aligned "
                         f"(Neural score={content_alignment_score:.2f}). Citation may be misattributed."
                     ),
                     triggered_rules=triggered_rules,

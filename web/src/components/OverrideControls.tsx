@@ -184,33 +184,26 @@ export function OverrideControls({
     return () => document.removeEventListener('keydown', handler);
   }, [open]);
 
-  if (verdict.is_overridden) {
-    return (
-      <div className={cn('flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-1 rounded border border-amber-200 dark:border-amber-800', className)}>
-        <RefreshCw className="h-3 w-3" />
-        <span>Đã ghi đè</span>
-        {verdict.override_record && (
-          <span className="text-muted-foreground ml-1">
-            ({new Date(verdict.override_record.overridden_at).toLocaleString('vi-VN')})
-          </span>
-        )}
-      </div>
-    );
-  }
-
   return (
     <>
       <button
         onClick={() => setOpen(true)}
         className={cn(
-          'flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-muted transition-colors',
+          verdict.is_overridden
+            ? 'flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-1 rounded border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors'
+            : 'flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-muted transition-colors',
           className
         )}
         title="Ghi đè verdict"
         aria-label="Ghi đè verdict"
       >
         <RefreshCw className="h-3 w-3" />
-        Ghi đè
+        <span>{verdict.is_overridden ? 'Đã ghi đè' : 'Ghi đè'}</span>
+        {verdict.is_overridden && verdict.override_record && (
+          <span className="text-muted-foreground ml-1">
+            ({new Date(verdict.override_record.overridden_at).toLocaleString('vi-VN')})
+          </span>
+        )}
       </button>
 
       {open && (

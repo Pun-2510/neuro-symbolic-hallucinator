@@ -130,9 +130,9 @@ async def override_verdict(
     else:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Parse verdict_id from string
+    # Parse verdict_id from string (supports raw id "19" or report id "v19")
     try:
-        v_id = int(verdict_id)
+        v_id = int(str(verdict_id).lstrip("vV"))
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid verdict_id")
 
@@ -170,14 +170,15 @@ async def override_verdict(
 
     # Return updated verdict
     return VerdictSchema(
-        citation_id=str(updated.id),
+        citation_id=f"v{updated.id}",
         citation_raw=updated.citation_raw,
         label=updated.label,
         confidence=updated.confidence,
         reasoning=updated.reasoning,
         triggered_rules=json.loads(updated.triggered_rules or "[]"),
         mismatched_fields=json.loads(updated.mismatched_fields or "[]"),
-        matched_sources=[],
+        matched_sources=_load_matched_sources(updated.features),
+        citation_link=_load_citation_link(updated.features),
         mapping_status=updated.mapping_status or "matched",
         mapping_confidence=updated.mapping_confidence or 0.0,
         style_penalty=updated.style_penalty,

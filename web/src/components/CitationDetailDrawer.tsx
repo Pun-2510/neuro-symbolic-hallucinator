@@ -5,6 +5,7 @@ import type { Verdict, MatchedSource, ValidationLabel, OverrideRequest } from '@
 import { VerdictBadge } from './VerdictBadge';
 import { MappingStatusBadge } from './MappingStatusBadge';
 import { EvidenceGraph } from './CitationGraphView';
+import { OverrideControls } from './OverrideControls';
 import { cn } from '@/lib/utils';
 import { getFieldDisplayName, getRuleDisplayName, getSourceDisplayName, getVerdictDisplayName, getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
 
@@ -115,6 +116,7 @@ function LogicTraceStep({
 export function CitationDetailDrawer({
   verdict,
   onClose,
+  onOverride,
 }: {
   verdict: Verdict;
   onClose: () => void;
@@ -264,6 +266,11 @@ export function CitationDetailDrawer({
                 </span>
               )}
             </div>
+            {onOverride && (
+              <div className="ml-auto">
+                <OverrideControls verdict={verdict} onOverride={onOverride} />
+              </div>
+            )}
           </div>
 
           {/* Override indicator */}

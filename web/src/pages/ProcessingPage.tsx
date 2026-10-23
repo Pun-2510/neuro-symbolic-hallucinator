@@ -70,17 +70,36 @@ export function ProcessingPage() {
   useEffect(() => {
     if (essayId === null) return;
     let cancelled = false;
+    let consecutiveErrors = 0;
     let timer: ReturnType<typeof setInterval> | null = null;
     const tick = async () => {
       try {
         const snap = await api.getEssayStatus(essayId);
         if (cancelled) return;
+        consecutiveErrors = 0;
         setStatus(snap);
         if (snap.status === 'failed' || snap.status === 'completed') {
           if (timer) clearInterval(timer);
         }
-      } catch {
-        // ignore transient errors
+      } catch (err) {
+        consecutiveErrors += 1;
+        if (!cancelled && consecutiveErrors >= 5) {
+          if (timer) clearInterval(timer);
+          setStatus({
+            status: 'failed',
+            step: 'parsing',
+            step_index: 0,
+            total_steps: 8,
+            message: 'Failed to retrieve status',
+            citations_found: 0,
+            references_found: 0,
+            linked: 0,
+            sources_queried: {},
+            elapsed_seconds: 0,
+            finished_at: Date.now(),
+            error: err instanceof Error ? err.message : 'Unable to fetch processing status.',
+          });
+        }
       }
     };
     void tick();

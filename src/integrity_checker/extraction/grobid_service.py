@@ -263,12 +263,17 @@ class GrobidServiceManager:
         except self._docker.errors.NotFound:
             return "not_found"
         except Exception as exc:
-            logger.warning("Cannot check container status: %s", exc)
+            logger.debug("Cannot check container status: %s", exc)
             return "unavailable"
 
     def is_container_running(self) -> bool:
         """Check nếu GROBID container đang chạy."""
-        return self._check_container_status() == "running"
+        status = self._check_container_status()
+        if status == "running":
+            return True
+        if status == "unavailable":
+            return self._status == GROBID_STATUS.AVAILABLE
+        return False
 
     def start(self, auto_cleanup: bool = True) -> bool:
         """Start GROBID Docker container.
