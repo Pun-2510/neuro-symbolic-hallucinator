@@ -143,88 +143,10 @@ export function BatchUploadPage() {
   );
 
   useEffect(() => {
-    if (queueState.hasAutoNavigated) return;
-    if (queueState.isProcessing) return;
-    if (files.length === 0) return;
-    if (stats.processing > 0 || stats.pending > 0) return;
-
-    const firstCompleted = files.find(
-      (f) => f.status === 'completed' && f.essayId
-    );
-    if (!firstCompleted || !firstCompleted.essayId) return;
-
-    setQueueState((prev) =>
-      prev.hasAutoNavigated ? prev : { ...prev, hasAutoNavigated: true }
-    );
-
-    if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current);
-    navigateTimerRef.current = setTimeout(() => {
-      navigate(`/verification/report/${firstCompleted.essayId}`);
-    }, 600);
-  }, [
-    stats,
-    queueState.isProcessing,
-    queueState.hasAutoNavigated,
-    files,
-    navigate,
-  ]);
-
-  useEffect(() => {
     return () => {
       if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current);
     };
   }, []);
-
-  useEffect(() => {
-    const processingFiles = files.filter(
-      (f) => f.status === 'uploading' || f.status === 'processing'
-    );
-    if (processingFiles.length === 0) return;
-
-    const pollInterval = setInterval(async () => {
-      const updated = await Promise.all(
-        processingFiles.map(async (fileItem) => {
-          if (!fileItem.essayId) return fileItem;
-          try {
-            const status = await api.getEssayStatus(fileItem.essayId);
-            if (status.status === 'completed') {
-              return {
-                ...fileItem,
-                status: 'completed' as FileStatus,
-                progress: 100,
-              };
-            } else if (status.status === 'failed') {
-              return {
-                ...fileItem,
-                status: 'failed' as FileStatus,
-                error: status.error || 'Processing failed',
-              };
-            } else {
-              const progress = Math.round(
-                (status.step_index / status.total_steps) * 100
-              );
-              return {
-                ...fileItem,
-                status: 'processing' as FileStatus,
-                progress,
-              };
-            }
-          } catch {
-            return fileItem;
-          }
-        })
-      );
-
-      setFiles((prev) =>
-        prev.map((f) => {
-          const updatedFile = updated.find((u) => u.id === f.id);
-          return updatedFile || f;
-        })
-      );
-    }, 2000);
-
-    return () => clearInterval(pollInterval);
-  }, [files]);
 
   const processQueue = useCallback(async () => {
     const pendingFiles = files.filter((f) => f.status === 'pending');
@@ -253,7 +175,7 @@ export function BatchUploadPage() {
       );
 
       try {
-        const response = await api.uploadEssay(fileItem.file);
+        const response = await api.uploadEssay(fileItem.file, targetClassId);
 
         setFiles((prev) =>
           prev.map((f) =>
@@ -298,6 +220,17 @@ export function BatchUploadPage() {
                 )
               );
               break;
+            } else {
+              const progress = Math.round(
+                (status.step_index / Math.max(1, status.total_steps)) * 100
+              );
+              setFiles((prev) =>
+                prev.map((f) =>
+                  f.id === fileItem.id
+                    ? { ...f, status: 'processing' as FileStatus, progress }
+                    : f
+                )
+              );
             }
           } catch {
             // Continue polling
@@ -338,7 +271,7 @@ export function BatchUploadPage() {
       currentIndex: -1,
       hasAutoNavigated: false,
     });
-  }, [files]);
+  }, [files, targetClassId]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();

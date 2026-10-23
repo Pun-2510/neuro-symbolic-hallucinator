@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from integrity_checker.api.deps import get_current_user, get_db, get_pipeline, require_admin
@@ -195,6 +195,7 @@ async def _run_pipeline_task(
 async def upload_essay(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    class_id: int | None = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     pipeline: IntegrityPipeline = Depends(get_pipeline),
@@ -209,12 +210,24 @@ async def upload_essay(
 
     content = await file.read()
 
-    # Create essay record immediately (num_pages=0 until pipeline fills it)
     repo = Repository(db)
+    if class_id is not None:
+        cls = repo.get_class(class_id)
+        if not cls:
+            raise HTTPException(status_code=404, detail="Class not found")
+        if current_user.role == "teacher" and cls.teacher_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not your class")
+        if current_user.role == "user":
+            enrolled_ids = {c.id for c in repo.list_classes_for_student(current_user.id)}
+            if class_id not in enrolled_ids:
+                raise HTTPException(status_code=403, detail="Not enrolled in this class")
+
+    # Create essay record immediately (num_pages=0 until pipeline fills it)
     essay = repo.create_essay_with_user(
         filename=file.filename,
         num_pages=0,
         user_id=current_user.id,
+        class_id=class_id,
     )
     repo.commit()
 

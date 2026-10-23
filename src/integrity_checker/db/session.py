@@ -124,6 +124,16 @@ def _run_inline_migrations(engine: Engine) -> None:
                 "ALTER TABLE verdicts ADD COLUMN context TEXT"
             )
 
+        # --- essays (class_id assignment) ---
+        essay_cols = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(essays)").fetchall()
+        }
+        if "class_id" not in essay_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE essays ADD COLUMN class_id INTEGER REFERENCES classes(id)"
+            )
+
         # --- users (v1.10 account management) ---
         user_cols = {
             row[1]

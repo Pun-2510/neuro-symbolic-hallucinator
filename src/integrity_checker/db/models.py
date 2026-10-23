@@ -123,6 +123,7 @@ class EssayRecord(Base):
     num_pages: Mapped[int] = mapped_column(Integer, default=0)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    class_id: Mapped[int | None] = mapped_column(ForeignKey("classes.id", ondelete="SET NULL"), nullable=True)
     # v1.2 — full pipeline output (JSON serialized)
     style_profile_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     cis_json: Mapped[str | None] = mapped_column(Text, nullable=True)

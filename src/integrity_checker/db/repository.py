@@ -561,8 +561,19 @@ class Repository:
 
     # -- Essays with user_id --
 
-    def create_essay_with_user(self, filename: str, num_pages: int, user_id: int) -> EssayRecord:
-        essay = EssayRecord(filename=filename, num_pages=num_pages, user_id=user_id)
+    def create_essay_with_user(
+        self,
+        filename: str,
+        num_pages: int,
+        user_id: int | None,
+        class_id: int | None = None,
+    ) -> EssayRecord:
+        essay = EssayRecord(
+            filename=filename,
+            num_pages=num_pages,
+            user_id=user_id,
+            class_id=class_id,
+        )
         self.session.add(essay)
         self.session.flush()
         # Defensive cleanup in case SQLite reused a deleted essay's ID
@@ -668,20 +679,23 @@ class Repository:
         return result
 
     def can_user_access_essay(self, user: User, essay: EssayRecord) -> bool:
-        """Return True if ``user`` owns ``essay``, is admin, or teaches the owner."""
+        """Return True if ``user`` owns ``essay``, is admin, or teaches the owner/class."""
         if user.role == "admin" or essay.user_id == user.id:
             return True
-        if user.role == "teacher" and essay.user_id is not None:
+        if user.role == "teacher":
             teacher_class_ids = {c.id for c in self.list_classes_for_teacher(user.id)}
             if not teacher_class_ids:
                 return False
-            student_class_ids = {
-                m.class_id
-                for m in self.session.query(ClassMembership)
-                .filter(ClassMembership.student_id == essay.user_id)
-                .all()
-            }
-            return bool(teacher_class_ids & student_class_ids)
+            if essay.class_id is not None and essay.class_id in teacher_class_ids:
+                return True
+            if essay.user_id is not None:
+                student_class_ids = {
+                    m.class_id
+                    for m in self.session.query(ClassMembership)
+                    .filter(ClassMembership.student_id == essay.user_id)
+                    .all()
+                }
+                return bool(teacher_class_ids & student_class_ids)
         return False
 
     # -- Citation Cache --
@@ -828,46 +842,60 @@ class Repository:
         )
 
     def get_class_essays(self, class_id: int) -> list[EssayRecord]:
-        """Essays của tất cả students trong class, mới nhất trước."""
+        """Essays gán trực tiếp vào class_id hoặc của students trong class (khi chưa gán class_id)."""
+        from sqlalchemy import and_, or_
+
         student_ids = [
             row[0]
             for row in self.session.query(ClassMembership.student_id)
             .filter(ClassMembership.class_id == class_id)
             .all()
         ]
-        if not student_ids:
-            return []
+        conditions = [EssayRecord.class_id == class_id]
+        if student_ids:
+            conditions.append(
+                and_(
+                    EssayRecord.class_id.is_(None),
+                    EssayRecord.user_id.in_(student_ids),
+                )
+            )
         return list(
             self.session.query(EssayRecord)
-            .filter(EssayRecord.user_id.in_(student_ids))
+            .filter(or_(*conditions))
             .order_by(EssayRecord.uploaded_at.desc())
             .all()
         )
 
     def count_pending_reviews_for_teacher(self, teacher_id: int) -> int:
-        """Essays của students trong các class teacher phụ trách mà có verdicts
-        chưa được override. Dùng cho teacher dashboard.
-        """
-        class_ids = [
-            row[0]
-            for row in self.session.query(Class.id).filter(Class.teacher_id == teacher_id).all()
-        ]
-        if not class_ids:
+        """Essays trong các class teacher phụ trách mà có verdicts chưa được override."""
+        classes = self.list_classes_for_teacher(teacher_id)
+        if not classes:
             return 0
-        student_ids = [
-            row[0]
-            for row in self.session.query(ClassMembership.student_id)
-            .filter(ClassMembership.class_id.in_(class_ids))
-            .all()
-        ]
-        if not student_ids:
+        essay_ids = {e.id for c in classes for e in self.get_class_essays(c.id)}
+        if not essay_ids:
             return 0
-        from integrity_checker.db.models import VerdictRecord
         return (
             self.session.query(VerdictRecord)
-            .join(EssayRecord, EssayRecord.id == VerdictRecord.essay_id)
             .filter(
-                EssayRecord.user_id.in_(student_ids),
+                VerdictRecord.essay_id.in_(essay_ids),
+                VerdictRecord.is_overridden == 0,
+                VerdictRecord.label.in_(["metadata_error", "suspected_hallucination"]),
+            )
+            .count()
+        )
+
+    def count_all_pending_reviews(self) -> int:
+        """Tổng số verdicts cần review trên toàn bộ các lớp (dành cho admin trên teacher dashboard)."""
+        classes = self.list_all_classes()
+        if not classes:
+            return 0
+        essay_ids = {e.id for c in classes for e in self.get_class_essays(c.id)}
+        if not essay_ids:
+            return 0
+        return (
+            self.session.query(VerdictRecord)
+            .filter(
+                VerdictRecord.essay_id.in_(essay_ids),
                 VerdictRecord.is_overridden == 0,
                 VerdictRecord.label.in_(["metadata_error", "suspected_hallucination"]),
             )
@@ -875,24 +903,14 @@ class Repository:
         )
 
     def list_pending_reviews_for_class(self, class_id: int) -> list[VerdictRecord]:
-        """Verdicts trong essays của students trong class này, limited to
-        labels that need review (``metadata_error`` or
-        ``suspected_hallucination``) and not yet overridden. Dùng cho
-        teacher pending-reviews UI.
-        """
-        student_ids = [
-            row[0]
-            for row in self.session.query(ClassMembership.student_id)
-            .filter(ClassMembership.class_id == class_id)
-            .all()
-        ]
-        if not student_ids:
+        """Verdicts trong essays thuộc class này cần review và chưa được override."""
+        essay_ids = [e.id for e in self.get_class_essays(class_id)]
+        if not essay_ids:
             return []
         return list(
             self.session.query(VerdictRecord)
-            .join(EssayRecord, EssayRecord.id == VerdictRecord.essay_id)
             .filter(
-                EssayRecord.user_id.in_(student_ids),
+                VerdictRecord.essay_id.in_(essay_ids),
                 VerdictRecord.label.in_(["metadata_error", "suspected_hallucination"]),
                 VerdictRecord.is_overridden == 0,
             )

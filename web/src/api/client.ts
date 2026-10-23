@@ -484,6 +484,7 @@ export interface PendingVerdict {
   essay_id: number;
   filename: string;
   student_username: string | null;
+  citation_raw?: string;
   label: string;
   confidence: number;
   reasoning: string;
@@ -635,9 +636,12 @@ export const api = {
     `${BASE_URL}/teacher/classes/${classId}/export.csv`,
 
 
-  uploadEssay: (file: File) => {
+  uploadEssay: (file: File, classId?: number | null) => {
     const fd = new FormData();
     fd.append('file', file);
+    if (classId != null) {
+      fd.append('class_id', String(classId));
+    }
     return request<UploadResponse>('/essays', {
       method: 'POST',
       body: fd,

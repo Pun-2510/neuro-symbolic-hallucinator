@@ -83,6 +83,7 @@ class PendingVerdictItem(BaseModel):
     essay_id: int
     filename: str
     student_username: str | None
+    citation_raw: str = ""
     label: str
     confidence: float
     reasoning: str
@@ -301,7 +302,7 @@ def teacher_dashboard(
     pending_reviews = (
         repo.count_pending_reviews_for_teacher(teacher.id)
         if teacher.role == "teacher"
-        else 0
+        else repo.count_all_pending_reviews()
     )
     return TeacherDashboardResponse(
         total_classes=len(classes),
@@ -341,6 +342,7 @@ def list_pending_reviews(
                 essay_id=v.essay_id,
                 filename=essay.filename if essay else "",
                 student_username=student.username if student else None,
+                citation_raw=v.citation_raw or "",
                 label=v.label,
                 confidence=v.confidence,
                 reasoning=v.reasoning or "",
