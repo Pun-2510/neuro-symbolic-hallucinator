@@ -1,11 +1,18 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { type Verdict } from '@/api/client';
 import { RuleInspector } from '@/components/RuleInspector';
-import { getSearchStepDescription, getVerdictDisplayName, getVerdictExplanation } from '@/lib/verdictExplanation';
-import { useEssayPolling } from '@/hooks/useEssayPolling';
+import { VerdictBadge } from '@/components/VerdictBadge';
 import {
-  ArrowLeft,
+  getSearchStepDescription,
+  getVerdictExplanation,
+  isUrlResource,
+} from '@/lib/verdictExplanation';
+import { useEssayPolling } from '@/hooks/useEssayPolling';
+import { EssayHeader } from './essay/EssayHeader';
+import { EssayActionBar } from './essay/EssayActionBar';
+import {
   Loader2,
   AlertCircle,
   CheckCircle,
@@ -13,13 +20,15 @@ import {
   HelpCircle,
   ChevronRight,
   Scale,
+  GitBranch,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 /* ============================================================
-   SourceLogic — Logic Trace Page
-   Based on UX/UI Concept Section 14: Logic Trace
+   SourceLogic — Logic Trace Page (Scholarly Precision v2.0)
    Shows step-by-step verification trace for each citation
    ============================================================ */
 
@@ -31,7 +40,7 @@ interface TraceStep {
   description?: string;
   status: TraceStepStatus;
   detail?: string;
-  data?: Record<string, unknown>;
+  tag: string;
 }
 
 function getStepStatusColor(status: TraceStepStatus): {
@@ -43,152 +52,147 @@ function getStepStatusColor(status: TraceStepStatus): {
   switch (status) {
     case 'completed':
       return {
-        bg: 'bg-emerald-50 dark:bg-emerald-950',
-        border: 'border-emerald-300 dark:border-emerald-700',
-        icon: <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />,
+        bg: 'bg-emerald-50/70 dark:bg-emerald-950/30',
+        border: 'border-emerald-200 dark:border-emerald-800',
+        icon: <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />,
         text: 'text-emerald-700 dark:text-emerald-300',
       };
     case 'active':
       return {
-        bg: 'bg-indigo-50 dark:bg-indigo-950',
-        border: 'border-indigo-300 dark:border-indigo-700',
-        icon: <Loader2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400 animate-spin" />,
-        text: 'text-indigo-700 dark:text-indigo-300',
+        bg: 'bg-amber-50/70 dark:bg-amber-950/30',
+        border: 'border-amber-200 dark:border-amber-800',
+        icon: <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />,
+        text: 'text-amber-700 dark:text-amber-300',
       };
     case 'error':
       return {
-        bg: 'bg-red-50 dark:bg-red-950',
-        border: 'border-red-300 dark:border-red-700',
-        icon: <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />,
+        bg: 'bg-red-50/70 dark:bg-red-950/30',
+        border: 'border-red-200 dark:border-red-800',
+        icon: <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />,
         text: 'text-red-700 dark:text-red-300',
       };
     default:
       return {
-        bg: 'bg-slate-50 dark:bg-slate-800',
-        border: 'border-slate-200 dark:border-slate-700',
-        icon: <HelpCircle className="h-5 w-5 text-slate-400" />,
+        bg: 'bg-slate-50 dark:bg-slate-900',
+        border: 'border-slate-200 dark:border-slate-800',
+        icon: <HelpCircle className="h-4 w-4 text-slate-400" />,
         text: 'text-slate-600 dark:text-slate-300',
       };
   }
 }
 
-function buildTraceSteps(verdict: Verdict): TraceStep[] {
+function buildTraceSteps(verdict: Verdict, lang: 'vi' | 'en'): TraceStep[] {
   const sources = verdict.matched_sources ?? [];
-  const steps: TraceStep[] = [
+  return [
     {
       id: 'parse',
-      label: 'Match the citation',
-      description: 'Link the in-text citation to the reference in your bibliography.',
+      label: lang === 'vi' ? '1. Bóc tách & Ánh xạ Trích dẫn' : '1. Match the citation',
+      description:
+        lang === 'vi'
+          ? 'Liên kết marker trong bài với mục tài liệu tham khảo tương ứng.'
+          : 'Link the in-text citation to the reference in your bibliography.',
       status: 'completed',
       detail: verdict.citation_raw,
+      tag: 'LAYER 1 · GROBID TEI',
     },
     {
       id: 'search',
-      label: 'Find the publication',
+      label:
+        lang === 'vi'
+          ? '2. Truy hồi Ấn phẩm Đa nguồn'
+          : '2. Find the publication',
       description: getSearchStepDescription(verdict),
       status: sources.length > 0 ? 'completed' : 'pending',
+      tag: 'FEDERATED RETRIEVAL',
     },
     {
       id: 'compare',
-      label: 'Compare the details',
-      description: 'Compare the title, authors, year, and identifiers.',
+      label:
+        lang === 'vi'
+          ? '3. Đối chiếu Tương đồng Đa trường'
+          : '3. Compare the details',
+      description:
+        lang === 'vi'
+          ? 'So khớp tiêu đề (fuzzy + semantic), tác giả (Jaccard), năm xuất bản và DOI.'
+          : 'Compare the title, authors, year, and identifiers.',
       status: verdict.confidence > 0 ? 'completed' : 'pending',
+      tag: 'NEURAL SIMILARITY',
     },
     {
       id: 'rules',
-      label: 'Apply verification checks',
-      description: verdict.triggered_rules.length > 0
-        ? 'Additional checks found something to review.'
-        : 'No additional warnings were raised.',
+      label:
+        lang === 'vi'
+          ? '4. Kích hoạt Luật Suy diễn Hình thức'
+          : '4. Apply verification checks',
+      description:
+        verdict.triggered_rules.length > 0
+          ? lang === 'vi'
+            ? `Đã kích hoạt ${verdict.triggered_rules.length} quy tắc kiểm chứng.`
+            : 'Additional checks evaluated symbolic rules.'
+          : lang === 'vi'
+            ? 'Không phát hiện cảnh báo quy tắc bổ sung.'
+            : 'No additional warnings were raised.',
       status: verdict.triggered_rules.length > 0 ? 'completed' : 'pending',
+      tag: 'SYMBOLIC RULES R01–R12',
     },
     {
       id: 'verdict',
-      label: 'Result',
+      label: lang === 'vi' ? '5. Kết luận Xác minh' : '5. Final Result',
+      description: getVerdictExplanation(verdict),
       status:
         verdict.label === 'verified'
           ? 'completed'
           : verdict.label === 'suspected_hallucination'
-          ? 'error'
-          : verdict.label === 'metadata_error'
-          ? 'active'
-          : 'pending',
+            ? 'error'
+            : verdict.label === 'metadata_error'
+              ? 'active'
+              : 'pending',
+      tag: `CONFIDENCE ${Math.round(verdict.confidence * 100)}%`,
     },
   ];
-
-  return steps;
 }
 
 function TraceStepCard({ step, isLast }: { step: TraceStep; isLast: boolean }) {
   const colors = getStepStatusColor(step.status);
 
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-3.5">
       <div className="flex flex-col items-center">
         <div
-          className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 ${colors.bg} ${colors.border}`}
+          className={`w-8 h-8 rounded-xl flex items-center justify-center border ${colors.bg} ${colors.border} shrink-0`}
         >
           {colors.icon}
         </div>
         {!isLast && (
           <div
-            className={`w-0.5 flex-1 min-h-[60px] ${
+            className={`w-0.5 flex-1 min-h-[36px] ${
               step.status === 'completed' || step.status === 'active'
-                ? 'bg-indigo-300 dark:bg-indigo-700'
-                : 'bg-slate-200 dark:bg-slate-700'
+                ? 'bg-indigo-300 dark:bg-indigo-800'
+                : 'bg-slate-200 dark:bg-slate-800'
             }`}
           />
         )}
       </div>
 
-      <div className="flex-1 pb-8">
-        <div className={`rounded-xl border p-4 ${colors.bg} ${colors.border}`}>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h4 className={`font-semibold ${colors.text}`}>{step.label}</h4>
-              {step.description && (
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                  {step.description}
-                </p>
-              )}
-            </div>
-            {step.data && Object.keys(step.data).length > 0 && (
-              <ChevronRight className="h-5 w-5 text-slate-400 shrink-0" />
-            )}
+      <div className="flex-1 pb-4 min-w-0">
+        <div className={`rounded-xl border p-3.5 ${colors.bg} ${colors.border}`}>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h4 className={`text-xs sm:text-sm font-bold ${colors.text}`}>
+              {step.label}
+            </h4>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/80 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+              {step.tag}
+            </span>
           </div>
-
-          {step.detail && (
-            <p className="text-sm text-slate-700 dark:text-slate-300 mt-2 font-mono bg-white/50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
-              {step.detail}
+          {step.description && (
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+              {step.description}
             </p>
           )}
-
-          {step.data && (
-            <div className="mt-3 space-y-2">
-              {Object.entries(step.data).map(([key, value]) => (
-                <div key={key} className="flex items-center gap-2 text-sm">
-                  <span className="text-slate-600 dark:text-slate-300 capitalize">
-                    {key.replace(/_/g, ' ')}:
-                  </span>
-                  {Array.isArray(value) ? (
-                    <div className="flex flex-wrap gap-1">
-                      {value.map((v, i) => (
-                        <span
-                          key={i}
-                          className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded text-xs font-mono border border-slate-200 dark:border-slate-700"
-                        >
-                          {v}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="font-medium text-slate-700 dark:text-slate-300">
-                      {String(value)}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
+          {step.detail && (
+            <p className="text-xs text-slate-700 dark:text-slate-300 mt-2 font-mono bg-white/80 dark:bg-slate-900/80 p-2.5 rounded-lg border border-slate-200/70 dark:border-slate-800 break-words">
+              {step.detail}
+            </p>
           )}
         </div>
       </div>
@@ -199,53 +203,54 @@ function TraceStepCard({ step, isLast }: { step: TraceStep; isLast: boolean }) {
 function VerdictTrace({
   verdict,
   index,
+  lang,
+  defaultExpanded = false,
 }: {
   verdict: Verdict;
   index: number;
+  lang: 'vi' | 'en';
+  defaultExpanded?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const steps = buildTraceSteps(verdict);
-
-  const verdictColor =
-    verdict.label === 'verified'
-      ? 'text-emerald-600 dark:text-emerald-400'
-      : verdict.label === 'suspected_hallucination'
-      ? 'text-red-600 dark:text-red-400'
-      : verdict.label === 'metadata_error'
-      ? 'text-amber-600 dark:text-amber-400'
-      : 'text-slate-600 dark:text-slate-300';
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const steps = buildTraceSteps(verdict, lang);
 
   return (
-    <Card className="p-0 overflow-hidden">
+    <Card className="p-0 overflow-hidden rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-4 p-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+        className="w-full flex items-center gap-3.5 p-4 bg-white dark:bg-slate-900 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors text-left"
       >
-        <span className="text-sm font-mono text-slate-600 dark:text-slate-300 w-8">
+        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
           #{index + 1}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate font-serif">
             {verdict.citation_raw}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`text-sm font-semibold capitalize ${verdictColor}`}>
-            {getVerdictDisplayName(verdict.label)}
-          </span>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <Badge variant="outline" className="hidden sm:inline-flex font-mono text-[10px]">
+            {verdict.triggered_rules.length} rules
+          </Badge>
+          <VerdictBadge
+            verdict={isUrlResource(verdict) ? 'resource' : verdict.label}
+            size="sm"
+          />
           <ChevronRight
-            className={`h-5 w-5 text-slate-400 transition-transform ${
-              expanded ? 'rotate-90' : ''
+            className={`h-4 w-4 text-slate-400 transition-transform ${
+              expanded ? 'rotate-90 text-indigo-600 dark:text-indigo-400' : ''
             }`}
           />
         </div>
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-900">
-          <div className="mb-6">
-            <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-4">
-              How the result was reached
+        <div className="border-t border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 bg-slate-50/60 dark:bg-slate-950/60 space-y-5">
+          <div>
+            <h5 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+              {lang === 'vi'
+                ? 'Chuỗi Suy diễn Neuro-Symbolic 5 Bước'
+                : 'How the result was reached (5-Stage Trace)'}
             </h5>
             <div>
               {steps.map((step, idx) => (
@@ -258,19 +263,12 @@ function VerdictTrace({
             </div>
           </div>
 
-          <div className="mb-4">
-            <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">
-              What we found
-            </h5>
-            <p className="text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-              {getVerdictExplanation(verdict)}
-            </p>
-          </div>
-
           {verdict.triggered_rules.length > 0 && (
             <div>
-              <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">
-                Triggered Rules
+              <h5 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                {lang === 'vi'
+                  ? 'Chi tiết Tập Luật Hình thức (Triggered Rules)'
+                  : 'Triggered Symbolic Rules'}
               </h5>
               <RuleInspector
                 triggeredRules={verdict.triggered_rules}
@@ -286,29 +284,42 @@ function VerdictTrace({
 
 export function LogicTracePage() {
   const { id } = useParams<{ id: string }>();
-  const [selectedVerdict, setSelectedVerdict] = useState<Verdict | null>(null);
+  const { i18n } = useTranslation();
+  const lang: 'vi' | 'en' = i18n.language?.startsWith('vi') ? 'vi' : 'en';
+  const [filterMode, setFilterMode] = useState<'all' | 'flagged' | 'verified'>('all');
 
   const numericId = id ? parseInt(id, 10) : null;
   const { report, error } = useEssayPolling(
     numericId !== null && !Number.isNaN(numericId) && numericId > 0 ? numericId : null,
-    { errorMessage: 'Failed to load verification trace. Please try again.' },
+    { errorMessage: 'Failed to load verification trace. Please try again.' }
   );
 
-  const sortedVerdicts = report?.verdicts
-    ? [...report.verdicts].sort((a, b) => {
-        if (a.label !== 'verified' && b.label === 'verified') return -1;
-        if (a.label === 'verified' && b.label !== 'verified') return 1;
-        return a.confidence - b.confidence;
-      })
-    : [];
+  const sortedVerdicts = useMemo(() => {
+    if (!report?.verdicts) return [];
+    const base = [...report.verdicts].sort((a, b) => {
+      if (a.label !== 'verified' && b.label === 'verified') return -1;
+      if (a.label === 'verified' && b.label !== 'verified') return 1;
+      return a.confidence - b.confidence;
+    });
+    if (filterMode === 'flagged') {
+      return base.filter((v) => v.label !== 'verified');
+    }
+    if (filterMode === 'verified') {
+      return base.filter((v) => v.label === 'verified');
+    }
+    return base;
+  }, [report, filterMode]);
 
   if (error) {
     return (
-      <Alert variant="destructive" className="card p-6">
+      <Alert variant="destructive" className="card p-6 rounded-2xl">
         <AlertCircle className="h-5 w-5" />
         <AlertTitle className="font-medium">Error: {error}</AlertTitle>
         <AlertDescription>
-          <Link to="/history" className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block">
+          <Link
+            to="/history"
+            className="text-indigo-600 dark:text-indigo-400 hover:underline mt-2 inline-block"
+          >
             ← Back to Reports
           </Link>
         </AlertDescription>
@@ -320,138 +331,152 @@ export function LogicTracePage() {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin" />
-        <span className="ml-3 text-slate-600 dark:text-slate-400">Loading trace data...</span>
+        <span className="ml-3 text-slate-600 dark:text-slate-400 font-mono text-sm">
+          Loading trace data...
+        </span>
       </div>
     );
   }
 
+  const totalCount = report.verdicts.length;
+  const verifiedCount = report.verdicts.filter((v) => v.label === 'verified').length;
+  const metaErrCount = report.verdicts.filter((v) => v.label === 'metadata_error').length;
+  const hallucinationCount = report.verdicts.filter(
+    (v) => v.label === 'suspected_hallucination'
+  ).length;
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <Link
-          to={`/verification/report/${id}`}
-          className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 mb-3 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Report
-        </Link>
-        <div className="flex items-start justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
-              Logic Trace
-            </h1>
-            <p className="text-slate-600 dark:text-slate-300 mt-1 truncate" title={report.filename}>
-              {report.filename}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Scale className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            <span className="text-slate-600 dark:text-slate-400">
-              {sortedVerdicts.length} citations traced
+    <div className="space-y-6 pb-10">
+      {/* Shared Report Header */}
+      <EssayHeader
+        essayId={report.essay_id}
+        filename={report.filename}
+        numPages={report.num_pages}
+        numCitations={report.num_citations}
+        styleName={report.style_profile?.style}
+      />
+
+      {/* Shared Multi-Tab Diagnostic Navigation */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <EssayActionBar essayId={id ?? ''} />
+        <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400">
+          <Scale className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          <span>{totalCount} citations traced</span>
+        </div>
+      </div>
+
+      {/* 4 Summary Metric Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <Card className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Total
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              01
             </span>
           </div>
-        </div>
-      </div>
+          <p className="text-2xl font-bold font-mono tabular-nums text-slate-900 dark:text-slate-100">
+            {totalCount}
+          </p>
+        </Card>
 
-      {/* Legend */}
-      <Card className="p-4 bg-slate-50 dark:bg-slate-800/50">
-        <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-3">
-          Trace Legend
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center">
-              <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <span className="text-slate-600 dark:text-slate-400">Completed</span>
+        <Card className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200/80 dark:border-emerald-900/70 shadow-2xs">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              Verified
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+              02
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-indigo-100 dark:bg-indigo-950 border border-indigo-300 dark:border-indigo-700 flex items-center justify-center">
-              <Loader2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400 animate-spin" />
-            </div>
-            <span className="text-slate-600 dark:text-slate-400">In Progress</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-700 flex items-center justify-center">
-              <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-            </div>
-            <span className="text-slate-600 dark:text-slate-400">Error</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 flex items-center justify-center">
-              <HelpCircle className="h-4 w-4 text-slate-400" />
-            </div>
-            <span className="text-slate-600 dark:text-slate-400">Pending</span>
-          </div>
-        </div>
-      </Card>
+          <p className="text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
+            {verifiedCount}
+          </p>
+        </Card>
 
-      {/* Summary stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card className="stat-card text-center p-4">
-          <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {report.verdicts.length}
+        <Card className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-900/70 shadow-2xs">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+              Meta Errors
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
+              03
+            </span>
+          </div>
+          <p className="text-2xl font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400">
+            {metaErrCount}
           </p>
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Total</p>
         </Card>
-        <Card className="stat-card text-center p-4 border-emerald-200 dark:border-emerald-800">
-          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-            {report.verdicts.filter((v) => v.label === 'verified').length}
+
+        <Card className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-red-200/80 dark:border-red-900/70 shadow-2xs">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-red-600 dark:text-red-400">
+              Suspected
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300">
+              04
+            </span>
+          </div>
+          <p className="text-2xl font-bold font-mono tabular-nums text-red-600 dark:text-red-400">
+            {hallucinationCount}
           </p>
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Verified</p>
-        </Card>
-        <Card className="stat-card text-center p-4 border-amber-200 dark:border-amber-800">
-          <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-            {report.verdicts.filter((v) => v.label === 'metadata_error').length}
-          </p>
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Meta Errors</p>
-        </Card>
-        <Card className="stat-card text-center p-4 border-red-200 dark:border-red-800">
-          <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-            {report.verdicts.filter((v) => v.label === 'suspected_hallucination').length}
-          </p>
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">Suspected</p>
         </Card>
       </div>
 
-      {/* Verdict traces */}
-      <div>
-        <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-          Citation Traces
-        </h2>
-        <div className="space-y-3">
+      {/* IDE Window Container for Symbolic Traces */}
+      <Card className="p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        {/* Top Window Chrome */}
+        <div className="px-4 sm:px-6 py-3.5 bg-slate-50/80 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-400/80 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80 inline-block" />
+            </div>
+            <Separator orientation="vertical" className="h-4" />
+            <div className="flex items-center gap-2 font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <GitBranch className="h-3.5 w-3.5 text-violet-500" />
+              <span>symbolic_verifier.py · Citation Traces ({sortedVerdicts.length})</span>
+            </div>
+          </div>
+
+          <div className="flex gap-1.5 flex-wrap">
+            {(
+              [
+                ['all', `All (${totalCount})`],
+                ['flagged', `Flagged (${totalCount - verifiedCount})`],
+                ['verified', `Verified (${verifiedCount})`],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilterMode(key)}
+                className={`px-3 py-1 rounded-lg text-xs font-mono font-semibold transition-all border ${
+                  filterMode === key
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-5 sm:p-6 space-y-3">
           {sortedVerdicts.map((verdict, index) => (
-            <VerdictTrace key={verdict.citation_id} verdict={verdict} index={index} />
+            <VerdictTrace
+              key={verdict.citation_id}
+              verdict={verdict}
+              index={index}
+              lang={lang}
+              defaultExpanded={index === 0}
+            />
           ))}
         </div>
-      </div>
-
-      {selectedVerdict && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" onClick={() => setSelectedVerdict(null)}>
-          <div
-            className="absolute right-0 top-0 h-full w-full md:max-w-3xl bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <button
-                onClick={() => setSelectedVerdict(null)}
-                className="mb-4 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
-              >
-                ← Close
-              </button>
-              <h3 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100 mb-4">
-                Full Trace: {selectedVerdict.citation_raw}
-              </h3>
-              <RuleInspector
-                triggeredRules={selectedVerdict.triggered_rules}
-                verdictLabel={selectedVerdict.label}
-                className="mt-4"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      </Card>
     </div>
   );
 }
