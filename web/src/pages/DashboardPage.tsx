@@ -25,11 +25,22 @@ import {
   useDashboardStats,
   type DashboardStats,
 } from '@/hooks/useEssays';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 /* ============================================================
-   SourceLogic — Dashboard Page Component
+   SourceLogic — Dashboard Page Component (shadcn/ui v2.0)
    Shows overview of all uploaded documents + aggregate stats
-   Academic Source Verification Workspace
    ============================================================ */
 
 const DEFAULT_STATS: DashboardStats = {
@@ -49,7 +60,11 @@ export function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-  const errorMessage = error ? (error instanceof Error ? error.message : t('error.network')) : null;
+  const errorMessage = error
+    ? error instanceof Error
+      ? error.message
+      : t('error.network')
+    : null;
   const deletingId = deleteMutation.isPending
     ? (deleteMutation.variables ?? null)
     : null;
@@ -78,28 +93,28 @@ export function DashboardPage() {
       value: stats.total_documents,
       icon: FileText,
       color: 'text-indigo-600 dark:text-indigo-400',
-      bg: 'bg-indigo-50 dark:bg-indigo-950',
+      bg: 'bg-indigo-50/80 dark:bg-indigo-950/60 border-indigo-200/70 dark:border-indigo-800/70',
     },
     {
       label: t('dashboard.totalCitations'),
       value: stats.total_citations,
       icon: Scale,
       color: 'text-emerald-600 dark:text-emerald-400',
-      bg: 'bg-emerald-50 dark:bg-emerald-950',
+      bg: 'bg-emerald-50/80 dark:bg-emerald-950/60 border-emerald-200/70 dark:border-emerald-800/70',
     },
     {
       label: t('dashboard.avgCisScore'),
       value: stats.avg_cis_score !== null ? `${stats.avg_cis_score}%` : 'N/A',
       icon: TrendingUp,
       color: 'text-amber-600 dark:text-amber-400',
-      bg: 'bg-amber-50 dark:bg-amber-950',
+      bg: 'bg-amber-50/80 dark:bg-amber-950/60 border-amber-200/70 dark:border-amber-800/70',
     },
     {
       label: t('dashboard.verifiedRate'),
       value: stats.verified_rate > 0 ? `${stats.verified_rate}%` : 'N/A',
       icon: CheckCircle2,
       color: 'text-blue-600 dark:text-blue-400',
-      bg: 'bg-blue-50 dark:bg-blue-950',
+      bg: 'bg-blue-50/80 dark:bg-blue-950/60 border-blue-200/70 dark:border-blue-800/70',
     },
   ];
 
@@ -118,49 +133,61 @@ export function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Link to="/upload" className="btn-primary btn-sm">
-            <Upload className="h-4 w-4" />
-            {t('dashboard.newCheck')}
-          </Link>
-          <button
+          <Button asChild size="sm">
+            <Link to="/upload">
+              <Upload className="h-4 w-4" />
+              {t('dashboard.newCheck')}
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => refetch()}
             disabled={isFetching}
             aria-label="Refresh essays list"
-            className="p-2 min-h-11 min-w-11 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
             title={t('common.refresh')}
+            className="min-h-10 min-w-10"
           >
             <RefreshCw className={`h-5 w-5 ${isFetching ? 'animate-spin' : ''}`} />
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {statCards.map((card) => (
-          <div key={card.label} className={`card p-5 ${card.bg}`}>
+          <Card key={card.label} className={`p-5 ${card.bg}`}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm text-slate-600 dark:text-slate-300">{card.label}</p>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                {card.label}
+              </p>
               <card.icon className={`h-5 w-5 ${card.color}`} />
             </div>
-            <p className={`text-2xl font-bold font-display ${card.color}`}>{card.value}</p>
-          </div>
+            <p className={`text-2xl font-bold font-mono tabular-nums ${card.color}`}>
+              {card.value}
+            </p>
+          </Card>
         ))}
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-slate-500" aria-hidden="true" />
-        <input
+        <Search
+          className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-slate-500 pointer-events-none"
+          aria-hidden="true"
+        />
+        <Input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={t('dashboard.searchPlaceholder')}
           aria-label="Search documents"
-          className="input pl-12 pr-10"
+          className="h-11 pl-12 pr-10"
         />
         {searchQuery && (
           <button
             onClick={() => setSearchQuery('')}
+            aria-label="Clear search"
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           >
             <XCircle className="h-5 w-5" />
@@ -170,18 +197,20 @@ export function DashboardPage() {
 
       {/* Error */}
       {errorMessage && (
-        <div className="card p-5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-          <p className="text-sm text-red-700 dark:text-red-300">{errorMessage}</p>
-        </div>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
       )}
 
       {/* Documents Table */}
-      <div className="card p-0 overflow-hidden">
+      <Card className="p-0 overflow-hidden">
         {isLoading && essays.length === 0 ? (
           <div className="p-12 flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
-            <p className="text-sm text-slate-600 dark:text-slate-300">{t('dashboard.loadingDocuments')}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {t('dashboard.loadingDocuments')}
+            </p>
           </div>
         ) : filteredEssays.length === 0 ? (
           <div className="p-12 text-center">
@@ -196,12 +225,9 @@ export function DashboardPage() {
                 <p className="text-slate-600 dark:text-slate-300 mb-4">
                   {t('dashboard.noDocumentsMatch', { query: searchQuery })}
                 </p>
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="text-indigo-600 dark:text-indigo-400 hover:underline"
-                >
+                <Button variant="link" onClick={() => setSearchQuery('')}>
                   {t('dashboard.clearSearch')}
-                </button>
+                </Button>
               </>
             ) : (
               <>
@@ -216,110 +242,102 @@ export function DashboardPage() {
                       : t('dashboard.noDocumentsStudent')}
                 </p>
                 {!(isTeacher || isAdmin) && (
-                  <Link to="/upload" className="btn-primary">
-                    <Upload className="h-4 w-4" />
-                    {t('dashboard.uploadDocument')}
-                  </Link>
+                  <Button asChild>
+                    <Link to="/upload">
+                      <Upload className="h-4 w-4" />
+                      {t('dashboard.uploadDocument')}
+                    </Link>
+                  </Button>
                 )}
               </>
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    {t('dashboard.tableDocument')}
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    {t('dashboard.tablePages')}
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    {t('dashboard.tableUploaded')}
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    {t('dashboard.tableActions')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredEssays.map((essay) => (
-                  <tr
-                    key={essay.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                  >
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center shrink-0">
-                          <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate max-w-md">
-                            {essay.filename}
-                          </p>
-                          <p className="text-xs text-slate-600 dark:text-slate-300">
-                            ID #{essay.id}
-                          </p>
-                        </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('dashboard.tableDocument')}</TableHead>
+                <TableHead>{t('dashboard.tablePages')}</TableHead>
+                <TableHead>{t('dashboard.tableUploaded')}</TableHead>
+                <TableHead>{t('dashboard.tableActions')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredEssays.map((essay) => (
+                <TableRow key={essay.id}>
+                  <TableCell className="py-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center shrink-0">
+                        <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                       </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="text-sm text-slate-600 dark:text-slate-300">
-                        {essay.num_pages}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
-                        <Clock className="h-3.5 w-3.5" />
-                        {new Date(essay.uploaded_at).toLocaleDateString(dateLocale, {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate max-w-md">
+                          {essay.filename}
+                        </p>
+                        <p className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                          ID #{essay.id}
+                        </p>
                       </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          to={`/verification/report/${essay.id}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors"
-                        >
-                          <Eye className="h-4 w-4" />
-                          {t('dashboard.viewReport')}
-                        </Link>
-                        <button
-                          onClickCapture={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setConfirmDeleteId(essay.id);
-                          }}
-                          disabled={deletingId === essay.id}
-                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
-                          title={t('common.delete')}
-                          aria-label={`Delete ${essay.filename}`}
-                        >
-                          {deletingId === essay.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-mono tabular-nums text-slate-600 dark:text-slate-300">
+                      {essay.num_pages}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+                      <Clock className="h-3.5 w-3.5" />
+                      {new Date(essay.uploaded_at).toLocaleDateString(dateLocale, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`/verification/report/${essay.id}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors"
+                      >
+                        <Eye className="h-4 w-4" />
+                        {t('dashboard.viewReport')}
+                      </Link>
+                      <button
+                        onClickCapture={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setConfirmDeleteId(essay.id);
+                        }}
+                        disabled={deletingId === essay.id}
+                        className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-50"
+                        title={t('common.delete')}
+                        aria-label={`Delete ${essay.filename}`}
+                      >
+                        {deletingId === essay.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
 
       {/* Stats Footer */}
       {essays.length > 0 && (
         <div className="text-sm text-slate-600 dark:text-slate-300">
           <p>
-            {t('dashboard.showingCount', { shown: filteredEssays.length, total: essays.length })}
+            {t('dashboard.showingCount', {
+              shown: filteredEssays.length,
+              total: essays.length,
+            })}
           </p>
         </div>
       )}

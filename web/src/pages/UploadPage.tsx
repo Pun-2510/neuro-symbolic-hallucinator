@@ -1,19 +1,14 @@
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Upload, FileText, X, Loader2 } from 'lucide-react';
+import { Upload, FileText, X, Loader2, AlertCircle } from 'lucide-react';
 import { api } from '../api/client';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 /* ============================================================
-   SourceLogic — Upload Page Component
-   Based on UX/UI Concept Section 5: New Verification
+   SourceLogic — Upload Page Component (shadcn/ui v2.0)
    Academic Source Verification Workspace
-
-   Mental Model: "Debugger cho citation"
-   - Document = source code
-   - Citation = reference call
-   - Bibliography = dependency registry
-   - Neuro-symbolic checker = linter/static analyzer
    ============================================================ */
 
 const ACCEPTED_EXTENSIONS = ['.pdf'];
@@ -34,27 +29,33 @@ export function UploadPage() {
     else if (e.type === 'dragleave') setDragActive(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const droppedFile = e.dataTransfer.files[0];
-      // Validate file extension — PDF only
-      const ext = droppedFile.name.substring(droppedFile.name.lastIndexOf('.')).toLowerCase();
-      if (!ACCEPTED_EXTENSIONS.includes(ext)) {
-        setError(t('upload.onlyPdfSupported'));
-        return;
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        const droppedFile = e.dataTransfer.files[0];
+        const ext = droppedFile.name
+          .substring(droppedFile.name.lastIndexOf('.'))
+          .toLowerCase();
+        if (!ACCEPTED_EXTENSIONS.includes(ext)) {
+          setError(t('upload.onlyPdfSupported'));
+          return;
+        }
+        setError(null);
+        setFile(droppedFile);
       }
-      setError(null);
-      setFile(droppedFile);
-    }
-  }, [t]);
+    },
+    [t]
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const picked = e.target.files[0];
-      const ext = picked.name.substring(picked.name.lastIndexOf('.')).toLowerCase();
+      const ext = picked.name
+        .substring(picked.name.lastIndexOf('.'))
+        .toLowerCase();
       if (!ACCEPTED_EXTENSIONS.includes(ext)) {
         setError(t('upload.onlyPdfSupported'));
         return;
@@ -70,8 +71,6 @@ export function UploadPage() {
     setError(null);
     try {
       const response = await api.uploadEssay(file);
-      // Navigate to processing screen immediately — POST now returns instantly
-      // and the background task handles the real analysis
       navigate(`/verification/processing/${response.essay_id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('upload.uploadFailed'));
@@ -91,7 +90,7 @@ export function UploadPage() {
         </p>
       </div>
 
-      {/* Dropzone - UX/UI Concept Section 5 */}
+      {/* Dropzone */}
       <div
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -99,11 +98,12 @@ export function UploadPage() {
         onDrop={handleDrop}
         className={`
           relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-200 cursor-pointer
-          ${dragActive
-            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 scale-[1.02]'
-            : file
-              ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30'
-              : 'border-slate-300 dark:border-slate-600 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+          ${
+            dragActive
+              ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 scale-[1.02]'
+              : file
+                ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30'
+                : 'border-slate-300 dark:border-slate-600 hover:border-indigo-400 dark:hover:border-indigo-500 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50'
           }
         `}
       >
@@ -117,12 +117,17 @@ export function UploadPage() {
         {file ? (
           /* File selected state */
           <div className="flex items-center justify-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center shrink-0">
               <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="text-left min-w-0 flex-1">
-              <p className="font-semibold text-slate-900 dark:text-white truncate" title={file.name}>{file.name}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p
+                className="font-semibold text-slate-900 dark:text-white truncate"
+                title={file.name}
+              >
+                {file.name}
+              </p>
+              <p className="text-sm font-mono text-slate-500 dark:text-slate-400">
                 {(file.size / 1024 / 1024).toFixed(2)} MB
               </p>
             </div>
@@ -132,6 +137,7 @@ export function UploadPage() {
                 setFile(null);
                 setError(null);
               }}
+              aria-label="Remove file"
               className="relative z-10 ml-auto shrink-0 p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
             >
               <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
@@ -149,7 +155,7 @@ export function UploadPage() {
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
               {t('upload.pdfOnly')}
             </p>
-            <span className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
+            <span className="text-sm text-indigo-600 dark:text-indigo-400 font-semibold">
               {t('upload.orBrowse')}
             </span>
           </>
@@ -158,23 +164,19 @@ export function UploadPage() {
 
       {/* Error message */}
       {error && (
-        <div className="mt-4 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
-          {error}
-        </div>
+        <Alert variant="destructive" className="mt-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* Submit Button */}
       <div className="mt-10 flex justify-center">
-        <button
+        <Button
+          size="lg"
           onClick={handleUpload}
           disabled={!file || uploading}
-          className={`
-            inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all
-            ${!file || uploading
-              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
-              : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow-md'
-            }
-          `}
+          className="px-6 py-3 h-auto"
         >
           {uploading ? (
             <>
@@ -187,7 +189,7 @@ export function UploadPage() {
               <Upload className="h-5 w-5" />
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

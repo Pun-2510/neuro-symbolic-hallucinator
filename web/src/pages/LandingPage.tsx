@@ -1,15 +1,30 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FileSearch, Link2, Database, Shield, ArrowRight, CheckCircle, GitBranch, FileText, Quote, Search, Scale, BookOpen, FileQuestion, AlertTriangle, EyeOff } from 'lucide-react';
+import {
+  FileSearch,
+  Link2,
+  Database,
+  Shield,
+  ArrowRight,
+  CheckCircle,
+  GitBranch,
+  Quote,
+  Search,
+  Scale,
+  FileQuestion,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 /* ============================================================
-   SourceLogic — Landing Page Component
+   SourceLogic — Landing Page Component (shadcn/ui v2.0)
    Scroll-driven animations with IntersectionObserver
    ============================================================ */
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white text-slate-900">
       <LandingHeader />
       <HeroSection />
       <HowItWorksSection />
@@ -25,7 +40,7 @@ export function LandingPage() {
 // Header Component
 function LandingHeader() {
   return (
-    <header className="border-b border-slate-200 bg-white backdrop-blur-sm sticky top-0 z-50">
+    <header className="border-b border-slate-200 bg-white/90 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
@@ -42,7 +57,9 @@ function LandingHeader() {
           </div>
         </div>
         <nav className="flex items-center gap-2">
-          <Link to="/login" className="btn-ghost text-sm px-4 py-2">Sign in</Link>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/login">Sign in</Link>
+          </Button>
         </nav>
       </div>
     </header>
@@ -55,7 +72,7 @@ function AnimatedSection({
   className = '',
   animation = 'fade-up',
   delay = 0,
-  threshold = 0.1
+  threshold = 0.1,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -93,7 +110,9 @@ function AnimatedSection({
 
   return (
     <div
-      ref={(el) => { ref.current = el; }}
+      ref={(el) => {
+        ref.current = el;
+      }}
       className={`transition-all duration-1000 ease-out ${animationClasses[animation]} ${className}`}
     >
       {children}
@@ -106,7 +125,7 @@ function StaggeredGrid({
   children,
   className = '',
   staggerDelay = 100,
-  threshold = 0.1
+  threshold = 0.1,
 }: {
   children: React.ReactNode[];
   className?: string;
@@ -123,7 +142,6 @@ function StaggeredGrid({
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          // Reveal children one by one
           children.forEach((_, i) => {
             setTimeout(() => setVisibleCount(i + 1), i * staggerDelay);
           });
@@ -138,10 +156,13 @@ function StaggeredGrid({
   }, [children.length, staggerDelay, threshold]);
 
   return (
-    <div ref={(el) => { containerRef.current = el; }} className={className}>
-      {Array.isArray(children)
-        ? children.slice(0, visibleCount)
-        : children}
+    <div
+      ref={(el) => {
+        containerRef.current = el;
+      }}
+      className={className}
+    >
+      {Array.isArray(children) ? children.slice(0, visibleCount) : children}
     </div>
   );
 }
@@ -157,12 +178,15 @@ function HeroSection() {
 
       <div className="max-w-6xl mx-auto px-6">
         <AnimatedSection className="max-w-3xl mx-auto text-center" animation="fade-up">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 mb-6">
+          <Badge
+            variant="outline"
+            className="gap-2 px-4 py-1.5 bg-indigo-50 border-indigo-200 text-indigo-700 mb-6"
+          >
             <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">
+            <span className="text-xs font-semibold uppercase tracking-wider">
               Academic Source Verification
             </span>
-          </div>
+          </Badge>
         </AnimatedSection>
 
         <AnimatedSection animation="fade-up" delay={100}>
@@ -184,13 +208,20 @@ function HeroSection() {
 
         <AnimatedSection animation="fade-up" delay={300}>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/login" className="btn-primary text-base px-8 py-4 w-full sm:w-auto">
-              Sign in to Get Started
-              <ArrowRight className="h-5 w-5" />
-            </Link>
-            <a href="#how-it-works" className="btn-secondary text-base px-8 py-4 w-full sm:w-auto">
-              Learn More
-            </a>
+            <Button asChild size="lg" className="px-8 py-4 h-auto w-full sm:w-auto">
+              <Link to="/login">
+                Sign in to Get Started
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="secondary"
+              size="lg"
+              className="px-8 py-4 h-auto w-full sm:w-auto"
+            >
+              <a href="#how-it-works">Learn More</a>
+            </Button>
           </div>
         </AnimatedSection>
       </div>
@@ -221,13 +252,13 @@ function HowItWorksSection() {
 
         <StaggeredGrid className="grid md:grid-cols-2 lg:grid-cols-4 gap-6" staggerDelay={150}>
           {steps.map((step, i) => (
-            <div key={i} className="card bg-white text-center group hover:shadow-lg transition-shadow">
+            <Card key={i} className="bg-white text-center group hover:shadow-lg transition-shadow">
               <div className={`w-14 h-14 rounded-2xl ${step.color} flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform`}>
                 <step.icon className="h-7 w-7" />
               </div>
               <h3 className="text-lg font-semibold text-slate-900 mb-2">{step.title}</h3>
               <p className="text-sm text-slate-600 leading-relaxed">{step.desc}</p>
-            </div>
+            </Card>
           ))}
         </StaggeredGrid>
       </div>
@@ -249,10 +280,13 @@ function NeuroSymbolicSection() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <AnimatedSection animation="fade-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 mb-6">
+            <Badge
+              variant="outline"
+              className="gap-2 px-3 py-1 bg-indigo-50 border-indigo-200 text-indigo-700 mb-6"
+            >
               <Scale className="h-4 w-4 text-indigo-600" />
-              <span className="text-xs font-semibold text-indigo-700">Neuro-Symbolic AI</span>
-            </div>
+              <span>Neuro-Symbolic AI</span>
+            </Badge>
             <h2 className="font-display text-3xl md:text-4xl font-bold text-slate-900 mb-6">
               Hybrid Verification Approach
             </h2>
@@ -306,7 +340,7 @@ function VerificationStatusesSection() {
 
         <StaggeredGrid className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto" staggerDelay={100}>
           {statuses.map((status, i) => (
-            <div key={i} className={`card border ${status.border || 'border-emerald-200'} bg-white`}>
+            <Card key={i} className={`border ${status.border || 'border-emerald-200'} bg-white`}>
               <div className="flex items-center gap-3 mb-3">
                 <div className={`w-10 h-10 rounded-xl ${status.color} flex items-center justify-center`}>
                   <status.icon className={`h-5 w-5 ${status.iconColor}`} />
@@ -314,7 +348,7 @@ function VerificationStatusesSection() {
                 <span className={`verdict-badge ${status.badgeClass} text-sm px-4 py-1.5`}>{status.badge}</span>
               </div>
               <p className="text-sm text-slate-600">{status.desc}</p>
-            </div>
+            </Card>
           ))}
         </StaggeredGrid>
       </div>
@@ -345,7 +379,7 @@ function MultiSourceSection() {
 
         <StaggeredGrid className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6" staggerDelay={100}>
           {sources.map((source, i) => (
-            <div key={i} className="card border border-slate-200 bg-white text-center py-6 hover:shadow-lg transition-shadow">
+            <Card key={i} className="border border-slate-200 bg-white text-center py-6 hover:shadow-lg transition-shadow">
               <div className="flex justify-center mb-4 h-14 items-end">
                 {source.logo ? (
                   <img src={source.logo} alt={source.name} className={`${source.height} w-auto object-contain`} />
@@ -361,7 +395,7 @@ function MultiSourceSection() {
               </div>
               <p className="font-bold text-lg text-slate-900">{source.name}</p>
               <p className="text-sm text-slate-500 mt-1">{source.desc}</p>
-            </div>
+            </Card>
           ))}
         </StaggeredGrid>
       </div>
@@ -376,35 +410,21 @@ function VerificationTrace() {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const sequence = async () => {
-      // Reset
       setVisibleSteps(0);
       await new Promise((r) => setTimeout(r, 500));
-
-      // Step 1: Citation detected
       setVisibleSteps(1);
       await new Promise((r) => setTimeout(r, 800));
-
-      // Step 2: Searching databases
       setVisibleSteps(2);
       await new Promise((r) => setTimeout(r, 1000));
-
-      // Step 3: Matching metadata
       setVisibleSteps(3);
       await new Promise((r) => setTimeout(r, 1000));
-
-      // Step 4: Cross-validating sources
       setVisibleSteps(4);
       await new Promise((r) => setTimeout(r, 800));
-
-      // Step 5: VERIFIED final verdict
       setVisibleSteps(5);
       await new Promise((r) => setTimeout(r, 3000));
-
-      // Loop
       timer = setTimeout(sequence, 0);
     };
     sequence();
-
     return () => clearTimeout(timer);
   }, []);
 
@@ -443,7 +463,6 @@ function VerificationTrace() {
             );
           })}
 
-          {/* Final verdict */}
           <div
             className={`pt-4 mt-4 border-t border-slate-700 transition-all duration-700 ${
               visibleSteps >= 5 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
@@ -464,9 +483,13 @@ function VerificationTrace() {
 function CTASection() {
   return (
     <section className="relative overflow-hidden">
-      <div className="absolute inset-0" style={{
-        background: 'repeating-linear-gradient(0deg, #f8fafc 0px, #f8fafc 40px, #f1f5f9 40px, #f1f5f9 80px)'
-      }} />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'repeating-linear-gradient(0deg, #f8fafc 0px, #f8fafc 40px, #f1f5f9 40px, #f1f5f9 80px)',
+        }}
+      />
       <div className="relative max-w-4xl mx-auto px-6 py-20 md:py-28 text-center">
         <AnimatedSection animation="fade-up">
           <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-6">
@@ -480,13 +503,12 @@ function CTASection() {
           </p>
         </AnimatedSection>
         <AnimatedSection animation="fade-up" delay={200}>
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/25"
-          >
-            Sign in to Start Verification
-            <ArrowRight className="h-5 w-5" />
-          </Link>
+          <Button asChild size="lg" className="px-8 py-4 h-auto rounded-2xl shadow-lg shadow-indigo-500/25">
+            <Link to="/login">
+              Sign in to Start Verification
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+          </Button>
         </AnimatedSection>
       </div>
     </section>

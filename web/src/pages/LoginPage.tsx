@@ -2,7 +2,59 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, Shield, CheckCircle2, AlertCircle, Quote, Database, GitBranch } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  Shield,
+  CheckCircle2,
+  AlertCircle,
+  Quote,
+  Database,
+  GitBranch,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+function SourceLogicBrandMark({ size = 28 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className="text-white"
+    >
+      <path
+        d="M4 8C4 6.89543 4.89543 6 6 6H8"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4 16C4 17.1046 4.89543 18 6 18H8"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M10 12H14M14 12L12 10M14 12L12 14"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M17 9L19 11L22 8"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -37,35 +89,7 @@ export function LoginPage() {
           {/* Logo */}
           <div className="flex items-center gap-4 mb-16">
             <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                className="text-white"
-              >
-                <path
-                  d="M12 2L2 7L12 12L22 7L12 2Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M2 17L12 22L22 17"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M2 12L12 17L22 12"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <SourceLogicBrandMark size={28} />
             </div>
             <div>
               <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
@@ -82,7 +106,9 @@ export function LoginPage() {
             <h2 className="font-display text-3xl xl:text-4xl font-bold text-slate-900 dark:text-white mb-4 leading-tight">
               {t('auth.heroTitle1')}
               <br />
-              <span className="text-indigo-600 dark:text-indigo-400">{t('auth.heroTitle2')}</span>
+              <span className="text-indigo-600 dark:text-indigo-400">
+                {t('auth.heroTitle2')}
+              </span>
             </h2>
             <p className="text-base text-slate-600 dark:text-slate-400 max-w-md leading-relaxed">
               {t('auth.heroDesc')}
@@ -91,34 +117,40 @@ export function LoginPage() {
 
           {/* Features */}
           <div className="space-y-5">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950 mt-0.5">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950 mt-0.5 border border-emerald-200/60 dark:border-emerald-800/60">
                 <Quote className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white text-base">{t('auth.featureExtraction')}</h3>
+                <h3 className="font-semibold text-slate-900 dark:text-white text-base">
+                  {t('auth.featureExtraction')}
+                </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   {t('auth.featureExtractionDesc')}
                 </p>
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950 mt-0.5">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950 mt-0.5 border border-indigo-200/60 dark:border-indigo-800/60">
                 <Database className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white text-base">{t('auth.featureRetrieval')}</h3>
+                <h3 className="font-semibold text-slate-900 dark:text-white text-base">
+                  {t('auth.featureRetrieval')}
+                </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   {t('auth.featureRetrievalDesc')}
                 </p>
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950 mt-0.5">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950 mt-0.5 border border-amber-200/60 dark:border-amber-800/60">
                 <GitBranch className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white text-base">{t('auth.featureVerification')}</h3>
+                <h3 className="font-semibold text-slate-900 dark:text-white text-base">
+                  {t('auth.featureVerification')}
+                </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   {t('auth.featureVerificationDesc')}
                 </p>
@@ -129,7 +161,7 @@ export function LoginPage() {
 
         {/* Footer */}
         <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          <Shield className="h-4 w-4" />
+          <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
           <span>{t('auth.footerNote')}</span>
         </div>
       </div>
@@ -140,35 +172,7 @@ export function LoginPage() {
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-10">
             <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                className="text-white"
-              >
-                <path
-                  d="M12 2L2 7L12 12L22 7L12 2Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M2 17L12 22L22 17"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M2 12L12 17L22 12"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <SourceLogicBrandMark size={24} />
             </div>
             <div>
               <h1 className="font-display text-xl font-bold text-slate-900 dark:text-white">
@@ -192,48 +196,45 @@ export function LoginPage() {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-            </div>
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-5 w-5" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="username" className="input-label">
-                {t('auth.username')}
-              </label>
-              <input
+            <div className="space-y-1.5">
+              <Label htmlFor="username">{t('auth.username')}</Label>
+              <Input
                 id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 autoComplete="username"
-                className="input"
+                className="h-11"
                 placeholder={t('auth.usernamePlaceholder')}
               />
             </div>
 
-            <div>
-              <label htmlFor="password" className="input-label">
-                {t('auth.password')}
-              </label>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">{t('auth.password')}</Label>
               <div className="relative">
-                <input
+                <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
-                  className="input pr-12"
+                  className="h-11 pr-12"
                   placeholder={t('auth.passwordPlaceholder')}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide characters' : 'Show characters'}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 >
                   {showPassword ? (
@@ -245,44 +246,48 @@ export function LoginPage() {
               </div>
             </div>
 
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full justify-center py-3"
+              className="w-full h-11 text-base"
             >
               {loading ? (
                 <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 t('auth.signIn')
               )}
-            </button>
+            </Button>
           </form>
 
-          {/* Demo credentials hint — only shown in demo mode (Task 22) */}
+          {/* Demo credentials hint */}
           {import.meta.env.VITE_DEMO_MODE === 'true' && (
             <div className="mt-5 p-4 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 font-medium">{t('auth.demoCredentials')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 font-medium">
+                {t('auth.demoCredentials')}
+              </p>
               <div className="space-y-1 text-sm font-mono">
                 <p className="text-slate-600 dark:text-slate-300">
-                  <span className="text-slate-400 dark:text-slate-500">{t('auth.username')}:</span> admin
+                  <span className="text-slate-400 dark:text-slate-500">
+                    {t('auth.username')}:
+                  </span>{' '}
+                  admin
                 </p>
                 <p className="text-slate-600 dark:text-slate-300">
-                  <span className="text-slate-400 dark:text-slate-500">{t('auth.password')}:</span> admin123
+                  <span className="text-slate-400 dark:text-slate-500">
+                    {t('auth.password')}:
+                  </span>{' '}
+                  admin123
                 </p>
               </div>
             </div>
           )}
 
           {/* Disclaimer */}
-          <div className="mt-6 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <p className="text-slate-900 dark:text-slate-100 font-medium mb-1">{t('auth.decisionSupportTitle')}</p>
-              <p className="text-slate-600 dark:text-slate-400">
-                {t('auth.decisionSupportDesc')}
-              </p>
-            </div>
-          </div>
+          <Alert variant="success" className="mt-6">
+            <CheckCircle2 className="h-5 w-5" />
+            <AlertTitle>{t('auth.decisionSupportTitle')}</AlertTitle>
+            <AlertDescription>{t('auth.decisionSupportDesc')}</AlertDescription>
+          </Alert>
         </div>
       </div>
     </div>

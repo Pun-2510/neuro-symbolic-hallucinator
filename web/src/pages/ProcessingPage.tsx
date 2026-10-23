@@ -13,9 +13,12 @@ import {
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, type EssayStatus } from '@/api/client';
+import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 /* ============================================================
-   ProcessingPage — Real-time pipeline progress
+   ProcessingPage — Real-time pipeline progress (shadcn/ui v2.0)
    Polls GET /essays/{id}/status for live step/source updates.
    ============================================================ */
 
@@ -30,7 +33,6 @@ const STEP_LABELS: Array<{ label: string; details: string }> = [
   { label: 'Generating verification report', details: 'Compiling findings and explanations' },
 ];
 
-// Map backend step keys to our step index
 const STEP_KEY_TO_INDEX: Record<string, number> = {
   parsing: 0,
   style_detection: 1,
@@ -40,13 +42,13 @@ const STEP_KEY_TO_INDEX: Record<string, number> = {
   comparing: 5,
   checking: 6,
   scoring: 7,
-  done: 7, // scoring + done share the last slot
+  done: 7,
 };
 
 function stepStatus(
   idx: number,
   backendIndex: number,
-  done: boolean,
+  done: boolean
 ): 'completed' | 'active' | 'pending' | 'error' {
   if (done || idx < backendIndex) return 'completed';
   if (idx === backendIndex) return 'active';
@@ -60,13 +62,10 @@ export function ProcessingPage() {
   const numericId = id ? parseInt(id, 10) : null;
   const essayId = numericId !== null && !isNaN(numericId) ? numericId : null;
 
-  // Poll only /status here — it tells us when the pipeline is done. The report
-  // is fetched once afterwards, so we never spam /report with 425 responses.
   const [status, setStatus] = useState<EssayStatus | null>(null);
   const [redirecting, setRedirecting] = useState(false);
   const queryClient = useQueryClient();
 
-  // Independent status poll — needed for the stepper UI; React Query handles the report
   useEffect(() => {
     if (essayId === null) return;
     let cancelled = false;
@@ -97,7 +96,10 @@ export function ProcessingPage() {
             sources_queried: {},
             elapsed_seconds: 0,
             finished_at: Date.now(),
-            error: err instanceof Error ? err.message : 'Unable to fetch processing status.',
+            error:
+              err instanceof Error
+                ? err.message
+                : 'Unable to fetch processing status.',
           });
         }
       }
@@ -110,8 +112,6 @@ export function ProcessingPage() {
     };
   }, [essayId]);
 
-  // Pipeline finished — fetch the report once (it is ready now, so no 425)
-  // and then move on to the report page.
   useEffect(() => {
     if (essayId === null) return;
     const done = status?.status === 'completed';
@@ -123,17 +123,20 @@ export function ProcessingPage() {
     const finish = () => {
       if (cancelled) return;
       setRedirecting(true);
-      timer = setTimeout(() => navigate(`/verification/report/${id}`), failed ? 3000 : 1500);
+      timer = setTimeout(
+        () => navigate(`/verification/report/${id}`),
+        failed ? 3000 : 1500
+      );
     };
 
     if (done) {
-      api.getEssay(essayId).then((report) => {
-        // Seed the cache so the report page renders instantly.
-        if (report) queryClient.setQueryData(['essay-report', essayId], report);
-      }).catch(() => {
-        // Report fetch failed — still take the user to the report page,
-        // which shows the error state itself.
-      }).finally(finish);
+      api
+        .getEssay(essayId)
+        .then((report) => {
+          if (report) queryClient.setQueryData(['essay-report', essayId], report);
+        })
+        .catch(() => {})
+        .finally(finish);
     } else {
       finish();
     }
@@ -149,7 +152,11 @@ export function ProcessingPage() {
     : 0;
 
   const progress = status
-    ? Math.round(((backendIndex + (status.status === 'completed' ? 1 : 0)) / STEP_LABELS.length) * 100)
+    ? Math.round(
+        ((backendIndex + (status.status === 'completed' ? 1 : 0)) /
+          STEP_LABELS.length) *
+          100
+      )
     : 0;
 
   const isDone = status?.status === 'completed';
@@ -160,49 +167,44 @@ export function ProcessingPage() {
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white mb-3">
-          {isFailed ? 'Analysis failed' : isDone ? 'Analysis complete' : 'Analyzing document'}
+          {isFailed
+            ? 'Analysis failed'
+            : isDone
+              ? 'Analysis complete'
+              : 'Analyzing document'}
         </h1>
         <p className="text-slate-600 dark:text-slate-400">
           {isFailed
             ? 'An error occurred during processing.'
             : isDone
-            ? 'Redirecting to your verification report…'
-            : 'This may take a few minutes depending on document size.'}
+              ? 'Redirecting to your verification report…'
+              : 'This may take a few minutes depending on document size.'}
         </p>
       </div>
 
       {/* Failed banner */}
       {isFailed && (
-        <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-red-700 dark:text-red-300">
-              Pipeline error
-            </p>
-            <p className="text-xs text-red-500 dark:text-red-400 mt-1">
-              {status?.error ?? 'Unknown error — please try uploading the document again.'}
-            </p>
-          </div>
-        </div>
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle>Pipeline error</AlertTitle>
+          <AlertDescription>
+            {status?.error ??
+              'Unknown error — please try uploading the document again.'}
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Progress bar */}
       <div className="mb-10">
-        <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-full transition-all duration-700 ease-out"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+        <Progress value={progress} />
         <div className="flex justify-between items-center mt-2">
           <span className="text-sm text-slate-500 dark:text-slate-400">
             {isFailed ? 'Failed' : isDone ? 'Complete' : 'Processing…'}
           </span>
-          <span className="text-sm font-mono font-semibold text-slate-600 dark:text-slate-300">
+          <span className="text-sm font-mono tabular-nums font-semibold text-slate-600 dark:text-slate-300">
             {progress}%
           </span>
         </div>
-        {/* Live message from backend */}
         {status && !isDone && !isFailed && (
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 italic">
             {status.message}
@@ -211,7 +213,7 @@ export function ProcessingPage() {
       </div>
 
       {/* Pipeline stepper */}
-      <div className="card bg-white dark:bg-slate-800/50 p-6 mb-6">
+      <Card className="p-6 mb-6">
         <div className="flex items-center gap-2 mb-5">
           <GitMerge className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-white">
@@ -230,8 +232,8 @@ export function ProcessingPage() {
                     s === 'completed'
                       ? 'bg-emerald-100 dark:bg-emerald-900/50'
                       : s === 'active'
-                      ? 'bg-indigo-100 dark:bg-indigo-900/50'
-                      : 'bg-slate-100 dark:bg-slate-800'
+                        ? 'bg-indigo-100 dark:bg-indigo-900/50'
+                        : 'bg-slate-100 dark:bg-slate-800'
                   }`}
                 >
                   {s === 'completed' ? (
@@ -249,31 +251,29 @@ export function ProcessingPage() {
                       s === 'completed'
                         ? 'text-emerald-700 dark:text-emerald-300'
                         : s === 'active'
-                        ? 'text-indigo-700 dark:text-indigo-300 font-semibold'
-                        : 'text-slate-400 dark:text-slate-500'
+                          ? 'text-indigo-700 dark:text-indigo-300 font-semibold'
+                          : 'text-slate-400 dark:text-slate-500'
                     }`}
                   >
                     {step.label}
                   </p>
 
-                  {/* Live stats on the extraction step */}
                   {idx === 2 && status && (
                     <div className="flex gap-4 mt-2 text-xs">
-                      <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                      <span className="flex items-center gap-1 font-mono text-slate-500 dark:text-slate-400">
                         <Quote className="h-3 w-3" />
                         {status.citations_found} citations
                       </span>
-                      <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                      <span className="flex items-center gap-1 font-mono text-slate-500 dark:text-slate-400">
                         <FileText className="h-3 w-3" />
                         {status.references_found} references
                       </span>
                     </div>
                   )}
 
-                  {/* Live stats on the linking step */}
                   {idx === 3 && status && (
                     <div className="flex gap-4 mt-2 text-xs">
-                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <span className="flex items-center gap-1 font-mono text-emerald-600 dark:text-emerald-400">
                         <Check className="h-3 w-3" />
                         {status.linked} linked
                       </span>
@@ -287,14 +287,14 @@ export function ProcessingPage() {
                   )}
                 </div>
 
-                <span className="text-xs font-mono text-slate-400 dark:text-slate-500 pt-1">
+                <span className="text-xs font-mono tabular-nums text-slate-400 dark:text-slate-500 pt-1">
                   {idx + 1}/{STEP_LABELS.length}
                 </span>
               </div>
             );
           })}
         </div>
-      </div>
+      </Card>
 
       {/* Live stats grid */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -309,20 +309,24 @@ export function ProcessingPage() {
           label="References"
         />
         <StatCard
-          icon={<GitMerge className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+          icon={
+            <GitMerge className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          }
           value={status?.linked ?? '-'}
           label="Linked"
           highlight
         />
         <StatCard
-          icon={<Database className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
+          icon={
+            <Database className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          }
           value={status?.citations_found ? status.citations_found : '-'}
           label="To verify"
         />
       </div>
 
-      {/* Source retrieval tiles — real backend state */}
-      <div className="card bg-white dark:bg-slate-800/50 p-6 mt-6">
+      {/* Source retrieval tiles */}
+      <Card className="p-6 mt-6">
         <div className="flex items-center gap-2 mb-4">
           <Database className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           <h3 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -342,7 +346,7 @@ export function ProcessingPage() {
             />
           ))}
         </div>
-      </div>
+      </Card>
 
       {/* Completion banner */}
       {(isDone || redirecting) && (
@@ -362,10 +366,6 @@ export function ProcessingPage() {
   );
 }
 
-// ------------------------------------------------------------------ //
-// Sub-components                                                          //
-// ------------------------------------------------------------------ //
-
 function StatCard({
   icon,
   value,
@@ -378,12 +378,12 @@ function StatCard({
   highlight?: boolean;
 }) {
   return (
-    <div className="card bg-white dark:bg-slate-800/50 p-4 text-center">
-      <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 mb-3">
+    <Card className="p-4 text-center">
+      <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950 mb-3">
         {icon}
       </div>
       <p
-        className={`text-2xl font-bold ${
+        className={`text-2xl font-bold font-mono tabular-nums ${
           highlight
             ? 'text-emerald-600 dark:text-emerald-400'
             : 'text-slate-900 dark:text-slate-100'
@@ -392,7 +392,7 @@ function StatCard({
         {value}
       </p>
       <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{label}</p>
-    </div>
+    </Card>
   );
 }
 
@@ -403,7 +403,10 @@ function SourceTile({
   name: string;
   state: string | undefined;
 }) {
-  const displayName = name === 's2' ? 'Semantic Scholar' : name.charAt(0).toUpperCase() + name.slice(1);
+  const displayName =
+    name === 's2'
+      ? 'Semantic Scholar'
+      : name.charAt(0).toUpperCase() + name.slice(1);
 
   let color = 'slate';
   let label = 'Pending';
@@ -433,7 +436,7 @@ function SourceTile({
   return (
     <div className={`p-3 rounded-xl border transition-all ${colors[color]}`}>
       <p className="text-sm font-medium">{displayName}</p>
-      <p className="text-xs mt-1">{label}</p>
+      <p className="text-xs font-mono mt-1">{label}</p>
     </div>
   );
 }
