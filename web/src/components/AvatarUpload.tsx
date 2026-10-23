@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Upload, X, Loader2, ImageIcon } from 'lucide-react';
 import { api } from '@/api/client';
+import { Button } from '@/components/ui/button';
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_BYTES = 2 * 1024 * 1024; // 2MB
@@ -121,18 +122,21 @@ export function AvatarUpload({ currentAvatarUrl, onSuccess, size = 'md' }: Avata
             {(selectedFile.size / 1024).toFixed(1)} KB
           </p>
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={(e) => { e.stopPropagation(); handleClear(); }}
               disabled={uploading}
-              className="btn-ghost text-xs py-1 px-3"
+              className="text-xs py-1 px-3 h-8"
             >
               <X className="h-3 w-3" />
               {t('common.cancel')}
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
               onClick={(e) => { e.stopPropagation(); handleUpload(); }}
               disabled={uploading}
-              className="btn-primary btn-sm"
+              className="h-8"
             >
               {uploading ? (
                 <>
@@ -145,7 +149,7 @@ export function AvatarUpload({ currentAvatarUrl, onSuccess, size = 'md' }: Avata
                   {t('common.upload')}
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       ) : (

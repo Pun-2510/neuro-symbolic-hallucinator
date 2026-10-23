@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils"
-import { FileCode, ChevronRight, CheckCircle, XCircle, AlertTriangle } from "lucide-react"
+import { FileCode, CheckCircle, XCircle, AlertTriangle } from "lucide-react"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 /* ============================================================
    SourceLogic — Rule Inspector Component
@@ -25,9 +27,7 @@ interface RuleInspectorProps {
   className?: string
 }
 
-// Rule definitions with condition logic (from rules.py)
 const RULE_DEFINITIONS: Record<string, Omit<Rule, "triggered">> = {
-  // High priority pre-flight rules
   "R-FAKE-URL": {
     id: "R-FAKE-URL",
     name: "Fake URL Detection",
@@ -75,7 +75,6 @@ const RULE_DEFINITIONS: Record<string, Omit<Rule, "triggered">> = {
     ],
     conclusion: "METADATA_ERROR",
   },
-  // Core verification rules
   "R-DOI-TITLE-AUTHOR": {
     id: "R-DOI-TITLE-AUTHOR",
     name: "DOI + Title + Author Match",
@@ -252,7 +251,6 @@ const RULE_DEFINITIONS: Record<string, Omit<Rule, "triggered">> = {
   },
 }
 
-// Get verdict color based on conclusion
 function getVerdictColorClass(conclusion: string): {
   bg: string
   border: string
@@ -296,13 +294,11 @@ export function RuleInspector({
   verdictLabel,
   className
 }: RuleInspectorProps) {
-  // Build list of rules with triggered status
   const rules: Rule[] = triggeredRules.map((ruleId) => {
     const definition = RULE_DEFINITIONS[ruleId]
     if (definition) {
       return { ...definition, triggered: true }
     }
-    // Unknown rule - create generic definition
     return {
       id: ruleId,
       name: ruleId,
@@ -315,18 +311,17 @@ export function RuleInspector({
 
   if (rules.length === 0) {
     return (
-      <div className={cn("rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4", className)}>
+      <Card className={cn("bg-slate-50 dark:bg-slate-800/50 p-4", className)}>
         <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
           <FileCode className="h-4 w-4" />
           <span className="text-sm">No rules triggered</span>
         </div>
-      </div>
+      </Card>
     )
   }
 
   return (
     <div className={cn("space-y-3", className)}>
-      {/* Header */}
       <div className="flex items-center gap-2">
         <FileCode className="h-4 w-4 text-slate-500 dark:text-slate-400" />
         <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -334,21 +329,19 @@ export function RuleInspector({
         </h4>
       </div>
 
-      {/* Rule list */}
       <div className="space-y-2">
         {rules.map((rule) => {
           const colors = getVerdictColorClass(rule.conclusion)
 
           return (
-            <div
+            <Card
               key={rule.id}
               className={cn(
-                "rounded-lg border p-3",
+                "p-3",
                 colors.bg,
                 colors.border
               )}
             >
-              {/* Rule header */}
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div>
                   <div className="flex items-center gap-2">
@@ -360,18 +353,19 @@ export function RuleInspector({
                     {rule.name}
                   </p>
                 </div>
-                <span className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded", colors.bg, colors.border, colors.text)}>
+                <Badge
+                  variant="outline"
+                  className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded", colors.bg, colors.border, colors.text)}
+                >
                   {colors.icon}
                   <span className="text-[10px]">{rule.conclusion}</span>
-                </span>
+                </Badge>
               </div>
 
-              {/* Rule description */}
               <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
                 {rule.description}
               </p>
 
-              {/* Condition logic */}
               {rule.conditions.length > 0 && (
                 <div className="mt-2 p-2 bg-white/50 dark:bg-slate-900/50 rounded border border-slate-200/50 dark:border-slate-700/50">
                   <div className="font-mono text-xs space-y-1">
@@ -393,7 +387,7 @@ export function RuleInspector({
                   </div>
                 </div>
               )}
-            </div>
+            </Card>
           )
         })}
       </div>
@@ -401,7 +395,6 @@ export function RuleInspector({
   )
 }
 
-// Compact version for inline use
 export function RuleInspectorCompact({
   triggeredRules,
   className
@@ -421,8 +414,9 @@ export function RuleInspectorCompact({
         const colors = getVerdictColorClass(conclusion)
 
         return (
-          <span
+          <Badge
             key={ruleId}
+            variant="outline"
             className={cn(
               "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold border",
               colors.bg,
@@ -433,7 +427,7 @@ export function RuleInspectorCompact({
           >
             {colors.icon}
             {ruleId}
-          </span>
+          </Badge>
         )
       })}
     </div>
