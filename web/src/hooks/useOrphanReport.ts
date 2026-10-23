@@ -10,6 +10,7 @@ export function useOrphanReport(essayId: number | null) {
     },
     enabled: essayId !== null,
     staleTime: 60_000,
+    refetchInterval: (query) => (query.state.data === null ? 3000 : false),
   });
 }
 

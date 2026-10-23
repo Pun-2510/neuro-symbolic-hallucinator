@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { type Verdict } from '@/api/client';
+import { type Verdict, type Citation } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { isUrlResource } from '@/lib/verdictExplanation';
 import { MappingStatusBadge } from '@/components/MappingStatusBadge';
@@ -39,13 +39,32 @@ interface UncitedReference {
   raw_text: string;
 }
 
-function getOrphanStats(verdicts: Verdict[]) {
+function getOrphanStats(verdicts: Verdict[], references?: Citation[]) {
   const citationsWithoutReference = verdicts.filter(
     (v) => v.mapping_status === 'missing_reference'
   );
-  const uncitedReferences = verdicts.filter(
+  const verdictUncited = verdicts.filter(
     (v) => v.mapping_status === 'uncited_reference'
   );
+  const seenUncitedRaw = new Set(verdictUncited.map((v) => v.citation_raw));
+  const extraUncitedFromRefs: UncitedReference[] = (references ?? [])
+    .filter(
+      (r) =>
+        (r.cited_in_text_count === 0 || r.mapping_status === 'uncited_reference') &&
+        !seenUncitedRaw.has(r.raw_text)
+    )
+    .map((r, i) => ({
+      reference_id: String(r.id ?? `ref-uncited-${i}`),
+      raw_text: r.raw_text,
+    }));
+
+  const uncitedReferences: UncitedReference[] = [
+    ...verdictUncited.map((v) => ({
+      reference_id: v.citation_id,
+      raw_text: v.citation_raw,
+    })),
+    ...extraUncitedFromRefs,
+  ];
   const correctlyLinked = verdicts.filter(
     (v) => v.mapping_status === 'matched'
   );
@@ -216,7 +235,7 @@ export function OrphanDetectionPage() {
   const essayId =
     numericId !== null && !isNaN(numericId) && numericId > 0 ? numericId : null;
   const { data: report, error } = useOrphanReport(essayId);
-  const [activeTab, setActiveTab] = useState<'orphans' | 'uncited' | 'all'>('all');
+  const [activeTab, setActiveTab] = useState<'orphans' | 'uncited' | 'ambiguous' | 'all'>('all');
 
   const errorMessage =
     essayId === null
@@ -229,7 +248,7 @@ export function OrphanDetectionPage() {
 
   const stats = useMemo(() => {
     if (!report) return null;
-    return getOrphanStats(report.verdicts);
+    return getOrphanStats(report.verdicts, report.references);
   }, [report]);
 
   if (errorMessage) {
@@ -260,7 +279,8 @@ export function OrphanDetectionPage() {
     );
   }
 
-  const hasIssues = stats.orphanCount > 0 || stats.uncitedCount > 0;
+  const hasIssues =
+    stats.orphanCount > 0 || stats.uncitedCount > 0 || stats.ambiguousCount > 0;
 
   return (
     <div className="space-y-6 pb-10">
@@ -332,6 +352,7 @@ export function OrphanDetectionPage() {
               { id: 'all', label: 'All', count: stats.total },
               { id: 'orphans', label: 'Orphans', count: stats.orphanCount },
               { id: 'uncited', label: 'Uncited', count: stats.uncitedCount },
+              { id: 'ambiguous', label: 'Ambiguous', count: stats.ambiguousCount },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -405,11 +426,8 @@ export function OrphanDetectionPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                       {stats.uncitedReferences.map((reference, index) => (
                         <UncitedReferenceCard
-                          key={reference.citation_id}
-                          reference={{
-                            reference_id: reference.citation_id,
-                            raw_text: reference.citation_raw,
-                          }}
+                          key={reference.reference_id}
+                          reference={reference}
                           index={index}
                         />
                       ))}
@@ -417,7 +435,8 @@ export function OrphanDetectionPage() {
                   </div>
                 )}
 
-              {stats.ambiguousMappings.length > 0 && (
+              {(activeTab === 'all' || activeTab === 'ambiguous') &&
+                stats.ambiguousMappings.length > 0 && (
                 <div>
                   <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1.5 flex items-center gap-2">
                     <HelpCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />

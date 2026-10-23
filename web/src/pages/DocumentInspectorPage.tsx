@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { type Verdict } from '@/api/client';
+import { type Verdict, type Citation } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { MappingStatusBadge } from '@/components/MappingStatusBadge';
 import { getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
@@ -77,13 +77,22 @@ function ContextWithHighlight({
   );
 }
 
-function buildInlineCitations(verdicts: Verdict[]): InlineCitation[] {
+function buildInlineCitations(
+  verdicts: Verdict[],
+  extractedCitations?: Citation[],
+): InlineCitation[] {
+  const pageByRaw = new Map<string, number>();
+  for (const c of extractedCitations ?? []) {
+    if (c.raw_text && c.page_num && c.page_num > 0 && !pageByRaw.has(c.raw_text)) {
+      pageByRaw.set(c.raw_text, c.page_num);
+    }
+  }
   return verdicts.map((v) => ({
     id: v.citation_id,
     raw: v.citation_raw,
     label: isUrlResource(v) ? 'resource' : v.label,
     mapping_status: v.mapping_status,
-    page: 1,
+    page: pageByRaw.get(v.citation_raw) ?? 1,
     line: v.citation_raw,
     context: v.context,
   }));
@@ -352,7 +361,9 @@ export function DocumentInspectorPage() {
     { errorMessage: 'Failed to load document. Please try again.' },
   );
 
-  const inlineCitations = report ? buildInlineCitations(report.verdicts) : [];
+  const inlineCitations = report
+    ? buildInlineCitations(report.verdicts, report.extracted_citations)
+    : [];
 
   const filteredCitations =
     filterLabel === 'all'
