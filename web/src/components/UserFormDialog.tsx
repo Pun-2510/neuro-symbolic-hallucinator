@@ -37,6 +37,7 @@ export function UserFormDialog({
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'user' | 'teacher' | 'admin'>('user');
   const [isActive, setIsActive] = useState(true);
+  const [canOverrideVerdicts, setCanOverrideVerdicts] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -51,6 +52,7 @@ export function UserFormDialog({
         setPassword('');
         setRole(user.role as 'user' | 'teacher' | 'admin');
         setIsActive(user.is_active);
+        setCanOverrideVerdicts(Boolean(user.can_override_verdicts));
       } else {
         setUsername('');
         setEmail('');
@@ -59,6 +61,7 @@ export function UserFormDialog({
         setPassword('');
         setRole('user');
         setIsActive(true);
+        setCanOverrideVerdicts(false);
       }
       setError('');
     }
@@ -73,9 +76,10 @@ export function UserFormDialog({
           username: username || undefined,
           email: email || undefined,
           full_name: fullName || undefined,
-          institution: institution || undefined,
+          institution: institution.trim() || undefined,
           role: role || undefined,
           is_active: isActive ?? undefined,
+          can_override_verdicts: role === 'user' ? false : canOverrideVerdicts,
           ...(password ? { password } : {}),
         }
       : {
@@ -83,9 +87,10 @@ export function UserFormDialog({
           password,
           email: email || undefined,
           full_name: fullName || undefined,
-          institution: institution || undefined,
+          institution: institution.trim() || undefined,
           role,
           is_active: isActive,
+          can_override_verdicts: role === 'user' ? false : canOverrideVerdicts,
         };
 
     setLoading(true);
@@ -150,14 +155,6 @@ export function UserFormDialog({
             </div>
           )}
 
-          {isEdit && (
-            <Alert variant="warning">
-              <AlertDescription>
-                Leave password blank to keep the current password.
-              </AlertDescription>
-            </Alert>
-          )}
-
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Full Name</Label>
@@ -183,14 +180,30 @@ export function UserFormDialog({
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <Label>Institution / Class</Label>
+            <Input
+              type="text"
+              value={institution}
+              onChange={(e) => setInstitution(e.target.value)}
+              maxLength={255}
+              disabled={loading}
+              placeholder="e.g. Ton Duc Thang University"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Role</Label>
               <Select
                 value={role}
-                onChange={(e) =>
-                  setRole(e.target.value as 'user' | 'teacher' | 'admin')
-                }
+                onChange={(e) => {
+                  const nextRole = e.target.value as 'user' | 'teacher' | 'admin';
+                  setRole(nextRole);
+                  if (!isEdit) {
+                    setCanOverrideVerdicts(nextRole !== 'user');
+                  }
+                }}
                 disabled={loading}
                 wrapperClassName="w-full"
               >
@@ -200,15 +213,29 @@ export function UserFormDialog({
               </Select>
             </div>
 
-            <div className="flex items-center gap-3 pt-7">
-              <Switch
-                checked={isActive}
-                onCheckedChange={setIsActive}
-                disabled={loading}
-              />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                {isActive ? 'Active' : 'Inactive'}
-              </span>
+            <div className="flex flex-col justify-end gap-2 pt-4">
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={isActive}
+                  onCheckedChange={setIsActive}
+                  disabled={loading}
+                />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {isActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              {role !== 'user' && (
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={canOverrideVerdicts}
+                    onCheckedChange={setCanOverrideVerdicts}
+                    disabled={loading}
+                  />
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                    Can override verdicts
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
