@@ -1,7 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, Search } from 'lucide-react';
+import { FileText, Search, AlertCircle } from 'lucide-react';
 import { api, type AuditLogEntry } from '@/api/client';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 /**
  * AuditLogPage — admin-only audit log (Phase 4).
@@ -43,7 +55,7 @@ export function AuditLogPage() {
           <FileText className="h-5 w-5 text-slate-600 dark:text-slate-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.auditLog')}</h1>
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">{t('admin.auditLog')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {t('admin.auditLogSubtitle')}
           </p>
@@ -52,56 +64,59 @@ export function AuditLogPage() {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-        <input
+        <Input
           type="text"
           value={userFilter}
           onChange={(e) => setUserFilter(e.target.value)}
           placeholder={t('admin.filterByUsername')}
           aria-label="Filter audit log by username"
-          className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="pl-10"
         />
       </div>
 
       {error && (
-        <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      <div className="rounded-xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 overflow-hidden">
+      <Card className="p-0 overflow-hidden">
         {loading ? (
           <p className="px-4 py-8 text-center text-slate-500 text-sm">{t('common.loading')}</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-800/50 text-xs uppercase text-slate-500">
-              <tr>
-                <th className="text-left px-4 py-3 font-semibold">{t('admin.when')}</th>
-                <th className="text-left px-4 py-3 font-semibold">{t('admin.tableUser')}</th>
-                <th className="text-left px-4 py-3 font-semibold">{t('admin.verdict')}</th>
-                <th className="text-left px-4 py-3 font-semibold">{t('admin.fromTo')}</th>
-                <th className="text-left px-4 py-3 font-semibold">{t('admin.note')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          <Table>
+            <TableHeader className="bg-slate-50 dark:bg-slate-800/50 text-xs uppercase text-slate-500">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="text-left px-4 py-3 font-semibold">{t('admin.when')}</TableHead>
+                <TableHead className="text-left px-4 py-3 font-semibold">{t('admin.tableUser')}</TableHead>
+                <TableHead className="text-left px-4 py-3 font-semibold">{t('admin.verdict')}</TableHead>
+                <TableHead className="text-left px-4 py-3 font-semibold">{t('admin.fromTo')}</TableHead>
+                <TableHead className="text-left px-4 py-3 font-semibold">{t('admin.note')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
               {entries.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                <TableRow>
+                  <TableCell colSpan={5} className="px-4 py-8 text-center text-slate-500">
                     {t('admin.noAuditLogs')}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 entries.map((e) => (
-                  <tr key={e.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                  <TableRow key={e.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                    <TableCell className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap font-mono text-xs">
                       {e.logged_at ? new Date(e.logged_at).toLocaleString() : '—'}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                    </TableCell>
+                    <TableCell className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
                       {e.user}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 font-mono text-xs">
-                      #{e.verdict_id}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-slate-500 font-mono text-xs">
+                      <Badge variant="outline" className="font-mono text-xs">
+                        #{e.verdict_id}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
                       <span className="font-mono text-xs">
                         <span className="text-rose-600 dark:text-rose-400">
                           {e.original_label}
@@ -111,17 +126,17 @@ export function AuditLogPage() {
                           {e.new_label}
                         </span>
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400 max-w-xs truncate">
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-slate-600 dark:text-slate-400 max-w-xs truncate">
                       {e.note ?? '—'}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

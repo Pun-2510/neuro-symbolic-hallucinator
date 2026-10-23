@@ -75,14 +75,14 @@ function setupTeacherMocks(page: Page): void {
   }, TEACHER_USER);
 
   // Auth routes — mock teacher user (override any existing mocks)
-  page.route('http://localhost:8000/api/auth/me', (route) => {
+  page.route('**/api/auth/me', (route) => {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(TEACHER_USER),
     });
   });
-  page.route('http://localhost:8000/api/users/me', (route) => {
+  page.route('**/api/users/me', (route) => {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -90,14 +90,14 @@ function setupTeacherMocks(page: Page): void {
     });
   });
   // Teacher dashboard
-  page.route('http://localhost:8000/api/teacher/dashboard', (route) => {
+  page.route('**/api/teacher/dashboard', (route) => {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(MOCK_DASHBOARD),
     });
   });
-  page.route('http://localhost:8000/api/teacher/classes', (route) => {
+  page.route('**/api/teacher/classes', (route) => {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -105,7 +105,7 @@ function setupTeacherMocks(page: Page): void {
     });
   });
   // Pending reviews
-  page.route('http://localhost:8000/api/teacher/classes/1/pending-reviews', (route) => {
+  page.route('**/api/teacher/classes/1/pending-reviews', (route) => {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -113,7 +113,7 @@ function setupTeacherMocks(page: Page): void {
     });
   });
   // Students and essays
-  page.route('http://localhost:8000/api/teacher/students', (route) =>
+  page.route('**/api/teacher/students', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -128,14 +128,14 @@ function setupTeacherMocks(page: Page): void {
       ]),
     }),
   );
-  page.route('http://localhost:8000/api/teacher/classes/1/students', (route) =>
+  page.route('**/api/teacher/classes/1/students', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify([]),
     }),
   );
-  page.route('http://localhost:8000/api/teacher/classes/1/essays', (route) =>
+  page.route('**/api/teacher/classes/1/essays', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -143,7 +143,7 @@ function setupTeacherMocks(page: Page): void {
     }),
   );
   // System health
-  page.route('http://localhost:8000/api/system/health', (route) =>
+  page.route('**/api/system/health', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',

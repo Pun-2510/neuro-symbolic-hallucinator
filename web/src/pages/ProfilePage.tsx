@@ -4,6 +4,11 @@ import { Save, Loader2, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { api } from '@/api/client';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function ProfilePage() {
   const { t, i18n } = useTranslation();
@@ -42,7 +47,6 @@ export function ProfilePage() {
         email: email || undefined,
       });
       await refreshUser();
-      // Update local email/fullName from server response
       setFullName(updated.full_name ?? '');
       setEmail(updated.email ?? '');
       setProfileSuccess(true);
@@ -102,7 +106,7 @@ export function ProfilePage() {
       </div>
 
       {/* Avatar + Basic Info */}
-      <div className="card p-6">
+      <Card className="p-6">
         <div className="flex flex-col sm:flex-row sm:items-start gap-6">
           {/* Avatar upload */}
           <div className="flex flex-col items-center gap-3 shrink-0 sm:w-40">
@@ -121,13 +125,13 @@ export function ProfilePage() {
           {/* Profile form */}
           <div className="flex-1 space-y-4 min-w-0">
             <div>
-              <label className="input-label">{t('profile.username')}</label>
-              <input
+              <Label className="input-label">{t('profile.username')}</Label>
+              <Input
                 type="text"
                 value={authUser?.username ?? ''}
                 readOnly
                 disabled
-                className="input opacity-60 cursor-not-allowed"
+                className="opacity-60 cursor-not-allowed mt-1.5"
               />
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {t('profile.usernameReadonly')}
@@ -136,34 +140,34 @@ export function ProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="input-label">{t('profile.fullName')}</label>
-                <input
+                <Label className="input-label">{t('profile.fullName')}</Label>
+                <Input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   maxLength={120}
-                  className="input"
+                  className="mt-1.5"
                   placeholder={t('profile.fullNamePlaceholder')}
                 />
               </div>
 
               <div>
-                <label className="input-label">{t('profile.email')}</label>
-                <input
+                <Label className="input-label">{t('profile.email')}</Label>
+                <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="input"
+                  className="mt-1.5"
                   placeholder={t('profile.emailPlaceholder')}
                 />
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <button
+              <Button
                 onClick={handleProfileSave}
                 disabled={profileLoading}
-                className="btn-primary"
+                className="gap-2"
               >
                 {profileLoading ? (
                   <>
@@ -176,7 +180,7 @@ export function ProfilePage() {
                     {t('profile.saveChanges')}
                   </>
                 )}
-              </button>
+              </Button>
 
               {profileSuccess && (
                 <span className="flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400">
@@ -228,10 +232,10 @@ export function ProfilePage() {
             </p>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Change Password */}
-      <div className="card p-6">
+      <Card className="p-6">
         <div className="flex items-center gap-2 mb-5">
           <Lock className="h-5 w-5 text-slate-600 dark:text-slate-400" />
           <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -253,36 +257,36 @@ export function ProfilePage() {
           />
 
           {passwordSuccess && (
-            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-start gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-              <p className="text-sm text-emerald-700 dark:text-emerald-300">{passwordSuccess}</p>
-            </div>
+            <Alert variant="success" className="rounded-xl">
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertDescription>{passwordSuccess}</AlertDescription>
+            </Alert>
           )}
 
           {passwordError && (
-            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
-              <p className="text-sm text-red-700 dark:text-red-300">{passwordError}</p>
-            </div>
+            <Alert variant="destructive" className="rounded-xl">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{passwordError}</AlertDescription>
+            </Alert>
           )}
 
           <div>
-            <label className="input-label">{t('profile.currentPassword')}</label>
-            <input
+            <Label className="input-label">{t('profile.currentPassword')}</Label>
+            <Input
               type="password"
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               required
-              className="input"
+              className="mt-1.5"
               placeholder={t('profile.currentPasswordPlaceholder')}
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="input-label">{t('profile.newPassword')}</label>
-              <input
+              <Label className="input-label">{t('profile.newPassword')}</Label>
+              <Input
                 type="password"
                 autoComplete="new-password"
                 value={newPassword}
@@ -290,30 +294,31 @@ export function ProfilePage() {
                 required
                 minLength={6}
                 maxLength={128}
-                className="input"
+                className="mt-1.5"
                 placeholder={t('profile.newPasswordPlaceholder')}
               />
             </div>
 
             <div>
-              <label className="input-label">{t('profile.confirmNewPassword')}</label>
-              <input
+              <Label className="input-label">{t('profile.confirmNewPassword')}</Label>
+              <Input
                 type="password"
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="input"
+                className="mt-1.5"
                 placeholder={t('profile.confirmNewPasswordPlaceholder')}
               />
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <button
+            <Button
               type="submit"
+              variant="secondary"
               disabled={passwordLoading}
-              className="btn-secondary text-sm py-2 px-4"
+              className="gap-2"
             >
               {passwordLoading ? (
                 <>
@@ -326,10 +331,10 @@ export function ProfilePage() {
                   {t('profile.updatePassword')}
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

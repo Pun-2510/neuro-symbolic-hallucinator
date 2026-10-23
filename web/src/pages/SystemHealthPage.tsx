@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity, Database, FileCheck, Users } from 'lucide-react';
+import { Activity, Database, FileCheck, Users, AlertCircle } from 'lucide-react';
 import { api, type SystemHealth } from '@/api/client';
 import { StatCard } from '@/components/StatCard';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function SystemHealthPage() {
   const { t } = useTranslation();
@@ -13,7 +16,14 @@ export function SystemHealthPage() {
     api.getSystemHealth().then(setData).catch((e) => setError(String(e)));
   }, []);
 
-  if (error) return <p className="text-rose-600">{t('common.error')}: {error}</p>;
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>{t('common.error')}: {error}</AlertDescription>
+      </Alert>
+    );
+  }
   if (!data) return <p className="text-slate-500">{t('common.loading')}</p>;
 
   return (
@@ -23,7 +33,7 @@ export function SystemHealthPage() {
           <Activity className="h-5 w-5 text-violet-600 dark:text-violet-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.systemHealth')}</h1>
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">{t('admin.systemHealth')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">{t('admin.systemHealthSubtitle')}</p>
         </div>
       </div>
@@ -37,17 +47,19 @@ export function SystemHealthPage() {
         <StatCard label={t('admin.verdicts')} value={data.totals.verdicts} icon={Database} color="amber" />
       </div>
 
-      <div className="rounded-xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 p-5">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('admin.verdictsByLabel')}</h2>
-        <div className="space-y-2">
+      <Card className="p-5">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">{t('admin.verdictsByLabel')}</h2>
+        <div className="space-y-2.5">
           {Object.entries(data.verdict_label_counts).map(([label, count]) => (
-            <div key={label} className="flex justify-between text-sm">
+            <div key={label} className="flex items-center justify-between text-sm py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
               <span className="text-slate-600 dark:text-slate-400 font-mono">{label}</span>
-              <span className="font-semibold text-slate-900 dark:text-white">{count}</span>
+              <Badge variant="secondary" className="font-mono font-semibold">
+                {count}
+              </Badge>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

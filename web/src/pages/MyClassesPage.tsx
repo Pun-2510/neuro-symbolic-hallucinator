@@ -13,6 +13,10 @@ import {
 import { api, type Class, type TeacherDashboard } from '@/api/client';
 import { StatCard } from '@/components/StatCard';
 import { CreateClassDialog } from '@/components/CreateClassDialog';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 /**
  * MyClassesPage — teacher dashboard (Phase 4).
@@ -49,30 +53,27 @@ export function MyClassesPage() {
             <GraduationCap className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('teacher.myClasses')}</h1>
+            <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">{t('teacher.myClasses')}</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('teacher.myClassesSubtitle')}
             </p>
           </div>
         </div>
-        <button
+        <Button
           onClick={() => setCreateOpen(true)}
           aria-label="Tạo lớp"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          className="gap-2"
         >
           <Plus className="h-4 w-4" />
           {t('teacher.createClass')}
-        </button>
+        </Button>
       </div>
 
       {error && (
-        <div
-          className="flex items-start gap-2 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-sm"
-          role="alert"
-        >
-          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>{error}</span>
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {dashboard && (
@@ -105,18 +106,18 @@ export function MyClassesPage() {
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {dashboard?.classes.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
+          <Card className="border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
             <p className="text-slate-700 dark:text-slate-300 font-medium">{t('teacher.noClassesYet')}</p>
             <p className="text-sm text-slate-500 mt-1">{t('teacher.noClassesHint')}</p>
-          </div>
+          </Card>
         ) : (
           dashboard?.classes.map((c: Class) => (
             <button
               key={c.id}
               onClick={() => navigate(`/teacher/classes/${c.id}`)}
-              className="w-full text-left rounded-xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 p-4 hover:ring-indigo-300 dark:hover:ring-indigo-700 transition-all flex items-center justify-between group focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="card w-full text-left rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all flex items-center justify-between group focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-slate-900 dark:text-white truncate">
@@ -127,18 +128,18 @@ export function MyClassesPage() {
                     {c.description}
                   </p>
                 )}
-                <div className="flex gap-4 mt-2 text-xs text-slate-500">
-                  <span>
+                <div className="flex gap-3 mt-2.5">
+                  <Badge variant="secondary" className="font-normal text-xs">
                     <Users className="inline h-3 w-3 mr-1" />
                     {c.student_count} SV
-                  </span>
-                  <span>
+                  </Badge>
+                  <Badge variant="secondary" className="font-normal text-xs">
                     <FileCheck className="inline h-3 w-3 mr-1" />
                     {c.essay_count} bài
-                  </span>
+                  </Badge>
                 </div>
               </div>
-              <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-indigo-500 shrink-0" />
+              <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-indigo-500 shrink-0 transition-transform group-hover:translate-x-0.5" />
             </button>
           ))
         )}

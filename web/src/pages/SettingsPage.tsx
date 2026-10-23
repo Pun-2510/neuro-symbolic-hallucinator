@@ -16,6 +16,9 @@ import {
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
+import { Card } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 // ============================================================
 // Types
@@ -106,7 +109,7 @@ export function SettingsPage(): JSX.Element {
           <Settings className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">
             {t('settings.title')}
           </h1>
           <p className="text-slate-500 dark:text-slate-400">
@@ -117,7 +120,7 @@ export function SettingsPage(): JSX.Element {
 
       <div className="max-w-2xl space-y-6">
         {/* Appearance Section */}
-        <section className="card">
+        <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Palette className="w-5 h-5 text-slate-500" />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -128,7 +131,7 @@ export function SettingsPage(): JSX.Element {
           <div className="space-y-4">
             {/* Theme Selection */}
             <div>
-              <label className="input-label">{t('settings.theme')}</label>
+              <Label className="input-label">{t('settings.theme')}</Label>
               <div className="mt-2">
                 <ThemeToggle showLabel />
               </div>
@@ -137,10 +140,10 @@ export function SettingsPage(): JSX.Element {
               </p>
             </div>
           </div>
-        </section>
+        </Card>
 
         {/* Language Section */}
-        <section className="card">
+        <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Globe className="w-5 h-5 text-slate-500" />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -177,10 +180,10 @@ export function SettingsPage(): JSX.Element {
               </button>
             ))}
           </div>
-        </section>
+        </Card>
 
         {/* Notifications Section */}
-        <section className="card">
+        <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Bell className="w-5 h-5 text-slate-500" />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -210,10 +213,10 @@ export function SettingsPage(): JSX.Element {
               onChange={() => toggleSetting('compactView')}
             />
           </div>
-        </section>
+        </Card>
 
         {/* About Section */}
-        <section className="card">
+        <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Info className="w-5 h-5 text-slate-500" />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -237,10 +240,10 @@ export function SettingsPage(): JSX.Element {
               </a>
             </div>
           </div>
-        </section>
+        </Card>
 
         {/* Danger Zone */}
-        <section className="card border-red-200 dark:border-red-900/50">
+        <Card className="p-6 border-red-200 dark:border-red-900/50">
           <h2 className="text-lg font-semibold text-red-700 dark:text-red-400 mb-4">
             {t('settings.dangerZone')}
           </h2>
@@ -257,7 +260,7 @@ export function SettingsPage(): JSX.Element {
               <ChevronRight className="w-5 h-5 text-slate-400" />
             </button>
           </div>
-        </section>
+        </Card>
       </div>
 
       <ConfirmationModal
@@ -297,22 +300,10 @@ function ToggleSetting({ label, description, checked, onChange }: ToggleSettingP
           <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>
         )}
       </div>
-      <button
-        role="switch"
-        aria-checked={checked}
-        onClick={onChange}
-        className={`
-          relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-          ${checked ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}
-        `}
-      >
-        <span
-          className={`
-            inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform
-            ${checked ? 'translate-x-6' : 'translate-x-1'}
-          `}
-        />
-      </button>
+      <Switch
+        checked={checked}
+        onCheckedChange={onChange}
+      />
     </div>
   );
 }
@@ -326,7 +317,7 @@ function InfoRow({ label, value }: InfoRowProps): JSX.Element {
   return (
     <div className="flex items-center justify-between">
       <span className="text-slate-600 dark:text-slate-400">{label}</span>
-      <span className="font-medium text-slate-900 dark:text-slate-100">{value}</span>
+      <span className="font-medium font-mono text-slate-900 dark:text-slate-100">{value}</span>
     </div>
   );
 }

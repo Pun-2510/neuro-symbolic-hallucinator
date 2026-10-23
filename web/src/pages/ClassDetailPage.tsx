@@ -13,6 +13,9 @@ import { api, type Class, type ClassStudent, type ClassEssay } from '@/api/clien
 import { useToast } from '@/contexts/ToastContext';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
 import { AddStudentDialog } from '@/components/AddStudentDialog';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 /**
  * ClassDetailPage — manage a single class (Phase 4 / Task 14).
@@ -43,7 +46,6 @@ export function ClassDetailPage() {
     setLoading(true);
     setError('');
     try {
-      // Try to find the class in teacher's class list to enforce ownership
       const all = await api.listMyClasses();
       const found = all.find((c) => c.id === cid);
       if (!found) {
@@ -52,7 +54,6 @@ export function ClassDetailPage() {
         return;
       }
       setCls(found);
-      // Best-effort: load students + essays in parallel
       const [studentList, essayList] = await Promise.all([
         api.listClassStudents(cid).catch(() => []),
         api.listClassEssays(cid).catch(() => []),
@@ -112,19 +113,17 @@ export function ClassDetailPage() {
   if (error) {
     return (
       <div className="space-y-4 p-6">
-        <div
-          className="flex items-start gap-2 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-sm"
-          role="alert"
-        >
-          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>{error}</span>
-        </div>
-        <button
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button
+          variant="link"
           onClick={() => navigate('/teacher/classes')}
-          className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+          className="px-0"
         >
           ← Quay lại danh sách lớp
-        </button>
+        </Button>
       </div>
     );
   }
@@ -133,49 +132,52 @@ export function ClassDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => navigate('/teacher/classes')}
           aria-label="Back to classes"
-          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <ArrowLeft className="h-5 w-5" />
-        </button>
+        </Button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white truncate">
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white truncate">
             {cls.name}
           </h1>
           {cls.description && (
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{cls.description}</p>
           )}
         </div>
-        <button
+        <Button
+          variant="outline"
           onClick={handleExport}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="gap-2"
         >
           <Download className="h-4 w-4" />
           Export CSV
-        </button>
+        </Button>
       </div>
 
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-900 dark:text-white">
-            <Users className="h-5 w-5" /> Sinh viên ({students.length})
+            <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" /> Sinh viên ({students.length})
           </h2>
-          <button
+          <Button
+            size="sm"
             onClick={() => setAddOpen(true)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="gap-2"
           >
             <UserPlus className="h-4 w-4" />
             Thêm
-          </button>
+          </Button>
         </div>
-        <div className="rounded-xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+        <Card className="p-0 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
           {students.length === 0 ? (
             <p className="p-6 text-center text-sm text-slate-500">Chưa có sinh viên.</p>
           ) : (
             students.map((s) => (
-              <div key={s.id} className="flex items-center justify-between p-3">
+              <div key={s.id} className="flex items-center justify-between p-3.5 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                 <div className="min-w-0">
                   <p className="font-medium text-sm text-slate-900 dark:text-slate-100 truncate">
                     {s.username}
@@ -184,24 +186,26 @@ export function ClassDetailPage() {
                     <p className="text-xs text-slate-500 truncate">{s.full_name}</p>
                   )}
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setPendingRemove(s)}
                   aria-label={`Remove ${s.username}`}
-                  className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  className="text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30"
                 >
                   <Trash2 className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             ))
           )}
-        </div>
+        </Card>
       </section>
 
       <section>
         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2 text-slate-900 dark:text-white">
-          <FileText className="h-5 w-5" /> Bài nộp ({essays.length})
+          <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" /> Bài nộp ({essays.length})
         </h2>
-        <div className="rounded-xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+        <Card className="p-0 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
           {essays.length === 0 ? (
             <p className="p-6 text-center text-sm text-slate-500">Chưa có bài nộp.</p>
           ) : (
@@ -209,7 +213,7 @@ export function ClassDetailPage() {
               <Link
                 key={e.id}
                 to={`/verification/report/${e.id}`}
-                className="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800/50"
+                className="flex items-center justify-between p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800/50 transition-colors"
               >
                 <div className="min-w-0">
                   <p className="font-medium text-sm text-slate-900 dark:text-slate-100 truncate">
@@ -223,7 +227,7 @@ export function ClassDetailPage() {
               </Link>
             ))
           )}
-        </div>
+        </Card>
       </section>
 
       <AddStudentDialog

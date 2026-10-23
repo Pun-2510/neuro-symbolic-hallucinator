@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ClipboardCheck, ExternalLink, AlertCircle } from 'lucide-react';
 import { api, type PendingVerdict, type Class } from '@/api/client';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 /**
  * PendingReviewsPage — teacher queue of verdicts awaiting review (Phase 4).
@@ -25,7 +28,6 @@ export function PendingReviewsPage() {
     try {
       const data = await api.listMyClasses();
       setClasses(data);
-      // Auto-select first class if any
       if (data.length > 0 && selectedClassId === null) {
         setSelectedClassId(data[0].id);
       }
@@ -34,7 +36,6 @@ export function PendingReviewsPage() {
     } finally {
       setLoadingClasses(false);
     }
-    // selectedClassId intentionally excluded — we only want this on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -66,7 +67,7 @@ export function PendingReviewsPage() {
           <ClipboardCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('teacher.pendingReviews')}</h1>
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">{t('teacher.pendingReviews')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {t('teacher.pendingReviewsSubtitle')}
           </p>
@@ -74,26 +75,23 @@ export function PendingReviewsPage() {
       </div>
 
       {error && (
-        <div
-          className="flex items-start gap-2 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-sm"
-          role="alert"
-        >
-          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>{error}</span>
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {loadingClasses ? (
         <p className="text-slate-500 text-sm">{t('common.loading')}</p>
       ) : classes.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
+        <Card className="border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
           <p className="text-slate-700 dark:text-slate-300 font-medium">
             {t('teacher.noClassesAssigned')}
           </p>
           <p className="text-sm text-slate-500 mt-1">
             {t('teacher.noClassesAssignedHint')}
           </p>
-        </div>
+        </Card>
       ) : (
         <>
           <div role="group" aria-label={t('teacher.filterByClass')} className="flex flex-wrap gap-2">
@@ -116,7 +114,7 @@ export function PendingReviewsPage() {
             })}
           </div>
 
-          <div className="rounded-xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+          <Card className="p-0 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
             {loadingReviews ? (
               <p className="p-6 text-center text-sm text-slate-500">{t('common.loading')}</p>
             ) : reviews.length === 0 ? (
@@ -128,19 +126,16 @@ export function PendingReviewsPage() {
                 <button
                   key={r.verdict_id}
                   onClick={() => navigate(`/verification/report/${r.essay_id}`)}
-                  className="w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 flex items-start gap-3 focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800/50"
+                  className="w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 flex items-start gap-3 focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800/50 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`px-2 py-0.5 rounded text-xs font-mono ${
-                          r.label === 'suspected_hallucination'
-                            ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
-                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                        }`}
+                      <Badge
+                        variant={r.label === 'suspected_hallucination' ? 'hallucination' : 'metadata_error'}
+                        className="px-2 py-0.5 rounded text-xs font-mono"
                       >
                         {r.label}
-                      </span>
+                      </Badge>
                       <span className="text-xs text-slate-500">{r.student_username ?? '—'}</span>
                     </div>
                     <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
@@ -156,7 +151,7 @@ export function PendingReviewsPage() {
                 </button>
               ))
             )}
-          </div>
+          </Card>
         </>
       )}
     </div>
