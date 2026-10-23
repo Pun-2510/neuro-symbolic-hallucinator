@@ -577,3 +577,48 @@ Nếu bạn đồng ý với kế hoạch xử lý triệt để ở **Phần 4*
 4. **Bước 4:** Cập nhật [`author_matcher.py`](file:///Users/iannwendy/Desktop/DATN/essay-integrity-checker/src/integrity_checker/matching/author_matcher.py) và [`rules.py`](file:///Users/iannwendy/Desktop/DATN/essay-integrity-checker/src/integrity_checker/logic/rules.py), [`logging.py`](file:///Users/iannwendy/Desktop/DATN/essay-integrity-checker/src/integrity_checker/logging.py) (Fix 5, Fix 6 & Fix 7).
 5. **Bước 5:** Viết thêm unit tests cho toàn bộ các edge cases vừa phát hiện và chạy lại toàn bộ bộ test `pytest` của dự án để đảm bảo không vỡ bất kỳ tính năng hiện có nào.
 6. **Bước 6:** Chạy lại full pipeline trên [`thesis.pdf`](file:///Users/iannwendy/Desktop/DATN/essay-integrity-checker/thesis.pdf), xuất báo cáo mới và đối chiếu Trước vs. Sau trên từng chỉ số (`Section boundaries`, `extracted_citations`, `linking_summary`, 27 `verdicts`, và `CIS`).
+
+---
+
+## PHẦN 6: Kết quả thực thi bản vá, Git Commits & Đối chiếu đa file PDF
+
+Toàn bộ 7 nhóm bản vá đã được triển khai trên nhánh `fix/pipeline-decision-and-extraction-issues`, vượt qua **1.178 unit tests** và **9 end-to-end integration tests** (`0 failed`).
+
+### 6.1. Danh sách Git Commits trên nhánh `fix/pipeline-decision-and-extraction-issues`
+
+1. `3efdf5d` — `docs: add thesis pipeline analysis plan and commit pattern baseline`
+2. `8830fa4` — `fix(extraction): tighten section segmenter headers to prevent false bibliography/appendix boundaries` (**Fix 1**)
+3. `21ae8bd` — `fix(extraction): preserve URLs, arXiv IDs, and corporate authors when merging GROBID and regex references` (**Fix 2**)
+4. `d1ef258` — `fix(extraction): preserve line-wrapped numeric citations and filter math intervals and template placeholders` (**Fix 3**)
+5. `18d15bc` — `fix(extraction): improve multi-format reference patterns and style detector`
+6. `13e0a9f` — `fix(linking): propagate CitationLinker mapping status to reference verdicts and summary` (**Fix 4**)
+7. `01b4528` — `fix(matching): preserve 2-letter surnames like Ji, Yu, Su, Xu, Lo in author matcher` (**Fix 5**)
+8. `d200c02` — `fix(logic): fix local_db year tolerance, single-source year mismatch, and known-author rule guards` (**Fix 6**)
+9. `cfd287e` — `fix(pipeline): unify stdlib logging into loguru and bound concurrent retrievals` (**Fix 7**)
+10. `b2bfb61` — `fix(extraction): align numbered bibliography style detection with numeric in-text citations`
+11. `d310b1c` — `fix(logic): require author overlap in R-KNOWN-AUTHOR-WEAK-EVIDENCE and broaden web resource patterns`
+
+### 6.2. Đối chiếu Trước vs. Sau trên `thesis.pdf`
+
+| Chỉ số / Tầng xử lý | Trước khi sửa | Sau khi sửa | Đánh giá |
+| :--- | :--- | :--- | :--- |
+| **Section Boundaries** | `BODY (1–56)`, `BIBLIOGRAPHY (57–63)`, `APPENDIX (64–67)`, `BIBLIOGRAPHY (68–70)`, `APPENDIX (71–76)` | **`BODY (1–67)`, `BIBLIOGRAPHY (68–70)`, `APPENDIX (71–76)`** | Xóa sạch vùng Bibliography giả ở trang 57–63 |
+| **Số Reference Entries** | `34` (`27` thật + `7` đoạn văn/bảng giả từ Chapter 5 & 6) | **`27` (`[1]`..`[27]`, `0` mục giả)** | Chính xác tuyệt đối 100% |
+| **Số In-Text Citations** | `28` (rơi mất `[9], [14], [17], [23]`, bắt nhầm `6` khoảng toán học `[0, 1]`, `[0, 100]` và bảng cú pháp `Author (2020)`) | **`31` (bảo toàn đủ `[1]`..`[27]`, `0` false positive)** | Cứu toàn bộ trích dẫn rớt dòng, lọc sạch khoảng toán học |
+| **Style Profile** | `MIXED` (phạt `format_consistency = 0.50` và trừ `-15%` confidence mọi verdict) | **`IEEE-LIKE` (`format_consistency = 1.00`, `0` phạt style)** | Nhận diện đúng chuẩn đánh số `[N]` xuyên suốt |
+| **Linking Summary (`matched`)** | `0 matched`, `34 unresolved` (do ghi đè `mapping_status` ở `integrity_pipeline.py`) | **`27 matched`, `0 missing`, `0 uncited`, `0 unresolved`** | Bảo toàn kết quả `CitationLinker` sang `Verdict` |
+| **Verdict Breakdown** | `12 verified`, `3 metadata_error`, `18 unresolved`, `1 resource` (trên 34 mục) | **`16 verified`, `5 resource` (`[4]–[8]`), `1 metadata_error` (`[24]`), `5 unresolved` (`[2],[3],[15],[26],[27]`)** | Toàn bộ 16 bài báo học thuật thật + 5 tài liệu web/API đều xác thực chuẩn |
+| **Điểm CIS tổng thể** | **`50.56 / 100`** | **`89.32 / 100`** | Tăng **+38.76 điểm**, phản ánh đúng chất lượng trích dẫn của khóa luận |
+
+### 6.3. Kết quả chạy đối chiếu trên 7 file PDF đa dạng
+
+| File PDF | Số trang | Số References (Verdicts) | Style Profile | Kết quả Linking (`Verdict Mappings`) | Phân bố Verdict Labels | Điểm CIS |
+| :--- | :---: | :---: | :---: | :--- | :--- | :---: |
+| [`thesis.pdf`](file:///Users/iannwendy/Desktop/DATN/essay-integrity-checker/thesis.pdf) | 76 | 27 | `IEEE-LIKE` | `27 matched` | `16 verified`, `5 resource`, `1 metadata_error`, `5 unresolved` | **89.32** |
+| [`VietDepression_Research_Article.pdf`](file:///Users/iannwendy/Desktop/DATN/essay-integrity-checker/VietDepression_Research_Article.pdf) | 19 | 18 | `IEEE-LIKE` | `18 matched` | `17 verified`, `1 resource` | **100.00** |
+| [`TranThanhPhuoc_523H0002_523H0054.pdf`](file:///Users/iannwendy/Desktop/DATN/essay-integrity-checker/TranThanhPhuoc_523H0002_523H0054.pdf) | 98 | 27 | `IEEE-LIKE` | `25 matched`, `2 uncited_reference`, `5 missing_reference` | `23 verified`, `2 resource`, `2 unresolved` | **96.59** |
+| [`523H0054_NguyenBaoMinh_523H0157_DinhDucMinh.pdf`](file:///Users/iannwendy/Desktop/DATN/essay-integrity-checker/523H0054_NguyenBaoMinh_523H0157_DinhDucMinh.pdf) | 53 | 5 | `IEEE-LIKE` | `5 unresolved` (không có trích dẫn in-text trong thân bài) | `2 verified`, `3 unresolved` | **79.00** |
+| [`data/essays/essay_01_real_only.pdf`](file:///Users/iannwendy/Desktop/DATN/essay-integrity-checker/data/essays/essay_01_real_only.pdf) | 2 | 5 | `APA-LIKE` | `5 matched` | `5 verified` | **100.00** |
+| [`data/essays/essay_02_mixed.pdf`](file:///Users/iannwendy/Desktop/DATN/essay-integrity-checker/data/essays/essay_02_mixed.pdf) | 2 | 4 | `APA-LIKE` | `4 matched` | `3 verified`, `1 unresolved` | **90.00** |
+| [`data/essays/essay_03_comprehensive.pdf`](file:///Users/iannwendy/Desktop/DATN/essay-integrity-checker/data/essays/essay_03_comprehensive.pdf) | 2 | 9 | `APA-LIKE` | `7 matched`, `2 uncited_reference` | `4 verified`, `3 unresolved`, `2 suspected_hallucination` | **73.00** |
+
