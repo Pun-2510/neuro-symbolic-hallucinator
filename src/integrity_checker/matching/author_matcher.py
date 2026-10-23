@@ -43,8 +43,27 @@ _PUNCT_RE = re.compile(r"[^\w\s']", re.UNICODE)
 # Remove apostrophes only when surrounded by whitespace (lone apostrophes)
 _LONE_APOSTROPHE_RE = re.compile(r"\s'|'s\s|'s$|^'|'$", re.UNICODE)
 _WHITESPACE_RE = re.compile(r"\s+", re.UNICODE)
-# Initial pattern: "J", "J.", "JK", "J.K.", "J K"
-_INITIAL_RE = re.compile(r"^[A-Z]\.?$|^[A-Z]\.?[A-Z]\.?$", re.IGNORECASE)
+# Initial pattern: "J", "J.", "J.K." (case-sensitive for 2-letter undotted "JK")
+_INITIAL_RE = re.compile(r"^[A-Za-z]\.?$|^[A-Za-z](?:\.[A-Za-z])+\.?$|^[A-Z]{2}$")
+
+
+def _is_initial_token(raw_tok: str, all_caps_name: bool = False) -> bool:
+    """Return True if raw_tok is a given-name initial (e.g. 'J', 'J.', 'J.K.', 'JK').
+
+    Distinguishes 2-letter TitleCase surnames ('Ji', 'Yu', 'Su', 'Xu', 'Lo',
+    'Li', 'Wu', 'He', 'Le', 'Vo', 'Ho', 'Do') from true initials ('J.', 'J.K.',
+    or Vancouver all-caps 'JK').
+    """
+    tok = raw_tok.strip().strip(",;:")
+    if not tok:
+        return False
+    if re.match(r"^[A-Za-z]\.?$", tok):
+        return True
+    if re.match(r"^[A-Za-z](?:\.[A-Za-z])+\.?$", tok):
+        return True
+    if not all_caps_name and re.match(r"^[A-Z]{2}$", tok):
+        return True
+    return False
 # Concatenated CamelCase author token from OpenAlex/Crossref (e.g. "PedregosaFabian")
 _CAMEL_AUTHOR_RE = re.compile(r"^([A-ZÀ-ÖØ-Þ][a-zà-ÿ]{2,})([A-ZÀ-ÖØ-Þ][a-zà-ÿ]+)$")
 _SURNAME_PREFIXES = {
@@ -121,18 +140,39 @@ def _canonicalize_last_name(name: str) -> str:
     # E.g. "Smith J. K." → ["smith", "j", "k"] → "smith" (last non-initial)
     # E.g. "J. K. Smith" → ["j", "k", "smith"] → "smith" (also last)
     # E.g. "John Smith" → ["john", "smith"] → "smith"
+    # E.g. "Ziwei Ji" → ["ziwei", "ji"] → "ji" (2-letter TitleCase surname preserved)
+    raw_folded = _fold_diacritics(name)
+    alpha_chars = [c for c in raw_folded if c.isalpha()]
+    all_caps_name = bool(alpha_chars) and all(c.isupper() for c in alpha_chars)
+    raw_tokens = raw_folded.split()
+
     # Strip leading particles first
-    while tokens and tokens[0] in _PARTICLES:
-        tokens.pop(0)
-    if not tokens:
+    while raw_tokens:
+        first_clean = _WHITESPACE_RE.sub(
+            " ", _LONE_APOSTROPHE_RE.sub(" ", _strip_punctuation(raw_tokens[0].lower()))
+        ).strip()
+        if first_clean in _PARTICLES:
+            raw_tokens.pop(0)
+        else:
+            break
+    if not raw_tokens:
         return ""
+
     # Find last token that's NOT an initial
     last_non_initial = ""
-    for t in tokens:
-        if not _INITIAL_RE.match(t):
-            last_non_initial = t
+    fallback_tokens: list[str] = []
+    for rt in raw_tokens:
+        ct = _WHITESPACE_RE.sub(
+            " ", _LONE_APOSTROPHE_RE.sub(" ", _strip_punctuation(rt.lower()))
+        ).strip()
+        if not ct:
+            continue
+        ct_parts = ct.split()
+        fallback_tokens.extend(ct_parts)
+        if not _is_initial_token(rt, all_caps_name=all_caps_name):
+            last_non_initial = ct_parts[-1]
     # If all are initials, fallback to last token
-    return last_non_initial if last_non_initial else (tokens[-1] if tokens else "")
+    return last_non_initial if last_non_initial else (fallback_tokens[-1] if fallback_tokens else "")
 
 
 def _author_to_last_name(author: Union[Author, str]) -> str:

@@ -49,6 +49,16 @@ class TestCanonicalizeLastName:
         # Edge case: all particles → empty
         assert _canonicalize_last_name("van der") == ""
 
+    def test_two_letter_surnames_preserved(self) -> None:
+        assert _canonicalize_last_name("Ziwei Ji") == "ji"
+        assert _canonicalize_last_name("Tiezheng Yu") == "yu"
+        assert _canonicalize_last_name("Dan Su") == "su"
+        assert _canonicalize_last_name("Yan Xu") == "xu"
+        assert _canonicalize_last_name("Kyle Lo") == "lo"
+        assert _canonicalize_last_name("Smith JK") == "smith"
+        assert _canonicalize_last_name("Smith J.K.") == "smith"
+
+
 
 class TestAuthorMatchScore:
     """Score calculation tests."""
@@ -105,6 +115,18 @@ class TestAuthorMatchScore:
         candidate = ["Smith"]
         # "berg" vs "smith" → no match
         assert author_match_score(cited, candidate) == 0.0
+
+    def test_two_letter_surnames_ji_et_al(self) -> None:
+        cited = [
+            "Ji, Z.", "Lee, N.", "Frieske, R.", "Yu, T.",
+            "Su, D.", "Xu, Y.", "Fung, P.",
+        ]
+        candidate = [
+            "Ziwei Ji", "Nayeon Lee", "Rita Frieske", "Tiezheng Yu",
+            "Dan Su", "Yan Xu", "Pascale Fung",
+        ]
+        assert author_match_score(cited, candidate) == 1.0
+
 
 
 class TestAuthorMatchDetails:
