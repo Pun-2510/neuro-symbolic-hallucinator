@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   UserPlus,
@@ -31,6 +32,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 export function ClassDetailPage() {
   const { classId } = useParams<{ classId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const toast = useToast();
   const cid = Number(classId);
 
@@ -54,7 +56,7 @@ export function ClassDetailPage() {
       const all = await api.listMyClasses();
       const found = all.find((c) => c.id === cid);
       if (!found) {
-        setError('Bạn không có quyền truy cập lớp này.');
+        setError(t('teacher.classAccessDenied'));
         setLoading(false);
         return;
       }
@@ -70,7 +72,7 @@ export function ClassDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [cid]);
+  }, [cid, t]);
 
   useEffect(() => {
     load();
@@ -82,10 +84,12 @@ export function ClassDetailPage() {
     setPendingRemove(null);
     try {
       await api.removeStudentFromClass(cid, studentId);
-      toast.success(`Đã xóa ${pendingRemove.username} khỏi lớp`);
+      toast.success(
+        t('teacher.studentRemovedSuccess', { username: pendingRemove.username })
+      );
       load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Xóa thất bại');
+      toast.error(e instanceof Error ? e.message : t('teacher.studentRemoveFailed'));
     }
   };
 
@@ -108,7 +112,7 @@ export function ClassDetailPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Export CSV thất bại');
+      toast.error(e instanceof Error ? e.message : t('teacher.exportCsvFailed'));
     }
   };
 
@@ -116,7 +120,9 @@ export function ClassDetailPage() {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-6 w-6 text-indigo-600 dark:text-indigo-400 animate-spin" />
-        <span className="ml-3 text-slate-500 font-mono text-sm">Loading…</span>
+        <span className="ml-3 text-slate-500 font-mono text-sm">
+          {t('common.loading')}
+        </span>
       </div>
     );
   }
@@ -132,7 +138,7 @@ export function ClassDetailPage() {
           onClick={() => navigate('/teacher/classes')}
           className="px-0"
         >
-          ← Quay lại danh sách lớp
+          {t('teacher.backToClasses')}
         </Button>
       </div>
     );
@@ -154,7 +160,7 @@ export function ClassDetailPage() {
                 className="h-7 px-2.5 rounded-lg text-xs font-mono gap-1.5"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                Back
+                {t('common.back')}
               </Button>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
                 <ShieldCheck className="h-3.5 w-3.5" />
@@ -178,7 +184,7 @@ export function ClassDetailPage() {
             className="gap-2 rounded-xl font-mono text-xs h-9 shrink-0"
           >
             <Download className="h-3.5 w-3.5" />
-            Export CSV
+            {t('teacher.exportCsv')}
           </Button>
         </div>
       </div>
@@ -188,7 +194,7 @@ export function ClassDetailPage() {
         <Card className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Enrolled Students
+              {t('teacher.enrolledStudents')}
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400">
               01
@@ -202,7 +208,7 @@ export function ClassDetailPage() {
         <Card className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Cohort Submissions
+              {t('teacher.cohortSubmissions')}
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400">
               02
@@ -226,7 +232,7 @@ export function ClassDetailPage() {
             <Separator orientation="vertical" className="h-4" />
             <Users className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             <h2 className="text-sm font-display font-semibold text-slate-900 dark:text-white">
-              Sinh viên ({students.length})
+              {t('teacher.students')} ({students.length})
             </h2>
           </div>
           <Button
@@ -235,14 +241,14 @@ export function ClassDetailPage() {
             className="gap-1.5 rounded-xl h-8 text-xs"
           >
             <UserPlus className="h-3.5 w-3.5" />
-            Thêm
+            {t('teacher.addStudent')}
           </Button>
         </div>
 
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {students.length === 0 ? (
             <p className="p-8 text-center text-sm text-slate-500 font-mono">
-              Chưa có sinh viên.
+              {t('teacher.noStudentsYet')}
             </p>
           ) : (
             students.map((s, idx) => (
@@ -290,7 +296,7 @@ export function ClassDetailPage() {
             <Separator orientation="vertical" className="h-4" />
             <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             <h2 className="text-sm font-display font-semibold text-slate-900 dark:text-white">
-              Bài nộp ({essays.length})
+              {t('teacher.submissions')} ({essays.length})
             </h2>
           </div>
           <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
@@ -302,7 +308,7 @@ export function ClassDetailPage() {
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {essays.length === 0 ? (
             <p className="p-8 text-center text-sm text-slate-500 font-mono">
-              Chưa có bài nộp.
+              {t('teacher.noSubmissionsYet')}
             </p>
           ) : (
             essays.map((e, idx) => (
@@ -320,7 +326,7 @@ export function ClassDetailPage() {
                       {e.filename}
                     </p>
                     <p className="text-xs font-mono text-slate-500 mt-0.5">
-                      {e.username ?? '—'} • {e.num_pages} trang •{' '}
+                      {e.username ?? '—'} • {e.num_pages} {t('teacher.pages')} •{' '}
                       {e.uploaded_at
                         ? new Date(e.uploaded_at).toLocaleDateString()
                         : ''}
@@ -344,14 +350,17 @@ export function ClassDetailPage() {
 
       <ConfirmationModal
         isOpen={pendingRemove !== null}
-        title="Xóa sinh viên khỏi lớp"
+        title={t('teacher.removeStudentTitle')}
         message={
           pendingRemove
-            ? `Bạn có chắc muốn xóa "${pendingRemove.username}" khỏi lớp "${cls.name}"? Hành động này không thể hoàn tác.`
+            ? t('teacher.removeStudentConfirm', {
+                username: pendingRemove.username,
+                className: cls.name,
+              })
             : ''
         }
-        confirmLabel="Xóa"
-        cancelLabel="Hủy"
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         variant="danger"
         onConfirm={handleRemove}
         onCancel={() => setPendingRemove(null)}

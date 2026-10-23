@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { type Verdict, type Citation } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { isUrlResource } from '@/lib/verdictExplanation';
@@ -231,6 +232,8 @@ function SectionHeader({
 
 export function OrphanDetectionPage() {
   const { id } = useParams<{ id: string }>();
+  const { i18n } = useTranslation();
+  const isVi = i18n.language?.startsWith('vi');
   const numericId = id ? parseInt(id, 10) : null;
   const essayId =
     numericId !== null && !isNaN(numericId) && numericId > 0 ? numericId : null;
@@ -306,27 +309,27 @@ export function OrphanDetectionPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <SectionHeader
           indexCode="01"
-          title="Correctly Linked"
+          title={isVi ? 'Liên kết chính xác' : 'Correctly Linked'}
           icon={<CheckCircle className="h-5 w-5" />}
           count={stats.correctlyLinkedCount}
           color="green"
-          description="Citations with matching references"
+          description={isVi ? 'Trích dẫn khớp với tài liệu tham khảo' : 'Citations with matching references'}
         />
         <SectionHeader
           indexCode="02"
-          title="Citations Without Reference"
+          title={isVi ? 'Trích dẫn thiếu tham khảo' : 'Citations Without Reference'}
           icon={<Link2Off className="h-5 w-5" />}
           count={stats.orphanCount}
           color="red"
-          description="In-text citations without bibliography entry"
+          description={isVi ? 'Trích dẫn trong bài chưa có mục tham khảo' : 'In-text citations without bibliography entry'}
         />
         <SectionHeader
           indexCode="03"
-          title="Uncited References"
+          title={isVi ? 'Tham khảo chưa trích dẫn' : 'Uncited References'}
           icon={<FileText className="h-5 w-5" />}
           count={stats.uncitedCount}
           color="amber"
-          description="Bibliography entries never cited in document"
+          description={isVi ? 'Mục tham khảo không được trích dẫn trong bài' : 'Bibliography entries never cited in document'}
         />
       </div>
 
@@ -349,10 +352,10 @@ export function OrphanDetectionPage() {
 
           <div className="flex items-center gap-1.5">
             {[
-              { id: 'all', label: 'All', count: stats.total },
-              { id: 'orphans', label: 'Orphans', count: stats.orphanCount },
-              { id: 'uncited', label: 'Uncited', count: stats.uncitedCount },
-              { id: 'ambiguous', label: 'Ambiguous', count: stats.ambiguousCount },
+              { id: 'all', label: isVi ? 'Tất cả' : 'All', count: stats.total },
+              { id: 'orphans', label: isVi ? 'Thiếu tham khảo' : 'Orphans', count: stats.orphanCount },
+              { id: 'uncited', label: isVi ? 'Chưa trích dẫn' : 'Uncited', count: stats.uncitedCount },
+              { id: 'ambiguous', label: isVi ? 'Mơ hồ' : 'Ambiguous', count: stats.ambiguousCount },
             ].map((tab) => (
               <button
                 key={tab.id}

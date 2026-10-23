@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { type Verdict, type Citation } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { MappingStatusBadge } from '@/components/MappingStatusBadge';
@@ -351,6 +352,7 @@ function CitationPopup({
 
 export function DocumentInspectorPage() {
   const { id } = useParams<{ id: string }>();
+  const { t } = useTranslation();
   const [selectedCitation, setSelectedCitation] = useState<InlineCitation | null>(null);
   const [selectedVerdict, setSelectedVerdict] = useState<Verdict | null>(null);
   const [filterLabel, setFilterLabel] = useState<string>('all');
@@ -412,7 +414,7 @@ export function DocumentInspectorPage() {
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-spin" />
         <span className="ml-3 text-slate-600 dark:text-slate-300 font-mono text-sm">
-          Loading document...
+          {t('common.loading')}
         </span>
       </div>
     );

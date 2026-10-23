@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import type {
   ValidationLabel,
   CitationMappingStatus,
@@ -42,6 +43,7 @@ function OverrideForm({
   onClose: () => void;
   onSubmit: (req: OverrideRequest) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [label, setLabel] = useState<ValidationLabel>(verdict.label);
   const [status, setStatus] = useState<CitationMappingStatus>(verdict.mapping_status);
@@ -54,7 +56,7 @@ function OverrideForm({
     setSubmitting(true);
     try {
       await onSubmit({ verdict_id: verdict.citation_id, new_label: label, new_mapping_status: status, reason });
-      toast.success('Đã ghi đè verdict & ghi audit log');
+      toast.success(t('override.successToast'));
       setDone(true);
       setTimeout(onClose, 500);
     } finally {
@@ -77,12 +79,12 @@ function OverrideForm({
       >
         <h3 id="override-title" className="text-base font-bold flex items-center gap-2">
           <RefreshCw className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-          Override Citation
+          {t('override.title')}
         </h3>
 
         {/* Source label */}
         <div>
-          <Label className="text-sm font-medium block mb-2">Source Label (Nguồn)</Label>
+          <Label className="text-sm font-medium block mb-2">{t('override.sourceLabel')}</Label>
           <div className="grid grid-cols-2 gap-2">
             {LABEL_OPTIONS.map((opt) => (
               <button
@@ -104,7 +106,7 @@ function OverrideForm({
 
         {/* Mapping status */}
         <div>
-          <Label className="text-sm font-medium block mb-2">Mapping Status (Integrity)</Label>
+          <Label className="text-sm font-medium block mb-2">{t('override.mappingStatus')}</Label>
           <div className="grid grid-cols-4 gap-1">
             {STATUS_OPTIONS.map((opt) => (
               <button
@@ -127,12 +129,12 @@ function OverrideForm({
         {/* Reason */}
         <div>
           <Label className="text-sm font-medium block mb-1">
-            Lý do <span className="text-muted-foreground font-normal">(tùy chọn)</span>
+            {t('override.reason')} <span className="text-muted-foreground font-normal">{t('override.optional')}</span>
           </Label>
           <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="VD: Kiểm tra thủ công, tác giả xác nhận..."
+            placeholder={t('override.reasonPlaceholder')}
             rows={2}
             className="resize-none"
           />
@@ -144,13 +146,13 @@ function OverrideForm({
             variant="outline"
             onClick={onClose}
           >
-            Hủy
+            {t('override.cancel')}
           </Button>
           <Button
             type="submit"
             disabled={submitting}
           >
-            {submitting ? 'Đang lưu...' : done ? 'Đã lưu!' : 'Xác nhận ghi đè'}
+            {submitting ? t('override.saving') : done ? t('override.saved') : t('override.confirm')}
           </Button>
         </div>
       </form>
@@ -168,6 +170,7 @@ export function OverrideControls({
   onOverride: (req: OverrideRequest) => Promise<void>;
   className?: string;
 }) {
+  const { t, i18n } = useTranslation();
   const { has } = useRole();
   if (!has('override_verdict')) return null;
 
@@ -193,14 +196,14 @@ export function OverrideControls({
             : 'flex items-center gap-1 px-2.5 py-1.5 text-xs border rounded-lg hover:bg-muted transition-colors',
           className
         )}
-        title="Ghi đè verdict"
-        aria-label="Ghi đè verdict"
+        title={t('override.overrideBtn')}
+        aria-label={t('override.overrideBtn')}
       >
         <RefreshCw className="h-3 w-3" />
-        <span>{verdict.is_overridden ? 'Đã ghi đè' : 'Ghi đè'}</span>
+        <span>{verdict.is_overridden ? t('override.overriddenBtn') : t('override.overrideBtn')}</span>
         {verdict.is_overridden && verdict.override_record && (
           <span className="text-muted-foreground ml-1">
-            ({new Date(verdict.override_record.overridden_at).toLocaleString('vi-VN')})
+            ({new Date(verdict.override_record.overridden_at).toLocaleString(i18n.language || 'vi-VN')})
           </span>
         )}
       </button>
