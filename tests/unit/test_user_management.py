@@ -232,6 +232,42 @@ class TestUpdateUser:
         assert resp.status_code == 200
         assert resp.json()["is_active"] is False
 
+    def test_deactivated_user_active_session_revoked(self, clean_db):
+        """An already-issued JWT token for a user must fail immediately after admin deactivates them."""
+        admin_token = get_admin_token()
+        client = TestClient(app)
+
+        create_resp = client.post(
+            "/api/users",
+            json={"username": "activeuser", "password": "pass123456", "role": "user"},
+            headers=auth_header(admin_token),
+        )
+        assert create_resp.status_code == 200
+        user_id = create_resp.json()["id"]
+
+        login_resp = client.post(
+            "/api/auth/login",
+            json={"username": "activeuser", "password": "pass123456"},
+        )
+        assert login_resp.status_code == 200
+        user_token = login_resp.json()["token"]
+
+        # Verify token works before deactivation
+        me_before = client.get("/api/users/me", headers=auth_header(user_token))
+        assert me_before.status_code == 200
+
+        # Admin deactivates user
+        deact_resp = client.put(
+            f"/api/users/{user_id}",
+            json={"is_active": False},
+            headers=auth_header(admin_token),
+        )
+        assert deact_resp.status_code == 200
+
+        # Token must now be rejected (session revoked / inactive user)
+        me_after = client.get("/api/users/me", headers=auth_header(user_token))
+        assert me_after.status_code in (401, 403)
+
     def test_update_password_hashes_it(self, clean_db):
         token = get_admin_token()
         client = TestClient(app)

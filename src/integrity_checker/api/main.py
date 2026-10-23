@@ -64,10 +64,9 @@ def create_app() -> FastAPI:
     avatars_dir.mkdir(parents=True, exist_ok=True)
 
     # Serve uploaded avatars (user-uploaded profile pictures)
-    # Use HTML5Mode fallback so 404s return index.html instead of error
     app.mount(
         "/api/avatars",
-        StaticFiles(directory=str(avatars_dir), html=True),
+        StaticFiles(directory=str(avatars_dir)),
         name="avatars",
     )
     logger.info("Avatar static mount registered at /api/avatars")

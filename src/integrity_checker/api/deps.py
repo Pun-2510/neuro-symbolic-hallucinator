@@ -86,6 +86,10 @@ def get_current_user(
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    if not user.is_active:
+        repo.delete_session(token)
+        db.commit()
+        raise HTTPException(status_code=403, detail="Account is deactivated")
 
     return user
 

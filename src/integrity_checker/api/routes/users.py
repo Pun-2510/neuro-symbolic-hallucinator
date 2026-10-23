@@ -213,6 +213,11 @@ def update_user(
         update_data["role"] = request.role
 
     if request.is_active is not None:
+        if not request.is_active and existing.id == admin.id:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot deactivate your own account",
+            )
         update_data["is_active"] = request.is_active
 
     if request.institution is not None:
@@ -227,6 +232,8 @@ def update_user(
     user = repo.update_user(user_id, **update_data)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    if request.is_active is False:
+        repo.delete_user_sessions(user_id)
     repo.commit()
     return _to_response(user)
 
