@@ -169,7 +169,13 @@ class AnalysisReport:
                         "content_alignment_score": v.features.content_alignment_score if v.features else None,
                         "content_alignment_confidence": v.features.content_alignment_confidence if v.features else None,
                         "content_is_aligned": v.features.content_is_aligned if v.features else None,
+                        "url_status": getattr(v.matched_source, "url_status", None) if v.matched_source else None,
+                        "url_status_code": getattr(v.matched_source, "url_status_code", None) if v.matched_source else None,
+                        "checked_url": getattr(v.citation, "url", None) if v.citation else None,
                     },
+                    "url_status": getattr(v.matched_source, "url_status", None) if v.matched_source else None,
+                    "url_status_code": getattr(v.matched_source, "url_status_code", None) if v.matched_source else None,
+                    "domain_exception": getattr(v, "domain_exception", False),
                     # NEW v1.3: Provenance tracking
                     "provenance": {
                         "sources_succeeded": v.sources_succeeded,
@@ -217,6 +223,8 @@ class AnalysisReport:
             if mapping_status:
                 mapping_status = CitationMappingStatus(mapping_status)
             citation_link = _deserialize_citation_link(raw_verdict.get("citation_link"))
+            url_status = raw_verdict.get("url_status") or feature_data.get("url_status")
+            url_status_code = raw_verdict.get("url_status_code") or feature_data.get("url_status_code")
 
             verdict = CitationVerdict(
                 citation=citation,
@@ -234,6 +242,7 @@ class AnalysisReport:
                 reasoning=raw_verdict.get("reasoning", ""),
                 triggered_rules=list(raw_verdict.get("triggered_rules", [])),
                 mismatched_fields=list(raw_verdict.get("mismatched_fields", [])),
+                domain_exception=bool(raw_verdict.get("domain_exception", False)),
                 is_overridden=bool(raw_verdict.get("is_overridden", False)),
                 sources_succeeded=list(
                     (raw_verdict.get("provenance") or {}).get("sources_succeeded", [])
@@ -247,9 +256,11 @@ class AnalysisReport:
                 used_local_db=bool(
                     (raw_verdict.get("provenance") or {}).get("used_local_db", False)
                 ),
-                # Rehydrate SourceResult so to_dict keeps emitting matched_sources
+                # Rehydrate SourceResult so to_dict keeps emitting matched_sources & url_status
                 matched_source=_deserialize_matched_sources(
-                    raw_verdict.get("matched_sources")
+                    raw_verdict.get("matched_sources"),
+                    url_status=url_status,
+                    url_status_code=url_status_code,
                 ),
             )
             verdicts.append(verdict)
@@ -1641,7 +1652,13 @@ def _serialize_verdict_for_json(v: CitationVerdict) -> dict[str, Any]:
             "content_alignment_score": v.features.content_alignment_score if v.features else 0.0,
             "content_alignment_confidence": v.features.content_alignment_confidence if v.features else "",
             "content_is_aligned": v.features.content_is_aligned if v.features else False,
+            "url_status": getattr(v.matched_source, "url_status", None) if v.matched_source else None,
+            "url_status_code": getattr(v.matched_source, "url_status_code", None) if v.matched_source else None,
+            "checked_url": getattr(v.citation, "url", None) if v.citation else None,
         },
+        "url_status": getattr(v.matched_source, "url_status", None) if v.matched_source else None,
+        "url_status_code": getattr(v.matched_source, "url_status_code", None) if v.matched_source else None,
+        "domain_exception": getattr(v, "domain_exception", False),
         # NEW v1.3: Provenance tracking
         "provenance": {
             "sources_succeeded": v.sources_succeeded,
@@ -1787,17 +1804,19 @@ def _serialize_matched_sources(source: Any) -> list[dict[str, Any]]:
     return out
 
 
-def _deserialize_matched_sources(payload: Any) -> SourceResult | None:
+def _deserialize_matched_sources(
+    payload: Any,
+    url_status: str | None = None,
+    url_status_code: int | None = None,
+) -> SourceResult | None:
     """Rebuild a minimal SourceResult from a list of MatchedSource dicts.
 
     Used when rehydrating cached reports so the API keeps returning
     ``matched_sources`` instead of silently dropping them.
     """
-    if not payload:
-        return None
     candidates: list[SourceCandidate] = []
     succeeded: list[str] = []
-    for item in payload:
+    for item in payload or []:
         if not isinstance(item, dict):
             continue
         name = (item.get("source") or "unknown").lower()
@@ -1816,13 +1835,15 @@ def _deserialize_matched_sources(payload: Any) -> SourceResult | None:
         )
         if name not in succeeded:
             succeeded.append(name)
-    if not candidates:
+    if not candidates and url_status is None:
         return None
     return SourceResult(
         citation_raw="",
         candidates=candidates,
         sources_queried=list(succeeded),
         sources_succeeded=list(succeeded),
+        url_status=url_status,
+        url_status_code=url_status_code,
     )
 
 

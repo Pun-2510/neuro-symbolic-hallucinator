@@ -300,6 +300,8 @@ def _json_response(
             "triggered_rules": json.loads(v.triggered_rules or "[]"),
             "mismatched_fields": json.loads(v.mismatched_fields or "[]"),
             "features": features_dict,
+            "url_status": features_dict.get("url_status"),
+            "url_status_code": features_dict.get("url_status_code"),
             "matched_sources": matched_sources,
             # Override
             "is_overridden": bool(v.is_overridden),

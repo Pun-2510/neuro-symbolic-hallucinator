@@ -83,6 +83,39 @@ function getStepStatusColor(status: TraceStepStatus): {
 
 function buildTraceSteps(verdict: Verdict, lang: 'vi' | 'en'): TraceStep[] {
   const sources = verdict.matched_sources ?? [];
+  const f = verdict.features;
+  const urlStatus = verdict.url_status ?? f?.url_status;
+  const urlCode = verdict.url_status_code ?? f?.url_status_code;
+
+  const featureParts: string[] = [];
+  if (f?.title_sim_fuzzy !== undefined) {
+    featureParts.push(`title_fuzzy=${f.title_sim_fuzzy.toFixed(2)}`);
+  }
+  if (f?.title_sim_semantic !== undefined && f.title_sim_semantic > 0) {
+    featureParts.push(`title_semantic=${f.title_sim_semantic.toFixed(2)}`);
+  }
+  if (f?.author_jaccard !== undefined) {
+    featureParts.push(`author_jaccard=${f.author_jaccard.toFixed(2)}`);
+  }
+  if (f?.year_distance !== undefined) {
+    featureParts.push(`year_dist=${f.year_distance}`);
+  }
+  if (f?.venue_sim !== undefined && f.venue_sim > 0) {
+    featureParts.push(`venue_sim=${f.venue_sim.toFixed(2)}`);
+  }
+  if (f?.doi_exact_match !== undefined) {
+    featureParts.push(`doi_match=${String(f.doi_exact_match)}`);
+  }
+  if (f?.content_alignment_score !== undefined && f.content_alignment_score > 0) {
+    featureParts.push(
+      `content_align=${f.content_alignment_score.toFixed(2)} (${f.content_alignment_confidence || 'checked'})`
+    );
+  }
+  if (urlStatus) {
+    const codeStr = urlCode ? ` HTTP ${urlCode}` : '';
+    featureParts.push(`url_status=${urlStatus}${codeStr}`);
+  }
+
   return [
     {
       id: 'parse',
@@ -109,14 +142,15 @@ function buildTraceSteps(verdict: Verdict, lang: 'vi' | 'en'): TraceStep[] {
       id: 'compare',
       label:
         lang === 'vi'
-          ? '3. Đối chiếu Tương đồng Đa trường'
-          : '3. Compare the details',
+          ? '3. Đối chiếu Tương đồng Đa trường & Liên kết'
+          : '3. Compare neural features & link status',
       description:
         lang === 'vi'
-          ? 'So khớp tiêu đề (fuzzy + semantic), tác giả (Jaccard), năm xuất bản và DOI.'
-          : 'Compare the title, authors, year, and identifiers.',
-      status: verdict.confidence > 0 ? 'completed' : 'pending',
-      tag: 'NEURAL SIMILARITY',
+          ? 'So khớp tiêu đề (fuzzy + semantic), tác giả (Jaccard), năm xuất bản, căn chỉnh ngữ cảnh Neural và kiểm tra HTTP Link.'
+          : 'Compare title (fuzzy + semantic), authors (Jaccard), year, neural context alignment, and HTTP link status.',
+      status: verdict.confidence > 0 || Boolean(urlStatus) ? 'completed' : 'pending',
+      detail: featureParts.length > 0 ? featureParts.join(' · ') : undefined,
+      tag: 'NEURAL SIMILARITY & LINK CHECK',
     },
     {
       id: 'rules',
@@ -213,6 +247,8 @@ function VerdictTrace({
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const steps = buildTraceSteps(verdict, lang);
+  const urlStatus = verdict.url_status ?? verdict.features?.url_status;
+  const urlCode = verdict.url_status_code ?? verdict.features?.url_status_code;
 
   return (
     <Card className="p-0 overflow-hidden rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -228,7 +264,24 @@ function VerdictTrace({
             {verdict.citation_raw}
           </p>
         </div>
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          {urlStatus && (
+            <span
+              className={`hidden md:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold border ${
+                urlStatus === 'alive' || urlStatus === 'restricted_alive'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800'
+                  : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/70 dark:text-red-300 dark:border-red-800'
+              }`}
+            >
+              {urlStatus === 'alive'
+                ? `✓ HTTP ${urlCode || 200} OK`
+                : urlStatus === 'restricted_alive'
+                  ? `🔒 HTTP ${urlCode || 403} OK`
+                  : urlStatus === 'dead_link'
+                    ? `✕ HTTP ${urlCode || 404} DEAD`
+                    : '✕ FAKE URL'}
+            </span>
+          )}
           <Badge variant="outline" className="hidden sm:inline-flex font-mono text-[10px]">
             {verdict.triggered_rules.length} rules
           </Badge>

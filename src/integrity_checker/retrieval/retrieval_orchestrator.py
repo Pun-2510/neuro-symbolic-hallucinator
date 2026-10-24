@@ -1035,6 +1035,16 @@ class RetrievalOrchestrator:
                 results.append(exc)
         return results
 
+    async def _validate_citation_url(self, citation: Citation) -> tuple[str | None, int | None]:
+        """Validate citation.url via LinkValidator if present and enabled."""
+        if not citation.url or not self.enable_link_validation:
+            return None, None
+        from integrity_checker.retrieval.link_validator import LinkValidator
+
+        validator = self.link_validator or LinkValidator()
+        link_res = await validator.validate_url(citation.url)
+        return link_res.status.value, link_res.status_code
+
     async def retrieve(self, citation: Citation) -> SourceResult:
         """Main retrieval entry point with smart domain-aware staged execution.
 
@@ -1059,6 +1069,9 @@ class RetrievalOrchestrator:
                     source="local_db",
                     paper_id=local_candidate.paper_id if local_candidate else None,
                 )
+                url_status, url_status_code = await self._validate_citation_url(citation)
+                local_result.url_status = url_status
+                local_result.url_status_code = url_status_code
                 return local_result
             else:
                 logger.debug(f"Local DB MISS: {citation.raw_text[:50]}")
@@ -1069,6 +1082,9 @@ class RetrievalOrchestrator:
             logger.debug(f"Known paper HIT: {citation.raw_text[:50]}")
             if self._local_db is not None:
                 self._sync_to_local_db(known_result.candidates, ["known_papers"])
+            url_status, url_status_code = await self._validate_citation_url(citation)
+            known_result.url_status = url_status
+            known_result.url_status_code = url_status_code
             return known_result
 
         # ===== 2.5. Skip scholarly APIs for non-academic web/software/legal resources =====
@@ -1076,15 +1092,7 @@ class RetrievalOrchestrator:
             logger.debug(
                 f"Skipping external scholarly APIs for web/software/legal resource: {citation.raw_text[:55]}"
             )
-            url_status: str | None = None
-            url_status_code: int | None = None
-            if citation.url and self.enable_link_validation:
-                from integrity_checker.retrieval.link_validator import LinkValidator
-
-                validator = self.link_validator or LinkValidator()
-                link_res = await validator.validate_url(citation.url)
-                url_status = link_res.status.value
-                url_status_code = link_res.status_code
+            url_status, url_status_code = await self._validate_citation_url(citation)
             return SourceResult(
                 citation_raw=citation.raw_text,
                 candidates=[],
@@ -1165,15 +1173,7 @@ class RetrievalOrchestrator:
             min_failures_for_unresolved = 2
         else:
             min_failures_for_unresolved = len(sources_queried) // 2 + 1
-        url_status: str | None = None
-        url_status_code: int | None = None
-        if citation.url and self.enable_link_validation:
-            from integrity_checker.retrieval.link_validator import LinkValidator
-
-            validator = self.link_validator or LinkValidator()
-            link_res = await validator.validate_url(citation.url)
-            url_status = link_res.status.value
-            url_status_code = link_res.status_code
+        url_status, url_status_code = await self._validate_citation_url(citation)
 
         if not any_found and len(failed) >= min_failures_for_unresolved:
             # Distinguish hard API/network failures from clean HTTP 200 "no results" responses

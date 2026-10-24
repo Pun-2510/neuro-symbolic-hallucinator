@@ -298,6 +298,37 @@ function CitationPopup({
                 <MappingStatusBadge status={citation.mapping_status as any} size="sm" />
               </div>
             </div>
+            {(verdict?.url_status ?? verdict?.features?.url_status) && (
+              <div>
+                <label className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Link Status
+                </label>
+                <div className="mt-1.5">
+                  {(() => {
+                    const st = verdict?.url_status ?? verdict?.features?.url_status;
+                    const code = verdict?.url_status_code ?? verdict?.features?.url_status_code;
+                    const isOk = st === 'alive' || st === 'restricted_alive';
+                    return (
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-mono font-semibold border ${
+                          isOk
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800'
+                            : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/70 dark:text-red-300 dark:border-red-800'
+                        }`}
+                      >
+                        {st === 'alive'
+                          ? `✓ HTTP ${code || 200} OK`
+                          : st === 'restricted_alive'
+                            ? `🔒 HTTP ${code || 403} OK`
+                            : st === 'dead_link'
+                              ? `✕ HTTP ${code || 404} DEAD`
+                              : '✕ FAKE URL'}
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
 
           {verdict && (

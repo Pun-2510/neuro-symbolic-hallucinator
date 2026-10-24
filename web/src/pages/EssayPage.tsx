@@ -44,6 +44,7 @@ interface MetadataFields {
   year: string;
   venue: string;
   doi: string;
+  url: string;
 }
 
 interface SymbolicRuleDisplay {
@@ -62,6 +63,13 @@ interface SourceRetrievalItem {
   doi?: string;
 }
 
+interface LinkBadgeInfo {
+  text: string;
+  badgeClass: string;
+  title: string;
+  status: 'alive' | 'restricted_alive' | 'dead_link' | 'fake_domain';
+}
+
 interface EnrichedCitationItem {
   verdict: Verdict;
   index: number;
@@ -72,6 +80,7 @@ interface EnrichedCitationItem {
   verdictBadgeClass: string;
   mappingText: string;
   mappingBadgeClass: string;
+  linkBadge: LinkBadgeInfo | null;
   confidencePct: number;
   citedMeta: MetadataFields;
   retrievedMeta: MetadataFields | null;
@@ -163,6 +172,12 @@ const RULE_CATALOG: Record<
     nameEn: 'Legal / Statutory Document Format Verified',
     nameVi: 'Xác thực định dạng Văn bản Pháp luật / Quy phạm',
     condition: 'IF is_legal_statutory_reference == TRUE THEN VERIFIED',
+    status: 'passed',
+  },
+  'R-BOOK-EDITION-VERIFIED': {
+    nameEn: 'Canonical Book / Monograph Edition Verified',
+    nameVi: 'Xác thực ấn bản Sách chuyên khảo / Giáo trình (Edition Match)',
+    condition: 'IF openlibrary_edition_match == TRUE AND title_sim >= 0.90 AND author_jaccard >= 0.70 THEN VERIFIED',
     status: 'passed',
   },
   'R-CONSENSUS-FULL': {
@@ -384,12 +399,19 @@ function parseRawCitationMeta(rawText: string): MetadataFields {
     .replace(/^[,.;:)\s]+/, '')
     .trim();
 
+  const urlMatch = cleaned.match(/\bhttps?:\/\/[^\s<>")'\]]+/i);
+  const rawUrl = urlMatch
+    ? urlMatch[0].replace(/[.,;:)'"\u2019\u201d]+$/, '')
+    : '';
+  const url = rawUrl || (doi !== '—' ? `https://doi.org/${doi}` : '—');
+
   return {
     title: title || cleaned.slice(0, 120) || '—',
     authors: authors || '—',
     year: year || '—',
     venue: cleanVenue || venue || '—',
     doi,
+    url,
   };
 }
 
@@ -496,6 +518,81 @@ function getMappingBadgeVisuals(status: Verdict['mapping_status']): {
   }
 }
 
+function resolveVerdictUrlStatus(verdict: Verdict): {
+  status: 'alive' | 'restricted_alive' | 'dead_link' | 'fake_domain' | null;
+  code: number | null;
+} {
+  const rawStatus = verdict.url_status ?? verdict.features?.url_status ?? null;
+  const rawCode =
+    verdict.url_status_code ?? verdict.features?.url_status_code ?? null;
+  if (rawStatus) {
+    return { status: rawStatus, code: rawCode };
+  }
+  const rules = verdict.triggered_rules ?? [];
+  if (rules.includes('R-FAKE-URL')) {
+    return { status: 'fake_domain', code: null };
+  }
+  if (rules.includes('R-DEAD-URL') || rules.includes('R-BROKEN-LINK')) {
+    return { status: 'dead_link', code: rawCode ?? 404 };
+  }
+  return { status: null, code: null };
+}
+
+function getLinkBadgeVisuals(
+  verdict: Verdict,
+  lang: 'vi' | 'en'
+): LinkBadgeInfo | null {
+  const { status, code } = resolveVerdictUrlStatus(verdict);
+  if (!status) return null;
+
+  switch (status) {
+    case 'alive':
+      return {
+        status,
+        text: `✓ HTTP ${code || 200} OK`,
+        badgeClass:
+          'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 font-semibold',
+        title:
+          lang === 'vi'
+            ? `Liên kết URL hoạt động bình thường (HTTP ${code || 200} OK)`
+            : `Citation URL resolved successfully (HTTP ${code || 200} OK)`,
+      };
+    case 'restricted_alive':
+      return {
+        status,
+        text: `🔒 HTTP ${code || 403} OK`,
+        badgeClass:
+          'bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/70 dark:text-teal-300 dark:border-teal-800 font-semibold',
+        title:
+          lang === 'vi'
+            ? `Liên kết sống — Tường lửa nhà xuất bản (HTTP ${code || 403})`
+            : `Publisher paywall / bot-filtered URL is alive (HTTP ${code || 403})`,
+      };
+    case 'dead_link':
+      return {
+        status,
+        text: `✕ HTTP ${code || 404} DEAD`,
+        badgeClass:
+          'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/70 dark:text-red-300 dark:border-emerald-800 font-semibold',
+        title:
+          lang === 'vi'
+            ? `Liên kết URL bị hỏng hoặc không tồn tại (HTTP ${code || 404} / DNS Error)`
+            : `Broken or unreachable citation URL (HTTP ${code || 404} / DNS Error)`,
+      };
+    case 'fake_domain':
+      return {
+        status,
+        text: '✕ FAKE URL',
+        badgeClass:
+          'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/70 dark:text-red-300 dark:border-red-800 font-semibold',
+        title:
+          lang === 'vi'
+            ? 'Tên miền URL giả mạo hoặc placeholder'
+            : 'Fabricated or placeholder URL domain',
+      };
+  }
+}
+
 function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
   const sourceMapVi: Record<string, string> = {
     local_db: 'Thư viện học thuật nội bộ (ACL / SQLite FTS5)',
@@ -571,12 +668,24 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
     ),
   ];
 
-  // Extract neural context alignment score from raw reasoning if present
+  // Extract neural context alignment score from features or raw reasoning if present
   const neuralMatch = verdict.reasoning?.match(
     /content alignment score=([\d.]+)\s*\((low|medium|high)\)/i
   );
-  const neuralScore = neuralMatch ? neuralMatch[1] : null;
-  const neuralLevel = neuralMatch ? neuralMatch[2].toLowerCase() : null;
+  const featAlignScore = verdict.features?.content_alignment_score;
+  const neuralScore =
+    featAlignScore && featAlignScore > 0
+      ? featAlignScore.toFixed(2)
+      : neuralMatch
+        ? neuralMatch[1]
+        : null;
+  const neuralLevel = (
+    verdict.features?.content_alignment_confidence ||
+    (neuralMatch ? neuralMatch[2] : '') ||
+    ''
+  ).toLowerCase() || null;
+
+  const { status: urlStatus, code: urlCode } = resolveVerdictUrlStatus(verdict);
 
   const titleSim = verdict.features?.title_sim_fuzzy;
   const authorSim = verdict.features?.author_jaccard;
@@ -597,15 +706,28 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
             ? 'trung bình'
             : 'thấp';
       telemetryParts.push(
-        `điểm căn chỉnh ngữ cảnh Neural = ${neuralScore} (${levelVi}) — nội dung trích dẫn tương thích ngữ nghĩa với nguồn`
+        `điểm căn chỉnh ngữ cảnh Neural = ${neuralScore} (${levelVi})`
       );
+    }
+    if (urlStatus === 'alive') {
+      telemetryParts.push(`kiểm tra liên kết = HTTP ${urlCode || 200} OK`);
+    } else if (urlStatus === 'restricted_alive') {
+      telemetryParts.push(
+        `kiểm tra liên kết = HTTP ${urlCode || 403} (tường lửa nhà xuất bản — liên kết sống)`
+      );
+    } else if (urlStatus === 'dead_link') {
+      telemetryParts.push(
+        `kiểm tra liên kết = HTTP ${urlCode || 404} (liên kết chết / không thể truy cập)`
+      );
+    } else if (urlStatus === 'fake_domain') {
+      telemetryParts.push('kiểm tra liên kết = tên miền giả mạo');
     }
     const telemetrySuffix =
       telemetryParts.length > 0 ? ` (${telemetryParts.join(' · ')})` : '';
 
     let mainText = '';
     if (verdict.label === 'resource') {
-      mainText = `Phát hiện tài nguyên Web / API phi học thuật (${verdict.citation_raw}). Mục này được phân loại là đường dẫn tài nguyên tham khảo và không tính điểm phạt vào chỉ số CIS.`;
+      mainText = `Phát hiện tài nguyên Web / API phi học thuật (${verdict.citation_raw}). Mục này được phân loại là đường dẫn tài nguyên tham khảo và không tính điểm phạt vào chỉ số CIS.${telemetrySuffix}`;
     } else if (verdict.mapping_status === 'missing_reference') {
       mainText =
         'Trích dẫn xuất hiện trong phần nội dung bài viết nhưng bị khuyết mục tương ứng trong danh mục tài liệu tham khảo cuối bài.';
@@ -618,7 +740,11 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
         matchedFields.length > 0
           ? matchedFields.join(', ')
           : 'tiêu đề, tác giả và năm xuất bản';
-      mainText = `Trích dẫn khớp chính xác với công trình trong ${srcStr}. Các trường thông tin (${fldStr}) hoàn toàn nhất quán với bản ghi gốc.${telemetrySuffix}`;
+      const brokenLinkNoteVi =
+        urlStatus === 'dead_link'
+          ? ' Lưu ý: Công trình học thuật có thật nhưng đường dẫn URL đính kèm bị hỏng (HTTP 404/DNS).'
+          : '';
+      mainText = `Trích dẫn khớp chính xác với công trình trong ${srcStr}. Các trường thông tin (${fldStr}) hoàn toàn nhất quán với bản ghi gốc.${brokenLinkNoteVi}${telemetrySuffix}`;
     } else if (verdict.label === 'metadata_error') {
       const srcStr =
         sources.length > 0 ? ` trên ${sources.join(' và ')}` : '';
@@ -652,15 +778,26 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
   }
   if (neuralScore) {
     telemetryPartsEn.push(
-      `Neural context alignment = ${neuralScore} (${neuralLevel}) — semantically aligned with source`
+      `Neural context alignment = ${neuralScore} (${neuralLevel || 'checked'})`
     );
+  }
+  if (urlStatus === 'alive') {
+    telemetryPartsEn.push(`link check = HTTP ${urlCode || 200} OK`);
+  } else if (urlStatus === 'restricted_alive') {
+    telemetryPartsEn.push(
+      `link check = HTTP ${urlCode || 403} (publisher paywall — link alive)`
+    );
+  } else if (urlStatus === 'dead_link') {
+    telemetryPartsEn.push(`link check = HTTP ${urlCode || 404} (dead link)`);
+  } else if (urlStatus === 'fake_domain') {
+    telemetryPartsEn.push('link check = fake/placeholder domain');
   }
   const telemetrySuffixEn =
     telemetryPartsEn.length > 0 ? ` (${telemetryPartsEn.join(' · ')})` : '';
 
   let mainTextEn = '';
   if (verdict.label === 'resource') {
-    mainTextEn = `Non-scholarly Web / API resource detected (${verdict.citation_raw}). Classified as a web resource and excluded from the CIS penalty calculation.`;
+    mainTextEn = `Non-scholarly Web / API resource detected (${verdict.citation_raw}). Classified as a web resource and excluded from the CIS penalty calculation.${telemetrySuffixEn}`;
   } else if (verdict.mapping_status === 'missing_reference') {
     mainTextEn =
       'This in-text citation does not have a corresponding entry in the bibliography section.';
@@ -671,7 +808,11 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
       matchedFields.length > 0
         ? matchedFields.join(', ')
         : 'title, authors, and publication year';
-    mainTextEn = `The citation matches a canonical publication in ${srcStr}. Verified fields (${fldStr}) are consistent with the source record.${telemetrySuffixEn}`;
+    const brokenLinkNoteEn =
+      urlStatus === 'dead_link'
+        ? ' Note: the scholarly publication exists, but the cited URL is broken (HTTP 404/DNS).'
+        : '';
+    mainTextEn = `The citation matches a canonical publication in ${srcStr}. Verified fields (${fldStr}) are consistent with the source record.${brokenLinkNoteEn}${telemetrySuffixEn}`;
   } else if (verdict.label === 'metadata_error') {
     const srcStr = sources.length > 0 ? ` in ${sources.join(' and ')}` : '';
     const errFldStr =
@@ -735,6 +876,13 @@ function enrichVerdictItem(
         c.raw_text.toLowerCase().includes(matchedRef.authors[0].split(',')[0].toLowerCase()))
   );
 
+  const citedDoi = matchedRef?.doi || parsedFallback.doi || '—';
+  const citedUrl =
+    matchedRef?.url ||
+    verdict.features?.checked_url ||
+    parsedFallback.url ||
+    (citedDoi !== '—' ? `https://doi.org/${citedDoi}` : '—');
+
   const citedMeta: MetadataFields = {
     title: matchedRef?.title || parsedFallback.title || verdict.citation_raw,
     authors:
@@ -744,7 +892,8 @@ function enrichVerdictItem(
     year:
       (matchedRef?.year ? String(matchedRef.year) : parsedFallback.year) || '—',
     venue: matchedRef?.venue || parsedFallback.venue || '—',
-    doi: matchedRef?.doi || parsedFallback.doi || '—',
+    doi: citedDoi,
+    url: citedUrl,
   };
 
   const inTextDisplay = formatShortInText(
@@ -843,6 +992,15 @@ function enrichVerdictItem(
           (Boolean(verdict.features?.doi_exact_match) || matchedFieldsSet.has('doi')
             ? citedMeta.doi
             : '—'),
+        url:
+          bestSource.url ||
+          (bestSource.doi
+            ? bestSource.doi.startsWith('http')
+              ? bestSource.doi
+              : `https://doi.org/${bestSource.doi}`
+            : citedMeta.url !== '—' && verdict.label === 'verified'
+              ? citedMeta.url
+              : '—'),
       }
     : null;
 
@@ -957,6 +1115,39 @@ function enrichVerdictItem(
       return { status: 'partial', label: 'Retrieved' };
     }
     return { status: 'missing' };
+  };
+
+  const { status: urlStatus, code: urlCode } = resolveVerdictUrlStatus(verdict);
+
+  const computeUrlStatus = (): { status: FieldStatus; label?: string } => {
+    if (urlStatus === 'alive') {
+      return { status: 'match', label: `HTTP ${urlCode || 200} OK` };
+    }
+    if (urlStatus === 'restricted_alive') {
+      return { status: 'match', label: `HTTP ${urlCode || 403} (Alive)` };
+    }
+    if (urlStatus === 'dead_link') {
+      return { status: 'mismatch', label: `HTTP ${urlCode || 404} Dead` };
+    }
+    if (urlStatus === 'fake_domain') {
+      return { status: 'mismatch', label: 'Fake Domain' };
+    }
+    if (mismatchedFieldsSet.has('url')) {
+      return { status: 'mismatch', label: 'Broken Link' };
+    }
+    if (citedMeta.url === '—' && (!retrievedMeta || retrievedMeta.url === '—')) {
+      return { status: 'missing' };
+    }
+    if (
+      citedMeta.url !== '—' &&
+      (verdict.label === 'verified' || verdict.label === 'resource')
+    ) {
+      return { status: 'match', label: 'Verified Link' };
+    }
+    if (citedMeta.url === '—' && retrievedMeta && retrievedMeta.url !== '—') {
+      return { status: 'partial', label: 'Resolved URL' };
+    }
+    return { status: 'partial', label: 'Checked' };
   };
 
   // Build Manuscript Context with highlighted citation
@@ -1082,6 +1273,7 @@ function enrichVerdictItem(
 
   const verdictVisual = getVerdictBadgeVisuals(verdict.label);
   const mappingVisual = getMappingBadgeVisuals(verdict.mapping_status);
+  const linkBadge = getLinkBadgeVisuals(verdict, lang);
 
   return {
     verdict,
@@ -1093,6 +1285,7 @@ function enrichVerdictItem(
     verdictBadgeClass: verdictVisual.badgeClass,
     mappingText: mappingVisual.text,
     mappingBadgeClass: mappingVisual.badgeClass,
+    linkBadge,
     confidencePct: Math.round((verdict.confidence ?? 0) * 100),
     citedMeta,
     retrievedMeta,
@@ -1102,6 +1295,7 @@ function enrichVerdictItem(
       year: computeYearStatus(),
       venue: computeVenueStatus(),
       doi: computeDoiStatus(),
+      url: computeUrlStatus(),
     },
     contextBefore,
     contextHighlight,
@@ -1491,6 +1685,14 @@ export function EssayPage() {
                                   {cit.mappingText}
                                 </span>
                               )}
+                              {cit.linkBadge && (
+                                <span
+                                  className={`rounded-md ${cit.linkBadge.badgeClass} text-[10px] px-2 py-0.5 font-mono`}
+                                  title={cit.linkBadge.title}
+                                >
+                                  {cit.linkBadge.text}
+                                </span>
+                              )}
                             </div>
                             {!isUser && (
                               <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
@@ -1579,6 +1781,14 @@ export function EssayPage() {
                             {activeItem.mappingText}
                           </span>
                         )}
+                        {activeItem.linkBadge && (
+                          <span
+                            className={`rounded-md ${activeItem.linkBadge.badgeClass} text-xs px-2.5 py-1 font-mono`}
+                            title={activeItem.linkBadge.title}
+                          >
+                            {activeItem.linkBadge.text}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1621,10 +1831,10 @@ export function EssayPage() {
                           <table className="w-full block sm:table sm:table-fixed text-left border-collapse">
                             <thead className="hidden sm:table-header-group">
                               <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-[11px] font-mono uppercase text-slate-500 dark:text-slate-400">
-                                <th className="py-2.5 px-3 w-[68px]">Field</th>
+                                <th className="py-2.5 px-3 w-[84px]">Field</th>
                                 <th className="py-2.5 px-3">Cited in Manuscript</th>
                                 <th className="py-2.5 px-3">Canonical Retrieved</th>
-                                <th className="py-2.5 px-3 w-[116px] text-right">Status</th>
+                                <th className="py-2.5 px-3 w-[124px] text-right">Status</th>
                               </tr>
                             </thead>
                             <tbody className="block sm:table-row-group divide-y divide-slate-200/70 dark:divide-slate-800 text-xs">
@@ -1635,6 +1845,7 @@ export function EssayPage() {
                                   ['Year', 'year'],
                                   ['Venue', 'venue'],
                                   ['DOI', 'doi'],
+                                  ['URL / Link', 'url'],
                                 ] as const
                               ).map(([label, key]) => (
                                 <tr
@@ -1651,7 +1862,21 @@ export function EssayPage() {
                                     <span className="sm:hidden block text-[10px] font-mono uppercase text-slate-400 mb-0.5">
                                       Cited in Manuscript
                                     </span>
-                                    {activeItem.citedMeta[key]}
+                                    {key === 'url' &&
+                                    activeItem.citedMeta.url !== '—' &&
+                                    /^https?:\/\//i.test(activeItem.citedMeta.url) ? (
+                                      <a
+                                        href={activeItem.citedMeta.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 font-mono text-indigo-600 dark:text-indigo-400 hover:underline break-all"
+                                      >
+                                        <span>{activeItem.citedMeta.url}</span>
+                                        <ExternalLink className="h-3 w-3 shrink-0" />
+                                      </a>
+                                    ) : (
+                                      activeItem.citedMeta[key]
+                                    )}
                                   </td>
                                   <td className="py-0.5 sm:py-2.5 px-0 sm:px-3 font-mono text-slate-600 dark:text-slate-300 align-top break-words [overflow-wrap:anywhere]">
                                     <span className="sm:hidden block text-[10px] font-mono uppercase text-slate-400 mb-0.5">
@@ -1673,9 +1898,32 @@ export function EssayPage() {
                                           <span>{activeItem.retrievedMeta.doi}</span>
                                           <ExternalLink className="h-3 w-3 shrink-0" />
                                         </a>
+                                      ) : key === 'url' &&
+                                        activeItem.retrievedMeta.url !== '—' &&
+                                        /^https?:\/\//i.test(activeItem.retrievedMeta.url) ? (
+                                        <a
+                                          href={activeItem.retrievedMeta.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline break-all"
+                                        >
+                                          <span>{activeItem.retrievedMeta.url}</span>
+                                          <ExternalLink className="h-3 w-3 shrink-0" />
+                                        </a>
                                       ) : (
                                         activeItem.retrievedMeta[key]
                                       )
+                                    ) : key === 'url' && activeItem.linkBadge ? (
+                                      <span
+                                        className={
+                                          activeItem.linkBadge.status === 'alive' ||
+                                          activeItem.linkBadge.status === 'restricted_alive'
+                                            ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
+                                            : 'text-red-500 dark:text-red-400 font-semibold'
+                                        }
+                                      >
+                                        {activeItem.linkBadge.title}
+                                      </span>
                                     ) : (
                                       <span className="text-red-500 dark:text-red-400 italic">
                                         No canonical record found
@@ -1751,32 +1999,77 @@ export function EssayPage() {
                             </div>
                           ))}
 
-                          {/* Neural Feature Vector Telemetry Strip */}
-                          {activeItem.verdict.features && (
+                          {/* Neural Feature Vector & HTTP Link Telemetry Strip */}
+                          {(activeItem.verdict.features || activeItem.linkBadge) && (
                             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-mono text-[11px] text-slate-600 dark:text-slate-400 flex flex-wrap items-center gap-x-4 gap-y-1">
                               <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                Neural Features:
+                                Neural &amp; Link Telemetry:
                               </span>
-                              {activeItem.verdict.features.title_sim_fuzzy !== undefined && (
+                              {activeItem.verdict.features?.title_sim_fuzzy !== undefined && (
                                 <span>
                                   title_fuzzy=
                                   {activeItem.verdict.features.title_sim_fuzzy.toFixed(2)}
                                 </span>
                               )}
-                              {activeItem.verdict.features.author_jaccard !== undefined && (
+                              {activeItem.verdict.features?.title_sim_semantic !== undefined &&
+                                activeItem.verdict.features.title_sim_semantic > 0 && (
+                                  <span>
+                                    title_semantic=
+                                    {activeItem.verdict.features.title_sim_semantic.toFixed(2)}
+                                  </span>
+                                )}
+                              {activeItem.verdict.features?.author_jaccard !== undefined && (
                                 <span>
                                   author_jaccard=
                                   {activeItem.verdict.features.author_jaccard.toFixed(2)}
                                 </span>
                               )}
-                              {activeItem.verdict.features.year_distance !== undefined && (
+                              {activeItem.verdict.features?.year_distance !== undefined && (
                                 <span>
                                   year_dist={activeItem.verdict.features.year_distance}
                                 </span>
                               )}
-                              {activeItem.verdict.features.doi_exact_match !== undefined && (
+                              {activeItem.verdict.features?.venue_sim !== undefined &&
+                                activeItem.verdict.features.venue_sim > 0 && (
+                                  <span>
+                                    venue_sim=
+                                    {activeItem.verdict.features.venue_sim.toFixed(2)}
+                                  </span>
+                                )}
+                              {activeItem.verdict.features?.doi_exact_match !== undefined && (
                                 <span>
-                                  doi_match={activeItem.verdict.features.doi_exact_match}
+                                  doi_match=
+                                  {String(activeItem.verdict.features.doi_exact_match)}
+                                </span>
+                              )}
+                              {activeItem.verdict.features?.source_consensus !== undefined && (
+                                <span>
+                                  consensus={activeItem.verdict.features.source_consensus}
+                                </span>
+                              )}
+                              {activeItem.verdict.features?.content_alignment_score !==
+                                undefined &&
+                                activeItem.verdict.features.content_alignment_score > 0 && (
+                                  <span>
+                                    content_align=
+                                    {activeItem.verdict.features.content_alignment_score.toFixed(
+                                      2
+                                    )}
+                                    {activeItem.verdict.features.content_alignment_confidence
+                                      ? ` (${activeItem.verdict.features.content_alignment_confidence})`
+                                      : ''}
+                                  </span>
+                                )}
+                              {activeItem.linkBadge && (
+                                <span
+                                  className={
+                                    activeItem.linkBadge.status === 'alive' ||
+                                    activeItem.linkBadge.status === 'restricted_alive'
+                                      ? 'text-emerald-700 dark:text-emerald-400 font-semibold'
+                                      : 'text-red-600 dark:text-red-400 font-semibold'
+                                  }
+                                >
+                                  link_status={activeItem.linkBadge.text}
                                 </span>
                               )}
                             </div>

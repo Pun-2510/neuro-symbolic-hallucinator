@@ -83,6 +83,9 @@ def get_verdicts(
             # Read matched_sources from the features JSON blob persisted by add_verdicts.
             # Pre-fix rows that lack this key default to [].
             matched_sources=_load_matched_sources(r.features),
+            features=_load_features_dict(r.features),
+            url_status=_load_features_dict(r.features).get("url_status"),
+            url_status_code=_load_features_dict(r.features).get("url_status_code"),
             citation_link=_load_citation_link(r.features),
             mapping_status=r.mapping_status or "matched",
             mapping_confidence=r.mapping_confidence or 0.0,
@@ -92,6 +95,17 @@ def get_verdicts(
         )
         for r in records
     ]
+
+
+def _load_features_dict(features_json: str | None) -> dict:
+    """Parse the features JSON blob safely."""
+    if not features_json:
+        return {}
+    try:
+        data = json.loads(features_json)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def _load_matched_sources(features_json: str | None) -> list[dict]:
@@ -223,6 +237,9 @@ def override_verdict(
         triggered_rules=json.loads(updated.triggered_rules or "[]"),
         mismatched_fields=json.loads(updated.mismatched_fields or "[]"),
         matched_sources=_load_matched_sources(updated.features),
+        features=_load_features_dict(updated.features),
+        url_status=_load_features_dict(updated.features).get("url_status"),
+        url_status_code=_load_features_dict(updated.features).get("url_status_code"),
         citation_link=_load_citation_link(updated.features),
         mapping_status=updated.mapping_status or "matched",
         mapping_confidence=updated.mapping_confidence or 0.0,

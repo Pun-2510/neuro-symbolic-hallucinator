@@ -28,14 +28,28 @@ const RULE_LABELS: Record<string, string> = {
   'R-DOI-TITLE-AUTHOR': 'DOI, title, and author details match',
   'R-CONSENSUS-FULL': 'Multiple sources agree on the publication details',
   'R-CONSENSUS-PARTIAL': 'Sources agree, with some details to review',
+  'R-SINGLE-SOURCE-VERIFIED': 'High-confidence match verified in a scholarly registry',
+  'R-SINGLE-SOURCE-PARTIAL': 'Scholarly record found, but author, year, or title differs',
+  'R-BOOK-EDITION-VERIFIED': 'Canonical textbook or book edition verified',
+  'R-LOCAL_DB_VERIFIED': 'Verified against the local scholarly library',
+  'R-LOCAL_DB_GOOD_MATCH': 'Strong match found in the local scholarly library',
+  'R-KNOWN-PAPER': 'Matches a canonical benchmark publication',
+  'R-KNOWN-PAPER-NO-TITLE': 'Matches a canonical seminal paper by author and year',
+  'R-VN-LEGAL-FORMAT': 'Official statutory or legal document format verified',
   'R-KNOWN-AUTHOR-TITLE-MISMATCH': 'Author matches, but the title needs review',
   'R-KNOWN-AUTHOR-WEAK-EVIDENCE': 'Author is known, but supporting evidence is limited',
   'R-DOI-TITLE-MISMATCH': 'DOI matches, but the title needs review',
   'R-FAKE-URL': 'The link does not look like a real academic source',
-  'R-FABRICATED-DOI': 'The DOI has an invalid format',
+  'R-DEAD-URL': 'The cited URL is unreachable (HTTP 404/DNS) and no scholarly record was found',
+  'R-BROKEN-LINK': 'The scholarly paper exists, but the cited URL returned an HTTP error',
+  'R-FABRICATED-DOI': 'The DOI has an invalid or fabricated prefix',
+  'R-NONEXISTENT-DOI': 'The cited DOI does not resolve in scholarly registries',
+  'R-NO-SCHOLARLY-RECORD': 'Zero matching records returned across live scholarly registries',
+  'R-HALLUCINATED-SOURCE': 'Retrieved candidates fall below the minimum similarity threshold',
   'R-FAKE-AUTHOR': 'The author details look unusual or fabricated',
   'R-FUTURE-YEAR': 'The publication year is in the future',
   'R-FUTURE-YEAR-KNOWN-AUTHOR': 'The publication year needs review',
+  'R-CONTENT-ALIGNMENT': 'In-text context aligns semantically with the source abstract',
   'R-CONTENT-MISMATCH': 'The citation content does not match the publication',
   'R-STYLE-INCONSISTENT': 'The citation format differs from the document style',
 };
@@ -94,8 +108,21 @@ export function getVerdictExplanation(verdict: Verdict): string {
     (verdict.matched_sources ?? []).flatMap((source) => source.matched_fields ?? [])
   );
 
+  const urlStatus = verdict.url_status ?? verdict.features?.url_status;
+  const urlCode = verdict.url_status_code ?? verdict.features?.url_status_code;
+  const linkNote =
+    urlStatus === 'alive'
+      ? ` Link check passed (HTTP ${urlCode || 200} OK).`
+      : urlStatus === 'restricted_alive'
+        ? ` Link check passed (HTTP ${urlCode || 403} publisher paywall — link is alive).`
+        : urlStatus === 'dead_link'
+          ? ` Warning: the cited URL returned HTTP ${urlCode || 404} (dead/unreachable link).`
+          : urlStatus === 'fake_domain'
+            ? ' Warning: the cited URL uses a fake or placeholder domain.'
+            : '';
+
   if (isUrlResource(verdict)) {
-    return `URL resource detected: ${verdict.citation_raw}. This is not an academic citation and is excluded from the CIS score.`;
+    return `URL resource detected: ${verdict.citation_raw}. This is not an academic citation and is excluded from the CIS score.${linkNote}`;
   }
 
   if (verdict.mapping_status === 'missing_reference') {
@@ -109,28 +136,28 @@ export function getVerdictExplanation(verdict: Verdict): string {
   switch (verdict.label) {
     case 'verified':
       if (sources.length === 0) {
-        return 'The citation is linked to its bibliography entry and passes the available checks.';
+        return `The citation is linked to its bibliography entry and passes the available checks.${linkNote}`;
       }
       if (sources.every((source) => source === 'the local library' || source === 'the known-papers library')) {
-        return `The citation matches a paper in ${sources[0]}. ${matchedFields} are consistent, so no external search was needed.`;
+        return `The citation matches a paper in ${sources[0]}. ${matchedFields} are consistent, so no external search was needed.${linkNote}`;
       }
-      return `We found a matching publication in ${sources.join(' and ')}. ${matchedFields} are consistent with the citation.`;
+      return `We found a matching publication in ${sources.join(' and ')}. ${matchedFields} are consistent with the citation.${linkNote}`;
 
     case 'metadata_error':
-      return sources.length > 0
+      return (sources.length > 0
         ? `We found a likely publication, but ${fields} do not match the citation. Please review these details.`
-        : `The citation could not be confirmed because ${fields} do not match the available record.`;
+        : `The citation could not be confirmed because ${fields} do not match the available record.`) + linkNote;
 
     case 'suspected_hallucination':
-      return sources.length === 0
+      return (sources.length === 0
         ? 'We could not find a matching publication in the checked sources. Please verify this citation manually.'
-        : 'The available records do not support this citation. Please verify the source and its details manually.';
+        : 'The available records do not support this citation. Please verify the source and its details manually.') + linkNote;
 
     case 'unresolved':
     default:
-      return sources.length === 0
+      return (sources.length === 0
         ? 'There was not enough evidence to verify this citation. Please review it manually.'
-        : `We found a possible match, but the available details are not strong enough to confirm it. Check ${fields}.`;
+        : `We found a possible match, but the available details are not strong enough to confirm it. Check ${fields}.`) + linkNote;
   }
 }
 

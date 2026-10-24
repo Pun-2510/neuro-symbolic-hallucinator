@@ -94,6 +94,12 @@ export interface OverrideRecord {
 
 // --- Verdict (v1.2 — 2-layer) ---
 
+export type UrlValidationStatus =
+  | 'alive'
+  | 'restricted_alive'
+  | 'dead_link'
+  | 'fake_domain';
+
 export interface Verdict {
   citation_id: string;
   citation_raw: string;
@@ -117,6 +123,8 @@ export interface Verdict {
   mismatched_fields: string[];
   /** May be absent for older cached reports — callers should default to []. */
   matched_sources: MatchedSource[];
+  url_status?: UrlValidationStatus | null;
+  url_status_code?: number | null;
   features?: {
     title_sim_fuzzy?: number;
     title_sim_semantic?: number;
@@ -124,6 +132,13 @@ export interface Verdict {
     year_distance?: number;
     doi_exact_match?: boolean;
     source_consensus?: number;
+    venue_sim?: number;
+    content_alignment_score?: number;
+    content_alignment_confidence?: string;
+    content_is_aligned?: boolean;
+    url_status?: UrlValidationStatus | null;
+    url_status_code?: number | null;
+    checked_url?: string | null;
     matched_sources?: MatchedSource[];
   };
   // Override / audit

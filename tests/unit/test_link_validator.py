@@ -162,3 +162,59 @@ def test_verified_record_with_dead_url_flags_domain_exception() -> None:
 
     cis = CISCalculator().compute([verdict])
     assert cis.components.identifier_validity == 0.0
+
+
+def test_analysis_report_roundtrip_preserves_url_status_and_domain_exception() -> None:
+    from integrity_checker.pipeline.integrity_pipeline import AnalysisReport
+
+    checker = NeuroSymbolicChecker(
+        feature_calculator=FeatureCalculator(enable_content_alignment=False),
+        enable_content_alignment=False,
+    )
+    cit = Citation(
+        raw_text="Vaswani, A. et al. (2017). Attention Is All You Need. https://arxiv.org/abs/1706.03762",
+        title="Attention Is All You Need",
+        authors=["Ashish Vaswani"],
+        year="2017",
+        doi="10.48550/arXiv.1706.03762",
+        url="https://arxiv.org/abs/1706.03762",
+        citation_type=CitationType.REFERENCE_LIST,
+        style=CitationStyle.APA,
+    )
+    cand = SourceCandidate(
+        source_name="arxiv",
+        found=True,
+        doi="10.48550/arXiv.1706.03762",
+        title="Attention Is All You Need",
+        authors=["Ashish Vaswani"],
+        year="2017",
+        confidence=0.98,
+    )
+    source = SourceResult(
+        citation_raw=cit.raw_text,
+        candidates=[cand],
+        sources_queried=["arxiv"],
+        sources_succeeded=["arxiv"],
+        url_status="alive",
+        url_status_code=200,
+    )
+    verdict = checker.check(cit, source)
+    report = AnalysisReport(
+        essay_id=1,
+        filename="test.pdf",
+        num_pages=5,
+        num_citations=1,
+        verdicts=[verdict],
+    )
+    payload = report.to_dict()
+    assert payload["verdicts"][0]["url_status"] == "alive"
+    assert payload["verdicts"][0]["url_status_code"] == 200
+    assert payload["verdicts"][0]["features"]["url_status"] == "alive"
+    assert payload["verdicts"][0]["features"]["url_status_code"] == 200
+    assert payload["verdicts"][0]["features"]["checked_url"] == "https://arxiv.org/abs/1706.03762"
+
+    rehydrated = AnalysisReport.from_dict(payload)
+    assert rehydrated.verdicts[0].matched_source is not None
+    assert rehydrated.verdicts[0].matched_source.url_status == "alive"
+    assert rehydrated.verdicts[0].matched_source.url_status_code == 200
+

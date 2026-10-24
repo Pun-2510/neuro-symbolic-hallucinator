@@ -36,6 +36,9 @@ class VerdictSchema(BaseModel):
     triggered_rules: list[str] = Field(default_factory=list)
     mismatched_fields: list[str] = Field(default_factory=list)
     matched_sources: list[dict] = Field(default_factory=list)
+    features: Optional[dict] = None
+    url_status: Optional[str] = None
+    url_status_code: Optional[int] = None
     citation_link: Optional[dict] = None
     mapping_status: str = "matched"
     mapping_confidence: float = 0.0

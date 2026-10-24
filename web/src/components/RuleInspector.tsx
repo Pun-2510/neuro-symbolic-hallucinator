@@ -410,6 +410,17 @@ const RULE_DEFINITIONS: Record<string, Omit<Rule, "triggered">> = {
     ],
     conclusion: "VERIFIED",
   },
+  "R-BOOK-EDITION-VERIFIED": {
+    id: "R-BOOK-EDITION-VERIFIED",
+    name: "Canonical Book / Monograph Edition Verified",
+    description: "Verified textbook or monograph edition against OpenLibrary / Google Books bibliographic records",
+    conditions: [
+      { field: "openlibrary_edition_match", operator: "=", value: "true" },
+      { field: "title_sim_fuzzy", operator: ">=", value: "0.90" },
+      { field: "author_jaccard", operator: ">=", value: "0.70" },
+    ],
+    conclusion: "VERIFIED",
+  },
 }
 
 function getVerdictColorClass(conclusion: string): {

@@ -183,6 +183,9 @@ class Repository:
                         "content_alignment_score": getattr(v.features, "content_alignment_score", 0.0) if v.features else 0.0,
                         "content_alignment_confidence": getattr(v.features, "content_alignment_confidence", "") if v.features else "",
                         "content_is_aligned": getattr(v.features, "content_is_aligned", False) if v.features else False,
+                        "url_status": getattr(v.matched_source, "url_status", None) if getattr(v, "matched_source", None) else None,
+                        "url_status_code": getattr(v.matched_source, "url_status_code", None) if getattr(v, "matched_source", None) else None,
+                        "checked_url": getattr(v.citation, "url", None) if getattr(v, "citation", None) else None,
                         "matched_sources": _serialize_matched_sources(getattr(v, "matched_source", None)),
                         "citation_link": (
                             {
