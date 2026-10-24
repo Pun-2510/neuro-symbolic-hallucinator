@@ -5,23 +5,52 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Header
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from integrity_checker.api.deps import get_db, get_current_user
 from integrity_checker.db.models import ClassMembership, User
 from integrity_checker.db.repository import Repository
+from integrity_checker.linking.statuses import CitationMappingStatus
 from integrity_checker.models.api_schemas import VerdictSchema
+from integrity_checker.models.validation import ValidationLabel
 
 router = APIRouter()
 
+_VALID_LABELS = {lbl.value for lbl in ValidationLabel}
+_VALID_MAPPING_STATUSES = {st.value for st in CitationMappingStatus}
+
 
 class OverrideRequest(BaseModel):
-    verdict_id: str
+    verdict_id: str | None = None
     new_label: str
     new_mapping_status: str | None = None
-    reason: str | None = None
+    reason: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("new_label")
+    @classmethod
+    def _validate_new_label(cls, v: str) -> str:
+        norm = (v or "").strip().lower()
+        if norm not in _VALID_LABELS:
+            raise ValueError(
+                f"Invalid label '{v}'. Must be one of: {sorted(_VALID_LABELS)}"
+            )
+        return norm
+
+    @field_validator("new_mapping_status")
+    @classmethod
+    def _validate_new_mapping_status(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        norm = v.strip().lower()
+        if not norm:
+            return None
+        if norm not in _VALID_MAPPING_STATUSES:
+            raise ValueError(
+                f"Invalid mapping_status '{v}'. Must be one of: {sorted(_VALID_MAPPING_STATUSES)}"
+            )
+        return norm
 
 
 @router.get("/{essay_id}/verdicts")
@@ -94,7 +123,7 @@ async def override_verdict(
     essay_id: int,
     verdict_id: str,
     body: OverrideRequest,
-    authorization: str = Header(...),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VerdictSchema:
     """Override a verdict's label/status.
@@ -104,7 +133,6 @@ async def override_verdict(
     repo = Repository(db)
 
     # SECURITY: Role & ownership check — students ('user') cannot override verdicts
-    current_user = get_current_user(authorization, db)
     essay = repo.get_essay(essay_id)
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
@@ -140,14 +168,16 @@ async def override_verdict(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid verdict_id")
 
-    # Capture original label and mapping_status BEFORE update so the audit log
-    # records the pre-override values.
+    # SECURITY (IDOR protection): Ensure the verdict actually belongs to essay_id
     existing_verdict = next(
         (r for r in repo.get_verdicts(essay_id) if r.id == v_id),
         None,
     )
-    original_label = existing_verdict.label if existing_verdict else None
-    original_mapping_status = existing_verdict.mapping_status if existing_verdict else None
+    if existing_verdict is None:
+        raise HTTPException(status_code=404, detail="Verdict not found for this essay")
+
+    original_label = existing_verdict.label
+    original_mapping_status = existing_verdict.mapping_status
 
     # Update DB
     updated = repo.update_verdict(
@@ -156,6 +186,7 @@ async def override_verdict(
         override_note=body.reason,
         new_mapping_status=body.new_mapping_status,
         overridden_by=current_user.username,
+        essay_id=essay_id,
     )
 
     if not updated:

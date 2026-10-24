@@ -303,6 +303,74 @@ def test_can_override_verdicts_flag_enforced(clean_db):
     assert resp.status_code == 403
 
 
+def test_cross_essay_verdict_override_idor_blocked(clean_db):
+    """A teacher who has access to essay_a must NOT be able to pass essay_a in the URL
+    and verdict_b (belonging to another essay_b) to modify verdict_b (IDOR protection).
+    """
+    from integrity_checker.db.session import get_session
+
+    teacher_id = _hardcoded_teacher_id()
+    other_user_id = _make_user("other_owner", role="user")
+
+    essay_a, _verdict_a = _create_essay_with_verdict(teacher_id, label="metadata_error")
+    _essay_b, verdict_b = _create_essay_with_verdict(other_user_id, label="suspected_hallucination")
+
+    token = get_teacher_token()
+    client = TestClient(app)
+    resp = client.post(
+        f"/api/essays/{essay_a}/verdicts/{verdict_b}/override",
+        json={
+            "verdict_id": str(verdict_b),
+            "new_label": "verified",
+            "reason": "cross-essay IDOR attempt",
+        },
+        headers=auth_header(token),
+    )
+    assert resp.status_code == 404
+
+    # Verify verdict_b was NOT modified in the database
+    session = get_session()
+    try:
+        v_row = session.get(VerdictRecord, verdict_b)
+        assert v_row is not None
+        assert v_row.label == "suspected_hallucination"
+        assert bool(v_row.is_overridden) is False
+    finally:
+        session.close()
+
+
+def test_override_rejects_invalid_label_and_mapping_status(clean_db):
+    """OverrideRequest must reject arbitrary strings for new_label or new_mapping_status."""
+    teacher_id = _hardcoded_teacher_id()
+    essay_id, verdict_id = _create_essay_with_verdict(teacher_id, label="metadata_error")
+
+    token = get_teacher_token()
+    client = TestClient(app)
+
+    bad_label_resp = client.post(
+        f"/api/essays/{essay_id}/verdicts/{verdict_id}/override",
+        json={
+            "verdict_id": str(verdict_id),
+            "new_label": "arbitrary_injected_label",
+            "reason": "test",
+        },
+        headers=auth_header(token),
+    )
+    assert bad_label_resp.status_code == 422
+
+    bad_status_resp = client.post(
+        f"/api/essays/{essay_id}/verdicts/{verdict_id}/override",
+        json={
+            "verdict_id": str(verdict_id),
+            "new_label": "verified",
+            "new_mapping_status": "arbitrary_injected_status",
+            "reason": "test",
+        },
+        headers=auth_header(token),
+    )
+    assert bad_status_resp.status_code == 422
+
+
 # ---------------------------------------------------------------------------
 # Fixture — extends clean_db to also wipe VerdictRecord + AuditLog
 # ---------------------------------------------------------------------------

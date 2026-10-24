@@ -232,10 +232,13 @@ class Repository:
         override_note: str | None = None,
         new_mapping_status: str | None = None,
         overridden_by: str | None = None,
+        essay_id: int | None = None,
     ) -> VerdictRecord | None:
-        """Update verdict (override by user)."""
+        """Update verdict (override by user), optionally enforcing essay_id ownership."""
         verdict = self.session.get(VerdictRecord, verdict_id)
         if not verdict:
+            return None
+        if essay_id is not None and verdict.essay_id != essay_id:
             return None
         verdict.label = new_label
         verdict.is_overridden = 1 if is_overridden else 0
