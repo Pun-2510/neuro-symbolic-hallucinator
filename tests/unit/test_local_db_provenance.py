@@ -419,3 +419,39 @@ def test_reference_confidence_reflects_metadata() -> None:
     partial = Citation(raw_text="x", title="A Paper", year="2020")
     score = _estimate_reference_confidence(partial)
     assert 0.0 < score < 1.0
+
+
+def test_add_paper_with_different_doi_but_same_arxiv_id_does_not_crash(tmp_path) -> None:
+    """Inserting a paper with a publisher DOI and an already-stored arxiv_id must not raise IntegrityError."""
+    db = LocalDatabase(tmp_path / "local_papers.db")
+    first_id = db.add_paper(
+        Paper(
+            doi="10.48550/arXiv.1810.04805",
+            arxiv_id="1810.04805",
+            title="BERT: Pre-training of Deep Bidirectional Transformers",
+            authors=["Devlin"],
+            year=2019,
+        )
+    )
+    second_id = db.add_paper(
+        Paper(
+            doi="10.18653/v1/N19-1423",
+            arxiv_id="1810.04805",
+            title="BERT: Pre-training of Deep Bidirectional Transformers",
+            authors=["Devlin"],
+            year=2019,
+        )
+    )
+    assert first_id == second_id
+
+
+def test_known_papers_curated_metadata_not_corrupted() -> None:
+    """Ensure Sennrich (2016), Goldberg (2014), Bowman (2015), and Ruder (2017) have their real titles/DOIs."""
+    from integrity_checker.retrieval.retrieval_orchestrator import _KNOWN_PAPERS
+
+    assert "Rare Words with Subword Units" in _KNOWN_PAPERS[("sennrich", "2016")]["title"]
+    assert _KNOWN_PAPERS[("sennrich", "2016")]["doi"] != _KNOWN_PAPERS[("bahdanau", "2014")]["doi"]
+    assert "word2vec Explained" in _KNOWN_PAPERS[("goldberg", "2014")]["title"]
+    assert _KNOWN_PAPERS[("goldberg", "2014")]["doi"] != _KNOWN_PAPERS[("mikolov", "2013")]["doi"]
+    assert "natural language inference" in _KNOWN_PAPERS[("bowman", "2015")]["title"].lower()
+    assert "Multi-Task Learning" in _KNOWN_PAPERS[("ruder", "2017")]["title"]

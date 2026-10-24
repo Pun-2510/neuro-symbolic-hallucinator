@@ -133,10 +133,14 @@ class LocalDatabase:
             existing = self._find_existing_metadata_paper(paper)
             if existing is not None:
                 return existing.id
-            if paper.arxiv_id:
-                existing = self.find_by_arxiv_id(paper.arxiv_id)
-                if existing is not None:
-                    return existing.id
+
+        # Guard against UNIQUE(arxiv_id) IntegrityError when a paper with the
+        # same arxiv_id already exists under a different (or NULL) DOI.
+        if paper.arxiv_id:
+            existing_arxiv = self.find_by_arxiv_id(paper.arxiv_id)
+            if existing_arxiv is not None:
+                if not paper.doi or normalize_doi(existing_arxiv.doi) != paper.doi:
+                    return existing_arxiv.id
 
         with self._get_conn() as conn:
             cursor = conn.execute(
@@ -308,7 +312,19 @@ class LocalDatabase:
             # This tolerates terminal punctuation and Unicode dash variants.
             fts_query = " AND ".join(f'"{token}"' for token in tokens)
 
-            if year:
+            if year and author:
+                query = """
+                    SELECT p.*, bm25(papers_fts) as rank
+                    FROM papers_fts
+                    JOIN papers p ON papers_fts.rowid = p.id
+                    WHERE papers_fts MATCH ? AND p.year = ? AND p.authors LIKE ?
+                    ORDER BY rank
+                    LIMIT ?
+                """
+                rows = conn.execute(
+                    query, (fts_query, year, f"%{author}%", limit)
+                ).fetchall()
+            elif year:
                 query = """
                     SELECT p.*, bm25(papers_fts) as rank
                     FROM papers_fts
@@ -529,7 +545,7 @@ class LocalDatabase:
     # ==================== Bulk Operations ====================
 
     def add_papers_bulk(self, papers: list[Paper]) -> int:
-        """Add multiple papers in a single transaction.
+        """Add multiple papers safely with DOI/arXiv normalization and conflict guards.
 
         Args:
             papers: List of papers to add
@@ -537,57 +553,11 @@ class LocalDatabase:
         Returns:
             Number of papers added
         """
-        with self._get_conn() as conn:
-            data = [
-                (
-                    p.doi,
-                    p.arxiv_id,
-                    p.title,
-                    json.dumps(p.authors),
-                    p.year,
-                    p.venue,
-                    p.abstract,
-                    json.dumps(p.categories),
-                    json.dumps(p.external_ids),
-                    p.source,
-                    datetime.now().isoformat(),
-                )
-                for p in papers
-            ]
-
-            conn.executemany(
-                """
-                INSERT INTO papers (doi, arxiv_id, title, authors, year, venue,
-                                   abstract, categories, external_ids, source, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(doi) DO UPDATE SET
-                    title = CASE
-                        WHEN excluded.title IS NULL OR TRIM(excluded.title) = ''
-                            THEN papers.title ELSE excluded.title END,
-                    authors = CASE
-                        WHEN excluded.authors IN ('[]', '') OR excluded.authors IS NULL
-                            THEN papers.authors ELSE excluded.authors END,
-                    year = COALESCE(excluded.year, papers.year),
-                    venue = COALESCE(NULLIF(excluded.venue, ''), papers.venue),
-                    abstract = COALESCE(NULLIF(excluded.abstract, ''), papers.abstract),
-                    categories = CASE
-                        WHEN excluded.categories IN ('[]', '') OR excluded.categories IS NULL
-                            THEN papers.categories ELSE excluded.categories END,
-                    external_ids = CASE
-                        WHEN excluded.external_ids IN ('{}', '') OR excluded.external_ids IS NULL
-                            THEN papers.external_ids ELSE excluded.external_ids END,
-                    source = CASE
-                        WHEN excluded.source IN ('local_db', 'known_papers')
-                             AND papers.source NOT IN ('local_db', 'known_papers')
-                            THEN papers.source
-                        WHEN papers.source = 'acl' AND excluded.source <> 'acl'
-                            THEN papers.source
-                        ELSE excluded.source END
-                """,
-                data,
-            )
-            conn.commit()
-            return len(papers)
+        added = 0
+        for p in papers:
+            self.add_paper(p)
+            added += 1
+        return added
 
     def get_all_papers(self, limit: int = 100, offset: int = 0) -> list[Paper]:
         """Get all papers with pagination.
@@ -756,10 +726,12 @@ class LocalDatabase:
                 "SELECT id, title, doi, year FROM papers WHERE source = 'known_papers'"
             ).fetchall()
             for known in known_rows:
-                info = curated_titles.get(_title_key(known["title"]))
-                if not info or not info.get("doi"):
-                    continue
-                curated_doi = normalize_doi(info["doi"])
+                curated_doi = normalize_doi(known["doi"]) if known["doi"] else None
+                if not curated_doi:
+                    info = curated_titles.get(_title_key(known["title"]))
+                    if not info or not info.get("doi"):
+                        continue
+                    curated_doi = normalize_doi(info["doi"])
                 if not curated_doi:
                     continue
 

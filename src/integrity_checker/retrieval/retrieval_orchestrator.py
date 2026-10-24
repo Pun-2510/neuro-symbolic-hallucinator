@@ -56,8 +56,8 @@ logger = get_logger(__name__)
 _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
     # Paper name (lowercase first author, year) -> metadata
     ("sennrich", "2016"): {
-        "title": "Neural Machine Translation by Jointly Learning to Align and Translate",
-        "doi": "10.48550/arXiv.1409.0473",
+        "title": "Neural Machine Translation of Rare Words with Subword Units",
+        "doi": "10.18653/v1/P16-1162",
         "authors": ["Sennrich", "Haddow", "Birch"],
     },
     ("vaswani", "2017"): {
@@ -79,6 +79,11 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "title": "Gradient-Based Learning Applied to Document Recognition",
         "doi": "10.1109/5.726791",
         "authors": ["LeCun", "Bottou", "Bengio"],
+    },
+    ("lecun", "2015"): {
+        "title": "Deep learning",
+        "doi": "10.1038/nature14539",
+        "authors": ["LeCun", "Bengio", "Hinton"],
     },
     ("hochreiter", "1997"): {
         "title": "Long Short-Term Memory",
@@ -125,10 +130,15 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "doi": "10.48550/arXiv.1710.05915",
         "authors": ["Loshchilov", "Hutter"],
     },
-    ("hou", "2024"): {
-        "title": "MiniCPM: Unveiling the Potential of Small-language-models with Scalable Training Dilemmas",
+    ("hu", "2024"): {
+        "title": "MiniCPM: Unveiling the Potential of Small Language Models with Scalable Training Strategies",
         "doi": "10.48550/arXiv.2404.06395",
-        "authors": ["Hu", "Li", "Chen"],
+        "authors": ["Hu", "Tu", "Han", "He"],
+    },
+    ("hou", "2024"): {
+        "title": "MiniCPM: Unveiling the Potential of Small Language Models with Scalable Training Strategies",
+        "doi": "10.48550/arXiv.2404.06395",
+        "authors": ["Hou", "Hu", "Li", "Chen"],
     },
     # ===== Papers bị API trả sai kết quả =====
     ("parikh", "2016"): {
@@ -157,10 +167,15 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "doi": "10.48550/arXiv.1301.3781",
         "authors": ["Mikolov", "Chen", "Corrado", "Dean"],
     },
-    ("kim", "2017"): {
+    ("kim", "2014"): {
         "title": "Convolutional Neural Networks for Sentence Classification",
-        "doi": "10.18653/v1/D14-1181",
+        "doi": "10.3115/v1/D14-1181",
         "authors": ["Kim"],
+    },
+    ("kim", "2017"): {
+        "title": "Structured Attention Networks",
+        "doi": "10.48550/arXiv.1702.00887",
+        "authors": ["Kim", "Denton", "Hoang", "Manning"],
     },
     ("kaiser", "2016"): {
         "title": "Neural GPUs Learn Algorithms",
@@ -175,15 +190,13 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
     },
     ("rajpurkar", "2016"): {
         "title": "SQuAD: 100,000+ Questions for Machine Comprehension of Text",
-        "doi": "10.18653/v1/P16-1141",
+        "doi": "10.18653/v1/D16-1264",
         "authors": ["Rajpurkar", "Zhang", "Lopyrev", "Liang"],
     },
     ("hill", "2016"): {
-        # "SimulatingSeeder: Language Learning from Language Teaching" - not sure exact title
-        # Without a DOI, we'll rely on crossref lookup
-        "title": "SimulatingSeeder: Language Learning from Language Teaching",
-        "doi": None,
-        "authors": ["Hill"],
+        "title": "Learning Distributed Representations of Sentences from Unlabelled Data",
+        "doi": "10.18653/v1/N16-1162",
+        "authors": ["Hill", "Cho", "Korhonen"],
     },
     ("kiros", "2015"): {
         "title": "Skip-Thought Vectors",
@@ -197,7 +210,7 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
     },
     ("conneau", "2017"): {
         "title": "Supervised Learning of Universal Sentence Representations from Natural Language Inference Data",
-        "doi": "10.18653/v1/P17-1048",
+        "doi": "10.18653/v1/D17-1070",
         "authors": ["Conneau", "Kiela", "Schwenk", "Bordes", "Bengio"],
     },
     ("mccann", "2017"): {
@@ -226,10 +239,14 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "authors": ["Seo", "Kembhavi", "Farhadi", "Choi"],
     },
     ("clark", "2018"): {
-        # "What is BERT?" style papers - this is likely the BoolQ paper or similar
+        "title": "Semi-Supervised Sequence Modeling with Cross-View Training",
+        "doi": "10.18653/v1/D18-1217",
+        "authors": ["Clark", "Luong", "Manning", "Le"],
+    },
+    ("clark", "2019"): {
         "title": "BoolQ: Exploring the Surprising Difficulty of Natural Language Yes/No Questions",
-        "doi": "10.18653/v1/N19-1030",
-        "authors": ["Clark", "Pallette", "Pikalo", "Manning"],
+        "doi": "10.18653/v1/N19-1270",
+        "authors": ["Clark", "Lee", "Chang", "Kwiatkowski", "Collins", "Toutanova"],
     },
     ("yu", "2018"): {
         "title": "QANet: Combining Local Convolution with Global Self-Attention for Reading Comprehension",
@@ -301,8 +318,13 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "authors": ["Karpukhin", "Oguz", "Min", "Lewis", "Yih"],
     },
     ("lee", "2017"): {
+        "title": "End-to-end Neural Coreference Resolution",
+        "doi": "10.18653/v1/D17-1018",
+        "authors": ["Lee", "He", "Lewis", "Zettlemoyer"],
+    },
+    ("lee", "2019"): {
         "title": "Latent Retrieval for Weakly Supervised Open Domain Question Answering",
-        "doi": "10.48550/arXiv.1901.03451",
+        "doi": "10.18653/v1/P19-1612",
         "authors": ["Lee", "Chang", "Toutanova"],
     },
     ("dai", "2015"): {
@@ -356,14 +378,19 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "authors": ["Mou", "Li", "Zhou", "Jin"],
     },
     ("bowman", "2015"): {
-        "title": "A Fast and Accurate Dependency Parser using Neural Networks",
-        "doi": "10.48550/arXiv.1412.7449",
+        "title": "A large annotated corpus for learning natural language inference",
+        "doi": "10.18653/v1/D15-1075",
         "authors": ["Bowman", "Angeli", "Potts", "Manning"],
     },
+    ("chen", "2014"): {
+        "title": "A Fast and Accurate Dependency Parser using Neural Networks",
+        "doi": "10.3115/v1/D14-1082",
+        "authors": ["Chen", "Manning"],
+    },
     ("levy", "2015"): {
-        "title": "Improved Semantic-Aware Word Embeddings",
-        "doi": None,
-        "authors": ["Levy", "Goldberg"],
+        "title": "Improving Distributional Similarity with Lessons Learned from Word Embeddings",
+        "doi": "10.1162/tacl_a_00134",
+        "authors": ["Levy", "Goldberg", "Dagan"],
     },
     ("ioffe", "2015"): {
         "title": "Batch Normalization: Accelerating Deep Network Training",
@@ -384,11 +411,6 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "title": "High-Resolution Image Synthesis with Latent Diffusion Models",
         "doi": "10.48550/arXiv.2112.10752",
         "authors": ["Rombach", "Blattmann", "Lorenz", "Eskew"],
-    },
-    ("hochreiter", "1997"): {
-        "title": "Long Short-Term Memory",
-        "doi": "10.1162/neco.1997.9.8.1735",
-        "authors": ["Hochreiter", "Schmidhuber"],
     },
     ("elman", "1990"): {
         "title": "Finding Structure in Time",
@@ -416,34 +438,34 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "authors": ["Edunov", "Ott", "Auli", "Grangier"],
     },
     ("wieting", "2017"): {
-        "title": "Towards Reproducible Neural Vector Space Models",
-        "doi": None,
-        "authors": ["Wieting", "Gimpel"],
+        "title": "Learning Paraphrastic Sentence Embeddings from Back-Translated Bitext",
+        "doi": "10.18653/v1/D17-1036",
+        "authors": ["Wieting", "Mallinson", "Gimpel"],
     },
     ("wieting", "2016"): {
-        "title": "Parametrized Consonant and Vowel Models for Embeddings",
-        "doi": None,
-        "authors": ["Wieting", "Gimpel"],
+        "title": "Towards Universal Paraphrastic Sentence Embeddings",
+        "doi": "10.48550/arXiv.1511.08198",
+        "authors": ["Wieting", "Bansal", "Gimpel", "Livescu"],
     },
     ("pennington", "2014"): {
         "title": "GloVe: Global Vectors for Word Representation",
-        "doi": "10.48550/arXiv.1502.03509",
+        "doi": "10.3115/v1/D14-1162",
         "authors": ["Pennington", "Socher", "Manning"],
     },
     ("goldberg", "2014"): {
-        "title": "A Fast and Accurate Dependency Parser using Neural Networks",
-        "doi": "10.48550/arXiv.1301.3781",
-        "authors": ["Goldberg"],
+        "title": "word2vec Explained: deriving Mikolov et al.'s negative-sampling word-embedding method",
+        "doi": "10.48550/arXiv.1402.3722",
+        "authors": ["Goldberg", "Levy"],
     },
     ("ruder", "2017"): {
-        "title": "A Hierarchical Neural Autoencoder for Paragraphs and Documents",
-        "doi": "10.48550/arXiv.1506.01057",
+        "title": "An Overview of Multi-Task Learning in Deep Neural Networks",
+        "doi": "10.48550/arXiv.1706.05098",
         "authors": ["Ruder"],
     },
     ("schnabel", "2015"): {
-        "title": "Short-term meaning and long-term learning: How sentence embeddings help",
-        "doi": None,
-        "authors": ["Schnabel", "Flanigan", "Toutanova"],
+        "title": "Evaluation methods for unsupervised word embeddings",
+        "doi": "10.18653/v1/D15-1036",
+        "authors": ["Schnabel", "Labutov", "Mimno", "Joachims"],
     },
     ("faruqui", "2015"): {
         "title": "Community Evaluation and Exchange of Word Vectors at wordvectors.org",
@@ -456,15 +478,10 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "doi": None,
         "authors": ["Bar-Haim", "Dagan", "Greental", "Gottfried"],
     },
-    ("mcwilliam", "2008"): {
-        "title": "Parsing Natural Scenes and Natural Language with Recursive Neural Networks",
-        "doi": None,
-        "authors": ["McWilliam", "Lloyd", "Graves"],
-    },
     ("santurkar", "2018"): {
-        "title": "How Do Batch Normalization and Initialization Affect Learning",
-        "doi": None,
-        "authors": ["Santurkar", "Tsipras", "Madry"],
+        "title": "How Does Batch Normalization Help Optimization?",
+        "doi": "10.48550/arXiv.1805.11604",
+        "authors": ["Santurkar", "Tsipras", "Ilyas", "Madry"],
     },
     ("kumar", "2016"): {
         "title": "Ask Me Anything: Dynamic Memory Networks for Natural Language Processing",
@@ -475,11 +492,6 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "title": "The First International Contest on Parse Analysis",
         "doi": None,
         "authors": ["Liwicki", "Frinken", "Indermuhle"],
-    },
-    ("mccann", "2017"): {
-        "title": "Learned in Translation: Contextualized Word Vectors (CoVe)",
-        "doi": "10.48550/arXiv.1708.00107",
-        "authors": ["McCann", "Bradbury", "Xiong", "Socher"],
     },
     ("brock", "2019"): {
         "title": "Large Scale GAN Training for High Fidelity Natural Image Synthesis",
@@ -508,9 +520,9 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "authors": ["Radford", "Kim", "Hallacy", "Ramesh"],
     },
     ("radford", "2019"): {
-        "title": "Language Models Unsupervised Multitask Learners",
-        "doi": "10.48550/arXiv.1909.08053",
-        "authors": ["Radford", "Wu", "Child", "Luan"],
+        "title": "Language Models are Unsupervised Multitask Learners",
+        "doi": None,
+        "authors": ["Radford", "Wu", "Child", "Luan", "Amodei", "Sutskever"],
     },
     ("openai", "2023"): {
         "title": "GPT-4 Technical Report",
@@ -524,58 +536,17 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
 # hệ thống sẽ lookup venue-year → known_paper_key
 # Format: (normalized_venue, year) → (known_paper_key_author, known_paper_key_year)
 _VENUE_YEAR_KNOWN: dict[tuple[str, str], tuple[str, str]] = {
-    # NeurIPS / NIPS (Neural Information Processing Systems)
-    ("nips", "2017"): ("vaswani", "2017"),      # Attention Is All You Need
+    ("nips", "2017"): ("vaswani", "2017"),      # Attention Is All You Need (NeurIPS 2017)
     ("neurips", "2017"): ("vaswani", "2017"),
-
-    # ICML (International Conference on Machine Learning)
-    ("icml", "2017"): ("vaswani", "2017"),      # Attention Is All You Need cũng được present tại ICML
-
-    # ICLR (International Conference on Learning Representations)
-    ("iclr", "2017"): ("vaswani", "2017"),      # Attention Is All You Need cũng có ICLR version
-    ("iclr", "2016"): ("kaiser", "2016"),       # Neural GPUs Learn Algorithms
-
-    # ACL (Association for Computational Linguistics)
-    ("acl", "2017"): ("vaswani", "2017"),       # Attention Is All You Need
-    ("acl", "2018"): ("devlin", "2019"),        # BERT (có thể được cite sớm)
-
-    # EMNLP (Empirical Methods in Natural Language Processing)
-    ("emnlp", "2016"): ("parikh", "2016"),      # Decomposable Attention Model
-
-    # NAACL (North American Chapter of the ACL)
-    ("naacl", "2018"): ("peters", "2018"),      # ELMo
-    ("naacl", "2016"): ("peters", "2018"),      # ELMo (có thể preprint)
-
-    # CVPR (Computer Vision and Pattern Recognition)
-    ("cvpr", "2016"): ("he", "2016"),           # Deep Residual Learning
-
-    # ICCV (International Conference on Computer Vision)
-    ("iccv", "2015"): ("he", "2016"),           # Deep Residual Learning (cũng có ICCV version)
-
-    # CoNLL (Conference on Computational Natural Language Learning)
-    ("conll", "2017"): ("clark", "2018"),        # BoolQ (EMNLP thành CoNLL?)
-
-    # AAAI (Association for the Advancement of Artificial Intelligence)
-    ("aaai", "2018"): ("devlin", "2019"),       # BERT
-
-    # IJCAI (International Joint Conference on AI)
-    ("ijcai", "2017"): ("vaswani", "2017"),      # Attention Is All You Need
-
-    # COLING (International Conference on Computational Linguistics)
-    ("coling", "2018"): ("devlin", "2019"),     # BERT
-
-    # TREC (Text REtrieval Conference)
-    ("trec", "2017"): ("joshi", "2017"),         # TriviaQA
-
-    # KDD (Knowledge Discovery and Data Mining)
-    ("kdd", "2017"): ("zellers", "2018"),       # SWAG
-
-    # NIPS workshops / other common venues
-    ("nips", "2013"): ("mikolov", "2013"),       # Word2Vec
-    ("nips", "2012"): ("socher", "2013"),        # Sentiment Treebank
-
-    # Nature / Science (high-impact venues)
-    ("nature", "2015"): ("lecun", "1998"),       # LeCun thường được cite từ Nature
+    ("iclr", "2016"): ("kaiser", "2016"),       # Neural GPUs Learn Algorithms (ICLR 2016)
+    ("emnlp", "2016"): ("parikh", "2016"),      # Decomposable Attention Model (EMNLP 2016)
+    ("naacl", "2018"): ("peters", "2018"),      # ELMo (NAACL 2018)
+    ("naacl", "2019"): ("devlin", "2019"),      # BERT (NAACL 2019)
+    ("cvpr", "2016"): ("he", "2016"),           # Deep Residual Learning (CVPR 2016)
+    ("acl", "2017"): ("joshi", "2017"),         # TriviaQA (ACL 2017)
+    ("nips", "2013"): ("mikolov", "2013"),      # Word2Vec (NIPS 2013)
+    ("emnlp", "2013"): ("socher", "2013"),      # Sentiment Treebank (EMNLP 2013)
+    ("nature", "2015"): ("lecun", "2015"),      # Deep learning (Nature 2015)
 }
 
 
@@ -726,7 +697,10 @@ class RetrievalOrchestrator:
             candidates = []
             for c in clients:
                 lookup = self._lookup_with_cache_and_ratelimit if self.cache is not None else self._lookup_with_ratelimit
-                candidates.append(await lookup(c, citation))
+                try:
+                    candidates.append(await lookup(c, citation))
+                except Exception as exc:  # noqa: BLE001
+                    candidates.append(exc)
 
         # Filter exceptions
         valid: list[SourceCandidate] = []
@@ -1023,7 +997,16 @@ class RetrievalOrchestrator:
                         and known_title[:15] not in cit_title_lower
                         and cit_title_lower[:15] not in known_title
                     )
-                    if not has_conflicting_author and not has_conflicting_title:
+                    is_full_ref_without_clue = (
+                        len(raw_text.strip()) > 30
+                        and expected_author not in raw_lower
+                        and (not known_title or known_title[:15] not in raw_lower)
+                    )
+                    if (
+                        not has_conflicting_author
+                        and not has_conflicting_title
+                        and not is_full_ref_without_clue
+                    ):
                         logger.debug(f"Venue-year match: {venue_key} → {known_key}")
                         return True, {**known_info, "year": str(venue_year)}
 

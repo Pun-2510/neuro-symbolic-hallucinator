@@ -192,7 +192,7 @@ class SerpApiClient(BaseScholarClient):
             async for attempt in retry:
                 with attempt:
                     # SerpApi client is sync, run in thread pool
-                    result = await asyncio.get_event_loop().run_in_executor(
+                    result = await asyncio.get_running_loop().run_in_executor(
                         None,
                         self._sync_search,
                         query,
@@ -252,7 +252,7 @@ class SerpApiClient(BaseScholarClient):
                     return None
 
             organic = data.get("organic_results", []) or []
-            candidates = organic[:1] if title_query else organic[:MAX_FALLBACK_RESULTS]
+            candidates = organic[:MAX_FALLBACK_RESULTS]
 
             # Lọc theo năm ở client (±1 năm), giữ kết quả không rõ năm
             if year_int:
