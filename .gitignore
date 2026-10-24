@@ -24,10 +24,11 @@ web/.vite/
 web/.env.local
 web/.env.*.local
 
-# Environment
+# Environment & local MCP secrets
 .env
 .env.local
 .env.*.local
+.mcp.json
 
 # IDE
 .vscode/
