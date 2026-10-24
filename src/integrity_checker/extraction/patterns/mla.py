@@ -39,7 +39,8 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # --- In-text MLA patterns ---
 
-# Parenthetical with page: (Nguyen 25), (Nguyen 25-27), (Smith and Doe 42), (Smith et al. 105)
+# Parenthetical with page: (Nguyen 25), (Nguyen 25-27), (Smith and Doe 42), (Smith et al. 105),
+# (L'Engle 72-73), (O'Connor 157), (Longman III 57), (Lewis XXII), (Mulvey et al. 17, 19)
 # Requires a capitalized surname (not Table/Figure/Section/etc.) and a page number/range (not a 4-digit year 19xx/20xx)
 _MLA_INTEXT_PARENTHETICAL_PAGE = CompiledPattern.create(
     name="mla_intext_parenthetical_page",
@@ -50,9 +51,13 @@ _MLA_INTEXT_PARENTHETICAL_PAGE = CompiledPattern.create(
         r"Layer|Node|Fold|Epoch|Batch|Seed|Score|Rank|Rate|Ratio|Index|Value|Limit|"
         r"Code|Error|Port|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|"
         r"January|February|March|April|June|July|August|September|October|November|December)\b)"
-        r"([A-ZÀ-Ý][a-zà-ÿ]{2,}(?:\s+(?:and|&|và)\s+[A-ZÀ-Ý][a-zà-ÿ]{2,}|\s+et\s+al\.)?)"
+        r"(?:"
+        r"([A-ZÀ-Ý][a-zA-Zà-ÿ'\u2019]{2,}(?:\s+(?:III|II|IV|Jr\.?|Sr\.?))?"
+        r"(?:\s+(?:and|&|và)\s+[A-ZÀ-Ý][a-zA-Zà-ÿ'\u2019]{2,}|\s+et\s+al\.)?)"
         r"(?:\s*,\s*pp?\.\s*|\s+)"
-        r"(?!(?:19|20)\d{2}\b)(\d{1,4}(?:[-–]\d{1,4})?)\)"
+        r"(?!(?:19|20)\d{2}\b)(\d{1,4}(?:[-–]\d{1,4})?(?:,\s*\d{1,4}(?:[-–]\d{1,4})?)*|[IVXLCDM]{1,7})"
+        r"|[A-ZÀ-Ý][a-zA-Zà-ÿ'\u2019]{2,}\s+et\s+al\.(?:\s*;\s*[A-ZÀ-Ý][a-zA-Zà-ÿ'\u2019]{2,}\s+et\s+al\.)*"
+        r")\)"
     ),
     pattern_type=PatternType.IN_TEXT,
     description="MLA in-text parenthetical: (Author Page) | (Author 25-27)",

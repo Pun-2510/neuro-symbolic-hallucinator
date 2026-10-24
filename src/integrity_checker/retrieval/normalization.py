@@ -78,6 +78,9 @@ _SURNAME_PREFIXES = {
 }
 
 
+_GENERATIONAL_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
+
+
 def author_key(value: object) -> str:
     """Extract a normalized first-author/last-name key from an author value."""
     if value is None:
@@ -85,17 +88,28 @@ def author_key(value: object) -> str:
     if hasattr(value, "last_name"):
         value = getattr(value, "last_name", "")
     text = _ET_AL_RE.sub(" ", str(value)).strip()
+    text = text.replace("\u2019", "'").replace("\u2018", "'").replace("`", "'")
+    # Preserve compound apostrophe surnames like O'Connor -> OConnor, L'Engle -> LEngle
+    text = re.sub(r"\b([A-Za-z])'([A-Za-z])", r"\1\2", text)
     if " " not in text and "," not in text:
         m = _CAMEL_AUTHOR_RE.match(text)
         if m and m.group(1).lower() not in _SURNAME_PREFIXES:
             text = f"{m.group(1)}, {m.group(2)}"
     # APA ``Lastname, F.``: the token before the comma is the last name.
     if "," in text:
-        text = text.split(",", 1)[0]
-    tokens = title_tokens(text)
+        first_part = text.split(",", 1)[0].strip()
+        if first_part.lower().rstrip(".") not in _GENERATIONAL_SUFFIXES:
+            text = first_part
+        else:
+            text = text.split(",", 1)[1].strip()
+    tokens = [t for t in title_tokens(text) if t not in _GENERATIONAL_SUFFIXES]
+    if not tokens:
+        tokens = title_tokens(text)
     if not tokens:
         return ""
-    return tokens[-1]
+    last_tok = tokens[-1]
+    folded = unicodedata.normalize("NFKD", last_tok).encode("ascii", "ignore").decode("ascii")
+    return folded or last_tok
 
 
 def author_keys(authors: Iterable[object] | object | None) -> set[str]:
@@ -110,6 +124,62 @@ def author_keys(authors: Iterable[object] | object | None) -> set[str]:
         except TypeError:
             values = [authors]
     return {key for key in (author_key(value) for value in values) if key}
+
+
+def author_match_score(
+    query_authors: Iterable[object] | object | None,
+    candidate_authors: Iterable[object] | object | None,
+) -> float:
+    """Return author overlap score in [0.0, 1.0] based on normalized author surnames."""
+    q_keys = author_keys(query_authors)
+    c_keys = author_keys(candidate_authors)
+    if not q_keys or not c_keys:
+        return 0.0
+    overlap = len(q_keys & c_keys)
+    if overlap > 0:
+        return overlap / min(len(q_keys), len(c_keys))
+    # Substring fallback for compound surnames (e.g. "l'engle" / "lengle", "o'connor" / "oconnor")
+    for qk in q_keys:
+        for ck in c_keys:
+            if len(qk) >= 4 and len(ck) >= 4 and (qk in ck or ck in qk):
+                return 0.8
+    return 0.0
+
+
+_BOOK_REVIEW_TITLE_RE = re.compile(
+    r"\b(?:book\s+review|reviewed\s+work)\b|\(\s*reviews?\s*\)|^\s*reviews?\s*[:\-]",
+    re.IGNORECASE,
+)
+
+
+def is_book_review_mismatch(
+    citation_title: str | None,
+    citation_authors: Iterable[object] | object | None,
+    candidate_title: str | None,
+    candidate_authors: Iterable[object] | object | None,
+) -> bool:
+    """Return True if candidate is a book review while the citation is citing the book itself."""
+    c_title = (citation_title or "").strip()
+    cand_title = (candidate_title or "").strip()
+    if not cand_title:
+        return False
+    if "review" in c_title.lower():
+        return False
+    if _BOOK_REVIEW_TITLE_RE.search(cand_title):
+        return True
+    if citation_authors and candidate_authors:
+        if author_match_score(citation_authors, candidate_authors) == 0.0:
+            q_keys = author_keys(citation_authors)
+            c_title_norm = normalize_text(c_title)
+            cand_title_norm = normalize_text(cand_title)
+            for qk in q_keys:
+                if (
+                    len(qk) >= 4
+                    and re.search(rf"\b{re.escape(qk)}\b", cand_title_norm)
+                    and not re.search(rf"\b{re.escape(qk)}\b", c_title_norm)
+                ):
+                    return True
+    return False
 
 
 def year_key(value: str | int | None) -> int | None:

@@ -227,9 +227,11 @@ class FeatureCalculator:
         if not citation_title or not candidate_title:
             return 0.0
 
-        # Normalize whitespace and trailing punctuation
+        # Normalize whitespace, ampersands, dashes, and trailing punctuation
         c_clean = re.sub(r"\s+", " ", citation_title.strip().rstrip(".,;:"))
         cand_clean = re.sub(r"\s+", " ", candidate_title.strip().rstrip(".,;:"))
+        c_clean = re.sub(r"\s*&\s*", " and ", c_clean).replace("\u2013", "-").replace("\u2014", "-")
+        cand_clean = re.sub(r"\s*&\s*", " and ", cand_clean).replace("\u2013", "-").replace("\u2014", "-")
         if not c_clean or not cand_clean:
             return 0.0
 
@@ -255,10 +257,14 @@ class FeatureCalculator:
         )
         len_ratio = len(shorter) / len(longer) if longer else 0.0
 
-        # 2. Safe prefix match: either length ratio >= 0.65, or followed by a subtitle separator (':', '.', ',', '-', '(')
+        # 2. Safe prefix/colon-split match: either length ratio >= 0.65, or followed/preceded by a subtitle separator
         if len(shorter) >= 12 and longer.startswith(shorter):
             remainder = longer[len(shorter):].lstrip()
             if len_ratio >= 0.65 or (remainder and remainder[0] in ".:,-—–("):
+                return 0.95
+        if len(shorter) >= 12 and ":" in longer:
+            parts = [p.strip() for p in longer.split(":", 1)]
+            if shorter in parts:
                 return 0.95
 
         # 3. Safe substring match: require length ratio >= 0.70 (or candidate title in raw_text fallback)

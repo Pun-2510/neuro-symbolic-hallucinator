@@ -30,7 +30,9 @@ from integrity_checker.models.source import SourceCandidate
 from integrity_checker.retrieval.base import BaseScholarClient
 from integrity_checker.retrieval.normalization import (
     author_key,
+    author_match_score,
     title_similarity,
+    title_tokens,
 )
 
 logger = get_logger(__name__)
@@ -112,12 +114,38 @@ class OpenLibraryClient(BaseScholarClient):
                     return isbn_clean
         return None
 
+    @staticmethod
+    def _extract_ol_author_query(citation: Citation) -> str:
+        """Extract clean first-author surname preserving apostrophes (e.g. O'Dowd, L'Engle)."""
+        if not citation.authors:
+            return ""
+        raw = citation.authors[0]
+        if hasattr(raw, "last_name") and getattr(raw, "last_name", ""):
+            s = str(getattr(raw, "last_name", ""))
+        else:
+            s = str(raw)
+        s = s.replace("\u2019", "'").replace("\u2018", "'").replace("`", "'").strip()
+        if "," in s:
+            first_part = s.split(",", 1)[0].strip()
+            if first_part.lower().rstrip(".") not in {"iii", "ii", "iv", "jr", "sr"}:
+                s = first_part
+            else:
+                s = s.split(",", 1)[1].strip()
+        tokens = [
+            t.strip(".,;:")
+            for t in s.split()
+            if t.strip(".,;:").lower() not in {"iii", "ii", "iv", "jr", "sr", "et", "al"}
+            and len(t.strip(".,;:")) > 1
+        ]
+        return tokens[-1] if tokens else author_key(raw)
+
     async def lookup(self, citation: Citation) -> SourceCandidate:
         """Search OpenLibrary (and Google Books fallback) for book/monograph citations."""
         self._last_status_code = None
 
         raw_title = (citation.title or "").strip()
         clean_title = self.strip_edition_suffix(raw_title)
+        title_for_ol = re.sub(r"\s*&\s*", " and ", clean_title)
         isbn = self.extract_isbn(citation)
 
         if not clean_title and not isbn:
@@ -128,43 +156,81 @@ class OpenLibraryClient(BaseScholarClient):
             )
 
         candidates: list[SourceCandidate] = []
+        base_fields = "key,title,subtitle,author_name,first_publish_year,publish_year,isbn,publisher"
+        surname = self._extract_ol_author_query(citation)
 
-        # 1. OpenLibrary lookup (use `q` so books with colon-split title + subtitle are matched)
-        ol_params: dict[str, Any] = {
-            "limit": 5,
-            "fields": "key,title,subtitle,author_name,first_publish_year,publish_year,isbn,publisher",
-        }
+        async def _run_ol_query(params: dict[str, Any]) -> list[dict]:
+            data = await self._fetch_json_with_retry(self.BASE_URL, params=params)
+            if data and isinstance(data.get("docs"), list):
+                return [d for d in data["docs"] if isinstance(d, dict)]
+            return []
+
+        docs: list[dict] = []
         if isbn:
-            ol_params["isbn"] = isbn
+            docs = await _run_ol_query({"limit": 5, "fields": base_fields, "isbn": isbn})
         else:
-            surname = author_key(citation.authors[0]) if citation.authors else ""
-            ol_params["q"] = f"{clean_title} {surname}".strip() if surname else clean_title
+            q_clean = re.sub(r"[-–—]+", " ", title_for_ol)
+            q_str = f"{q_clean} {surname}".strip() if surname else q_clean
+            docs = await _run_ol_query({"limit": 5, "fields": base_fields, "q": q_str})
 
-        ol_data = await self._fetch_json_with_retry(self.BASE_URL, params=ol_params)
-        if ol_data and isinstance(ol_data.get("docs"), list):
-            docs = ol_data["docs"]
-            # If title+author was too strict, retry with title only
-            if not docs and not isbn and citation.authors and clean_title:
-                ol_params_no_author = {**ol_params, "q": clean_title}
-                ol_data_retry = await self._fetch_json_with_retry(
-                    self.BASE_URL, params=ol_params_no_author
-                )
-                if ol_data_retry and isinstance(ol_data_retry.get("docs"), list):
-                    docs = ol_data_retry["docs"]
+            # If q missed or didn't match author (e.g. short title like "Proverbs" or colon-split title),
+            # try structured title + author search
+            temp_cands = [self._doc_to_candidate(d, citation=citation) for d in docs]
+            temp_best, temp_sim = self._select_best_candidate(temp_cands, citation)
+            temp_auth_ok = (
+                not citation.authors
+                or (temp_best is not None and author_match_score(citation.authors, temp_best.authors) > 0.0)
+            )
+            if (temp_sim < MIN_TITLE_SIMILARITY or not temp_auth_ok) and surname and title_for_ol:
+                title_queries = [title_for_ol]
+                if ":" in title_for_ol:
+                    before_colon, after_colon = [p.strip() for p in title_for_ol.split(":", 1)]
+                    if (
+                        surname
+                        and surname.lower() in before_colon.lower()
+                        and len(before_colon.split()) <= 4
+                    ):
+                        if len(after_colon) >= 8:
+                            title_queries.insert(0, after_colon)
+                    else:
+                        if len(before_colon) >= 8:
+                            title_queries.append(before_colon)
+                        if len(after_colon) >= 8:
+                            title_queries.append(after_colon)
+                for tq in title_queries:
+                    more_docs = await _run_ol_query(
+                        {"limit": 5, "fields": base_fields, "title": tq, "author": surname}
+                    )
+                    if more_docs:
+                        docs.extend(more_docs)
+                        temp_cands = [self._doc_to_candidate(d, citation=citation) for d in docs]
+                        temp_best, temp_sim = self._select_best_candidate(temp_cands, citation)
+                        if (
+                            temp_sim >= MIN_TITLE_SIMILARITY
+                            and temp_best is not None
+                            and author_match_score(citation.authors, temp_best.authors) > 0.0
+                        ):
+                            break
 
-            for doc in docs:
-                if isinstance(doc, dict):
-                    cand = self._doc_to_candidate(doc, citation=citation)
-                    if cand.title:
-                        candidates.append(cand)
+            if not docs and surname and title_for_ol:
+                docs = await _run_ol_query({"limit": 5, "fields": base_fields, "q": title_for_ol})
+
+        for doc in docs:
+            cand = self._doc_to_candidate(doc, citation=citation)
+            if cand.title:
+                candidates.append(cand)
 
         # Check best OpenLibrary similarity before deciding whether to call Google Books
         best_cand, best_sim = self._select_best_candidate(candidates, citation)
+        best_auth_ok = (
+            not citation.authors
+            or (best_cand is not None and author_match_score(citation.authors, best_cand.authors) > 0.0)
+        )
 
-        # 2. Google Books fallback when OpenLibrary missed (< MIN_TITLE_SIMILARITY)
+        # 2. Google Books fallback when OpenLibrary missed (< MIN_TITLE_SIMILARITY) or author didn't match
         if (
             self.enable_google_books_fallback
-            and best_sim < MIN_TITLE_SIMILARITY
+            and (best_sim < MIN_TITLE_SIMILARITY or not best_auth_ok)
             and (clean_title or isbn)
         ):
             gb_cands = await self._search_google_books(clean_title, isbn, citation)
@@ -202,7 +268,7 @@ class OpenLibraryClient(BaseScholarClient):
         if not candidates:
             return None, -1.0
 
-        raw_query_title = citation.title or ""
+        raw_query_title = re.sub(r"\s*&\s*", " and ", citation.title or "")
         clean_query_title = cls.strip_edition_suffix(raw_query_title)
         cit_year = str(citation.year)[:4] if citation.year else None
         cit_first_author = author_key(citation.authors[0]) if citation.authors else None
@@ -214,20 +280,29 @@ class OpenLibraryClient(BaseScholarClient):
         for cand in candidates:
             if not cand.title:
                 continue
-            cand_clean_title = cls.strip_edition_suffix(cand.title)
+            cand_clean_title = re.sub(r"\s*&\s*", " and ", cls.strip_edition_suffix(cand.title))
             sim_raw = title_similarity(raw_query_title, cand.title) if raw_query_title else 0.0
             sim_clean = (
                 title_similarity(clean_query_title, cand_clean_title)
                 if clean_query_title
                 else 0.0
             )
-            # Also check base title before colon if candidate or query has a long subtitle
+            # Also check base title before/after colon if candidate or query has a subtitle or author prefix
             sim_base = 0.0
             if ":" in cand_clean_title or ":" in clean_query_title:
                 cand_base = cand_clean_title.split(":", 1)[0].strip()
-                query_base = clean_query_title.split(":", 1)[0].strip()
-                if len(cand_base) >= 8 and len(query_base) >= 8:
-                    sim_base = title_similarity(query_base, cand_base) * 0.96
+                query_parts = [p.strip() for p in clean_query_title.split(":", 1)]
+                for idx_qp, qp in enumerate(query_parts):
+                    if (
+                        idx_qp == 0
+                        and len(query_parts) > 1
+                        and cit_first_author
+                        and cit_first_author in author_key(qp)
+                        and len(qp.split()) <= 4
+                    ):
+                        continue
+                    if len(cand_base) >= 8 and len(qp) >= 8:
+                        sim_base = max(sim_base, title_similarity(qp, cand_base) * 0.96)
 
             sim = max(sim_raw, sim_clean, sim_base)
             rank = sim
@@ -235,10 +310,12 @@ class OpenLibraryClient(BaseScholarClient):
             if cit_year and cand.year == cit_year:
                 rank += 0.04
             if cit_first_author and cand.authors:
-                cand_authors = {author_key(a) for a in cand.authors if a}
-                if cit_first_author in cand_authors:
-                    rank += 0.08
+                auth_sc = author_match_score(citation.authors, cand.authors)
+                if auth_sc > 0.0:
+                    rank += 0.08 * auth_sc
                 else:
+                    if len(title_tokens(clean_query_title)) <= 3:
+                        continue
                     rank -= 0.25
 
             if rank > best_rank:
@@ -431,7 +508,7 @@ class OpenLibraryClient(BaseScholarClient):
                             timeout=self.timeout, follow_redirects=True
                         ) as client:
                             resp = await client.get(url, params=params, headers=self._headers)
-                        if not is_google_books or self._last_status_code is None:
+                        if not is_google_books:
                             self._last_status_code = resp.status_code
                         if resp.status_code == 404:
                             return None

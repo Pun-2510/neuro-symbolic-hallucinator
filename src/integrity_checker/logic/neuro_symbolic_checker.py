@@ -197,9 +197,30 @@ class NeuroSymbolicChecker:
                 r'(\[Computer\s+software\]|\bGitHub\.\s*Retrieved\b)',
                 re.IGNORECASE
             ),
+            # Classical / scriptural / public-domain / dictionary reference works
+            re.compile(
+                r'\b(The\s+Bible|ESV\s+ed\.|Project\s+Gutenberg|gutenberg\.org|'
+                r'Dictionary\.com|Merriam-Webster|Encyclop(?:ae|e)dia\s+Britannica)\b',
+                re.IGNORECASE
+            ),
+            # Non-scholarly consumer / book-review / blog / magazine / media web domains & paths
+            re.compile(
+                r'(?:goodreads\.com|barnesandnoble\.com|blogspot\.com|wordpress\.com|substack\.com|'
+                r'pbs\.org|popsugar\.com|publishersweekly\.com|eviemagazine\.com|swooon\.com|'
+                r'fightthenewdrug\.org|publicsquaremag\.org|wheatley\.byu\.edu|'
+                r'clarendonhousebooks\.com|shamelessbookdeals\.com|sexandpsychology\.com|'
+                r'libbylife\.com|beforewegoblog\.com|thebooknookchronicles\.com|'
+                r'peanutblossombookclub\.com|prettylittlememoirs\.com|beachreadsandbubbly\.com|'
+                r'bookishgoblin\.com|estapinto\.com|amysuto\.com|penguinrandomhouse\.com/the-read-down|'
+                r'/book-blog/|/book-review|spicy-chapters|#BookTok)',
+                re.IGNORECASE
+            ),
         ]
+        check_resource_str = " ".join(
+            part for part in (raw_text, citation.url or "", citation.venue or "") if part
+        )
         for pattern in web_resource_patterns:
-            if pattern.search(raw_text):
+            if not citation.doi and pattern.search(check_resource_str):
                 logger.debug(
                     f"Web resource/API detected: raw='{raw_text[:80]}' "
                     f"matched pattern: {pattern.pattern[:50]}"

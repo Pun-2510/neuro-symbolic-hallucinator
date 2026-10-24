@@ -23,7 +23,12 @@ from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate
 from integrity_checker.retrieval.base import BaseScholarClient
-from integrity_checker.retrieval.normalization import title_similarity
+from integrity_checker.retrieval.normalization import (
+    author_match_score,
+    is_book_review_mismatch,
+    title_similarity,
+    title_tokens,
+)
 
 logger = get_logger(__name__)
 
@@ -129,15 +134,33 @@ class OpenAlexClient(BaseScholarClient):
         self,
         results: list[dict],
         query_title: str,
+        query_authors: list | None = None,
+        query_year: str | None = None,
     ) -> tuple[SourceCandidate | None, dict | None, float]:
-        """Select the result from OpenAlex /works list with the highest title similarity."""
+        """Select the result from OpenAlex /works list with the best title + author + year match."""
         best_cand: SourceCandidate | None = None
         best_raw: dict | None = None
         best_sim = -1.0
+        best_rank = -1.0
+        cit_year = str(query_year)[:4] if query_year else None
         for item in results:
             cand = self._work_to_candidate(item)
+            if is_book_review_mismatch(query_title, query_authors, cand.title, cand.authors):
+                continue
             sim = title_similarity(query_title, cand.title) if cand.title else 0.0
-            if sim > best_sim:
+            auth_sim = (
+                author_match_score(query_authors, cand.authors)
+                if query_authors and cand.authors
+                else 0.0
+            )
+            yr_bonus = (
+                0.05
+                if (cit_year and cand.year and str(cand.year)[:4] == cit_year)
+                else 0.0
+            )
+            rank = sim + (0.15 * auth_sim if sim >= MIN_TITLE_SIMILARITY else 0.0) + yr_bonus
+            if rank > best_rank:
+                best_rank = rank
                 best_sim = sim
                 best_cand = cand
                 best_raw = item
@@ -178,10 +201,19 @@ class OpenAlexClient(BaseScholarClient):
             )
 
         results = data.get("results") or []
-        best_cand, best_raw, best_sim = self._pick_best_search_result(results, citation.title)
+        best_cand, best_raw, best_sim = self._pick_best_search_result(
+            results, citation.title, citation.authors, citation.year
+        )
 
         # Fallback without year filter if strict publication_year filter missed or returned wrong/derivative paper
-        if "filter" in params and (best_cand is None or best_sim < 0.90):
+        best_auth_sim = (
+            author_match_score(citation.authors, best_cand.authors)
+            if (citation.authors and best_cand and best_cand.authors)
+            else 1.0
+        )
+        if "filter" in params and (
+            best_cand is None or best_sim < 0.90 or (citation.authors and best_auth_sim == 0.0)
+        ):
             unfiltered_data = await self._fetch_json_with_retry(
                 "/works",
                 params={"search": title, "per_page": 5},
@@ -189,9 +221,17 @@ class OpenAlexClient(BaseScholarClient):
             if unfiltered_data:
                 unfiltered_results = unfiltered_data.get("results") or []
                 alt_cand, alt_raw, alt_sim = self._pick_best_search_result(
-                    unfiltered_results, citation.title
+                    unfiltered_results, citation.title, citation.authors, citation.year
                 )
-                if alt_cand is not None and alt_sim > best_sim:
+                alt_auth_sim = (
+                    author_match_score(citation.authors, alt_cand.authors)
+                    if (citation.authors and alt_cand and alt_cand.authors)
+                    else 0.0
+                )
+                if alt_cand is not None and (
+                    alt_sim > best_sim
+                    or (alt_sim >= MIN_TITLE_SIMILARITY and alt_auth_sim > best_auth_sim)
+                ):
                     results = unfiltered_results
                     best_cand, best_raw, best_sim = alt_cand, alt_raw, alt_sim
 
@@ -207,6 +247,17 @@ class OpenAlexClient(BaseScholarClient):
                 source_name=self.name,
                 found=False,
                 error=f"OpenAlex: no title match ({best_sim:.2f}) for '{title[:60]}'",
+            )
+        if (
+            citation.title
+            and citation.authors
+            and len(title_tokens(citation.title)) <= 3
+            and author_match_score(citation.authors, best_cand.authors) == 0.0
+        ):
+            return SourceCandidate(
+                source_name=self.name,
+                found=False,
+                error=f"OpenAlex: short title '{citation.title}' matched different author",
             )
 
         best_cand.found = True

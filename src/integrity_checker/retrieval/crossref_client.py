@@ -25,7 +25,12 @@ from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate
 from integrity_checker.retrieval.base import BaseScholarClient
-from integrity_checker.retrieval.normalization import title_similarity
+from integrity_checker.retrieval.normalization import (
+    author_match_score,
+    is_book_review_mismatch,
+    title_similarity,
+    title_tokens,
+)
 
 logger = get_logger(__name__)
 
@@ -131,7 +136,7 @@ class CrossrefClient(BaseScholarClient):
                 error="Crossref: empty bibliographic query (no title/author/year)",
             )
 
-        params = {"query.bibliographic": query, "rows": 3}
+        params = {"query.bibliographic": query, "rows": 5}
         data = await self._fetch_json_with_retry("/works", params=params)
         if not data:
             if self._last_status_code == 429:
@@ -157,13 +162,29 @@ class CrossrefClient(BaseScholarClient):
         best_cand: SourceCandidate | None = None
         best_item: dict | None = None
         best_sim = -1.0
+        best_rank = -1.0
+        cit_year = str(citation.year)[:4] if citation.year else None
         for item in items:
             cand = self._message_to_candidate(item)
+            if is_book_review_mismatch(citation.title, citation.authors, cand.title, cand.authors):
+                continue
             if citation.title and cand.title:
                 sim = title_similarity(citation.title, cand.title)
             else:
                 sim = 1.0
-            if sim > best_sim:
+            auth_sim = (
+                author_match_score(citation.authors, cand.authors)
+                if citation.authors and cand.authors
+                else 0.0
+            )
+            yr_bonus = (
+                0.05
+                if (cit_year and cand.year and str(cand.year)[:4] == cit_year)
+                else 0.0
+            )
+            rank = sim + (0.15 * auth_sim if sim >= MIN_TITLE_SIMILARITY else 0.0) + yr_bonus
+            if rank > best_rank:
+                best_rank = rank
                 best_sim = sim
                 best_cand = cand
                 best_item = item
@@ -185,6 +206,18 @@ class CrossrefClient(BaseScholarClient):
                 source_name=self.name,
                 found=False,
                 error=f"Crossref: no title match ({best_sim:.2f}) for '{query[:60]}'",
+            )
+        if (
+            citation.title
+            and not doi_matched
+            and citation.authors
+            and len(title_tokens(citation.title)) <= 3
+            and author_match_score(citation.authors, best_cand.authors) == 0.0
+        ):
+            return SourceCandidate(
+                source_name=self.name,
+                found=False,
+                error=f"Crossref: short title '{citation.title}' matched different author",
             )
 
         best_cand.found = True

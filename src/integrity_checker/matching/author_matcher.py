@@ -40,8 +40,9 @@ _PURE_PARTICLES = {
 }
 _AMBIGUOUS_PARTICLES = {"le", "la"}
 _PARTICLES = _PURE_PARTICLES | _AMBIGUOUS_PARTICLES
+_GENERATIONAL_SUFFIXES = {"jr", "jr.", "sr", "sr.", "ii", "iii", "iv", "v"}
 
-# Strip punctuation EXCEPT apostrophe (which joins words like O'Brien, D'Angelo)
+# Strip punctuation EXCEPT apostrophe (which joins words like O'Brien, D'Angelo, L’Engle)
 _PUNCT_RE = re.compile(r"[^\w\s']", re.UNICODE)
 # Remove apostrophes only when surrounded by whitespace (lone apostrophes)
 _LONE_APOSTROPHE_RE = re.compile(r"\s'|'s\s|'s$|^'|'$", re.UNICODE)
@@ -131,6 +132,7 @@ def _canonicalize_last_name(name: str, *, fold_diacritics: bool = True) -> str:
     """
     if not name:
         return ""
+    name = name.replace("\u2019", "'").replace("\u2018", "'").replace("`", "'")
     name = _split_camel_author(name)
     has_comma = "," in name
 
@@ -144,6 +146,8 @@ def _canonicalize_last_name(name: str, *, fold_diacritics: bool = True) -> str:
         if not s:
             return ""
         tokens = _strip_leading_particles(s.split())
+        while len(tokens) > 1 and tokens[-1] in _GENERATIONAL_SUFFIXES:
+            tokens.pop()
         if not tokens:
             return ""
         return tokens[-1]
@@ -157,6 +161,8 @@ def _canonicalize_last_name(name: str, *, fold_diacritics: bool = True) -> str:
     alpha_chars = [c for c in raw_folded if c.isalpha()]
     all_caps_name = bool(alpha_chars) and all(c.isupper() for c in alpha_chars)
     raw_tokens = raw_folded.split()
+    while len(raw_tokens) > 1 and raw_tokens[-1].lower().strip(".,;:") in _GENERATIONAL_SUFFIXES:
+        raw_tokens.pop()
 
     # Strip leading particles first
     while raw_tokens:
@@ -260,14 +266,26 @@ def author_match_score(
     # treat as full author match.
     if cited_set <= cand_set:
         return 1.0  # Exact subset match (et al. truncation)
+    if len(cand_set) == 1 and cand_set <= cited_set and cited:
+        first_cited = _author_to_last_name(cited[0], fold_diacritics=fold_diacritics)
+        if first_cited and first_cited in cand_set:
+            return 1.0  # Cited entry also listed editors/introducers alongside primary author
 
     intersect = len(cited_set & cand_set)
-    # Fallback: check prefix match for concatenated/compound tokens (len >= 5)
+    # Fallback: check prefix/suffix/apostrophe match for compound tokens (len >= 5)
     if intersect == 0:
         prefix_matches = sum(
             1
             for ca in cited_set
-            if len(ca) >= 5 and any(len(cb) >= 5 and (ca.startswith(cb) or cb.startswith(ca)) for cb in cand_set)
+            if len(ca) >= 4
+            and any(
+                len(cb) >= 4
+                and (
+                    ca.replace("'", "") == cb.replace("'", "")
+                    or (len(ca) >= 5 and len(cb) >= 5 and (ca.startswith(cb) or cb.startswith(ca) or ca.endswith(cb) or cb.endswith(ca)))
+                )
+                for cb in cand_set
+            )
         )
         if prefix_matches > 0:
             return prefix_matches / len(cited_set)

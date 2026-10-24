@@ -38,7 +38,7 @@ from integrity_checker.extraction.section_segmenter import (
     SectionSegmenter,
     SectionType,
 )
-from integrity_checker.models.citation import Citation
+from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
 logger = logging.getLogger(__name__)
 
@@ -333,6 +333,15 @@ class DocumentParser:
         # 3.3 References (ưu tiên GROBID, fallback regex)
         references = self._extract_references(sections, grobid)
 
+        # 3.3b MLA reference-guided in-text extraction (for MLA documents with page-less
+        # parentheticals like "(Felson)", "(Goodreads)", or narrative "George Athas ... (260)")
+        if references and any(c.style == CitationStyle.MLA for c in body_citations):
+            guided = self._extract_mla_reference_guided_citations(
+                sections, text_doc, body_citations, references
+            )
+            if guided:
+                body_citations.extend(guided)
+
         # 3.4 Appendix citations (chỉ track, không analyse)
         appendix_citations = self._extract_appendix_citations(sections)
 
@@ -385,6 +394,160 @@ class DocumentParser:
                 logger.warning("Body citation extraction failed: %s", exc)
         return citations
 
+    def _extract_mla_reference_guided_citations(
+        self,
+        sections: list[DocumentSection],
+        source_doc: Document,
+        existing_body: list[Citation],
+        references: list[Citation],
+    ) -> list[Citation]:
+        """Extract MLA page-less parentheticals and narrative author citations guided by bibliography."""
+        def _norm_key(s: str) -> str:
+            s = s.replace("\u2019", "'").replace("\u2018", "'").replace("`", "'").lower().strip()
+            s = re.sub(r"\s*&\s*", " and ", s)
+            s = re.sub(r"\s+", " ", s).strip(" .,;:\"'")
+            return s
+
+        key_to_ref_author: dict[str, str] = {}
+        initial_surname_to_ref_author: dict[tuple[str, str], str] = {}
+        narrative_patterns: list[tuple[re.Pattern[str], str, str]] = []
+
+        for ref in references:
+            if not ref.authors:
+                continue
+            first_a = ref.authors[0]
+            first_raw = (
+                getattr(first_a, "raw", None)
+                or getattr(first_a, "last_name", None)
+                or str(first_a)
+            ).strip()
+            if not first_raw:
+                continue
+
+            surname = first_raw.split(",", 1)[0].strip()
+            given = first_raw.split(",", 1)[1].strip() if "," in first_raw else ""
+            norm_surname = _norm_key(surname)
+            if len(norm_surname) >= 3:
+                key_to_ref_author.setdefault(norm_surname, first_raw)
+                if norm_surname == "barnes" and given.lower().startswith("noble"):
+                    key_to_ref_author.setdefault("barnes and noble", first_raw)
+
+            if given and len(norm_surname) >= 3:
+                given_first = given.split()[0].rstrip(".")
+                if len(given_first) >= 1 and given_first[0].isalpha():
+                    initial_surname_to_ref_author.setdefault(
+                        (given_first[0].lower(), norm_surname), first_raw
+                    )
+                if len(given_first) >= 2:
+                    full_norm = _norm_key(f"{given_first} {surname}")
+                    key_to_ref_author.setdefault(full_norm, first_raw)
+                    # Also handle inverted corporate name like "Goblin, Bookish" -> "bookish goblin"
+                    inv_norm = _norm_key(f"{given} {surname}")
+                    key_to_ref_author.setdefault(inv_norm, first_raw)
+                    key_to_ref_author.setdefault(f"the {inv_norm}", first_raw)
+                    pat = re.compile(
+                        rf"\b{re.escape(given_first)}\s+(?:[A-Z]\.\s+)?{re.escape(surname).replace(chr(39), r'[' + chr(39) + chr(8217) + r']')}\b",
+                        re.IGNORECASE,
+                    )
+                    narrative_patterns.append((pat, norm_surname, first_raw))
+
+            if len(ref.authors) >= 2:
+                sec_a = ref.authors[1]
+                sec_raw = (
+                    getattr(sec_a, "raw", None)
+                    or getattr(sec_a, "last_name", None)
+                    or str(sec_a)
+                ).strip()
+                sec_surname = _norm_key(sec_raw.split(",", 1)[0].strip())
+                if len(sec_surname) >= 4:
+                    key_to_ref_author.setdefault(sec_surname, first_raw)
+
+            if ref.venue:
+                v_norm = _norm_key(ref.venue.split(".")[0])
+                if 4 <= len(v_norm) <= 45:
+                    key_to_ref_author.setdefault(v_norm, first_raw)
+                    key_to_ref_author.setdefault(v_norm.removeprefix("the "), first_raw)
+
+            if ref.title and "penguin random house" in ref.title.lower():
+                key_to_ref_author.setdefault("prh editors", first_raw)
+                key_to_ref_author.setdefault("penguin random house", first_raw)
+
+        by_page = {p.page_num: p for p in source_doc.pages}
+        existing_by_page: dict[int, set[str]] = {}
+        matched_ref_authors: set[str] = set()
+        for c in existing_body:
+            existing_by_page.setdefault(c.page_num or 0, set()).add((c.raw_text or "").strip())
+
+        added: list[Citation] = []
+        body_page_nums: list[int] = []
+        for section in sections:
+            if section.section_type != SectionType.BODY:
+                continue
+            for n in sorted(by_page):
+                if section.start_page <= n <= section.end_page and by_page[n].text:
+                    if n not in body_page_nums:
+                        body_page_nums.append(n)
+
+        for p_num in body_page_nums:
+            p_text = re.sub(r"\s+", " ", by_page[p_num].text)
+            page_existing = existing_by_page.get(p_num, set())
+            for m in re.finditer(r"\(([^()]{2,260})\)", p_text):
+                full_paren = m.group(0).strip()
+                if full_paren in page_existing:
+                    continue
+                inside = m.group(1).strip()
+                parts = [pt.strip() for pt in inside.split(";") if pt.strip()]
+                for pt in parts:
+                    pt_key = _norm_key(pt)
+                    ref_auth = key_to_ref_author.get(pt_key) or key_to_ref_author.get(
+                        pt_key.removeprefix("the ")
+                    )
+                    if not ref_auth:
+                        pt_words = pt_key.split()
+                        if len(pt_words) == 2 and pt_words[0]:
+                            ref_auth = initial_surname_to_ref_author.get(
+                                (pt_words[0][0], pt_words[1])
+                            )
+                    if ref_auth:
+                        raw_cit = f"({pt})"
+                        if raw_cit not in page_existing:
+                            added.append(
+                                Citation(
+                                    raw_text=raw_cit,
+                                    citation_type=CitationType.IN_TEXT,
+                                    style=CitationStyle.MLA,
+                                    page_num=p_num,
+                                    authors=[ref_auth],
+                                    matched_pattern="mla_ref_guided",
+                                    confidence=0.85,
+                                )
+                            )
+                            page_existing.add(raw_cit)
+                            matched_ref_authors.add(_norm_key(ref_auth.split(",", 1)[0]))
+
+        # Also check narrative "FirstName [M.] LastName" mentions for bibliography authors not yet matched
+        for pat, norm_sn, ref_auth in narrative_patterns:
+            if norm_sn in matched_ref_authors:
+                continue
+            for p_num in body_page_nums:
+                if pat.search(by_page[p_num].text):
+                    raw_cit = f"({ref_auth.split(',', 1)[0].strip()})"
+                    added.append(
+                        Citation(
+                            raw_text=raw_cit,
+                            citation_type=CitationType.IN_TEXT,
+                            style=CitationStyle.MLA,
+                            page_num=p_num,
+                            authors=[ref_auth],
+                            matched_pattern="mla_ref_guided",
+                            confidence=0.85,
+                        )
+                    )
+                    matched_ref_authors.add(norm_sn)
+                    break
+
+        return added
+
     def _extract_references(
         self,
         sections: list[DocumentSection],
@@ -408,7 +571,10 @@ class DocumentParser:
             raw_grobid_refs = self._grobid_to_citations(grobid)
             for ref in raw_grobid_refs:
                 if _is_fake_entry(ref.raw_text) or (
-                    ref.year is None and not ref.doi and _is_fake_entry(ref.title or "")
+                    ref.year is None
+                    and not ref.doi
+                    and not (ref.authors and ref.title)
+                    and _is_fake_entry(ref.title or "")
                 ):
                     logger.debug(
                         f"Filtered fake GROBID entry before indexing: {ref.raw_text[:50]}..."
@@ -523,9 +689,12 @@ class DocumentParser:
                 target.authors = [
                     getattr(a, "raw", None) or str(a) for a in donor.authors
                 ]
-            if not target.doi and donor.doi:
+            donor_is_multi_chunk = len(donor.raw_text or "") > max(
+                len(target.raw_text or "") * 2.2, 320
+            )
+            if not target.doi and donor.doi and not donor_is_multi_chunk:
                 target.doi = donor.doi
-            if not target.url and donor.url:
+            if not target.url and donor.url and not donor_is_multi_chunk:
                 target.url = donor.url
             if not target.venue and donor.venue:
                 target.venue = donor.venue

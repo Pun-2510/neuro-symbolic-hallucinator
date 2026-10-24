@@ -164,7 +164,9 @@ def _grobid_bib_to_citation(bib: GrobidBibEntry, order_index: int) -> Citation:
         raw_parts.append(bib.venue)
     if bib.doi:
         raw_parts.append(f"DOI: {bib.doi}")
-    raw_text = " ".join(raw_parts) if raw_parts else title or ""
+    if getattr(bib, "url", None):
+        raw_parts.append(bib.url)
+    raw_text = " ".join(raw_parts) if raw_parts else title or getattr(bib, "raw_reference", "") or ""
 
     # Estimate confidence based on field completeness
     confidence = _estimate_bib_confidence(bib, authors_raw, title, year, bib.doi)
@@ -181,6 +183,7 @@ def _grobid_bib_to_citation(bib: GrobidBibEntry, order_index: int) -> Citation:
         title=title,
         venue=bib.venue,
         doi=bib.doi,
+        url=getattr(bib, "url", None),
         order_index=order_index,
         numeric_index=order_index,  # GROBID bib order = numeric reference index
         year_suffix=year_suffix,
@@ -525,13 +528,22 @@ def _merge_intext_citations(
     return merged, conflicts, provenance
 
 
+def _normalize_url_for_dedup(url: Optional[str]) -> str:
+    if not url:
+        return ""
+    u = url.strip().lower().rstrip("/.,;)")
+    u = re.sub(r"^https?://", "", u)
+    u = re.sub(r"^www\.", "", u)
+    return u
+
+
 def _is_duplicate_reference(cit: Citation, existing: list[Citation]) -> bool:
     """Check if citation is a duplicate of an existing entry.
 
     Deduplication priority:
         1. DOI exact match
-        2. Title + Author + Year match (fuzzy)
-        3. Raw text similarity
+        2. URL exact match
+        3. Title + Author + Year match (fuzzy)
     """
     # DOI exact match
     if cit.doi:
@@ -539,11 +551,19 @@ def _is_duplicate_reference(cit: Citation, existing: list[Citation]) -> bool:
             if existing_cit.doi and existing_cit.doi.lower() == cit.doi.lower():
                 return True
 
-    # Title + Author + Year fuzzy match (also handles cases where one source
-    # missed authors on corporate/book entries but title + year match strongly)
-    if cit.title and cit.year:
+    # URL exact match
+    cit_url = _normalize_url_for_dedup(getattr(cit, "url", None))
+    if cit_url:
         for existing_cit in existing:
-            if existing_cit.title and existing_cit.year:
+            ex_url = _normalize_url_for_dedup(getattr(existing_cit, "url", None))
+            if ex_url and (cit_url == ex_url or cit_url in ex_url or ex_url in cit_url):
+                return True
+
+    # Title + Author + Year fuzzy match (also handles cases where one source
+    # missed authors or year on corporate/book/web entries)
+    if cit.title:
+        for existing_cit in existing:
+            if existing_cit.title:
                 if _title_author_year_match(cit, existing_cit):
                     return True
 
@@ -552,9 +572,11 @@ def _is_duplicate_reference(cit: Citation, existing: list[Citation]) -> bool:
 
 def _title_author_year_match(a: Citation, b: Citation) -> bool:
     """Check if two citations match on title + author + year."""
-    # Year must match exactly
-    if a.year != b.year:
-        return False
+    # Year must match when both have a year, unless one side picked up an "Accessed YYYY" year
+    if a.year and b.year and a.year != b.year:
+        raw_comb = f"{a.raw_text or ''} {b.raw_text or ''}".lower()
+        if "accessed" not in raw_comb:
+            return False
 
     # Author must have significant overlap when both citations have authors
     def _get_author_names(cit) -> set:

@@ -153,12 +153,16 @@ _LEADING_SUBHEADER_RE = re.compile(
 
 _UPPER_VN_R = r"[A-ZÀ-ÝĂÂĐÊÔƠƯĨŨẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ]"
 _PERSONAL_AUTHOR_HEAD_R = (
-    rf"(?:(?:van|de|der|den|von|le|la|du|di|da)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\-]+,\s*"
+    rf"(?:(?:van|de|der|den|von|le|la|du|di|da)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s*"
     rf"(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+"
-    rf"(?:,\s*(?:&\s*|và\s*|and\s*)?(?:(?:van|de|der|den|von)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\-]+,\s*(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+)*"
-    rf"(?:\s+(?:&|và|and)\s+(?:(?:van|de|der|den|von)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\-]+,\s*(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+)*"
+    rf"(?:,\s*(?:&\s*|và\s*|and\s*)?(?:(?:van|de|der|den|von)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s*(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+)*"
+    rf"(?:\s+(?:&|và|and)\s+(?:(?:van|de|der|den|von)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s*(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+)*"
     r"(?:\s*,?\s*(?:et\s+al\.?|và\s+cộng\s+sự|và\s+cs\.?))?"
-    r"\s*\(\s*(?:(?:19|20)\d{2}[a-z]?|n\.?\s*d\.?)\s*\)"
+    r"\s*\(\s*(?:(?:19|20)\d{2}[a-z]?(?:,\s*[A-Za-z]+\.?(?:\s+\d{1,2})?)?|n\.?\s*d\.?)\s*\)"
+)
+_DATED_WEB_AUTHOR_HEAD_R = (
+    rf"{_UPPER_VN_R}[A-Za-zÀ-ỹ0-9.'\u2019\-]+(?:\s+{_UPPER_VN_R}?[A-Za-zÀ-ỹ0-9.'\u2019\-]+){{0,3}}\.?\s*"
+    r"\(\s*(?:19|20)\d{2}[a-z]?,\s*[A-Za-z]+\.?(?:\s+\d{1,2})?\s*\)\."
 )
 _CORP_AUTHOR_HEAD_R = (
     r"(?:(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Chính\s+phủ|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội"
@@ -170,13 +174,24 @@ _LEGAL_HEAD_R = (
     r"|(?:Bộ\s+luật|Luật|Pháp\s+lệnh)\s+[^().\n]{2,80}?(?:\((?:Bộ\s+luật|Luật|Pháp\s+lệnh)?\s*số|\bsố\s+\d|\bngày\s+\d)"
     r"|(?:Nghị\s+định|Thông\s+tư(?:\s+liên\s+tịch)?|Quyết\s+định|Nghị\s+quyết(?:\s+liên\s+tịch)?|Chỉ\s+thị)\s+(?:số\s+)?\d+/\d{4}/)"
 )
+_MLA_BOOK_AUTHOR_HEAD_R = (
+    rf"{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s+{_UPPER_VN_R}[A-Za-zÀ-ỹ.\s'\u2019\-]{{1,35}}?(?:,\s*et\s+al\.|\.)\s+(?=[A-Z0-9\"\u201c])"
+)
 _INLINE_ENTRY_START_RE = re.compile(
-    rf"(?:{_PERSONAL_AUTHOR_HEAD_R}|{_CORP_AUTHOR_HEAD_R}|{_LEGAL_HEAD_R})"
+    rf"(?:{_PERSONAL_AUTHOR_HEAD_R}|{_DATED_WEB_AUTHOR_HEAD_R}|{_CORP_AUTHOR_HEAD_R}|{_LEGAL_HEAD_R})"
+)
+_MLA_INLINE_SPLIT_RE = re.compile(
+    rf"(?<=\b(?:19|20)\d{{2}}\.)\s+(?={_MLA_BOOK_AUTHOR_HEAD_R})"
 )
 
-# URL/DOI terminator — most web-style APA entries end with one of these, which
-# makes them a reliable boundary between consecutive reference entries.
-_URL_BOUNDARY_RE = re.compile(r"(?:https?://|www\.|doi\.org/)\S+", re.IGNORECASE)
+# URL/DOI terminator — most web-style APA/MLA entries end with one of these
+# (optionally followed by MLA "Accessed DD Mon. YYYY."), which makes them a
+# reliable boundary between consecutive reference entries.
+_URL_BOUNDARY_RE = re.compile(
+    r"(?:(?:https?://|www\.|doi\.org/)\S+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|org|edu|gov|net)/\S+)"
+    r"(?:\s+Accessed\s+\d{1,2}\s+[A-Za-z.]+\s+(?:19|20)\d{2}\.?)?",
+    re.IGNORECASE,
+)
 
 
 def _is_essay_title_entry(entry: str) -> bool:
@@ -256,8 +271,13 @@ def _is_fake_entry(entry: str) -> bool:
     if is_vn_legal_reference(text_stripped):
         return False
 
-    # Skip very short entries
+    # Skip very short entries unless they have explicit Author (Year) Title structure
     if len(text_stripped) < 30:
+        if len(text_stripped) >= 20 and re.search(
+            r"^[A-ZÀ-Ý][A-Za-zÀ-ỹ'\u2019\-]+,\s+[A-Z].*\(\s*(?:19|20)\d{2}[a-z]?\s*\)\s+\S+",
+            text_stripped,
+        ):
+            return False
         return True
 
     # FIX v1.11: Remove [N] prefix for pattern matching
@@ -520,14 +540,19 @@ class ReferenceListParser:
             ):
                 valid_starts.append(pos)
 
-        if len(valid_starts) < 2:
+        if not valid_starts or (len(valid_starts) == 1 and valid_starts[0] == 0):
+            mla_parts = [p.strip() for p in _MLA_INLINE_SPLIT_RE.split(cleaned_chunk) if len(p.strip()) > 20]
+            if len(mla_parts) >= 2:
+                return mla_parts
             return [cleaned_chunk] if (len(cleaned_chunk) > 20 or is_vn_legal_reference(cleaned_chunk)) else []
 
         sub_entries: list[str] = []
         if valid_starts[0] > 0:
             leading = self._clean_subheader_prefix(cleaned_chunk[:valid_starts[0]])
             if len(leading) > 20 or is_vn_legal_reference(leading):
-                sub_entries.append(leading)
+                for mp in _MLA_INLINE_SPLIT_RE.split(leading):
+                    if len(mp.strip()) > 20:
+                        sub_entries.append(mp.strip())
 
         for idx, start_pos in enumerate(valid_starts):
             end_pos = valid_starts[idx + 1] if idx + 1 < len(valid_starts) else len(cleaned_chunk)
@@ -541,7 +566,9 @@ class ReferenceListParser:
                 flags=re.IGNORECASE,
             ).strip()
             if len(piece) > 20 or is_vn_legal_reference(piece):
-                sub_entries.append(piece)
+                for mp in _MLA_INLINE_SPLIT_RE.split(piece):
+                    if len(mp.strip()) > 20 or is_vn_legal_reference(mp.strip()):
+                        sub_entries.append(mp.strip())
 
         return sub_entries
 
@@ -560,6 +587,12 @@ class ReferenceListParser:
         # Step 1+2: Rejoin hyphen-broken wraps, flatten to a single line, repair broken URLs.
         flat = re.sub(r"-\s*\n\s*", "-", text)
         flat = re.sub(r"\s+", " ", flat).strip()
+        flat = re.sub(r"%\s+([0-9A-Fa-f]{2})", r"%\1", flat)
+        flat = re.sub(
+            r"(%[0-9A-Fa-f]{2}[0-9A-Za-z_%~:-]*)\s+(%[0-9A-Fa-f]{2})",
+            r"\1\2",
+            flat,
+        )
         flat = re.sub(r"(https?://[^\s/]+(?:/[^\s/]+)*/)\s+([A-Za-z0-9_\-]+)", r"\1\2", flat)
 
         # Step 3: Split at every URL/DOI terminator.
@@ -721,6 +754,30 @@ class ReferenceListParser:
             if numeric_index and legal_citation.numeric_index is None:
                 legal_citation.numeric_index = numeric_index
             return legal_citation
+
+        # Scriptural / Bible edition entry (e.g. "The Bible. ESV ed., Crossway, 2022.")
+        bible_m = re.match(
+            r"^The\s+Bible\.\s*(?:([A-Z]{2,6})\s+ed\.,\s*)?([^,]+),\s*((?:19|20)\d{2})\.?$",
+            entry.strip(),
+            re.IGNORECASE,
+        )
+        if bible_m:
+            ed_code = (bible_m.group(1) or "Bible").upper()
+            pub = bible_m.group(2).strip()
+            yr = bible_m.group(3)
+            return Citation(
+                raw_text=entry.strip(),
+                citation_type=CitationType.REFERENCE_LIST,
+                style=CitationStyle.MLA,
+                page_num=page_num,
+                order_index=order_index,
+                matched_pattern="mla_bible_edition",
+                authors=[ed_code],
+                title=f"The Bible ({ed_code} ed.)" if bible_m.group(1) else "The Bible",
+                year=yr,
+                venue=pub,
+                confidence=0.9,
+            )
 
         # Unquoted book/chapter entry: ``Surname, Initials, Title (Year) venue``.
         # Must run BEFORE the format registry — ``nature_book`` claims these

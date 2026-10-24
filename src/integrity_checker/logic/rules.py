@@ -731,7 +731,7 @@ class SymbolicRules:
                 confidence=0.5,
                 reasoning=(
                     "No matching candidates found across queried scholarly databases "
-                    "(Crossref/OpenAlex/Semantic Scholar/CORE) — insufficient evidence to conclude."
+                    "(Crossref/OpenAlex/DBLP/arXiv/OpenLibrary/Europe PMC) — insufficient evidence to conclude."
                 ),
                 triggered_rules=["R-NO-CANDIDATE"],
                 mismatched_fields=[],
@@ -948,6 +948,29 @@ class SymbolicRules:
                 style_penalty=style_penalty,
             )
 
+        # --- Rule 3b2: Book monograph verified via OpenLibrary across reprint/edition years → VERIFIED ---
+        if (
+            consensus >= 1
+            and "openlibrary" in source.sources_succeeded
+            and not citation_doi
+            and not best.doi
+            and features.title_sim_fuzzy >= 0.95
+            and author_sim >= 0.90
+            and 1 < year_dist <= 15
+        ):
+            triggered_rules.append("R-BOOK-EDITION-VERIFIED")
+            return RuleOutcome(
+                label=ValidationLabel.VERIFIED,
+                confidence=max(0.0, 0.78 - style_penalty - provenance_penalty),
+                reasoning=(
+                    f"Verified book monograph via OpenLibrary: exact title ({features.title_sim_fuzzy:.2f}) "
+                    f"and author ({author_sim:.2f}) match; edition/reprint year variation tolerated.{provenance_note}"
+                ),
+                triggered_rules=triggered_rules,
+                mismatched_fields=[],
+                style_penalty=style_penalty,
+            )
+
         # --- Rule 3c: 1 live source with title + author match but year mismatch → METADATA_ERROR ---
         if (
             consensus >= 1
@@ -1091,6 +1114,11 @@ class SymbolicRules:
             consensus >= 1
             and _has_live_source(source, verified_sources)
             and not has_doi_conflict
+            and (
+                author_sim > 0.0
+                or doi_match
+                or (consensus >= 2 and title_sim >= 0.90 and year_dist <= 1)
+            )
             and (
                 (title_sim >= self.title_sim_verified and (author_sim < self.author_jaccard_verified or year_dist > self.year_tolerance))
                 or (self.title_sim_metadata_error <= title_sim < self.title_sim_verified and (author_sim >= 0.30 or year_dist <= 2))

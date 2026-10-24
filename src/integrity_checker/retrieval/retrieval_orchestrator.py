@@ -562,6 +562,11 @@ _BOOK_SIGNAL_RE = re.compile(
     r"|o['’]reilly|addison-wesley|prentice\s+hall|pearson|wiley|mcgraw-hill|manning\s+publications|apress|packt|no\s+starch"
     r"|cambridge\s+university\s+press|oxford\s+university\s+press|mit\s+press|harvard\s+university\s+press|princeton\s+university\s+press"
     r"|academic\s+press|crc\s+press|morgan\s+kaufmann|definitive\s+guide|textbook|nhà\s+xuất\s+bản|nxb"
+    r"|zondervan|baker\s+academic|baker\s+publishing|crossway|brazos\s+press|harperone|harper\s*collins"
+    r"|intervarsity\s+press|ivp\s+books|waterbrook(?:\s+press)?|convergent\s+books|b&h\s+publishing"
+    r"|holman\s+bible\s+publishers|farrar,\s*straus\s+and\s+giroux|penguin\s+random\s+house"
+    r"|routledge|sage\s+publications|bloomsbury|eerdmans|palgrave\s+macmillan|de\s+gruyter|brill"
+    r"|ebookcentral\.proquest\.com|edited\s+by"
     r")\b",
     re.IGNORECASE,
 )
@@ -629,6 +634,24 @@ _WEB_RESOURCE_PATTERNS = [
     ),
     re.compile(
         r"(\[Computer\s+software\]|\bGitHub\.\s*Retrieved\b)",
+        re.IGNORECASE,
+    ),
+    # Classical / scriptural / public-domain / dictionary reference works
+    re.compile(
+        r"\b(The\s+Bible|ESV\s+ed\.|Project\s+Gutenberg|gutenberg\.org|"
+        r"Dictionary\.com|Merriam-Webster|Encyclop(?:ae|e)dia\s+Britannica)\b",
+        re.IGNORECASE,
+    ),
+    # Non-scholarly consumer / book-review / blog / magazine / media web domains & paths
+    re.compile(
+        r"(?:goodreads\.com|barnesandnoble\.com|blogspot\.com|wordpress\.com|substack\.com|"
+        r"pbs\.org|popsugar\.com|publishersweekly\.com|eviemagazine\.com|swooon\.com|"
+        r"fightthenewdrug\.org|publicsquaremag\.org|wheatley\.byu\.edu|"
+        r"clarendonhousebooks\.com|shamelessbookdeals\.com|sexandpsychology\.com|"
+        r"libbylife\.com|beforewegoblog\.com|thebooknookchronicles\.com|"
+        r"peanutblossombookclub\.com|prettylittlememoirs\.com|beachreadsandbubbly\.com|"
+        r"bookishgoblin\.com|estapinto\.com|amysuto\.com|penguinrandomhouse\.com/the-read-down|"
+        r"/book-blog/|/book-review|spicy-chapters|#BookTok)",
         re.IGNORECASE,
     ),
 ]
@@ -775,7 +798,7 @@ class RetrievalOrchestrator:
         if re.match(r"^(?:https?://|www\.)(\S{10,})$", url_candidate, re.IGNORECASE):
             return True
         for pattern in _WEB_RESOURCE_PATTERNS:
-            if pattern.search(raw_text):
+            if pattern.search(raw_text) or (citation.url and pattern.search(citation.url)) or (citation.venue and pattern.search(citation.venue)):
                 return True
         if citation.matched_pattern == "vn_legal_document":
             return True
@@ -950,9 +973,21 @@ class RetrievalOrchestrator:
                 if abs(int(str(cand.year)[:4]) - cit_year_int) > 1:
                     continue
 
-            strong_sources.add(cand.source_name)
-            if cit_doi and cand.doi and normalize_doi(cand.doi) == cit_doi:
+            is_exact_doi = bool(
+                cit_doi and cand.doi and normalize_doi(cand.doi) == cit_doi
+            )
+            if is_exact_doi:
                 exact_id_matched = True
+
+            # Require author overlap when citation has authors and not an exact DOI match
+            # (prevents book reviews with the same title/year by a different author from stopping Tier 2)
+            if citation.authors and not is_exact_doi:
+                from integrity_checker.retrieval.normalization import author_match_score
+
+                if not cand.authors or author_match_score(citation.authors, cand.authors) < 0.50:
+                    continue
+
+            strong_sources.add(cand.source_name)
 
         # Sufficient if >= 2 independent sources strongly agree, or exact DOI/arXiv match with >= 2 found
         if len(strong_sources) >= 2:
@@ -1639,9 +1674,27 @@ class RetrievalOrchestrator:
                 logger.debug(f"Filtering out candidate with title='{cand.title}' (likely just a year)")
                 continue
 
-            # Check 2: Title is not too short
+            from integrity_checker.retrieval.normalization import (
+                author_match_score,
+                is_book_review_mismatch,
+            )
+
+            # Check 2: Title is not too short (unless citation itself has a matching short title like 'Galatians' or 'Proverbs')
             if cand.title and len(cand.title.strip()) < min_title_length:
-                logger.debug(f"Filtering out candidate with short title='{cand.title}'")
+                cit_title_clean = (citation.title or "").strip()
+                is_matching_short_title = (
+                    bool(cit_title_clean)
+                    and len(cit_title_clean) < min_title_length
+                    and title_similarity(cit_title_clean, cand.title) >= 0.85
+                    and (not citation.authors or author_match_score(citation.authors, cand.authors) > 0.0)
+                )
+                if not is_matching_short_title:
+                    logger.debug(f"Filtering out candidate with short title='{cand.title}'")
+                    continue
+
+            # Check 2b: Filter out book reviews when citation is citing the book itself
+            if is_book_review_mismatch(citation.title, citation.authors, cand.title, cand.authors):
+                logger.debug(f"Filtering out book review candidate='{cand.title}' for book citation")
                 continue
 
             # Check 3: Has at least one author
@@ -1945,8 +1998,29 @@ class RetrievalOrchestrator:
 
             if canonical_key in bucket:
                 existing = bucket[canonical_key]
-                # Merge complementary fields
-                primary, secondary = (c, existing) if c.confidence > existing.confidence else (existing, c)
+                # Merge complementary fields, preferring the candidate whose authors match the cited work
+                from integrity_checker.retrieval.normalization import author_match_score
+
+                c_auth = (
+                    author_match_score(citation.authors, c.authors)
+                    if (citation and citation.authors and c.authors)
+                    else 0.0
+                )
+                ex_auth = (
+                    author_match_score(citation.authors, existing.authors)
+                    if (citation and citation.authors and existing.authors)
+                    else 0.0
+                )
+                if c_auth >= 0.5 and ex_auth < 0.5:
+                    primary, secondary = c, existing
+                elif ex_auth >= 0.5 and c_auth < 0.5:
+                    primary, secondary = existing, c
+                else:
+                    primary, secondary = (
+                        (c, existing)
+                        if c.confidence > existing.confidence
+                        else (existing, c)
+                    )
                 if not primary.abstract and secondary.abstract:
                     primary.abstract = secondary.abstract
                 if not primary.doi and secondary.doi:

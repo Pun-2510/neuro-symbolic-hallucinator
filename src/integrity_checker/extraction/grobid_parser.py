@@ -78,6 +78,8 @@ class GrobidBibEntry:
         year: year (4 chars).
         venue: journal/venue (từ <title level="j">).
         doi: DOI.
+        url: URL nếu có.
+        raw_reference: raw text từ <note type="raw_reference">.
         raw_xml: lưu xml string để debug / re-parse.
     """
 
@@ -87,6 +89,8 @@ class GrobidBibEntry:
     year: Optional[str] = None
     venue: Optional[str] = None
     doi: Optional[str] = None
+    url: Optional[str] = None
+    raw_reference: str = ""
     raw_xml: str = ""
 
 
@@ -365,6 +369,201 @@ def _extract_citations(root: ET.Element) -> list[GrobidCitation]:
     return citations
 
 
+_CONTINUATION_START_RE = re.compile(
+    r"^(?:"
+    r"EBSCOhost|JSTOR|ProQuest|PubMed|ScienceDirect|ResearchGate|"
+    r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z.]*\s+(?:19|20)\d{2}\b|"
+    r"(?:vol\.|no\.|pp?\.)\s*\d+|"
+    r"https?://doi\.org/|doi:\s*10\."
+    r")",
+    re.IGNORECASE,
+)
+
+_BOOK_PUBLISHER_SUFFIX_RE = re.compile(
+    r"(?:"
+    r",\s*edited\s+by\s+[^,]+,\s*(?P<ed_pub>[A-Z][A-Za-z&\s]+)$|"
+    r"\.\s+(?P<pub>"
+    r"Zondervan(?:\s+Academic)?|Baker\s+Academic|Baker\s+Publishing(?:\s+Group)?|"
+    r"Crossway|Brazos\s+Press|HarperOne(?:\s*,\s*an\s+imprint\s+of\s+Harper(?:\s*Collins)?)?|"
+    r"Harper\s*Collins(?:\s+Publishers)?|InterVarsity\s+Press|IVP(?:\s+Academic|\s+Books)?|"
+    r"Waterbrook(?:\s+Press)?|Convergent(?:\s+Books)?|B&H(?:\s+Publishing(?:\s+Group)?|\s+Academic)?|"
+    r"Holman\s+Bible\s+Publishers|Farrar,\s*Straus\s+and\s+Giroux|Penguin(?:\s+Random\s+House)?|"
+    r"Cambridge\s+University\s+Press|Oxford\s+University\s+Press|Routledge|Sage|Bloomsbury|"
+    r"Eerdmans|Westminster\s+John\s+Knox(?:\s+Press)?|Thomas\s+Nelson|Moody\s+Publishers|"
+    r"Project\s+Gutenberg"
+    r")(?:\s*,\s*an\s+imprint\s+of\s+[^.]+)?$"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _normalize_raw_ref_text(raw_ref_text: str) -> str:
+    """Repair line-wrapped URLs and percent-encoded fragments in raw reference text."""
+    if not raw_ref_text:
+        return ""
+    text = re.sub(r"\s+", " ", raw_ref_text).strip()
+    # Join broken percent-encoding across line wraps: "% 20" or "%F0... %9F..."
+    text = re.sub(r"%\s+([0-9A-Fa-f]{2})", r"%\1", text)
+    text = re.sub(r"(%[0-9A-Fa-f]{2}[0-9A-Za-z_%~:-]*)\s+(%[0-9A-Fa-f]{2})", r"\1\2", text)
+    # Join URL paths broken after '/' or '-' before a lowercase slug/path
+    text = re.sub(
+        r"((?:https?://|www\.)[^\s]+[/\-])\s+([a-z0-9_~%#][^\s]*)",
+        r"\1\2",
+        text,
+    )
+    return text
+
+
+def _extract_url_and_doi_from_raw(
+    raw_ref_text: str, bibl=None
+) -> tuple[Optional[str], Optional[str]]:
+    """Extract clean URL and DOI from TEI element or raw_reference text."""
+    doi: Optional[str] = None
+    url: Optional[str] = None
+
+    if bibl is not None:
+        doi_el = bibl.find(f".//{_TEI}idno[@type='DOI']")
+        if doi_el is not None and doi_el.text:
+            doi = doi_el.text.strip().rstrip(".,;")
+        for ptr_el in bibl.findall(f".//{_TEI}ptr"):
+            target = (ptr_el.get("target") or "").strip()
+            if target and not target.startswith("#"):
+                if "doi.org/" in target.lower():
+                    m_doi = re.search(r"10\.\d{4,9}/[^\s\"<>]+", target)
+                    if m_doi and not doi:
+                        doi = m_doi.group(0).rstrip(".,;")
+                else:
+                    url = target.rstrip(".,;")
+
+    if raw_ref_text:
+        if not doi:
+            m_doi = re.search(r"\b(10\.\d{4,9}/[^\s\"<>]+)", raw_ref_text)
+            if m_doi:
+                doi = m_doi.group(1).rstrip(".,;)")
+
+        if not url:
+            # Explicit http(s):// or www. URL
+            for m_url in re.finditer(r"(?:https?://|www\.)[^\s\"<>]+", raw_ref_text):
+                cand = m_url.group(0).rstrip(".,;)")
+                if "doi.org/" in cand.lower():
+                    continue
+                if cand.lower().startswith("www."):
+                    cand = "https://" + cand
+                url = cand
+                break
+
+        if not url:
+            # Bare domain with path (common in MLA 9th ed.: e.g. fightthenewdrug.org/...)
+            m_bare = re.search(
+                r"\b((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
+                r"(?:com|org|edu|gov|net|io|co\.uk|ac\.uk)/[^\s\"<>]+)",
+                raw_ref_text,
+                re.IGNORECASE,
+            )
+            if m_bare:
+                cand = m_bare.group(1).rstrip(".,;)")
+                if "doi.org/" not in cand.lower():
+                    url = "https://" + cand
+
+    if url:
+        # Strip any accidental trailing quote or punctuation
+        url = url.rstrip(".,;)'\"\u2019\u201d")
+        if not url.lower().startswith(("http://", "https://")):
+            url = "https://" + url
+
+    return url, doi
+
+
+def _split_merged_raw_reference(raw_ref_text: str) -> list[str]:
+    """Split a GROBID raw_reference when it accidentally glues 2 MLA entries."""
+    if not raw_ref_text:
+        return []
+    text = _normalize_raw_ref_text(raw_ref_text)
+
+    # Case 1: Entry 1 ends with "Accessed DD Mon. YYYY." followed by optional author + quoted title
+    m1 = re.match(
+        r"^(.+?\bAccessed\s+\d{1,2}\s+[A-Za-z.]+\s+(?:19|20)\d{2}\.)\s+((?:[A-Z][A-Za-z0-9.\s'\u2019-]{1,40}\.\s+)?[\"\u201c][A-Z].+)$",
+        text,
+    )
+    if m1:
+        return [m1.group(1).strip(), m1.group(2).strip()]
+
+    # Case 2: Book entry ending with "YYYY." or URL followed by a quoted web entry with URL
+    m2 = re.match(
+        r"^(.+?(?:\b(?:19|20)\d{2}\.|https?://\S+\.))\s+((?:[A-Z][A-Za-z0-9.\s'\u2019-]{1,40}\.\s+)?[\"\u201c][^\"\u201d]+[\"\u201d]\s+[A-Z].*(?:https?://|www\.|\b[a-z0-9-]+\.(?:com|org|edu|gov|net)/).*)$",
+        text,
+    )
+    if m2:
+        return [m2.group(1).strip(), m2.group(2).strip()]
+
+    return [text]
+
+
+def _parse_raw_bib_segment(raw_seg: str, entry_id: str) -> GrobidBibEntry:
+    """Parse a single raw bibliography segment that was split from a multi-entry biblStruct."""
+    seg = _normalize_raw_ref_text(raw_seg)
+    url, doi = _extract_url_and_doi_from_raw(seg)
+
+    authors: list[GrobidAuthor] = []
+    title: Optional[str] = None
+    venue: Optional[str] = None
+    year: Optional[str] = None
+
+    # Extract year (prefer non-Accessed year if present, else Accessed year)
+    non_accessed = re.sub(
+        r"\bAccessed\s+\d{1,2}\s+[A-Za-z.]+\s+(?:19|20)\d{2}\.?",
+        "",
+        seg,
+        flags=re.IGNORECASE,
+    )
+    years = re.findall(r"\b((?:19|20)\d{2})\b", non_accessed)
+    if years:
+        year = years[0]
+    else:
+        acc_years = re.findall(r"\b((?:19|20)\d{2})\b", seg)
+        if acc_years:
+            year = acc_years[-1]
+
+    # Check if starts with optional Site/Author + quoted title: [Goodreads.] "Title." Site, URL
+    q_m = re.match(
+        r"^(?:([A-Z][A-Za-z0-9.\s'\u2019-]{1,40})\.\s+)?[\"\u201c]([^\"\u201d]{2,200}?)[\"\u201d]\s*([A-Za-z0-9][^,]+)?",
+        seg,
+    )
+    if q_m:
+        lead_author = (q_m.group(1) or "").strip().rstrip(".")
+        title = q_m.group(2).strip().rstrip(".,")
+        if q_m.group(3):
+            venue = q_m.group(3).strip().rstrip(".")
+        auth_label = lead_author or venue
+        if auth_label:
+            authors.append(GrobidAuthor(full_name=auth_label, first_name=None, last_name=auth_label))
+    else:
+        # MLA Author: "Surname, Firstname. Title. [Edited by ..., Publisher,] Year"
+        mla_m = re.match(
+            r"^([A-Z][A-Za-z'\u2019-]+),\s*([A-Z][A-Za-z.\s-]*?\.)\s+([^.]+)\.",
+            seg,
+        )
+        if mla_m:
+            sn = mla_m.group(1).strip()
+            fn = mla_m.group(2).strip().rstrip(".")
+            authors.append(
+                GrobidAuthor(full_name=f"{sn}, {fn}", first_name=fn, last_name=sn)
+            )
+            title = mla_m.group(3).strip().rstrip(".")
+
+    return GrobidBibEntry(
+        id=entry_id,
+        authors=authors,
+        title=title,
+        year=year,
+        venue=venue,
+        doi=doi,
+        url=url,
+        raw_reference=seg,
+        raw_xml="",
+    )
+
+
 def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
     """Trích <listBibl>/<biblStruct>. Skip entry ở <teiHeader> (chỉ là metadata).
 
@@ -388,10 +587,19 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
         # Raw reference note (if provided by GROBID)
         raw_ref_el = bibl.find(f".//{_TEI}note[@type='raw_reference']")
         raw_ref_text = (
-            "".join(raw_ref_el.itertext()).strip()
+            _normalize_raw_ref_text("".join(raw_ref_el.itertext()).strip())
             if raw_ref_el is not None
             else ""
         )
+
+        # If GROBID glued multiple bibliography entries into a single <biblStruct>,
+        # split and parse each segment separately.
+        split_segments = _split_merged_raw_reference(raw_ref_text)
+        if len(split_segments) > 1:
+            for seg_idx, seg_text in enumerate(split_segments):
+                seg_id = entry_id if seg_idx == 0 else f"{entry_id}_{seg_idx}"
+                entries.append(_parse_raw_bib_segment(seg_text, seg_id))
+            continue
 
         # Authors
         raw_authors: list[tuple[str, str]] = []
@@ -410,6 +618,21 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
             ]
             sn = surname.text.strip() if surname is not None and surname.text else ""
             fn = " ".join(forenames)
+
+            # Skip or fix standalone generational suffixes parsed as separate authors (e.g. "III, Tremper Longman")
+            if sn.lower().rstrip(".") in {"iii", "ii", "iv", "jr", "sr"}:
+                if fn:
+                    # Keep fn as a pending forename for the next author node
+                    raw_authors.append(("", fn))
+                continue
+            if (
+                sn
+                and not fn
+                and raw_authors
+                and not raw_authors[-1][0]
+                and raw_authors[-1][1]
+            ):
+                fn = raw_authors.pop()[1]
 
             # Fix GROBID splitting hyphenated Vietnamese initials into surname
             # e.g. forename="D H", surname=".-C. Nguyen" -> fn="D H.-C.", sn="Nguyen"
@@ -449,18 +672,29 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
             )
 
         # Recover corporate/organization author from raw_reference when GROBID
-        # omitted <author> (e.g. "American Psychiatric Association. (2022)..."
-        # or "World Health Organization. (2023)...").
+        # omitted <author> (e.g. "American Psychiatric Association. (2022)...",
+        # "Dictionary.com (2026, March 12)...", "Fight the New Drug. 'Is Reading...'",
+        # or "'Erotica Sub-Genres...' Shameless Book Deals, ...").
         if not authors and raw_ref_text:
             org_m = re.match(
-                r"^(?:\[\s*\d+\s*\]\s*)?([A-Z][A-Za-z0-9\s&'\u2019-]{2,80}?)\.\s*\((?:19|20)\d{2}",
+                r"^(?:\[\s*\d+\s*\]\s*)?([A-Z][A-Za-z0-9.\s&'\u2019-]{2,80}?)\.?\s*(?:\((?:19|20)\d{2}|\.\s*[\"\u201c])",
                 raw_ref_text,
             )
             if org_m:
-                org_name = org_m.group(1).strip()
+                org_name = org_m.group(1).strip().rstrip(".")
                 authors.append(
                     GrobidAuthor(full_name=org_name, first_name=None, last_name=org_name)
                 )
+            else:
+                anon_m = re.match(
+                    r"^[\"\u201c][^\"\u201d]{3,200}[\"\u201d]\s*([A-Z][A-Za-z0-9.\s&'\u2019-]{2,50}?),",
+                    raw_ref_text,
+                )
+                if anon_m:
+                    site_name = anon_m.group(1).strip().rstrip(".")
+                    authors.append(
+                        GrobidAuthor(full_name=site_name, first_name=None, last_name=site_name)
+                    )
 
         # Title (article-level first, then monograph-level, skipping empty <title/> tags)
         title: str | None = None
@@ -477,6 +711,10 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
             if title:
                 break
 
+        # Discard bogus URL fragment / anchor placed into <title> by GROBID
+        if title and re.match(r"^(?:#|https?://|www\.|%[0-9A-Fa-f]{2})", title, re.I):
+            title = None
+
         # Fallback: check <note> (excluding raw_reference) when <title/> is empty
         # (e.g. Flanagan [2020] where GROBID puts "JavaScript: The Definitive Guide, 7th Edition" in <note>)
         if not title:
@@ -487,6 +725,7 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
                 if (
                     len(note_text) > 5
                     and not re.match(r"^(?:\d+(?:st|nd|rd|th)|th)\s+ed", note_text, re.I)
+                    and not re.match(r"^(?:#|https?://|www\.)", note_text, re.I)
                 ):
                     title = note_text
                     break
@@ -498,7 +737,7 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
         year: str | None = None
         if year_el is not None:
             when = year_el.get("when")
-            if when:
+            if when and re.match(r"^(?:19|20)\d{2}", when):
                 year = when[:4]
 
         # Some PDFs use author-year suffixes (``2018a. Title``).  GROBID can
@@ -516,31 +755,174 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
         venue_el = bibl.find(f".//{_TEI}title[@level='j']")
         venue = "".join(venue_el.itertext()).strip() if venue_el is not None else None
 
-        # Fix unquoted IEEE/APA book entries where GROBID places the book title
-        # into a second <author> inside <monogr> and the series into <title level="m">
-        # (e.g. "B. Settles, Active Learning. Synthesis Lectures...").
+        # Extract URL and DOI (including from raw_reference)
+        url, doi = _extract_url_and_doi_from_raw(raw_ref_text, bibl)
+
+        # Merge continuation <biblStruct> fragments into the previous entry
+        # (e.g. "EBSCOhost, https://doi.org/..." or "Dec. 2015, pp. 183-205, https://doi.org/...")
         if (
-            bibl.find(f"{_TEI}analytic") is None
-            and len(authors) >= 2
+            entries
+            and title is None
             and raw_ref_text
+            and _CONTINUATION_START_RE.match(raw_ref_text)
         ):
-            last_auth = authors[-1]
-            if (
-                last_auth.first_name
-                and last_auth.last_name
-                and len(last_auth.first_name) > 2
-                and len(last_auth.last_name) > 2
-            ):
-                candidate_book_title = f"{last_auth.first_name} {last_auth.last_name}"
-                if re.search(
-                    rf",\s*{re.escape(candidate_book_title)}\.\s+",
-                    raw_ref_text,
-                    re.IGNORECASE,
+            prev = entries[-1]
+            if doi and not prev.doi:
+                prev.doi = doi
+            if year and not prev.year:
+                prev.year = year
+            if url and not prev.url:
+                prev.url = url
+            prev.raw_reference = f"{prev.raw_reference} {raw_ref_text}".strip()
+            continue
+
+        # Recover quoted title from raw_reference when GROBID missed the title
+        # or put the website/container name (e.g. "Project Gutenberg") as the monograph title
+        if raw_ref_text:
+            q_match = re.search(r"[\"\u201c]([^\"\u201d]{3,220}?)[\"\u201d]", raw_ref_text)
+            if q_match:
+                q_title = q_match.group(1).strip().rstrip(".,")
+                if not title or (
+                    title.lower() != q_title.lower()
+                    and f'"{title}' not in raw_ref_text
+                    and f"\u201c{title}" not in raw_ref_text
+                    and len(title.split()) <= 4
                 ):
-                    authors.pop()
                     if title and not venue:
                         venue = title
-                    title = candidate_book_title
+                    title = q_title
+
+        # Fix unquoted IEEE/APA/MLA book entries where GROBID places the book title
+        # into <author> inside <monogr> and leaves title=None or sets title to the series/publisher
+        if bibl.find(f"{_TEI}analytic") is None and raw_ref_text:
+            # Determine where the author segment ends in raw_ref_text:
+            # either at "(YYYY)" or after the first author block in MLA ("Surname, Firstname.")
+            auth_head_end = None
+            yr_parens = re.search(r"\(\s*(?:19|20)\d{2}", raw_ref_text)
+            if yr_parens:
+                auth_head_end = yr_parens.start()
+            else:
+                mla_head = re.match(
+                    r"^(?:III,\s*)?[A-Z][A-Za-z'\u2019-]+,\s*"
+                    r"(?:"
+                    r"[A-Z][a-zA-Z.\s-]+?,\s*and\s+(?:[A-Z]\.\s*|[A-Z][a-zA-Z-]+\s+)+[A-Z][a-zA-Z'\u2019-]+\."
+                    r"|(?:[A-Z]\.\s*){1,3}"
+                    r"|[A-Z][a-zA-Z-]+(?:\.|\s+(?:[A-Z]\.\s*){1,2})"
+                    r")\s*",
+                    raw_ref_text,
+                )
+                if mla_head:
+                    auth_head_end = mla_head.end()
+
+            had_removed_authors = False
+            if auth_head_end is not None and len(authors) >= 2:
+                auth_prefix = raw_ref_text[:auth_head_end].lower()
+                kept_authors: list[GrobidAuthor] = []
+                removed_authors: list[GrobidAuthor] = []
+                for auth in authors:
+                    ln = (auth.last_name or "").lower().strip()
+                    if ln and ln in auth_prefix:
+                        kept_authors.append(auth)
+                    else:
+                        removed_authors.append(auth)
+                if kept_authors and removed_authors:
+                    authors = kept_authors
+                    had_removed_authors = True
+
+            # If title is still None (or GROBID placed the book title into <author> and set title to the publisher/note), recover from raw_ref_text
+            if (
+                not title
+                or had_removed_authors
+                or title.lower() in {"project gutenberg", "goodreads", "holman bible publishers"}
+                or title.lower().startswith(("cambridge university press", "oxford university press", "holman bible"))
+            ):
+                old_title = title
+                if yr_parens:
+                    after_yr = re.sub(
+                        r"^\(\s*(?:19|20)\d{2}[^)]*\)\.\s*",
+                        "",
+                        raw_ref_text[yr_parens.start():],
+                    )
+                    m_title = re.match(r"^([^.]{3,180})\.", after_yr)
+                    if m_title:
+                        title = m_title.group(1).strip()
+                elif auth_head_end is not None:
+                    after_auth = raw_ref_text[auth_head_end:].strip()
+                    m_title = re.match(r"^([^.]{2,180})\.", after_auth)
+                    if m_title:
+                        title = m_title.group(1).strip()
+                if (
+                    old_title
+                    and title != old_title
+                    and not venue
+                    and not old_title.lower().startswith(("cambridge university press,", "https://", "http://"))
+                ):
+                    venue = old_title
+
+            # Also support IEEE "B. Settles, Active Learning. Synthesis Lectures..."
+            if len(authors) >= 2:
+                last_auth = authors[-1]
+                if (
+                    last_auth.first_name
+                    and last_auth.last_name
+                    and len(last_auth.first_name) > 2
+                    and len(last_auth.last_name) > 2
+                ):
+                    candidate_book_title = f"{last_auth.first_name} {last_auth.last_name}"
+                    if re.search(
+                        rf",\s*{re.escape(candidate_book_title)}\.\s+",
+                        raw_ref_text,
+                        re.IGNORECASE,
+                    ):
+                        authors.pop()
+                        if title and not venue:
+                            venue = title
+                        title = candidate_book_title
+
+        # Strip book publisher or ", edited by ..., Publisher" glued to the end of title
+        if title:
+            pub_m = _BOOK_PUBLISHER_SUFFIX_RE.search(title)
+            if pub_m:
+                extracted_pub = (pub_m.group("ed_pub") or pub_m.group("pub") or "").strip()
+                title = title[:pub_m.start()].strip().rstrip(".,")
+                if extracted_pub and (not venue or venue.lower().startswith(title.lower())):
+                    venue = extracted_pub
+
+        # Recover numbered biblical book title (e.g. "1 Corinthians", "2 Corinthians") when GROBID dropped the leading number
+        if title == "Corinthians" and raw_ref_text:
+            m_cor = re.search(r"\b([12]\s+Corinthians)\b", raw_ref_text)
+            if m_cor:
+                title = m_cor.group(1)
+                if venue and venue.startswith("Corinthians."):
+                    venue = venue[len("Corinthians."):].strip()
+
+        # Clean percent-encoded URL fragments and trailing blog/site names from title
+        if title:
+            title = re.sub(r"\.\s*[^\s.]*%[0-9A-Fa-f]{2}.*$", "", title).strip()
+            if (
+                ". " in title
+                and raw_ref_text
+                and re.search(r"\(\s*(?:19|20)\d{2},\s*[A-Za-z]+", raw_ref_text)
+            ):
+                t_parts = [p.strip() for p in title.split(". ") if p.strip()]
+                if len(t_parts) >= 2:
+                    title = t_parts[0]
+                    if not venue:
+                        venue = t_parts[1]
+
+        # Recover book publisher into venue from raw_ref_text if venue is still None
+        if not venue and raw_ref_text:
+            pub_raw_m = re.search(
+                r"\b(Zondervan(?:\s+Academic)?|Baker\s+Academic|Baker\s+Publishing(?:\s+Group)?|"
+                r"Crossway(?:\s+Books)?|Brazos\s+Press|HarperOne|Harper\s*Collins(?:\s+Publishers)?|"
+                r"InterVarsity\s+Press|IVP\s+Books|Waterbrook\s+Press|Convergent\s+Books|"
+                r"B&H\s+Publishing|Holman\s+Bible\s+Publishers|Farrar,\s*Straus\s+and\s+Giroux|"
+                r"Cambridge\s+University\s+Press|Oxford\s+University\s+Press|Project\s+Gutenberg)\b",
+                raw_ref_text,
+                re.IGNORECASE,
+            )
+            if pub_raw_m:
+                venue = pub_raw_m.group(1).strip()
 
         # For malformed two-column references GROBID may put the continuation
         # of the author list in <analytic>/<title>, while the real title is in
@@ -550,9 +932,21 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
             if monogr_title is not None and "".join(monogr_title.itertext()).strip():
                 title = "".join(monogr_title.itertext()).strip()
 
-        # DOI
-        doi_el = bibl.find(f".//{_TEI}idno[@type='DOI']")
-        doi = doi_el.text.strip() if doi_el is not None and doi_el.text else None
+        # Recover year from raw_ref_text if GROBID missed <date>
+        if not year and raw_ref_text:
+            non_accessed = re.sub(
+                r"\bAccessed\s+\d{1,2}\s+[A-Za-z.]+\s+(?:19|20)\d{2}\.?",
+                "",
+                raw_ref_text,
+                flags=re.IGNORECASE,
+            )
+            yr_matches = re.findall(r"\b((?:19|20)\d{2})\b", non_accessed)
+            if yr_matches:
+                year = yr_matches[0]
+            else:
+                acc_matches = re.findall(r"\b((?:19|20)\d{2})\b", raw_ref_text)
+                if acc_matches:
+                    year = acc_matches[-1]
 
         # Raw XML for debug
         raw = tostring(bibl, encoding="unicode")
@@ -564,6 +958,8 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
             year=year,
             venue=venue,
             doi=doi,
+            url=url,
+            raw_reference=raw_ref_text,
             raw_xml=raw,
         ))
     return entries

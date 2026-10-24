@@ -27,6 +27,7 @@ from __future__ import annotations
 import difflib
 import logging
 import re
+import unicodedata
 from typing import Optional
 
 from integrity_checker.linking.statuses import (
@@ -44,10 +45,12 @@ _APA_YEAR_RE = re.compile(
     r"\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'.\s,&\-]*?)(?:,\s*|\s+)((?:19|20)\d{2}[a-z]?)"
     r"(?:\s*[,:]\s*(?:pp?\.?|tr\.?|trang)?\s*\d+(?:\s*[-–]\s*\d+)?)?\)"
 )
-# Regex cho MLA in-text author-page: (Smith 25), (Smith and Doe 42), (Smith et al. 105), (Smith, p. 25), (" Smith (p. 25) ")
+# Regex cho MLA in-text author-page: (Smith 25), (Smith and Doe 42), (Smith et al. 105),
+# (L'Engle 72-73), (Longman III 57), (Lewis XXII), (Mulvey et al. 17, 19), (Smith et al.)
 _MLA_AUTHOR_PAGE_RE = re.compile(
-    r"^\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'.\s,&\-]*?)(?:,\s*pp?\.?\s*|\s+)(?!(?:19|20)\d{2}\b)\d{1,4}(?:[-–]\d{1,4})?\)$"
-    r"|^([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'.\s,&\-]*?)\s+\(pp?\.?\s*\d{1,4}(?:[-–]\d{1,4})?\)$"
+    r"^\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?)(?:,\s*pp?\.?\s*|\s+)(?!(?:19|20)\d{2}\b)(?:\d{1,4}(?:[-–]\d{1,4})?(?:,\s*\d{1,4}(?:[-–]\d{1,4})?)*|[IVXLCDMivxlcdm]{1,7})\)$"
+    r"|^\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?\s+et\s+al\.)\)$"
+    r"|^([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?)\s+\(pp?\.?\s*\d{1,4}(?:[-–]\d{1,4})?\)$"
 )
 # Regex cho Author et al. / và cộng sự (Year) format (no parens around author)
 _APA_ETAL_YEAR_RE = re.compile(
@@ -322,6 +325,9 @@ class CitationLinker:
                 part = f"({part})"
                 author_part, year_part, suffix_part = self._extract_author_year(part)
                 if not author_part or not year_part:
+                    mla_part_links = self._match_mla_author_page(part, occ_id, bib_citations)
+                    if mla_part_links:
+                        multi_links.extend(mla_part_links)
                     continue
                 candidates = (
                     bib_by_author_year_suffix.get((author_part.lower(), year_part, suffix_part), [])
@@ -406,22 +412,11 @@ class CitationLinker:
 
         # 3c. MLA Author-Page linking: "(Smith 25)", "(Smith and Doe 42)", "(Smith et al. 105)"
         if cit.citation_type == CitationType.IN_TEXT and not year:
-            mla_m = _MLA_AUTHOR_PAGE_RE.match(cit.raw_text.strip())
-            if mla_m:
-                raw_mla_author = (mla_m.group(1) or mla_m.group(2) or "").strip()
-                norm_mla_author = self._clean_intext_author(raw_mla_author).lower().strip()
-                if norm_mla_author:
-                    for bib in bib_citations:
-                        if not bib.authors:
-                            continue
-                        first_last = self._normalize_last_name(bib.authors[0]).lower().strip()
-                        short_last = first_last.split()[-1] if " " in first_last else first_last
-                        if norm_mla_author in (first_last, short_last):
-                            return _bib_link(
-                                bib,
-                                self.author_year_confidence,
-                                MappingMethod.AUTHOR_YEAR,
-                            )
+            mla_links = self._match_mla_author_page(
+                cit.raw_text, occ_id, bib_citations, cit_authors=cit.authors
+            )
+            if mla_links:
+                return mla_links
 
         # 4. FUZZY — title similarity (if bib entries have title_normalized)
         best = self._try_fuzzy(cit, occ_id, bib_by_doi, bib_citations)
@@ -430,6 +425,69 @@ class CitationLinker:
 
         # No match
         return None
+
+    @staticmethod
+    def _fold_author_key(text: str) -> str:
+        """Fold diacritics, curly apostrophes, and generational suffixes for author matching."""
+        if not text:
+            return ""
+        pre = text.replace("\u2019", "'").replace("\u2018", "'").replace("`", "'")
+        folded = unicodedata.normalize("NFKD", pre).encode("ascii", "ignore").decode("ascii")
+        folded = folded.lower().strip()
+        folded = re.sub(r"\s+\b(?:iii|ii|iv|jr|sr)\.?$", "", folded)
+        return folded.strip()
+
+    def _match_mla_author_page(
+        self,
+        raw_text: str,
+        occ_id: str,
+        bib_citations: list[Citation],
+        cit_authors: Optional[list] = None,
+    ) -> list[CitationLink]:
+        """Match an MLA author-page citation against bibliography entries."""
+        mla_m = _MLA_AUTHOR_PAGE_RE.match(raw_text.strip())
+        if mla_m:
+            raw_mla_author = (mla_m.group(1) or mla_m.group(2) or mla_m.group(3) or "").strip()
+            has_et_al = bool(re.search(r"\bet\s+al\.?\b", raw_mla_author, re.IGNORECASE))
+            norm_mla_author = self._fold_author_key(self._clean_intext_author(raw_mla_author))
+        elif cit_authors:
+            raw_mla_author = self._normalize_last_name(cit_authors[0])
+            has_et_al = False
+            norm_mla_author = self._fold_author_key(raw_mla_author)
+        else:
+            return []
+        if not norm_mla_author:
+            return []
+
+        matched_bibs: list[Citation] = []
+        for bib in bib_citations:
+            if not bib.authors:
+                continue
+            first_last = self._fold_author_key(self._normalize_last_name(bib.authors[0]))
+            short_last = first_last.split()[-1] if " " in first_last else first_last
+            if norm_mla_author in (first_last, short_last):
+                matched_bibs.append(bib)
+            elif (
+                has_et_al
+                and len(norm_mla_author) >= 5
+                and len(first_last) >= 5
+                and difflib.SequenceMatcher(None, norm_mla_author, first_last).ratio() >= 0.85
+            ):
+                matched_bibs.append(bib)
+
+        if not matched_bibs:
+            return []
+
+        return [
+            CitationLink(
+                occurrence_id=occ_id,
+                reference_id=bib.reference_id or f"ref-{self._find_bib_index(bib, bib_citations):04d}",
+                status=CitationMappingStatus.MATCHED,
+                confidence=self.author_year_confidence,
+                method=MappingMethod.AUTHOR_YEAR,
+            )
+            for bib in matched_bibs
+        ]
 
     def _try_org_author(
         self,
