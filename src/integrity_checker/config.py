@@ -54,13 +54,21 @@ class AppConfig(BaseModel):
     name: str = "Essay Integrity Checker"
     version: str = "0.2.0"   # v1.2 spec
     env: str = "development"
-    debug: bool = True
+    debug: bool = False
     log_level: str = "INFO"
 
 
 class DatabaseConfig(BaseModel):
     url: str = "sqlite:///./data/app.db"
     echo: bool = False
+
+
+_INSECURE_JWT_SECRETS = frozenset({
+    "change-me-in-production-use-env-var",
+    "citra-secret-key-change-in-production-2026",
+    "secret",
+    "changeme",
+})
 
 
 class AuthConfig(BaseModel):
@@ -71,30 +79,42 @@ class AuthConfig(BaseModel):
     activation_expire_hours: int = 24
     reset_expire_minutes: int = 30
 
-    @field_validator("jwt_secret")
-    @classmethod
-    def _validate_jwt_secret(cls, v: str) -> str:
-        """Reject default/weak JWT secrets in production."""
-        # Allow if explicitly set via environment (non-default value)
-        if v == "change-me-in-production-use-env-var":
-            import os
-            # Check if we're in production mode
-            app_env = os.getenv("APP_ENV", "").lower()
-            if app_env in ("production", "prod", "live"):
+    def validate_for_env(self, app_env: str) -> None:
+        """Reject default/weak JWT secrets when running in production."""
+        import logging
+        import os
+
+        effective_env = (app_env or os.getenv("APP_ENV", "")).strip().lower()
+        is_prod = effective_env in ("production", "prod", "live")
+
+        if self.jwt_secret in _INSECURE_JWT_SECRETS:
+            if is_prod:
                 raise ValueError(
                     "JWT_SECRET must be set via environment variable in production. "
                     "Generate a secure random secret: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
                 )
-            # Warn in non-production but allow for development
-            import logging
             logging.getLogger(__name__).warning(
                 "Using default JWT secret. Set JWT_SECRET in .env for production."
             )
-        # Reject obviously weak secrets
-        if len(v) < 32:
-            import os
-            app_env = os.getenv("APP_ENV", "").lower()
-            if app_env in ("production", "prod", "live"):
+        if len(self.jwt_secret) < 32 and is_prod:
+            raise ValueError(
+                f"JWT_SECRET must be at least 32 characters in production. Got {len(self.jwt_secret)} characters."
+            )
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def _validate_jwt_secret(cls, v: str) -> str:
+        """Initial field validator (also re-validated in Settings after env overrides)."""
+        import os
+
+        app_env = os.getenv("APP_ENV", "").strip().lower()
+        if app_env in ("production", "prod", "live"):
+            if v in _INSECURE_JWT_SECRETS:
+                raise ValueError(
+                    "JWT_SECRET must be set via environment variable in production. "
+                    "Generate a secure random secret: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                )
+            if len(v) < 32:
                 raise ValueError(
                     f"JWT_SECRET must be at least 32 characters. Got {len(v)} characters."
                 )
@@ -248,7 +268,7 @@ class SourceToggleConfig(BaseModel):
     openalex: bool = True
     semantic_scholar: bool = True
     serpapi: bool = True  # Fallback khi các API free thất bại
-    coreapi: bool = False  # CORE API (disable by default - free tier very limited)
+    coreapi: bool = True  # CORE API v3 (/v3/search/works/)
 
 
 class RateLimitsConfig(BaseModel):
@@ -448,6 +468,15 @@ class Settings(BaseSettings):
         env_app_env = os.getenv("APP_ENV")
         if env_app_env:
             self.app.env = env_app_env
+        env_app_debug = os.getenv("APP_DEBUG")
+        if env_app_debug is not None and env_app_debug.strip() != "":
+            self.app.debug = env_app_debug.strip().lower() in ("1", "true", "yes", "on")
+        env_log_level = os.getenv("APP_LOG_LEVEL")
+        if env_log_level and env_log_level.strip():
+            self.app.log_level = env_log_level.strip().upper()
+        env_grobid_url = os.getenv("GROBID_URL")
+        if env_grobid_url and env_grobid_url.strip():
+            self.extraction.grobid.url = env_grobid_url.strip()
         if os.getenv("JWT_SECRET"):
             self.auth.jwt_secret = os.environ["JWT_SECRET"]
 
@@ -472,12 +501,30 @@ class Settings(BaseSettings):
         if os.getenv("FRONTEND_URL"):
             self.email.frontend_url = os.environ["FRONTEND_URL"].rstrip("/")
 
+        # Retrieval / API keys env overrides
+        if os.getenv("CONTACT_EMAIL"):
+            self.contact_email = os.environ["CONTACT_EMAIL"]
+            self.retrieval.contact_email = os.environ["CONTACT_EMAIL"]
+        elif self.contact_email and self.contact_email != "noreply@citra.edu.vn":
+            self.retrieval.contact_email = self.contact_email
+        if os.getenv("S2_API_KEY"):
+            self.s2_api_key = os.environ["S2_API_KEY"]
+        if os.getenv("SERPAPI_API_KEY"):
+            self.serpapi_api_key = os.environ["SERPAPI_API_KEY"]
+        if os.getenv("COREAPI_API_KEY"):
+            self.coreapi_api_key = os.environ["COREAPI_API_KEY"]
+
+        is_explicit_prod = self.app.env.strip().lower() in ("production", "prod", "live")
         if is_test_runtime():
-            self.app.env = "test"
+            if not is_explicit_prod:
+                self.app.env = "test"
             if not env_db_url or is_main_app_db_url(self.database.url):
                 self.database.url = "sqlite:///:memory:"
         elif is_main_app_db_url(self.database.url):
             self.database.url = f"sqlite:///{MAIN_APP_DB_PATH.as_posix()}"
+
+        # Validate JWT secret against the effective environment (including YAML app.env + JWT_SECRET env)
+        self.auth.validate_for_env(self.app.env)
 
         w = self.cis.weights
         s = (
