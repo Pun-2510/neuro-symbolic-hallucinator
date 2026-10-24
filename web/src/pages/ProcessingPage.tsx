@@ -369,7 +369,7 @@ export function ProcessingPage() {
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-6">
           {/* Progress Bar */}
           <div>
             <Progress value={progress} className="h-2.5" />
@@ -444,7 +444,7 @@ export function ProcessingPage() {
                     </p>
 
                     {idx === 2 && status && (
-                      <div className="flex gap-3 mt-2 text-xs font-mono">
+                      <div className="flex flex-wrap gap-2 sm:gap-3 mt-2 text-xs font-mono">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                           <Quote className="h-3 w-3 text-indigo-500" />
                           {status.citations_found} citations

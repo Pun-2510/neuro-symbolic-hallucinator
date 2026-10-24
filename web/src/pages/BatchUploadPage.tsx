@@ -474,7 +474,7 @@ export function BatchUploadPage() {
           </Badge>
         </div>
 
-        <div className="p-6 sm:p-8 space-y-6">
+        <div className="p-4 sm:p-8 space-y-6">
           {/* Class selector (teacher/admin only) */}
           {(isTeacher || isAdmin) && classes.length > 0 && (
             <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -520,7 +520,7 @@ export function BatchUploadPage() {
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
             className={`
-              relative border-2 border-dashed rounded-2xl p-10 text-center transition-all duration-200 cursor-pointer
+              relative border-2 border-dashed rounded-2xl p-6 sm:p-10 text-center transition-all duration-200 cursor-pointer
               ${
                 dragActive
                   ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/50 scale-[1.01]'
@@ -570,17 +570,17 @@ export function BatchUploadPage() {
                 {files.map((fileItem, idx) => (
                   <div
                     key={fileItem.id}
-                    className="flex items-center gap-3.5 px-4 py-3 rounded-xl bg-slate-50/70 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                    className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 sm:gap-3.5 px-3.5 sm:px-4 py-3 rounded-xl bg-slate-50/70 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
                   >
                     <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
                       #{idx + 1}
                     </span>
 
-                    <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center shrink-0">
                       <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                     </div>
 
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-[140px]">
                       <p
                         className="text-sm font-semibold text-slate-900 dark:text-white truncate"
                         title={fileItem.file.name}
@@ -593,7 +593,7 @@ export function BatchUploadPage() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
                       {getStatusIcon(fileItem.status)}
                       <Badge variant={getStatusVariant(fileItem.status)} className="font-mono text-[11px]">
                         {getStatusText(fileItem.status, fileItem.progress, t)}
@@ -602,7 +602,7 @@ export function BatchUploadPage() {
 
                     {(fileItem.status === 'processing' ||
                       fileItem.status === 'uploading') && (
-                      <div className="w-24 shrink-0">
+                      <div className="w-full sm:w-24 shrink-0">
                         <Progress value={fileItem.progress} />
                       </div>
                     )}

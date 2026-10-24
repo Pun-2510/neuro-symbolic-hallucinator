@@ -190,7 +190,7 @@ export function UploadPage() {
           </Badge>
         </div>
 
-        <div className="p-6 sm:p-8">
+        <div className="p-4 sm:p-8">
           {/* Interactive Dropzone */}
           <div
             onDragEnter={handleDrag}
@@ -198,7 +198,7 @@ export function UploadPage() {
             onDragOver={handleDrag}
             onDrop={handleDrop}
             className={`
-              relative border-2 border-dashed rounded-2xl p-10 sm:p-12 text-center transition-all duration-200 cursor-pointer
+              relative border-2 border-dashed rounded-2xl p-6 sm:p-12 text-center transition-all duration-200 cursor-pointer
               ${
                 dragActive
                   ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/50 scale-[1.01] shadow-inner'
@@ -217,15 +217,15 @@ export function UploadPage() {
 
             {file ? (
               /* File selected state */
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-xl mx-auto bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/80 shadow-xs">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center shrink-0">
-                    <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 max-w-xl mx-auto bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/80 shadow-xs">
+                <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center shrink-0">
+                    <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400" />
                   </div>
-                  <div className="text-left min-w-0">
-                    <div className="flex items-center gap-2">
+                  <div className="text-left min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p
-                        className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate max-w-xs"
+                        className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate max-w-[180px] sm:max-w-xs"
                         title={file.name}
                       >
                         {file.name}
@@ -234,7 +234,7 @@ export function UploadPage() {
                         <CheckCircle2 className="h-3 w-3" /> READY
                       </span>
                     </div>
-                    <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                       {(file.size / 1024 / 1024).toFixed(2)} MB · application/pdf{!isUser ? ' · GROBID TEI' : ''}
                     </p>
                   </div>

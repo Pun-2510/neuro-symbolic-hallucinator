@@ -208,13 +208,13 @@ export function DashboardPage() {
       </div>
 
       {/* 4 Architectural Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
             <Card
               key={card.label}
-              className="card group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-200"
+              className="card group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-3.5 sm:p-5 shadow-xs hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-200"
             >
               <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
               <div className="flex items-start justify-between gap-3 mb-3">
@@ -350,8 +350,8 @@ export function DashboardPage() {
             )}
           </div>
         ) : (
-          <Table>
-            <TableHeader>
+          <Table className="block sm:table">
+            <TableHeader className="hidden sm:table-header-group">
               <TableRow className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200/80 dark:border-slate-800">
                 <TableHead className="font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 py-3 px-5">
                   {t('dashboard.tableDocument')}
@@ -367,21 +367,21 @@ export function DashboardPage() {
                 </TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+            <TableBody className="block sm:table-row-group divide-y divide-slate-100 dark:divide-slate-800/80">
               {filteredEssays.map((essay) => (
                 <TableRow
                   key={essay.id}
-                  className="group hover:bg-slate-50/80 dark:hover:bg-slate-900/60 transition-colors"
+                  className="flex flex-col sm:table-row p-3.5 sm:p-0 gap-2 sm:gap-0 group hover:bg-slate-50/80 dark:hover:bg-slate-900/60 transition-colors"
                 >
-                  <TableCell className="py-3.5 px-5">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:border-indigo-600 transition-colors">
-                        <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-colors" />
+                  <TableCell className="py-0 sm:py-3.5 px-0 sm:px-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:border-indigo-600 transition-colors">
+                        <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-colors" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <Link
                           to={`/verification/report/${essay.id}`}
-                          className="text-sm font-semibold text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 truncate max-w-md block transition-colors"
+                          className="text-sm font-semibold text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 truncate max-w-full sm:max-w-xs md:max-w-md block transition-colors"
                         >
                           {essay.filename}
                         </Link>
@@ -399,13 +399,19 @@ export function DashboardPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-0 sm:py-4 px-0 sm:px-4 flex items-center justify-between sm:table-cell">
+                    <span className="sm:hidden text-[11px] font-mono uppercase text-slate-400">
+                      {t('dashboard.tablePages')}
+                    </span>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-xs font-mono tabular-nums font-semibold text-slate-700 dark:text-slate-300">
                       {essay.num_pages}
                     </span>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5 text-xs font-mono text-slate-600 dark:text-slate-300">
+                  <TableCell className="py-0 sm:py-4 px-0 sm:px-4 flex items-center justify-between sm:table-cell">
+                    <span className="sm:hidden text-[11px] font-mono uppercase text-slate-400">
+                      {t('dashboard.tableUploaded')}
+                    </span>
+                    <div className="flex items-center gap-1.5 text-xs font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
                       <Clock className="h-3.5 w-3.5 text-slate-400" />
                       {new Date(essay.uploaded_at).toLocaleDateString(dateLocale, {
                         month: 'short',
@@ -414,8 +420,8 @@ export function DashboardPage() {
                       })}
                     </div>
                   </TableCell>
-                  <TableCell className="px-5 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
+                  <TableCell className="py-1 sm:py-4 px-0 sm:px-5 text-right">
+                    <div className="flex items-center justify-end gap-1.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800/60">
                       <Link
                         to={`/verification/report/${essay.id}/issues`}
                         title={t('essay.issues')}
@@ -436,7 +442,7 @@ export function DashboardPage() {
                       )}
                       <Link
                         to={`/verification/report/${essay.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-indigo-50 dark:bg-indigo-950/90 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/70 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all"
+                        className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-indigo-50 dark:bg-indigo-950/90 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/70 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all"
                       >
                         <Eye className="h-3.5 w-3.5" />
                         {t('dashboard.viewReport')}
@@ -468,7 +474,7 @@ export function DashboardPage() {
 
         {/* Footer Bar */}
         {essays.length > 0 && (
-          <div className="px-5 py-3 bg-slate-50/70 dark:bg-slate-900/70 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400">
+          <div className="px-4 sm:px-5 py-3 bg-slate-50/70 dark:bg-slate-900/70 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-1.5 text-xs font-mono text-slate-500 dark:text-slate-400">
             <p>
               {t('dashboard.showingCount', {
                 shown: filteredEssays.length,
