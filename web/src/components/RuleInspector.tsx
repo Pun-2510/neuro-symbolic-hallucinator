@@ -342,10 +342,10 @@ export function RuleInspector({
                 colors.border
               )}
             >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div>
+              <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={cn("font-mono text-xs font-semibold", colors.text)}>
+                    <span className={cn("font-mono text-xs font-semibold break-all", colors.text)}>
                       {rule.id}
                     </span>
                   </div>
@@ -355,7 +355,7 @@ export function RuleInspector({
                 </div>
                 <Badge
                   variant="outline"
-                  className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded", colors.bg, colors.border, colors.text)}
+                  className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded shrink-0", colors.bg, colors.border, colors.text)}
                 >
                   {colors.icon}
                   <span className="text-[10px]">{rule.conclusion}</span>
@@ -367,21 +367,21 @@ export function RuleInspector({
               </p>
 
               {rule.conditions.length > 0 && (
-                <div className="mt-2 p-2 bg-white/50 dark:bg-slate-900/50 rounded border border-slate-200/50 dark:border-slate-700/50">
+                <div className="mt-2 p-2 bg-white/50 dark:bg-slate-900/50 rounded border border-slate-200/50 dark:border-slate-700/50 overflow-x-auto">
                   <div className="font-mono text-xs space-y-1">
                     <div className="text-slate-500 dark:text-slate-400 font-semibold">IF</div>
                     {rule.conditions.map((condition, idx) => (
-                      <div key={idx} className="flex items-center gap-1 text-slate-600 dark:text-slate-300 pl-3">
+                      <div key={idx} className="flex items-center gap-1 text-slate-600 dark:text-slate-300 pl-3 flex-wrap">
                         {idx > 0 && (
                           <span className="text-slate-400 dark:text-slate-500 mr-1">AND</span>
                         )}
-                        <span className="font-medium">{condition.field}</span>
+                        <span className="font-medium break-all">{condition.field}</span>
                         <span className="text-slate-400">{condition.operator}</span>
-                        <span className="text-slate-500">{condition.value}</span>
+                        <span className="text-slate-500 break-all">{condition.value}</span>
                       </div>
                     ))}
                     <div className="text-slate-500 dark:text-slate-400 font-semibold mt-2">THEN</div>
-                    <div className="pl-3 text-slate-600 dark:text-slate-300">
+                    <div className="pl-3 text-slate-600 dark:text-slate-300 break-words">
                       {rule.conclusion}
                     </div>
                   </div>

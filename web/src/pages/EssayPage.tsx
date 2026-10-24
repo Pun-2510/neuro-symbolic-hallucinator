@@ -1524,16 +1524,16 @@ export function EssayPage() {
                     {/* Inspector Tabs: Metadata Diff (All) | Symbolic Rules & Sources (Teacher/Admin only) */}
                     <Tabs defaultValue="diff" className="w-full mt-4">
                       {!isUser && (
-                        <TabsList className="w-full justify-start bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
-                          <TabsTrigger value="diff" className="flex-1 text-xs font-mono">
+                        <TabsList className="w-full justify-start bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-auto flex-wrap sm:flex-nowrap gap-1">
+                          <TabsTrigger value="diff" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
                             {lang === 'vi' ? '1. Đối chiếu Metadata' : '1. Metadata Diff'}
                           </TabsTrigger>
-                          <TabsTrigger value="rules" className="flex-1 text-xs font-mono">
+                          <TabsTrigger value="rules" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
                             {lang === 'vi'
                               ? `2. Luật Suy diễn (${activeItem.rules.length})`
                               : `2. Symbolic Rules (${activeItem.rules.length})`}
                           </TabsTrigger>
-                          <TabsTrigger value="sources" className="flex-1 text-xs font-mono">
+                          <TabsTrigger value="sources" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
                             {lang === 'vi' ? '3. Nguồn Truy hồi' : '3. Source Retrieval'}
                           </TabsTrigger>
                         </TabsList>
@@ -1542,8 +1542,8 @@ export function EssayPage() {
                       {/* TAB 1: Side-by-side Metadata Diff */}
                       <TabsContent value="diff" className={isUser ? 'mt-0' : 'mt-4'}>
                         <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                          <table className="w-full table-fixed text-left border-collapse">
-                            <thead>
+                          <table className="w-full block sm:table sm:table-fixed text-left border-collapse">
+                            <thead className="hidden sm:table-header-group">
                               <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-[11px] font-mono uppercase text-slate-500 dark:text-slate-400">
                                 <th className="py-2.5 px-3 w-[68px]">Field</th>
                                 <th className="py-2.5 px-3">Cited in Manuscript</th>
@@ -1551,7 +1551,7 @@ export function EssayPage() {
                                 <th className="py-2.5 px-3 w-[116px] text-right">Status</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800 text-xs">
+                            <tbody className="block sm:table-row-group divide-y divide-slate-200/70 dark:divide-slate-800 text-xs">
                               {(
                                 [
                                   ['Title', 'title'],
@@ -1563,15 +1563,24 @@ export function EssayPage() {
                               ).map(([label, key]) => (
                                 <tr
                                   key={key}
-                                  className="hover:bg-slate-50/70 dark:hover:bg-slate-900/40"
+                                  className="flex flex-col sm:table-row p-3 sm:p-0 gap-1.5 sm:gap-0 hover:bg-slate-50/70 dark:hover:bg-slate-900/40"
                                 >
-                                  <td className="py-2.5 px-3 font-mono font-medium text-slate-500 dark:text-slate-400 align-top">
-                                    {label}
+                                  <td className="py-0.5 sm:py-2.5 px-0 sm:px-3 font-mono font-semibold sm:font-medium text-slate-500 dark:text-slate-400 align-top flex items-center justify-between sm:table-cell">
+                                    <span>{label}</span>
+                                    <span className="sm:hidden">
+                                      {renderFieldStatusBadge(activeItem.fieldStatus[key])}
+                                    </span>
                                   </td>
-                                  <td className="py-2.5 px-3 text-slate-800 dark:text-slate-200 font-medium align-top break-words [overflow-wrap:anywhere]">
+                                  <td className="py-0.5 sm:py-2.5 px-0 sm:px-3 text-slate-800 dark:text-slate-200 font-medium align-top break-words [overflow-wrap:anywhere]">
+                                    <span className="sm:hidden block text-[10px] font-mono uppercase text-slate-400 mb-0.5">
+                                      Cited in Manuscript
+                                    </span>
                                     {activeItem.citedMeta[key]}
                                   </td>
-                                  <td className="py-2.5 px-3 font-mono text-slate-600 dark:text-slate-300 align-top break-words [overflow-wrap:anywhere]">
+                                  <td className="py-0.5 sm:py-2.5 px-0 sm:px-3 font-mono text-slate-600 dark:text-slate-300 align-top break-words [overflow-wrap:anywhere]">
+                                    <span className="sm:hidden block text-[10px] font-mono uppercase text-slate-400 mb-0.5">
+                                      Canonical Retrieved
+                                    </span>
                                     {activeItem.retrievedMeta ? (
                                       key === 'doi' &&
                                       activeItem.retrievedMeta.doi !== '—' ? (
@@ -1597,7 +1606,7 @@ export function EssayPage() {
                                       </span>
                                     )}
                                   </td>
-                                  <td className="py-2.5 px-3 text-right whitespace-nowrap align-top">
+                                  <td className="hidden sm:table-cell py-2.5 px-3 text-right whitespace-nowrap align-top">
                                     {renderFieldStatusBadge(activeItem.fieldStatus[key])}
                                   </td>
                                 </tr>

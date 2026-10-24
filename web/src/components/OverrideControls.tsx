@@ -72,7 +72,7 @@ function OverrideForm({
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
-        className="bg-background rounded-2xl border shadow-2xl w-full max-w-md mx-4 p-6 space-y-4"
+        className="bg-background rounded-2xl border shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto mx-4 p-4 sm:p-6 space-y-4"
         role="dialog"
         aria-modal="true"
         aria-labelledby="override-title"
@@ -107,7 +107,7 @@ function OverrideForm({
         {/* Mapping status */}
         <div>
           <Label className="text-sm font-medium block mb-2">{t('override.mappingStatus')}</Label>
-          <div className="grid grid-cols-4 gap-1">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             {STATUS_OPTIONS.map((opt) => (
               <button
                 key={opt.value}

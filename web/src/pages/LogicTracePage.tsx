@@ -465,7 +465,7 @@ export function LogicTracePage() {
           </div>
         </div>
 
-        <div className="p-5 sm:p-6 space-y-3">
+        <div className="p-4 sm:p-6 space-y-3">
           {sortedVerdicts.map((verdict, index) => (
             <VerdictTrace
               key={verdict.citation_id}

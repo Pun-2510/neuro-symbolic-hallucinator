@@ -350,7 +350,7 @@ export function OrphanDetectionPage() {
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-full pb-0.5">
             {[
               { id: 'all', label: isVi ? 'Tất cả' : 'All', count: stats.total },
               { id: 'orphans', label: isVi ? 'Thiếu tham khảo' : 'Orphans', count: stats.orphanCount },
@@ -360,7 +360,7 @@ export function OrphanDetectionPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all shrink-0 whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'bg-indigo-600 text-white shadow-2xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -384,7 +384,7 @@ export function OrphanDetectionPage() {
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {hasIssues ? (
             <div className="space-y-8">
               {(activeTab === 'all' || activeTab === 'orphans') &&

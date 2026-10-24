@@ -231,7 +231,7 @@ function CitationPopup({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-lg max-h-[90dvh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-3.5 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
@@ -271,7 +271,7 @@ function CitationPopup({
           </div>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
           <div className="min-w-0 flex-1">
             <label className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               In-text Citation
@@ -610,7 +610,7 @@ export function DocumentInspectorPage() {
         {/* Dual-Pane Document & Citation List View */}
         <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-200/80 dark:divide-slate-800">
           {/* Document panel */}
-          <div className="lg:col-span-7 p-6">
+          <div className="lg:col-span-7 p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/80">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
@@ -676,7 +676,7 @@ export function DocumentInspectorPage() {
           </div>
 
           {/* Citation list panel */}
-          <div className="lg:col-span-5 p-6 bg-slate-50/30 dark:bg-slate-900/40">
+          <div className="lg:col-span-5 p-4 sm:p-6 bg-slate-50/30 dark:bg-slate-900/40">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/80">
               <div className="flex items-center gap-2">
                 <Quote className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />

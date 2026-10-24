@@ -28,12 +28,12 @@ export function EssayActionBar({ essayId }: EssayActionBarProps) {
   const isTrace = currentPath.endsWith('/trace');
 
   return (
-    <div className="inline-flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+    <div className="flex sm:inline-flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-x-auto scrollbar-none max-w-full">
       <Button
         asChild
         variant={isReportRoot ? 'default' : 'ghost'}
         size="sm"
-        className={`h-8 rounded-xl text-xs font-medium ${
+        className={`h-8 rounded-xl text-xs font-medium shrink-0 whitespace-nowrap ${
           isReportRoot
             ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs'
             : 'text-slate-600 dark:text-slate-400'
@@ -55,7 +55,7 @@ export function EssayActionBar({ essayId }: EssayActionBarProps) {
         asChild
         variant={isIssues ? 'default' : 'ghost'}
         size="sm"
-        className={`h-8 rounded-xl text-xs font-medium ${
+        className={`h-8 rounded-xl text-xs font-medium shrink-0 whitespace-nowrap ${
           isIssues
             ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs'
             : 'text-slate-600 dark:text-slate-400'
@@ -72,7 +72,7 @@ export function EssayActionBar({ essayId }: EssayActionBarProps) {
           asChild
           variant={isDocument ? 'default' : 'ghost'}
           size="sm"
-          className={`h-8 rounded-xl text-xs font-medium ${
+          className={`h-8 rounded-xl text-xs font-medium shrink-0 whitespace-nowrap ${
             isDocument
               ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs'
               : 'text-slate-600 dark:text-slate-400'
@@ -90,7 +90,7 @@ export function EssayActionBar({ essayId }: EssayActionBarProps) {
           asChild
           variant={isConsistency ? 'default' : 'ghost'}
           size="sm"
-          className={`h-8 rounded-xl text-xs font-medium ${
+          className={`h-8 rounded-xl text-xs font-medium shrink-0 whitespace-nowrap ${
             isConsistency
               ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs'
               : 'text-slate-600 dark:text-slate-400'
@@ -108,7 +108,7 @@ export function EssayActionBar({ essayId }: EssayActionBarProps) {
           asChild
           variant={isTrace ? 'default' : 'ghost'}
           size="sm"
-          className={`h-8 rounded-xl text-xs font-medium ${
+          className={`h-8 rounded-xl text-xs font-medium shrink-0 whitespace-nowrap ${
             isTrace
               ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs'
               : 'text-slate-600 dark:text-slate-400'

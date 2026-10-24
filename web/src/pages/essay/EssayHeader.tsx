@@ -39,8 +39,8 @@ export function EssayHeader({
   };
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-xs">
-      <div className="flex items-start justify-between flex-wrap gap-4">
+    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-6 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-start justify-between flex-wrap gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3 flex-wrap mb-2.5">
             <Link
@@ -89,16 +89,16 @@ export function EssayHeader({
         </div>
 
         {/* Export Actions */}
-        <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
+        <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0 w-full sm:w-auto">
           {!isUser && (
             <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-slate-500">
               {lang === 'vi' ? 'Xuất Báo Cáo Chuẩn Hóa' : 'Export Audit Artifact'}
             </span>
           )}
-          <div className="flex gap-2 flex-wrap">
+          <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
             {!isUser && (
               <>
-                <Button asChild variant="outline" size="sm" className="h-8 font-mono text-xs rounded-xl">
+                <Button asChild variant="outline" size="sm" className="h-8 font-mono text-xs rounded-xl w-full sm:w-auto">
                   <a
                     href={api.downloadReport(essayId, 'json')}
                     onClick={(e) => handleDownload(e, 'json')}
@@ -109,7 +109,7 @@ export function EssayHeader({
                     JSON
                   </a>
                 </Button>
-                <Button asChild variant="outline" size="sm" className="h-8 font-mono text-xs rounded-xl">
+                <Button asChild variant="outline" size="sm" className="h-8 font-mono text-xs rounded-xl w-full sm:w-auto">
                   <a
                     href={api.downloadReport(essayId, 'csv')}
                     onClick={(e) => handleDownload(e, 'csv')}
@@ -122,7 +122,7 @@ export function EssayHeader({
                 </Button>
               </>
             )}
-            <Button asChild size="sm" className="h-8 font-mono text-xs rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button asChild size="sm" className="h-8 font-mono text-xs rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto">
               <a
                 href={api.downloadReport(essayId, 'pdf')}
                 onClick={(e) => handleDownload(e, 'pdf')}
@@ -133,7 +133,7 @@ export function EssayHeader({
                 PDF
               </a>
             </Button>
-            <Button asChild variant="outline" size="sm" className="h-8 font-mono text-xs rounded-xl">
+            <Button asChild variant="outline" size="sm" className="h-8 font-mono text-xs rounded-xl w-full sm:w-auto">
               <a
                 href={api.downloadReport(essayId, 'docx')}
                 onClick={(e) => handleDownload(e, 'docx')}

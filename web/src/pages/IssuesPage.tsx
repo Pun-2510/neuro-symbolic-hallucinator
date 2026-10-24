@@ -167,7 +167,7 @@ function IssueCard({
               </span>
             )}
           </div>
-          <p className="text-sm text-slate-900 dark:text-slate-100 mb-1.5 font-serif">
+          <p className="text-sm text-slate-900 dark:text-slate-100 mb-1.5 font-serif break-words">
             {verdict.citation_raw}
           </p>
           <p className={`text-xs font-medium ${config.textColor}`}>
