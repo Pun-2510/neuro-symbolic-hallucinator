@@ -314,9 +314,12 @@ class CitationExtractor:
         # occurrence in the report ("x4" instead of "x2").
         seen_spans: set[tuple[int, int]] = set()
         accepted_spans: set[tuple[int, int]] = set()
+        search_text = self.preprocessor._normalize_unicode(
+            self.preprocessor._fix_ligatures(raw_text)
+        )
         for pattern_def, compiled in self._compiled:
-            # Find positions in raw text first (preserves whitespace/newlines)
-            for m in compiled.finditer(raw_text):
+            # Find positions in NFC/ligature-normalized text while preserving newlines
+            for m in compiled.finditer(search_text):
                 raw = m.group(0).strip()
                 # Clean up: remove newlines and excessive whitespace from raw text
                 raw = re.sub(r'\s+', ' ', raw).strip()
@@ -352,7 +355,7 @@ class CitationExtractor:
                 if citation_type == CitationType.NUMERIC or raw.startswith("["):
                     if re.fullmatch(r"\[\s*(?:0|(?:19|20)\d{2})\s*\]", raw) or re.match(r"^\[\s*0\b", raw):
                         continue
-                    if _is_reference_list_marker(raw_text, raw_start, m.end()):
+                    if _is_reference_list_marker(search_text, raw_start, m.end()):
                         continue
 
                 # Filter out template placeholder citations like "(Author et al., 2020)", "Author (2020)"
@@ -367,7 +370,7 @@ class CitationExtractor:
                 # Bug fix 3: Filter out [N] in test scenario contexts
                 # Test scenarios like "Reference: [1]" or "APA-01: MATCHED" should not extract [1]
                 if citation_type == CitationType.NUMERIC or raw.startswith("["):
-                    if _is_in_test_scenario_context(raw_text, raw_start):
+                    if _is_in_test_scenario_context(search_text, raw_start):
                         continue
 
                 # Bug fix 4: Filter out date-only patterns like "(May 2012)", "(Spring 2013)"

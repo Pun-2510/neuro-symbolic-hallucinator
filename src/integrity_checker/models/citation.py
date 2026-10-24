@@ -146,14 +146,18 @@ class Citation:
         if self.title:
             parts.append(self.title)
         if self.authors:
-            first = self.authors[0].strip()
-            if first:
-                # APA: "Lastname, F." → token trước dấu phẩy là last-name
-                # MLA / raw: "First Last" → token cuối là last-name
-                if "," in first:
-                    parts.append(first.split(",")[0].strip())
-                else:
-                    parts.append(first.split()[-1])
+            first_author = self.authors[0]
+            if hasattr(first_author, "last_name") and getattr(first_author, "last_name", ""):
+                parts.append(str(first_author.last_name).strip())
+            else:
+                first = str(first_author).strip()
+                if first:
+                    # APA: "Lastname, F." → token trước dấu phẩy là last-name
+                    # MLA / raw: "First Last" → token cuối là last-name
+                    if "," in first:
+                        parts.append(first.split(",")[0].strip())
+                    else:
+                        parts.append(first.split()[-1])
         if self.year:
             parts.append(self.year)
         if not parts:

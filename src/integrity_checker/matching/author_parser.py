@@ -88,6 +88,15 @@ class Author:
     normalized: str = ""
     raw: str = ""
 
+    @property
+    def first_name(self) -> str:
+        """Return full first names or formatted initials for serialization."""
+        if self.full_first_names:
+            return " ".join(self.full_first_names)
+        if self.initials:
+            return " ".join(f"{i.upper()}." for i in self.initials if i)
+        return ""
+
 
 # --- Regex helpers ---
 

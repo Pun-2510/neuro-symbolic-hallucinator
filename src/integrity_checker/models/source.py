@@ -30,6 +30,7 @@ class SourceCandidate:
     year: Optional[str] = None
     venue: Optional[str] = None
     url: Optional[str] = None
+    abstract: Optional[str] = None
     external_ids: dict[str, str] = field(default_factory=dict)
 
     score: float = 0.0
@@ -45,7 +46,20 @@ class SourceCandidate:
         Ưu tiên DOI; fallback normalized title.
         """
         if self.doi:
-            return f"doi:{self.doi.lower()}"
+            d = self.doi.strip().lower()
+            for prefix in (
+                "https://doi.org/",
+                "http://doi.org/",
+                "https://dx.doi.org/",
+                "http://dx.doi.org/",
+                "doi:",
+            ):
+                if d.startswith(prefix):
+                    d = d[len(prefix) :].strip()
+                    break
+            d = d.rstrip(".")
+            if d:
+                return f"doi:{d}"
         if self.title:
             # lowercase, bỏ punctuation + spaces
             norm = "".join(c for c in self.title.lower() if c.isalnum())

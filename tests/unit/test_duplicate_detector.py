@@ -134,3 +134,34 @@ class TestEdgeCases:
         groups = DuplicateDetector().detect([c1, c2])
         assert len(groups) == 1
         assert groups[0].score == 1.0  # DOI exact = 1.0
+
+    def test_exact_identifier_match_disabled(self):
+        """When exact_identifier_match=False, DOI-only match without title match is not grouped."""
+        c1 = cit("Smith (2020). Title A.", doi="10.1234/abc", title_norm="completely different a")
+        c2 = cit("Doe (2021). Title B.", doi="10.1234/abc", title_norm="completely different b")
+        groups = DuplicateDetector(exact_identifier_match=False).detect([c1, c2])
+        assert len(groups) == 0
+
+    def test_initial_first_author_format_matches_comma_format(self):
+        """'J. Smith' and 'Smith, J.' extract same surname 'Smith'."""
+        c1 = cit("J. Smith (2020). Deep learning applications.",
+                 title_norm="deep learning applications", year="2020", authors=["J. Smith"])
+        c2 = cit("Smith, J. (2020). Deep learning applications.",
+                 title_norm="deep learning applications", year="2020", authors=["Smith, J."])
+        groups = DuplicateDetector().detect([c1, c2])
+        assert len(groups) == 1
+
+    def test_model_author_search_query_and_fingerprint(self):
+        """Citation.to_search_query handles Author objects and SourceCandidate.fingerprint strips DOI prefixes."""
+        from integrity_checker.matching.author_parser import normalize_author
+        from integrity_checker.models.source import SourceCandidate
+
+        author_obj = normalize_author("Vaswani, A.")
+        assert author_obj.first_name == "A."
+        c = Citation(raw_text="Vaswani, A. (2017). Attention is all you need.", title="Attention is all you need", authors=[author_obj], year="2017")
+        q = c.to_search_query()
+        assert "vaswani" in q.lower()
+
+        cand1 = SourceCandidate(source_name="crossref", found=True, doi="https://doi.org/10.1038/Nature14539.")
+        cand2 = SourceCandidate(source_name="openalex", found=True, doi="10.1038/nature14539")
+        assert cand1.fingerprint() == cand2.fingerprint() == "doi:10.1038/nature14539"

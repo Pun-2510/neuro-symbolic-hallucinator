@@ -90,6 +90,39 @@ class TestMatchedAuthorYear:
         assert result.links[0].status == CitationMappingStatus.MATCHED
         assert result.links[0].reference_id == "ref-a"
 
+    def test_year_suffix_2020e(self):
+        """(Smith, 2020e) properly strips 'e' suffix and matches year 2020."""
+        bibs = [
+            cit(
+                "Smith, J. (2020). Paper E.",
+                CitationType.REFERENCE_LIST,
+                authors=["Smith, J."],
+                year="2020",
+                ref_id="ref-e",
+            ),
+        ]
+        body = [cit("(Smith, 2020e)")]
+        result = CitationLinker().link(body, bibs)
+        assert result.links[0].status == CitationMappingStatus.MATCHED
+        assert result.links[0].reference_id == "ref-e"
+
+    def test_semicolon_multi_citation_partial_missing(self):
+        """(Smith, 2020; FakeAuthor, 2024) emits both MATCHED and MISSING_REFERENCE links."""
+        bibs = [
+            cit(
+                "Smith, J. (2020). Paper A.",
+                CitationType.REFERENCE_LIST,
+                authors=["Smith, J."],
+                year="2020",
+                ref_id="ref-0",
+            ),
+        ]
+        body = [cit("(Smith, 2020; FakeAuthor, 2024)")]
+        result = CitationLinker().link(body, bibs)
+        statuses = [l.status for l in result.links]
+        assert CitationMappingStatus.MATCHED in statuses
+        assert CitationMappingStatus.MISSING_REFERENCE in statuses
+
     def test_multiple_body_citations_matched(self):
         bibs = [
             cit("Smith, J. (2020). Title A.", CitationType.REFERENCE_LIST,

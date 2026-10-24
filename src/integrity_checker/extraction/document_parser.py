@@ -241,8 +241,11 @@ class DocumentParser:
                 if grobid_out is None or not grobid_out.is_available:
                     if not grobid_out:
                         grobid_out = GrobidOutput(is_available=False, error_message="GROBID processing failed")
-                    elif not grobid_out.is_available:
+                    if not any("GROBID" in w for w in warnings):
                         warnings.append(f"GROBID processing failed: {grobid_out.error_message or 'unknown error'}")
+                    if grobid_status == "available":
+                        grobid_status = "fallback"
+                    parser_used = "regex"
 
             except Exception as exc:  # noqa: BLE001
                 logger.warning("GROBID failed: %s", exc)
@@ -305,8 +308,6 @@ class DocumentParser:
             )
 
         out = parse_tei(tei_xml)
-        if not out.is_available:
-            return None
         return out
 
     # ---------- Step 3: Merge ----------
@@ -446,6 +447,12 @@ class DocumentParser:
         Used as secondary/supplemental extraction khi GROBID available
         nhưng bỏ sót một số entries.
         """
+        from integrity_checker.extraction.reference_parser import (
+            _is_essay_title_entry,
+            is_vn_legal_reference,
+        )
+
+        all_citations: list[Citation] = []
         for section in sections:
             if section.section_type == SectionType.BIBLIOGRAPHY and section.text:
                 try:
@@ -453,9 +460,10 @@ class DocumentParser:
                     section_text = pp._normalize_unicode(pp._fix_ligatures(section.text))
 
                     entries = self._reference_parser._split_entries(section_text)
-                    citations: list[Citation] = []
-                    for idx, entry in enumerate(entries, start=1):
-                        if len(entry) < 20:
+                    for idx, entry in enumerate(entries, start=len(all_citations) + 1):
+                        if len(entry) < 20 and not is_vn_legal_reference(entry.strip()):
+                            continue
+                        if _is_essay_title_entry(entry):
                             continue
                         citation = self._reference_parser._parse_entry(
                             entry, order_index=idx, page_num=section.start_page
@@ -464,13 +472,12 @@ class DocumentParser:
                             # Mark as regex source
                             citation.source = "regex"
                             citation.source_confidence = citation.confidence
-                            citations.append(citation)
-                    if citations:
-                        logger.info(f"Extracted {len(citations)} references from regex")
-                        return citations
+                            all_citations.append(citation)
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("Reference parser failed: %s", exc)
-        return []
+        if all_citations:
+            logger.info(f"Extracted {len(all_citations)} references from regex")
+        return all_citations
 
     def _merge_reference_lists(
         self,
@@ -496,7 +503,9 @@ class DocumentParser:
         def _enrich_grobid_ref(target: Citation, donor: Citation) -> None:
             """Fill in missing fields on a GROBID reference from its regex counterpart."""
             if not target.authors and donor.authors:
-                target.authors = donor.authors
+                target.authors = [
+                    getattr(a, "raw", None) or str(a) for a in donor.authors
+                ]
             elif (
                 donor.authors
                 and len(donor.authors) == 1

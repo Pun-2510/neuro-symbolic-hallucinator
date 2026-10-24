@@ -262,10 +262,11 @@ class CitationLinker:
         # GROBID provides authoritative xml:id links between in-text and bib
         # e.g. in-text cites "b0" and bib has id="b0" → direct match
         if hasattr(cit, 'grobid_ref_id') and cit.grobid_ref_id:
+            cit_grobid_id = str(cit.grobid_ref_id).strip().lstrip("#")
             # Build bib index by grobid_ref_id
             for bib in bib_citations:
                 bib_grobid_id = getattr(bib, 'grobid_ref_id', None)
-                if bib_grobid_id and bib_grobid_id == cit.grobid_ref_id:
+                if bib_grobid_id and str(bib_grobid_id).strip().lstrip("#") == cit_grobid_id:
                     return _bib_link(
                         bib, 0.98, MappingMethod.TEI_LINK  # type: ignore
                     )
@@ -336,7 +337,15 @@ class CitationLinker:
                         confidence=self.author_year_confidence,
                         method=MappingMethod.AUTHOR_YEAR,
                     ))
-            if multi_links:
+                else:
+                    multi_links.append(CitationLink(
+                        occurrence_id=occ_id,
+                        reference_id=None,
+                        status=CitationMappingStatus.MISSING_REFERENCE,
+                        confidence=0.0,
+                        method=MappingMethod.NO_KEYS,
+                    ))
+            if any(l.status == CitationMappingStatus.MATCHED for l in multi_links):
                 return multi_links
 
         # 3a. Secondary citation (trích dẫn gián tiếp): "(Smith, 2005, dẫn theo Tran, 2016)"
@@ -739,7 +748,7 @@ class CitationLinker:
             if re.search(r"\b(?:19|20)\d{2}\b", raw_author):
                 raw_author = re.split(r",\s*(?:19|20)\d{2}", raw_author)[0].strip()
             year_suffix = None
-            if len(year) == 5 and year[4] in "abcdfgh":
+            if len(year) == 5 and year[4] in "abcdefgh":
                 year_suffix = year[4]
                 year = year[:4]
             normalized = self._clean_intext_author(raw_author)
@@ -751,7 +760,7 @@ class CitationLinker:
             raw_author = m2.group(1).strip()
             year = m2.group(2).strip()
             year_suffix = None
-            if len(year) == 5 and year[4] in "abcdfgh":
+            if len(year) == 5 and year[4] in "abcdefgh":
                 year_suffix = year[4]
                 year = year[:4]
             normalized = self._clean_intext_author(raw_author)

@@ -87,59 +87,60 @@ class DuplicateDetector:
         groups: list[DuplicateGroup] = []
         assigned: set[int] = set()  # indices đã được assign vào nhóm nào đó
 
-        # 1. DOI exact groups
-        doi_groups: dict[str, list[tuple[int, Citation]]] = {}
-        for i, cit in enumerate(bib_citations):
-            doi = (cit.doi or "").strip().lower()
-            if doi:
-                doi_groups.setdefault(doi, []).append((i, cit))
+        if self.exact_identifier_match:
+            # 1. DOI exact groups
+            doi_groups: dict[str, list[tuple[int, Citation]]] = {}
+            for i, cit in enumerate(bib_citations):
+                doi = (cit.doi or "").strip().lower()
+                if doi:
+                    doi_groups.setdefault(doi, []).append((i, cit))
 
-        for doi, entries in doi_groups.items():
-            if len(entries) < 2:
-                continue
-            ids = [idx for idx, _ in entries]
-            if any(idx in assigned for idx in ids):
-                continue
-            for idx in ids:
-                assigned.add(idx)
-            reason = f"Exact DOI match: {doi}"
-            score = 1.0
-            groups.append(
-                DuplicateGroup(
-                    citations=[c for _, c in entries],
-                    reason=reason,
-                    score=score,
-                    representative=entries[0][1],
+            for doi, entries in doi_groups.items():
+                if len(entries) < 2:
+                    continue
+                ids = [idx for idx, _ in entries]
+                if any(idx in assigned for idx in ids):
+                    continue
+                for idx in ids:
+                    assigned.add(idx)
+                reason = f"Exact DOI match: {doi}"
+                score = 1.0
+                groups.append(
+                    DuplicateGroup(
+                        citations=[c for _, c in entries],
+                        reason=reason,
+                        score=score,
+                        representative=entries[0][1],
+                    )
                 )
-            )
 
-        # 2. arXiv exact groups
-        arxiv_groups: dict[str, list[tuple[int, Citation]]] = {}
-        for i, cit in enumerate(bib_citations):
-            if i in assigned:
-                continue
-            arxiv_id = self._extract_arxiv_id(cit.raw_text) or self._extract_arxiv_id(
-                cit.doi or ""
-            )
-            if arxiv_id:
-                arxiv_groups.setdefault(arxiv_id, []).append((i, cit))
-
-        for arxiv_id, entries in arxiv_groups.items():
-            if len(entries) < 2:
-                continue
-            ids = [idx for idx, _ in entries]
-            if any(idx in assigned for idx in ids):
-                continue
-            for idx in ids:
-                assigned.add(idx)
-            groups.append(
-                DuplicateGroup(
-                    citations=[c for _, c in entries],
-                    reason=f"Exact arXiv ID match: {arxiv_id}",
-                    score=1.0,
-                    representative=entries[0][1],
+            # 2. arXiv exact groups
+            arxiv_groups: dict[str, list[tuple[int, Citation]]] = {}
+            for i, cit in enumerate(bib_citations):
+                if i in assigned:
+                    continue
+                arxiv_id = self._extract_arxiv_id(cit.raw_text) or self._extract_arxiv_id(
+                    cit.doi or ""
                 )
-            )
+                if arxiv_id:
+                    arxiv_groups.setdefault(arxiv_id, []).append((i, cit))
+
+            for arxiv_id, entries in arxiv_groups.items():
+                if len(entries) < 2:
+                    continue
+                ids = [idx for idx, _ in entries]
+                if any(idx in assigned for idx in ids):
+                    continue
+                for idx in ids:
+                    assigned.add(idx)
+                groups.append(
+                    DuplicateGroup(
+                        citations=[c for _, c in entries],
+                        reason=f"Exact arXiv ID match: {arxiv_id}",
+                        score=1.0,
+                        representative=entries[0][1],
+                    )
+                )
 
         # 3. Title + year + author similarity fallback
         if self.threshold < 1.0:
@@ -218,11 +219,16 @@ class DuplicateDetector:
             if isinstance(raw, str):
                 # "Smith, J." → "Smith"
                 # "Smith J." → "Smith"
+                # "J. Smith" → "Smith"
                 if "," in raw:
                     return raw.split(",")[0].strip()
-                tokens = raw.split()
-                return tokens[0].strip() if tokens else None
-            # Fallback: object format (shouldn't happen)
+                tokens = [t.strip() for t in raw.split() if t.strip()]
+                if not tokens:
+                    return None
+                if len(tokens) > 1 and len(tokens[0].rstrip(".")) == 1:
+                    return tokens[-1]
+                return tokens[0]
+            # Fallback: object format (Author dataclass)
             return getattr(raw, "last_name", None) or ""
         # Fallback: extract from raw_text
         m = re.match(r"^([A-Z][a-zÀ-ÿ'-]+)", (cit.raw_text or "").split(",")[0])
