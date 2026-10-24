@@ -195,6 +195,25 @@ def _compute_in_text_citation_index(
     return in_text_by_ref, ref_link_by_record_id
 
 
+_CSV_DANGEROUS_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _sanitize_csv_cell(val: Any) -> Any:
+    """Neutralize spreadsheet formula injection in CSV string cells."""
+    if isinstance(val, str) and val.startswith(_CSV_DANGEROUS_PREFIXES):
+        return f"'{val}"
+    return val
+
+
+def _safe_content_disposition(filename: str, suffix: str) -> str:
+    """Sanitize filename for Content-Disposition header (prevent CR/LF and quote injection)."""
+    safe_ascii = "".join(
+        ch if (32 <= ord(ch) < 127 and ch not in ('"', "\\", ";", "\r", "\n")) else "_"
+        for ch in (filename or "essay")
+    ).strip() or "essay"
+    return f'attachment; filename="{safe_ascii}.{suffix}"'
+
+
 def _csv_response(filename: str, verdicts: list) -> StreamingResponse:
     buf = io.StringIO()
     writer = csv.writer(buf)
@@ -207,14 +226,14 @@ def _csv_response(filename: str, verdicts: list) -> StreamingResponse:
     ])
     for v in verdicts:
         writer.writerow([
-            v.citation_raw,
-            v.label,
+            _sanitize_csv_cell(v.citation_raw),
+            _sanitize_csv_cell(v.label),
             f"{v.confidence:.4f}",
-            v.mapping_status or "matched",
+            _sanitize_csv_cell(v.mapping_status or "matched"),
             f"{v.mapping_confidence:.4f}",
-            v.reasoning,
-            v.triggered_rules,
-            v.mismatched_fields,
+            _sanitize_csv_cell(v.reasoning),
+            _sanitize_csv_cell(v.triggered_rules),
+            _sanitize_csv_cell(v.mismatched_fields),
             "1" if v.is_overridden else "0",
             f"{v.style_penalty:.4f}" if v.style_penalty else "",
             "1" if v.domain_exception else "0",
@@ -224,7 +243,7 @@ def _csv_response(filename: str, verdicts: list) -> StreamingResponse:
         iter([buf.getvalue()]),
         media_type="text/csv",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}.report.csv"'
+            "Content-Disposition": _safe_content_disposition(filename, "report.csv")
         },
     )
 
@@ -394,7 +413,7 @@ def _json_response(
         iter([body]),
         media_type="application/json",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}.report.json"'
+            "Content-Disposition": _safe_content_disposition(filename, "report.json")
         },
     )
 
@@ -452,8 +471,8 @@ def _pdf_response(filename: str, essay, verdicts: list) -> StreamingResponse:
     elements.append(Paragraph("Citation Integrity Report", title_style))
     elements.append(Spacer(1, 0.5 * cm))
 
-    # Essay info
-    elements.append(Paragraph(f"<b>File:</b> {essay.filename}", body_style))
+    # Essay info (escape filename to prevent ReportLab XML/HTML tag injection & SSRF)
+    elements.append(Paragraph(f"<b>File:</b> {escape(essay.filename or '')}", body_style))
     elements.append(Paragraph(f"<b>Essay ID:</b> {essay.id}", body_style))
     elements.append(Paragraph(f"<b>Pages:</b> {essay.num_pages}", body_style))
     elements.append(Paragraph(f"<b>Generated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", body_style))
@@ -553,7 +572,7 @@ def _pdf_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         iter([buffer.getvalue()]),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}.report.pdf"'
+            "Content-Disposition": _safe_content_disposition(filename, "report.pdf")
         },
     )
 
@@ -609,7 +628,7 @@ def _docx_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         iter([docx_bytes]),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}.report.docx"'
+            "Content-Disposition": _safe_content_disposition(filename, "report.docx")
         },
     )
 

@@ -445,6 +445,30 @@ class TestChangePassword:
         )
         assert login.status_code == 200
 
+        # Old session token must be revoked after password change
+        me_old = client.get("/api/auth/me", headers=auth_header(token))
+        assert me_old.status_code == 401
+
+    def test_admin_password_update_revokes_target_user_sessions(self, clean_db):
+        admin_token = get_admin_token()
+        user_token = get_user_token()
+        client = TestClient(app)
+
+        me_before = client.get("/api/auth/me", headers=auth_header(user_token))
+        assert me_before.status_code == 200
+        user_id = me_before.json()["id"]
+
+        upd = client.put(
+            f"/api/users/{user_id}",
+            json={"password": "admin_reset_pass_123"},
+            headers=auth_header(admin_token),
+        )
+        assert upd.status_code == 200
+
+        # User's previous session must now be revoked
+        me_after = client.get("/api/auth/me", headers=auth_header(user_token))
+        assert me_after.status_code == 401
+
     def test_wrong_current_password_fails(self, clean_db):
         get_admin_token()
         token = get_user_token()

@@ -38,7 +38,7 @@ def get_token_from_header(authorization: str) -> str:
     """Extract Bearer token from authorization header."""
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
-    return authorization.replace("Bearer ", "")
+    return authorization[7:].strip()
 
 
 def get_current_user(

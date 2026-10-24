@@ -232,7 +232,11 @@ def update_user(
     user = repo.update_user(user_id, **update_data)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    if request.is_active is False:
+    if (
+        request.is_active is False
+        or request.password is not None
+        or request.role is not None
+    ):
         repo.delete_user_sessions(user_id)
     repo.commit()
     return _to_response(user)
@@ -376,6 +380,7 @@ def change_my_password(
 
     repo = Repository(db)
     repo.update_user(current_user.id, password_hash=_hash_password(request.new_password))
+    repo.delete_user_sessions(current_user.id)
     repo.session.flush()  # Ensure the hash is written before commit
     repo.commit()
     return MessageResponse(message="Password changed successfully")

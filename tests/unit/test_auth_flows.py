@@ -370,3 +370,28 @@ class TestProductionSecurityGuards:
         monkeypatch.setenv("DEMO_USERS_ENABLED", "true")
         assert _is_demo_enabled() is False
 
+    def test_login_rate_limiter_blocks_brute_force(self, monkeypatch):
+        from integrity_checker.api.routes.auth import _login_rate_limiter
+
+        _login_rate_limiter.clear_all()
+        monkeypatch.setattr(_login_rate_limiter, "enforce_in_tests", True)
+        monkeypatch.setattr(_login_rate_limiter, "max_attempts", 3)
+
+        client = TestClient(app)
+        try:
+            for _ in range(3):
+                r = client.post(
+                    "/api/auth/login",
+                    json={"username": "brute_target", "password": "wrong"},
+                )
+                assert r.status_code == 401
+
+            blocked = client.post(
+                "/api/auth/login",
+                json={"username": "brute_target", "password": "wrong"},
+            )
+            assert blocked.status_code == 429
+            assert "too many" in blocked.json()["detail"].lower()
+        finally:
+            _login_rate_limiter.clear_all()
+

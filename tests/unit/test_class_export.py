@@ -272,6 +272,83 @@ def test_export_class_csv_rejects_other_teachers(clean_db):
     assert "Not your class" in resp.json()["detail"]
 
 
+def test_pdf_and_csv_exports_prevent_xml_ssrf_and_csv_formula_injection(clean_db):
+    """PDF export must escape XML/HTML in essay.filename (preventing ReportLab SSRF/crash),
+    and CSV exports must neutralize leading formula characters (=, +, -, @).
+    """
+    from integrity_checker.db.session import get_session
+    from integrity_checker.db.repository import Repository
+
+    teacher_id = _hardcoded_teacher_id()
+    student_id = _make_user("inj_student", role="user")
+
+    session = get_session()
+    try:
+        repo = Repository(session)
+        cls = repo.create_class(name="SecExportClass", teacher_id=teacher_id)
+        class_id = cls.id
+        repo.add_student_to_class(cls.id, student_id)
+        essay = EssayRecord(
+            filename='=CMD|" /C calc"!A0 <img src="http://169.254.169.254/meta"/>&"\r\n.pdf',
+            num_pages=2,
+            user_id=student_id,
+            class_id=cls.id,
+        )
+        session.add(essay)
+        session.flush()
+        verdict = VerdictRecord(
+            essay_id=essay.id,
+            citation_raw="+SUM(1,1) Smith (2020)",
+            label="verified",
+            confidence=0.9,
+            reasoning="@evil_macro()",
+            triggered_rules="[]",
+            mismatched_fields="[]",
+            features="{}",
+            mapping_status="matched",
+            mapping_confidence=1.0,
+        )
+        session.add(verdict)
+        session.commit()
+        essay_id = essay.id
+    finally:
+        session.close()
+
+    token = get_teacher_token()
+    client = TestClient(app)
+
+    # 1. PDF report export must succeed without XML parse crash or SSRF
+    pdf_resp = client.get(
+        f"/api/essays/{essay_id}/report?format=pdf",
+        headers=auth_header(token),
+    )
+    assert pdf_resp.status_code == 200, pdf_resp.text
+    assert pdf_resp.content.startswith(b"%PDF-")
+    cd_header = pdf_resp.headers.get("content-disposition", "")
+    assert "\r" not in cd_header and "\n" not in cd_header
+
+    # 2. Essay CSV export must prefix formula cells with single quote
+    csv_resp = client.get(
+        f"/api/essays/{essay_id}/report?format=csv",
+        headers=auth_header(token),
+    )
+    assert csv_resp.status_code == 200
+    rows = list(csv.reader(io.StringIO(csv_resp.text)))
+    assert len(rows) == 2
+    assert rows[1][0].startswith("'+SUM(1,1)")
+    assert rows[1][5].startswith("'@evil_macro()")
+
+    # 3. Class CSV export must neutralize dangerous filename cell
+    class_csv_resp = client.get(
+        f"/api/teacher/classes/{class_id}/export.csv",
+        headers=auth_header(token),
+    )
+    assert class_csv_resp.status_code == 200
+    c_rows = list(csv.reader(io.StringIO(class_csv_resp.text)))
+    assert len(c_rows) == 2
+    assert c_rows[1][0].startswith("'=CMD")
+
+
 # ---------------------------------------------------------------------------
 # Fixture — extends clean_db to also wipe VerdictRecord + AuditLog
 # ---------------------------------------------------------------------------

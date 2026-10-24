@@ -352,6 +352,16 @@ def list_pending_reviews(
     return out
 
 
+_CSV_DANGEROUS_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _sanitize_csv_cell(val):
+    """Neutralize spreadsheet formula injection in CSV string cells."""
+    if isinstance(val, str) and val.startswith(_CSV_DANGEROUS_PREFIXES):
+        return f"'{val}"
+    return val
+
+
 @router.get("/classes/{class_id}/export.csv")
 def export_class_csv(
     class_id: int,
@@ -392,15 +402,19 @@ def export_class_csv(
         if not verdicts:
             # Essay with no verdicts still gets a row so the teacher sees
             # every uploaded file in the export.
-            writer.writerow([essay.filename, student_name, "", "", "", "", ""])
+            writer.writerow([
+                _sanitize_csv_cell(essay.filename),
+                _sanitize_csv_cell(student_name),
+                "", "", "", "", "",
+            ])
             continue
         for v in verdicts:
             writer.writerow(
                 [
-                    essay.filename,
-                    student_name,
+                    _sanitize_csv_cell(essay.filename),
+                    _sanitize_csv_cell(student_name),
                     v.id,
-                    v.label,
+                    _sanitize_csv_cell(v.label),
                     v.confidence,
                     v.validated_at.isoformat() if v.validated_at else "",
                     "yes" if v.is_overridden else "no",

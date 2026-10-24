@@ -5,6 +5,9 @@ from __future__ import annotations
 import logging
 import os
 import re
+import threading
+import time
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -23,6 +26,56 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
+
+
+class _SlidingWindowRateLimiter:
+    """Thread-safe in-memory sliding window rate limiter for auth endpoints."""
+
+    def __init__(self, max_attempts: int = 10, window_seconds: float = 60.0) -> None:
+        self.max_attempts = max_attempts
+        self.window_seconds = window_seconds
+        self._attempts: dict[str, list[float]] = defaultdict(list)
+        self._lock = threading.Lock()
+        self.enforce_in_tests: bool = False
+
+    def check(self, key: str) -> None:
+        """Raise HTTP 429 if key has exceeded max_attempts within window_seconds."""
+        if is_test_runtime() and not self.enforce_in_tests:
+            return
+        now = time.monotonic()
+        cutoff = now - self.window_seconds
+        with self._lock:
+            history = [t for t in self._attempts.get(key, []) if t > cutoff]
+            if len(history) >= self.max_attempts:
+                self._attempts[key] = history
+                raise HTTPException(
+                    status_code=429,
+                    detail="Too many authentication attempts. Please try again in a minute.",
+                )
+            self._attempts[key] = history
+
+    def record_failure(self, key: str) -> None:
+        """Record a failed attempt for key."""
+        if is_test_runtime() and not self.enforce_in_tests:
+            return
+        now = time.monotonic()
+        cutoff = now - self.window_seconds
+        with self._lock:
+            history = [t for t in self._attempts.get(key, []) if t > cutoff]
+            history.append(now)
+            self._attempts[key] = history
+
+    def reset(self, key: str) -> None:
+        """Clear attempts for key after a successful login."""
+        with self._lock:
+            self._attempts.pop(key, None)
+
+    def clear_all(self) -> None:
+        with self._lock:
+            self._attempts.clear()
+
+
+_login_rate_limiter = _SlidingWindowRateLimiter(max_attempts=10, window_seconds=60.0)
 
 
 def _is_demo_enabled() -> bool:
@@ -226,6 +279,8 @@ def login(request: LoginRequest, db=Depends(get_db)):
     repo = Repository(db)
     user: User | None = None
     identifier = request.username.strip()
+    rate_key = identifier.lower()
+    _login_rate_limiter.check(rate_key)
 
     # Check DB first by username, then by email if identifier contains '@'
     db_user = repo.get_user_by_username(identifier)
@@ -235,6 +290,7 @@ def login(request: LoginRequest, db=Depends(get_db)):
     if db_user:
         user = db_user
         if not _verify_password(request.password, user.password_hash):
+            _login_rate_limiter.record_failure(rate_key)
             raise HTTPException(status_code=401, detail="Invalid username or password")
         if not user.is_active:
             if not getattr(user, "email_verified", True):
@@ -250,9 +306,11 @@ def login(request: LoginRequest, db=Depends(get_db)):
         # No DB user — check hardcoded credentials (for demo/admin accounts)
         hardcoded_users = _get_hardcoded_users()
         if identifier not in hardcoded_users:
+            _login_rate_limiter.record_failure(rate_key)
             raise HTTPException(status_code=401, detail="Invalid username or password")
         expected_password, role = hardcoded_users[identifier]
         if request.password != expected_password:
+            _login_rate_limiter.record_failure(rate_key)
             raise HTTPException(status_code=401, detail="Invalid username or password")
         # Create DB entry on first login for hardcoded users
         password_hash = _hash_password(request.password)
@@ -265,6 +323,8 @@ def login(request: LoginRequest, db=Depends(get_db)):
             is_active=True,
             email_verified=True,
         )
+
+    _login_rate_limiter.reset(rate_key)
 
     # Stamp last_login_at every login
     repo.update_last_login(user.id)
@@ -431,14 +491,17 @@ def resend_activation(request: ResendActivationRequest, db=Depends(get_db)):
     raw_token, _ = repo.create_auth_token(user.id, "activation", expires_at)
     repo.commit()
 
-    get_email_service().send_activation_email(
-        to_email=user.email,
-        username=user.username,
-        full_name=user.full_name,
-        raw_token=raw_token,
-        institution=user.institution,
-        lang=request.lang,
-    )
+    try:
+        get_email_service().send_activation_email(
+            to_email=user.email,
+            username=user.username,
+            full_name=user.full_name,
+            raw_token=raw_token,
+            institution=user.institution,
+            lang=request.lang,
+        )
+    except Exception as exc:
+        logger.error("Failed to dispatch resent activation email to %s: %s", user.email, exc)
 
     return MessageResponse(
         message="A new activation email has been sent. Please check your inbox."
@@ -460,10 +523,8 @@ def forgot_password(request: ForgotPasswordRequest, db=Depends(get_db)):
     if not is_test_runtime():
         latest = repo.get_latest_auth_token_for_user(user.id, "password_reset")
         if latest and (now - _ensure_utc(latest.created_at)).total_seconds() < 30:
-            raise HTTPException(
-                status_code=429,
-                detail="Please wait 30 seconds before requesting another password reset link.",
-            )
+            # Return identical 200 response to avoid account enumeration oracle
+            return MessageResponse(message=generic_msg)
 
     settings = get_settings()
     expires_at = now + timedelta(minutes=settings.auth.reset_expire_minutes)
@@ -592,7 +653,7 @@ def logout(
     repo = Repository(db)
 
     if authorization and authorization.startswith("Bearer "):
-        token = authorization.replace("Bearer ", "")
+        token = authorization[7:].strip()
         # Try to delete session - will silently succeed if session doesn't exist
         repo.delete_session(token)
 
