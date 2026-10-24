@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import threading
 from typing import Generator
 
 import jwt
@@ -15,6 +16,9 @@ from integrity_checker.db.repository import Repository
 from integrity_checker.db.session import get_session
 from integrity_checker.pipeline.integrity_pipeline import IntegrityPipeline
 
+_pipeline_lock = threading.Lock()
+_pipeline_singleton: IntegrityPipeline | None = None
+
 
 def get_db() -> Generator[Session, None, None]:
     """Yield DB session, close sau khi xong."""
@@ -25,13 +29,27 @@ def get_db() -> Generator[Session, None, None]:
         session.close()
 
 
-def get_repository(session: Session = None) -> Repository:  # type: ignore[assignment]
-    return Repository(session or get_session())
+def get_repository(session: Session = Depends(get_db)) -> Repository:
+    if not isinstance(session, Session):
+        session = get_session()
+    return Repository(session)
 
 
 def get_pipeline() -> IntegrityPipeline:
-    """Singleton pipeline (lazy)."""
-    return IntegrityPipeline()
+    """Singleton pipeline (lazy, thread-safe)."""
+    global _pipeline_singleton
+    if _pipeline_singleton is None:
+        with _pipeline_lock:
+            if _pipeline_singleton is None:
+                _pipeline_singleton = IntegrityPipeline()
+    return _pipeline_singleton
+
+
+def reset_pipeline() -> None:
+    """Reset cached pipeline singleton (for tests)."""
+    global _pipeline_singleton
+    with _pipeline_lock:
+        _pipeline_singleton = None
 
 
 def get_token_from_header(authorization: str) -> str:

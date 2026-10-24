@@ -255,6 +255,7 @@ class GrobidServiceManager:
         if not hasattr(self, "_docker"):
             return "unavailable"
 
+        client = None
         try:
             client = self._docker_client()
             container = client.containers.get(self._container_name)
@@ -265,6 +266,12 @@ class GrobidServiceManager:
         except Exception as exc:
             logger.debug("Cannot check container status: %s", exc)
             return "unavailable"
+        finally:
+            if client is not None and hasattr(client, "close"):
+                try:
+                    client.close()
+                except Exception:
+                    pass
 
     def is_container_running(self) -> bool:
         """Check nếu GROBID container đang chạy."""
@@ -293,6 +300,7 @@ class GrobidServiceManager:
             logger.error("Docker SDK not available - cannot start container")
             return False
 
+        client = None
         try:
             client = self._docker_client()
 
@@ -362,6 +370,12 @@ class GrobidServiceManager:
             logger.error("Failed to start GROBID container: %s", exc)
             self._status = GROBID_STATUS.UNKNOWN
             return False
+        finally:
+            if client is not None and hasattr(client, "close"):
+                try:
+                    client.close()
+                except Exception:
+                    pass
 
     def stop(self) -> bool:
         """Stop GROBID Docker container.
@@ -372,6 +386,7 @@ class GrobidServiceManager:
         if not hasattr(self, "_docker"):
             return False
 
+        client = None
         try:
             client = self._docker_client()
             container = client.containers.get(self._container_name)
@@ -385,6 +400,12 @@ class GrobidServiceManager:
         except Exception as exc:
             logger.error("Failed to stop GROBID container: %s", exc)
             return False
+        finally:
+            if client is not None and hasattr(client, "close"):
+                try:
+                    client.close()
+                except Exception:
+                    pass
 
     def wait_until_ready(self, timeout: Optional[int] = None) -> bool:
         """Wait cho GROBID API ready.

@@ -55,6 +55,7 @@ class SemanticMatcher:
     """
 
     _instance_lock = threading.Lock()
+    _encode_lock = threading.Lock()
     _model_cache: dict[str, "object"] = {}
     _singleton: "SemanticMatcher | None" = None
 
@@ -108,13 +109,24 @@ class SemanticMatcher:
                 self._model = self._model_cache[self.model_name]
         return self._model
 
+    def _encode(self, model: "object", texts: object, **kwargs: object):
+        """Thread-safe model.encode wrapper with torch.no_grad()."""
+        with self._encode_lock:
+            try:
+                import torch  # type: ignore
+
+                with torch.no_grad():
+                    return model.encode(texts, **kwargs)
+            except ImportError:
+                return model.encode(texts, **kwargs)
+
     def similarity(self, text1: str, text2: str) -> float:
         """Trả cosine similarity 0.0–1.0. Fallback 0.0 nếu model chưa load được."""
         model = self._get_model()
         if model is None or not text1 or not text2:
             return 0.0
         try:
-            embs = model.encode([text1, text2], convert_to_tensor=True, normalize_embeddings=True)
+            embs = self._encode(model, [text1, text2], convert_to_tensor=True, normalize_embeddings=True)
             cos = (embs[0] @ embs[1]).item()
             # clamp về 0–1 (không dùng (cos+1)/2 vì làm phồng cos=0 lên 0.5)
             return max(0.0, min(1.0, float(cos)))
@@ -237,7 +249,8 @@ class SemanticMatcher:
     ) -> float:
         """Compute cosine similarity giữa 2 texts."""
         try:
-            embs = model.encode(
+            embs = self._encode(
+                model,
                 [text1, text2],
                 convert_to_tensor=True,
                 normalize_embeddings=True,
@@ -268,7 +281,8 @@ class SemanticMatcher:
                 return 0.0
 
             # Encode short text once
-            short_emb = model.encode(
+            short_emb = self._encode(
+                model,
                 short_text,
                 convert_to_tensor=True,
                 normalize_embeddings=True,
@@ -278,7 +292,8 @@ class SemanticMatcher:
             # Encode all segments và compute similarities
             similarities = []
             for segment in segments[:5]:  # Max 5 segments
-                seg_emb = model.encode(
+                seg_emb = self._encode(
+                    model,
                     segment,
                     convert_to_tensor=True,
                     normalize_embeddings=True,
@@ -363,7 +378,8 @@ class SemanticMatcher:
             for t1, t2 in text_pairs:
                 texts.extend([self._truncate_text(t1), self._truncate_text(t2)])
 
-            embs = model.encode(
+            embs = self._encode(
+                model,
                 texts,
                 convert_to_tensor=True,
                 normalize_embeddings=True,
