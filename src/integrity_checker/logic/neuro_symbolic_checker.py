@@ -19,6 +19,7 @@ from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate, SourceResult
 from integrity_checker.models.validation import CitationVerdict, MatchFeatures, ValidationLabel
 from integrity_checker.matching.features import FeatureCalculator
+from integrity_checker.logic.calibration import HybridMLScorer
 from integrity_checker.logic.rules import SymbolicRules, _is_fake_url
 from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
 
@@ -52,12 +53,15 @@ class NeuroSymbolicChecker:
     """
 
     _feature_calculator: FeatureCalculator | None = None
+    _hybrid_scorer: HybridMLScorer | None = None
 
     def __init__(
         self,
         feature_calculator: FeatureCalculator | None = None,
         rules: SymbolicRules | None = None,
         enable_content_alignment: bool = True,
+        hybrid_scorer: HybridMLScorer | None = None,
+        enable_calibration: bool = True,
     ) -> None:
         # Reuse shared FeatureCalculator instance to benefit from SemanticMatcher singleton
         if feature_calculator is not None:
@@ -70,6 +74,13 @@ class NeuroSymbolicChecker:
             self.feature_calculator = NeuroSymbolicChecker._feature_calculator
         self.rules = rules or SymbolicRules()
         self.enable_content_alignment = enable_content_alignment
+        self.enable_calibration = enable_calibration
+        if hybrid_scorer is not None:
+            self.hybrid_scorer = hybrid_scorer
+        else:
+            if NeuroSymbolicChecker._hybrid_scorer is None:
+                NeuroSymbolicChecker._hybrid_scorer = HybridMLScorer.load_default()
+            self.hybrid_scorer = NeuroSymbolicChecker._hybrid_scorer
 
     def check(
         self,
@@ -393,11 +404,24 @@ class NeuroSymbolicChecker:
             outcome.reasoning, features, outcome.triggered_rules
         )
 
+        final_confidence = outcome.confidence
+        if self.enable_calibration and self.hybrid_scorer is not None and outcome.confidence > 0.0:
+            has_cand = any(getattr(c, "found", True) for c in (source.candidates or []))
+            final_confidence = self.hybrid_scorer.calibrate_verdict_confidence(
+                symbolic_label=outcome.label.value,
+                symbolic_confidence=outcome.confidence,
+                features=features,
+                has_candidate=has_cand,
+                style_penalty=outcome.style_penalty,
+            )
+            if "R-AMBIGUOUS-MAPPING" in outcome.triggered_rules:
+                final_confidence = min(final_confidence, self.rules.ambiguous_confidence_cap)
+
         return self._apply_dead_link_exception(
             CitationVerdict(
                 citation=citation,
                 label=outcome.label,
-                confidence=outcome.confidence,
+                confidence=final_confidence,
                 matched_source=source,
                 features=features,
                 reasoning=enhanced_reasoning,

@@ -9,6 +9,8 @@ import pytest
 from integrity_checker.logic.calibration import (
     CalibrationCalculator,
     CalibrationMetrics,
+    HybridMLScorer,
+    PlattCalibrator,
     compute_brier,
     compute_calibration_metrics,
     compute_coverage_accuracy,
@@ -185,3 +187,97 @@ class TestFindOptimalAbstentionThreshold:
         threshold, cov = find_optimal_abstention_threshold([], [], target_coverage=0.8)
         assert threshold == 0.0
         assert cov == 0.0
+
+
+class TestPlattCalibratorAndHybridMLScorer:
+    """Unit tests for Phase 4 PlattCalibrator and HybridMLScorer."""
+
+    def test_platt_identity_mapping(self) -> None:
+        cal = PlattCalibrator(a=1.0, b=0.0)
+        assert cal.calibrate(0.80) == pytest.approx(0.80, abs=1e-3)
+        assert cal.calibrate(0.50) == pytest.approx(0.50, abs=1e-3)
+        assert cal.calibrate(0.0) == 0.0
+
+    def test_platt_fit_reduces_brier_and_ece(self) -> None:
+        # Under-confident scores (~0.70) where ground truth is 95% accurate
+        raw_scores = [0.72] * 38 + [0.68] * 2
+        labels = [1] * 38 + [0] * 2
+        brier_before = compute_brier(raw_scores, labels)
+        ece_before = compute_ece(raw_scores, labels)
+
+        cal = PlattCalibrator().fit(raw_scores, labels)
+        cal_scores = cal.calibrate_batch(raw_scores)
+        brier_after = compute_brier(cal_scores, labels)
+        ece_after = compute_ece(cal_scores, labels)
+
+        assert brier_after < brier_before
+        assert ece_after < ece_before
+
+    def test_hybrid_ml_scorer_predicts_all_four_classes(self) -> None:
+        scorer = HybridMLScorer.load_default()
+
+        ver_label, ver_conf, ver_probs = scorer.predict(
+            {
+                "title_sim_fuzzy": 0.97,
+                "title_sim_semantic": 0.96,
+                "author_jaccard": 1.0,
+                "year_distance": 0,
+                "doi_exact_match": True,
+                "source_consensus": 2,
+                "venue_sim": 0.90,
+                "has_candidate": True,
+            }
+        )
+        assert ver_label == "verified"
+        assert ver_conf >= 0.80
+        assert abs(sum(ver_probs.values()) - 1.0) < 1e-5
+
+        meta_label, _, _ = scorer.predict(
+            {
+                "title_sim_fuzzy": 0.92,
+                "title_sim_semantic": 0.93,
+                "author_jaccard": 0.90,
+                "year_distance": 5,
+                "doi_exact_match": False,
+                "source_consensus": 2,
+                "has_candidate": True,
+            }
+        )
+        assert meta_label == "metadata_error"
+
+        hal_label, _, _ = scorer.predict(
+            {
+                "title_sim_fuzzy": 0.12,
+                "title_sim_semantic": 0.15,
+                "author_jaccard": 0.0,
+                "year_distance": 999,
+                "doi_exact_match": False,
+                "source_consensus": 0,
+                "has_candidate": False,
+            }
+        )
+        assert hal_label == "suspected_hallucination"
+
+        unr_label, _, _ = scorer.predict(
+            {
+                "title_sim_fuzzy": 0.48,
+                "title_sim_semantic": 0.50,
+                "author_jaccard": 0.30,
+                "year_distance": 2,
+                "doi_exact_match": False,
+                "source_consensus": 1,
+                "has_candidate": True,
+            }
+        )
+        assert unr_label == "unresolved"
+
+    def test_hybrid_ml_scorer_save_and_load_roundtrip(self, tmp_path) -> None:
+        scorer = HybridMLScorer.load_default()
+        out_file = tmp_path / "weights.json"
+        scorer.save(out_file)
+
+        loaded = HybridMLScorer.load(out_file)
+        assert loaded.classes == scorer.classes
+        assert loaded.weights == scorer.weights
+        assert loaded.platt.a == pytest.approx(scorer.platt.a)
+        assert loaded.platt.b == pytest.approx(scorer.platt.b)

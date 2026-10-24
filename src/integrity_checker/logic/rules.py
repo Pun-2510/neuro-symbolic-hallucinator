@@ -1086,6 +1086,38 @@ class SymbolicRules:
                     style_penalty=style_penalty,
                 )
 
+        # --- Rule 4a2: Single/multi live source partial match (author/year/title discrepancy) → METADATA_ERROR ---
+        if (
+            consensus >= 1
+            and _has_live_source(source, verified_sources)
+            and not has_doi_conflict
+            and (
+                (title_sim >= self.title_sim_verified and (author_sim < self.author_jaccard_verified or year_dist > self.year_tolerance))
+                or (self.title_sim_metadata_error <= title_sim < self.title_sim_verified and (author_sim >= 0.30 or year_dist <= 2))
+            )
+        ):
+            if title_sim < self.title_sim_verified:
+                mismatched.append("title")
+            if author_sim < self.author_jaccard_verified:
+                mismatched.append("author")
+            if year_dist > self.year_tolerance:
+                mismatched.append("year")
+            if not mismatched:
+                mismatched.append("title")
+            triggered_rules.append("R-SINGLE-SOURCE-PARTIAL")
+            return RuleOutcome(
+                label=ValidationLabel.METADATA_ERROR,
+                confidence=max(0.0, 0.68 - style_penalty),
+                reasoning=(
+                    f"Scholarly record matched on {', '.join(source.sources_succeeded)} "
+                    f"(title_sim={title_sim:.2f}, author_sim={author_sim:.2f}, year_dist={year_dist}) "
+                    f"with metadata discrepancy in: {', '.join(mismatched)}."
+                ),
+                triggered_rules=triggered_rules,
+                mismatched_fields=mismatched,
+                style_penalty=style_penalty,
+            )
+
         # --- Rule 4b (NEW v1.3): METADATA_ERROR detection for known authors ---
         # If citation has known academic author + title mismatch + year mismatch
         # -> This is METADATA_ERROR, not HALLUCINATION or UNRESOLVED

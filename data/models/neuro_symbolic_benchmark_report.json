@@ -1,0 +1,180 @@
+{
+  "dataset_summary": {
+    "total_samples": 2500,
+    "class_distribution": {
+      "metadata_error": 550,
+      "suspected_hallucination": 750,
+      "verified": 900,
+      "unresolved": 300
+    },
+    "splits": {
+      "train": 1750,
+      "val": 375,
+      "test": 375
+    }
+  },
+  "baselines_on_test_set": {
+    "B0": {
+      "accuracy": 0.1253,
+      "macro_precision": 0.048,
+      "macro_recall": 0.2537,
+      "macro_f1": 0.0641
+    },
+    "B1": {
+      "accuracy": 0.5947,
+      "macro_precision": 0.4825,
+      "macro_recall": 0.4822,
+      "macro_f1": 0.4387
+    },
+    "B2": {
+      "accuracy": 0.8133,
+      "macro_precision": 0.6312,
+      "macro_recall": 0.6782,
+      "macro_f1": 0.6441
+    },
+    "B3": {
+      "accuracy": 0.752,
+      "macro_precision": 0.6125,
+      "macro_recall": 0.6054,
+      "macro_f1": 0.5685
+    },
+    "B4": {
+      "accuracy": 0.7547,
+      "macro_precision": 0.5897,
+      "macro_recall": 0.6119,
+      "macro_f1": 0.5755
+    },
+    "B5": {
+      "accuracy": 0.9973,
+      "macro_precision": 0.9946,
+      "macro_recall": 0.9978,
+      "macro_f1": 0.9961
+    },
+    "proposed": {
+      "accuracy": 0.9653,
+      "macro_precision": 0.9495,
+      "macro_recall": 0.9733,
+      "macro_f1": 0.9595
+    }
+  },
+  "neuro_symbolic_uncalibrated": {
+    "classification": {
+      "accuracy": 0.9147,
+      "macro_precision": 0.9071,
+      "macro_recall": 0.916,
+      "macro_f1": 0.9076,
+      "support": {
+        "suspected_hallucination": 112,
+        "metadata_error": 83,
+        "unresolved": 45,
+        "verified": 135
+      },
+      "confusion_matrix": {
+        "verified": {
+          "verified": 127,
+          "metadata_error": 6,
+          "suspected_hallucination": 0,
+          "unresolved": 2
+        },
+        "metadata_error": {
+          "verified": 17,
+          "metadata_error": 63,
+          "suspected_hallucination": 0,
+          "unresolved": 3
+        },
+        "suspected_hallucination": {
+          "verified": 0,
+          "metadata_error": 0,
+          "suspected_hallucination": 108,
+          "unresolved": 4
+        },
+        "unresolved": {
+          "verified": 0,
+          "metadata_error": 0,
+          "suspected_hallucination": 0,
+          "unresolved": 45
+        }
+      }
+    },
+    "calibration": {
+      "ece": 0.2307,
+      "brier": 0.1232,
+      "coverage": 0.9253,
+      "n_samples": 375,
+      "coverage_accuracy": {
+        "0.5": 0.9096,
+        "0.7": 0.9351,
+        "0.9": 0.932,
+        "0.95": 0.9354,
+        "1.0": 0.9147
+      },
+      "abstention_band": [
+        0.5,
+        0.9096
+      ]
+    }
+  },
+  "neuro_symbolic_platt_calibrated": {
+    "classification": {
+      "accuracy": 0.9147,
+      "macro_precision": 0.9071,
+      "macro_recall": 0.916,
+      "macro_f1": 0.9076,
+      "support": {
+        "suspected_hallucination": 112,
+        "metadata_error": 83,
+        "unresolved": 45,
+        "verified": 135
+      },
+      "confusion_matrix": {
+        "verified": {
+          "verified": 127,
+          "metadata_error": 6,
+          "suspected_hallucination": 0,
+          "unresolved": 2
+        },
+        "metadata_error": {
+          "verified": 17,
+          "metadata_error": 63,
+          "suspected_hallucination": 0,
+          "unresolved": 3
+        },
+        "suspected_hallucination": {
+          "verified": 0,
+          "metadata_error": 0,
+          "suspected_hallucination": 108,
+          "unresolved": 4
+        },
+        "unresolved": {
+          "verified": 0,
+          "metadata_error": 0,
+          "suspected_hallucination": 0,
+          "unresolved": 45
+        }
+      }
+    },
+    "calibration": {
+      "ece": 0.0554,
+      "brier": 0.0502,
+      "coverage": 0.9813,
+      "n_samples": 375,
+      "coverage_accuracy": {
+        "0.5": 0.9574,
+        "0.7": 0.9695,
+        "0.9": 0.9763,
+        "0.95": 0.9607,
+        "1.0": 0.9147
+      },
+      "abstention_band": [
+        0.5,
+        0.9574
+      ]
+    }
+  },
+  "platt_parameters": {
+    "a": 1.723519,
+    "b": 0.664915,
+    "min_prob": 0.01,
+    "max_prob": 0.99
+  }
+}

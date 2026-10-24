@@ -14,6 +14,7 @@ from dataclasses import asdict
 from typing import Any
 
 from integrity_checker.evaluation.metrics import MetricsCalculator
+from integrity_checker.logic.calibration import HybridMLScorer
 
 
 class BaselineRunner:
@@ -30,22 +31,27 @@ class BaselineRunner:
         "embedding_only": "B3",
         "B4": "B4",
         "no_calibration": "B4",
+        "B5": "B5",
+        "ml_hybrid": "B5",
         "proposed": "proposed",
     }
 
-    def __init__(self) -> None:
+    def __init__(self, ml_scorer: HybridMLScorer | None = None) -> None:
+        self.ml_scorer = ml_scorer or HybridMLScorer.load_default()
         self.available_baselines = [
             "B0",
             "B1",
             "B2",
             "B3",
             "B4",
+            "B5",
             "proposed",
             "doi_only",
             "single_source_crossref",
             "fuzzy_only",
             "embedding_only",
             "no_calibration",
+            "ml_hybrid",
         ]
 
     @staticmethod
@@ -60,8 +66,13 @@ class BaselineRunner:
                 "title_sim_fuzzy": float(features.get("title_sim_fuzzy", item.get("title_sim_fuzzy", 0.0)) or 0.0),
                 "title_sim_semantic": float(features.get("title_sim_semantic", item.get("title_sim_semantic", 0.0)) or 0.0),
                 "author_jaccard": float(features.get("author_jaccard", item.get("author_jaccard", 0.0)) or 0.0),
-                "year_distance": int(features.get("year_distance", item.get("year_distance", 0)) or 0),
+                "year_distance": int(features.get("year_distance", item.get("year_distance", 0)) if features.get("year_distance", item.get("year_distance", 0)) is not None else 0),
                 "source_consensus": int(features.get("source_consensus", item.get("source_consensus", 0)) or 0),
+                "venue_sim": float(features.get("venue_sim", item.get("venue_sim", 0.0)) or 0.0),
+                "content_alignment_score": float(features.get("content_alignment_score", item.get("content_alignment_score", 0.0)) or 0.0),
+                "content_alignment_confidence": str(features.get("content_alignment_confidence", item.get("content_alignment_confidence", "")) or ""),
+                "content_is_aligned": bool(features.get("content_is_aligned", item.get("content_is_aligned", False))),
+                "has_candidate": features.get("has_candidate", item.get("has_candidate")),
                 "crossref_matched": bool(
                     features.get("crossref_matched", item.get("crossref_matched", False))
                     or any(
@@ -88,6 +99,11 @@ class BaselineRunner:
             "author_jaccard": float(getattr(feat_obj, "author_jaccard", 0.0) or 0.0),
             "year_distance": int(getattr(feat_obj, "year_distance", 0) or 0),
             "source_consensus": int(getattr(feat_obj, "source_consensus", 0) or 0),
+            "venue_sim": float(getattr(feat_obj, "venue_sim", 0.0) or 0.0),
+            "content_alignment_score": float(getattr(feat_obj, "content_alignment_score", 0.0) or 0.0),
+            "content_alignment_confidence": str(getattr(feat_obj, "content_alignment_confidence", "") or ""),
+            "content_is_aligned": bool(getattr(feat_obj, "content_is_aligned", False)),
+            "has_candidate": None,
             "crossref_matched": any(
                 getattr(s, "source", "") == "crossref" for s in matched_sources
             ),
@@ -143,12 +159,27 @@ class BaselineRunner:
                 return "metadata_error"
             return "suspected_hallucination"
 
-        # proposed: Neuro-symbolic + multi-source consensus + abstention calibration
+        if canonical == "B5":
+            # B5 (ml_hybrid): Multinomial Logistic Regression + Platt Calibration
+            pred_label, _, _ = self.ml_scorer.predict(feat)
+            return pred_label
+
+        # proposed: Neuro-symbolic + multi-source consensus + content alignment + abstention calibration
         title_best = max(tf, ts)
+        ca_score = feat.get("content_alignment_score", 0.0)
+        ca_conf = feat.get("content_alignment_confidence", "")
+        ca_aligned = feat.get("content_is_aligned", False)
+
+        # Content alignment contradiction check
+        if ca_conf == "high" and not ca_aligned and 0.0 < ca_score < 0.25 and title_best >= 0.85:
+            return "metadata_error"
+
         if doi_ok and title_best >= 0.85 and yd <= 1:
             return "verified"
         if title_best >= 0.90 and aj >= 0.50 and yd <= 1 and consensus >= 1:
             return "verified"
+        if doi_ok and title_best < 0.85:
+            return "metadata_error"
         if title_best >= 0.60 and (aj < 0.50 or yd > 1 or title_best < 0.90):
             return "metadata_error"
         if 0.40 <= title_best < 0.60:
