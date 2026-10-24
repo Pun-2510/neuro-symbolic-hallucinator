@@ -4,7 +4,6 @@
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   Settings,
   Palette,
@@ -15,11 +14,9 @@ import {
   Check,
   ShieldCheck,
   Terminal,
-  AlertTriangle,
 } from 'lucide-react';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
-import { ConfirmationModal } from '@/components/ConfirmationModal';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -30,8 +27,6 @@ import { Separator } from '@/components/ui/separator';
 
 interface SettingsState {
   notifications: boolean;
-  autoVerify: boolean;
-  compactView: boolean;
 }
 
 // ============================================================
@@ -39,8 +34,6 @@ interface SettingsState {
 // ============================================================
 
 const STORAGE_KEY_NOTIFICATIONS = 'settings_notifications';
-const STORAGE_KEY_AUTO_VERIFY = 'settings_auto_verify';
-const STORAGE_KEY_COMPACT_VIEW = 'settings_compact_view';
 
 // ============================================================
 // Component
@@ -49,20 +42,26 @@ const STORAGE_KEY_COMPACT_VIEW = 'settings_compact_view';
 export function SettingsPage(): JSX.Element {
   const toast = useToast();
   const { t, i18n } = useTranslation();
-  const queryClient = useQueryClient();
-  const [confirmClear, setConfirmClear] = useState(false);
 
   // Load saved settings
   const [settings, setSettings] = useState<SettingsState>(() => ({
     notifications: localStorage.getItem(STORAGE_KEY_NOTIFICATIONS) !== 'false',
-    autoVerify: localStorage.getItem(STORAGE_KEY_AUTO_VERIFY) === 'true',
-    compactView: localStorage.getItem(STORAGE_KEY_COMPACT_VIEW) === 'true',
   }));
 
   // Available languages (without flag emojis)
   const languages = [
-    { code: 'vi', label: 'Tiếng Việt' },
-    { code: 'en', label: 'English' },
+    {
+      code: 'vi',
+      shortCode: 'VIE',
+      localeTag: 'vi-VN',
+      label: 'Tiếng Việt',
+    },
+    {
+      code: 'en',
+      shortCode: 'ENG',
+      localeTag: 'en-US',
+      label: 'English',
+    },
   ];
 
   // Get current language from i18n (reactive) — no reload needed
@@ -72,28 +71,13 @@ export function SettingsPage(): JSX.Element {
   const toggleSetting = (key: keyof SettingsState): void => {
     setSettings((prev) => {
       const newValue = !prev[key];
-      const storageKey = `settings_${
-        key === 'autoVerify'
-          ? 'auto_verify'
-          : key === 'compactView'
-          ? 'compact_view'
-          : key
-      }`;
-      localStorage.setItem(storageKey, String(newValue));
+      localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, String(newValue));
 
       toast.success(
         t('settings.settingsSaved'),
-        key === 'notifications'
-          ? newValue
-            ? t('settings.notificationsEnabled')
-            : t('settings.notificationsDisabled')
-          : key === 'autoVerify'
-          ? newValue
-            ? t('settings.autoVerifyEnabled')
-            : t('settings.autoVerifyDisabled')
-          : newValue
-          ? t('settings.compactViewEnabled')
-          : t('settings.compactViewDisabled')
+        newValue
+          ? t('settings.notificationsEnabled')
+          : t('settings.notificationsDisabled')
       );
 
       return { ...prev, [key]: newValue };
@@ -110,24 +94,6 @@ export function SettingsPage(): JSX.Element {
       fixedT('settings.languageUpdated'),
       langCode === 'vi' ? 'Tiếng Việt' : 'English'
     );
-  };
-
-  // Clear local cache (only after explicit user confirmation)
-  const handleClearCache = (): void => {
-    localStorage.removeItem('theme');
-    localStorage.removeItem('language');
-    localStorage.removeItem('i18nextLng');
-    localStorage.removeItem(STORAGE_KEY_NOTIFICATIONS);
-    localStorage.removeItem(STORAGE_KEY_AUTO_VERIFY);
-    localStorage.removeItem(STORAGE_KEY_COMPACT_VIEW);
-    setSettings({
-      notifications: true,
-      autoVerify: false,
-      compactView: false,
-    });
-    queryClient.clear();
-    void i18n.changeLanguage('en');
-    toast.success(t('settings.cacheClearedSuccess'));
   };
 
   return (
@@ -218,30 +184,65 @@ export function SettingsPage(): JSX.Element {
 
           <div className="p-4 sm:p-6 flex-1 flex flex-col justify-center">
             <div className="grid grid-cols-2 gap-3">
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => changeLanguage(lang.code)}
-                  className={`flex items-center gap-2 sm:gap-3 p-3.5 sm:p-4 rounded-xl border-2 transition-all ${
-                    currentLang === lang.code
-                      ? 'border-indigo-500 bg-indigo-50/80 dark:bg-indigo-950/60 shadow-2xs'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                  }`}
-                >
-                  <span
-                    className={`font-medium text-sm ${
-                      currentLang === lang.code
-                        ? 'text-indigo-700 dark:text-indigo-300'
-                        : 'text-slate-700 dark:text-slate-300'
+              {languages.map((lang) => {
+                const isActive = currentLang === lang.code;
+                return (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    onClick={() => changeLanguage(lang.code)}
+                    aria-pressed={isActive}
+                    className={`group relative flex items-center justify-between gap-2.5 sm:gap-3 p-3 sm:p-3.5 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? 'border-indigo-500/90 dark:border-indigo-500/80 bg-gradient-to-br from-indigo-50/90 via-indigo-50/40 to-white dark:from-indigo-950/70 dark:via-indigo-950/30 dark:to-slate-900 ring-2 ring-indigo-500/15 dark:ring-indigo-400/20 shadow-xs'
+                        : 'border-slate-200/90 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800/60 hover:border-indigo-200 dark:hover:border-indigo-800/80 hover:shadow-2xs'
                     }`}
                   >
-                    {lang.label}
-                  </span>
-                  {currentLang === lang.code && (
-                    <Check className="w-4 h-4 text-indigo-500 ml-auto shrink-0" />
-                  )}
-                </button>
-              ))}
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                      <span
+                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center shrink-0 font-mono text-[11px] font-bold tracking-wider transition-colors duration-200 ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs shadow-indigo-500/30 dark:bg-indigo-500 dark:text-white'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200/80 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700/80 dark:group-hover:bg-indigo-950/70 dark:group-hover:text-indigo-300 dark:group-hover:border-indigo-800/70'
+                        }`}
+                      >
+                        {lang.shortCode}
+                      </span>
+
+                      <div className="min-w-0">
+                        <span
+                          className={`block font-semibold text-sm leading-tight truncate ${
+                            isActive
+                              ? 'text-indigo-950 dark:text-indigo-100'
+                              : 'text-slate-700 group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-slate-100'
+                          }`}
+                        >
+                          {lang.label}
+                        </span>
+                        <span
+                          className={`block text-[11px] font-mono mt-0.5 truncate ${
+                            isActive
+                              ? 'text-indigo-600/80 dark:text-indigo-300/80'
+                              : 'text-slate-400 dark:text-slate-500'
+                          }`}
+                        >
+                          {lang.localeTag}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 ${
+                        isActive
+                          ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-2xs'
+                          : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 group-hover:border-indigo-300 dark:group-hover:border-indigo-700'
+                      }`}
+                    >
+                      {isActive && <Check className="w-3 h-3 stroke-[2.5]" />}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -268,116 +269,54 @@ export function SettingsPage(): JSX.Element {
           </span>
         </div>
 
-        <div className="p-4 sm:p-6 divide-y divide-slate-100 dark:divide-slate-800/80">
-          <div className="pb-4">
-            <ToggleSetting
-              label={t('settings.enableNotifications')}
-              description={t('settings.enableNotificationsDesc')}
-              checked={settings.notifications}
-              onChange={() => toggleSetting('notifications')}
-            />
-          </div>
-
-          <div className="py-4">
-            <ToggleSetting
-              label={t('settings.autoVerify')}
-              description={t('settings.autoVerifyDesc')}
-              checked={settings.autoVerify}
-              onChange={() => toggleSetting('autoVerify')}
-            />
-          </div>
-
-          <div className="pt-4">
-            <ToggleSetting
-              label={t('settings.compactView')}
-              description={t('settings.compactViewDesc')}
-              checked={settings.compactView}
-              onChange={() => toggleSetting('compactView')}
-            />
-          </div>
+        <div className="p-4 sm:p-6">
+          <ToggleSetting
+            label={t('settings.enableNotifications')}
+            description={t('settings.enableNotificationsDesc')}
+            checked={settings.notifications}
+            onChange={() => toggleSetting('notifications')}
+          />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* About Section */}
-        <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
-              </div>
-              <Separator orientation="vertical" className="h-4" />
-              <Info className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <h2 className="text-sm font-display font-semibold text-slate-900 dark:text-slate-100">
-                {t('settings.about')}
-              </h2>
+      {/* About Section */}
+      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
             </div>
-            <span className="text-[11px] font-mono text-slate-400">04</span>
+            <Separator orientation="vertical" className="h-4" />
+            <Info className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <h2 className="text-sm font-display font-semibold text-slate-900 dark:text-slate-100">
+              {t('settings.about')}
+            </h2>
           </div>
-
-          <div className="p-6 space-y-3">
-            <InfoRow label={t('settings.version')} value="2.0.0" />
-            <InfoRow
-              label={t('settings.buildDate')}
-              value="2026-10-23"
-            />
-
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
-              <a
-                href="https://github.com/iannwendy/essay-integrity-checker"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
-              >
-                {t('settings.viewSourceCode')}
-                <ChevronRight className="w-3.5 h-3.5" />
-              </a>
-            </div>
-          </div>
+          <span className="text-[11px] font-mono text-slate-400">04</span>
         </div>
 
-        {/* Danger Zone */}
-        <div className="rounded-2xl border border-red-200/90 dark:border-red-900/60 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between gap-3 px-4 py-3 bg-red-50/70 dark:bg-red-950/30 border-b border-red-200/70 dark:border-red-900/50">
-            <div className="flex items-center gap-2.5">
-              <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
-              <h2 className="text-sm font-display font-semibold text-red-700 dark:text-red-400">
-                {t('settings.dangerZone')}
-              </h2>
-            </div>
-            <span className="text-[11px] font-mono text-red-500">05</span>
-          </div>
+        <div className="p-6 space-y-3">
+          <InfoRow label={t('settings.version')} value="2.0.0" />
+          <InfoRow
+            label={t('settings.buildDate')}
+            value="2026-10-23"
+          />
 
-          <div className="p-6">
-            <button
-              onClick={() => setConfirmClear(true)}
-              className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-red-300 dark:hover:border-red-800 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-colors"
-              aria-label="Clear local cache"
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+            <a
+              href="https://github.com/iannwendy/essay-integrity-checker"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
             >
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                {t('settings.clearLocalCache')}
-              </span>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </button>
+              {t('settings.viewSourceCode')}
+              <ChevronRight className="w-3.5 h-3.5" />
+            </a>
           </div>
         </div>
       </div>
-
-      <ConfirmationModal
-        isOpen={confirmClear}
-        title={t('settings.clearCacheConfirmTitle')}
-        message={t('settings.clearCacheConfirmMessage')}
-        confirmLabel={t('settings.clearCacheConfirmBtn')}
-        cancelLabel={t('common.cancel')}
-        variant="danger"
-        onConfirm={() => {
-          setConfirmClear(false);
-          handleClearCache();
-        }}
-        onCancel={() => setConfirmClear(false)}
-      />
     </div>
   );
 }

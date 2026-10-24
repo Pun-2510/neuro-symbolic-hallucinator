@@ -1,5 +1,12 @@
-import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate, Outlet, useParams } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import {
+  createBrowserRouter,
+  matchPath,
+  Navigate,
+  Outlet,
+  useLocation,
+  useParams,
+} from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppLayout } from './components/AppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -72,177 +79,236 @@ function withSuspense(LazyComponent: React.ComponentType) {
   );
 }
 
-export const router = createBrowserRouter([
-  // Public routes (eager — small, needed for first paint)
-  {
-    path: '/',
-    element: <LandingPage />,
-  },
-  {
-    path: '/login',
-    element: (
-      <PublicRoute>
-        <LoginPage />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: '/register',
-    element: (
-      <PublicRoute>
-        <RegisterPage />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: '/forgot-password',
-    element: (
-      <PublicRoute>
-        <ForgotPasswordPage />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: '/activate-account',
-    element: <ActivateAccountPage />,
-  },
-  {
-    path: '/reset-password',
-    element: <ResetPasswordPage />,
-  },
+const PAGE_TITLE_ROUTES: Array<{ pattern: string; title: string }> = [
+  { pattern: '/', title: 'Home' },
+  { pattern: '/login', title: 'Login' },
+  { pattern: '/register', title: 'Register' },
+  { pattern: '/forgot-password', title: 'Forgot Password' },
+  { pattern: '/activate-account', title: 'Activate Account' },
+  { pattern: '/reset-password', title: 'Reset Password' },
+  { pattern: '/dashboard', title: 'Dashboard' },
+  { pattern: '/upload', title: 'New Check' },
+  { pattern: '/batch-upload', title: 'Batch Check' },
+  { pattern: '/verification/processing', title: 'Processing' },
+  { pattern: '/verification/processing/:id', title: 'Processing' },
+  { pattern: '/verification/report/:id', title: 'Verification Report' },
+  { pattern: '/verification/report/:id/issues', title: 'Issues' },
+  { pattern: '/verification/report/:id/trace', title: 'Logic Trace' },
+  { pattern: '/verification/report/:id/document', title: 'Document Inspector' },
+  { pattern: '/verification/report/:id/consistency', title: 'Consistency' },
+  { pattern: '/history', title: 'History' },
+  { pattern: '/profile', title: 'Profile' },
+  { pattern: '/admin/users', title: 'Accounts' },
+  { pattern: '/admin/system', title: 'System Health' },
+  { pattern: '/admin/audit', title: 'Audit Log' },
+  { pattern: '/settings', title: 'Settings' },
+  { pattern: '/teacher/classes', title: 'My Classes' },
+  { pattern: '/teacher/classes/:classId', title: 'Class Detail' },
+  { pattern: '/teacher/reviews', title: 'Pending Reviews' },
+];
 
-  // Protected routes with AppLayout (sidebar navigation) — all lazy
+export function getDocumentTitle(pathname: string): string {
+  for (const route of PAGE_TITLE_ROUTES) {
+    if (matchPath({ path: route.pattern, end: true }, pathname)) {
+      return `CITRA - ${route.title}`;
+    }
+  }
+  return 'CITRA';
+}
+
+function RootLayout() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    document.title = getDocumentTitle(pathname);
+  }, [pathname]);
+
+  return <Outlet />;
+}
+
+export const router = createBrowserRouter([
   {
-    element: (
-      <ProtectedRoute>
-        <AppLayout>
-          <Outlet />
-        </AppLayout>
-      </ProtectedRoute>
-    ),
+    element: <RootLayout />,
     children: [
-      { path: '/dashboard', element: withSuspense(DashboardPage) },
-      { path: '/upload', element: withSuspense(UploadPage) },
+      // Public routes (eager — small, needed for first paint)
       {
-        path: '/batch-upload',
-        element: (
-          <ProtectedRoute requiredCapabilities={['view_class_history']}>
-            <Suspense fallback={<PageSkeleton />}>
-              <BatchUploadPage />
-            </Suspense>
-          </ProtectedRoute>
-        ),
+        path: '/',
+        element: <LandingPage />,
       },
-      { path: '/verification/processing', element: withSuspense(ProcessingPage) },
-      { path: '/verification/processing/:id', element: withSuspense(ProcessingPage) },
-      { path: '/verification/report/:id', element: withSuspense(EssayPage) },
-      { path: '/verification/report/:id/issues', element: withSuspense(IssuesPage) },
       {
-        path: '/verification/report/:id/trace',
+        path: '/login',
         element: (
-          <ProtectedRoute requiredCapabilities={['view_logic_trace']}>
-            <Suspense fallback={<PageSkeleton />}>
-              <LogicTracePage />
-            </Suspense>
-          </ProtectedRoute>
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
         ),
       },
       {
-        path: '/verification/report/:id/document',
+        path: '/register',
         element: (
-          <ProtectedRoute requiredCapabilities={['view_document_inspector']}>
-            <Suspense fallback={<PageSkeleton />}>
-              <DocumentInspectorPage />
-            </Suspense>
-          </ProtectedRoute>
+          <PublicRoute>
+            <RegisterPage />
+          </PublicRoute>
         ),
       },
       {
-        path: '/verification/report/:id/consistency',
+        path: '/forgot-password',
         element: (
-          <ProtectedRoute requiredCapabilities={['view_orphan_detection']}>
-            <Suspense fallback={<PageSkeleton />}>
-              <OrphanDetectionPage />
-            </Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      { path: '/essay/:id', element: <LegacyEssayRedirect /> },
-      { path: '/history', element: withSuspense(HistoryPage) },
-      { path: '/profile', element: withSuspense(ProfilePage) },
-      {
-        path: '/admin/users',
-        element: (
-          <ProtectedRoute requiredCapabilities={['manage_users']}>
-            <Suspense fallback={<PageSkeleton />}>
-              <AccountManagementPage />
-            </Suspense>
-          </ProtectedRoute>
+          <PublicRoute>
+            <ForgotPasswordPage />
+          </PublicRoute>
         ),
       },
       {
-        path: '/admin/system',
-        element: (
-          <ProtectedRoute requiredCapabilities={['view_system_health']}>
-            <Suspense fallback={<PageSkeleton />}>
-              <SystemHealthPage />
-            </Suspense>
-          </ProtectedRoute>
-        ),
+        path: '/activate-account',
+        element: <ActivateAccountPage />,
       },
       {
-        path: '/admin/audit',
-        element: (
-          <ProtectedRoute requiredCapabilities={['view_audit_log']}>
-            <Suspense fallback={<PageSkeleton />}>
-              <AuditLogPage />
-            </Suspense>
-          </ProtectedRoute>
-        ),
+        path: '/reset-password',
+        element: <ResetPasswordPage />,
       },
-      { path: '/settings', element: withSuspense(SettingsPage) },
-      // Teacher (v1.15 / Phase 3) — gated by view_class_history capability
+
+      // Protected routes with AppLayout (sidebar navigation) — all lazy
       {
-        path: '/teacher/classes',
         element: (
-          <ProtectedRoute requiredCapabilities={['view_class_history']}>
-            <Suspense fallback={<PageSkeleton />}>
-              <MyClassesPage />
-            </Suspense>
+          <ProtectedRoute>
+            <AppLayout>
+              <Outlet />
+            </AppLayout>
           </ProtectedRoute>
         ),
+        children: [
+          { path: '/dashboard', element: withSuspense(DashboardPage) },
+          { path: '/upload', element: withSuspense(UploadPage) },
+          {
+            path: '/batch-upload',
+            element: (
+              <ProtectedRoute requiredCapabilities={['view_class_history']}>
+                <Suspense fallback={<PageSkeleton />}>
+                  <BatchUploadPage />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          { path: '/verification/processing', element: withSuspense(ProcessingPage) },
+          { path: '/verification/processing/:id', element: withSuspense(ProcessingPage) },
+          { path: '/verification/report/:id', element: withSuspense(EssayPage) },
+          { path: '/verification/report/:id/issues', element: withSuspense(IssuesPage) },
+          {
+            path: '/verification/report/:id/trace',
+            element: (
+              <ProtectedRoute requiredCapabilities={['view_logic_trace']}>
+                <Suspense fallback={<PageSkeleton />}>
+                  <LogicTracePage />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: '/verification/report/:id/document',
+            element: (
+              <ProtectedRoute requiredCapabilities={['view_document_inspector']}>
+                <Suspense fallback={<PageSkeleton />}>
+                  <DocumentInspectorPage />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: '/verification/report/:id/consistency',
+            element: (
+              <ProtectedRoute requiredCapabilities={['view_orphan_detection']}>
+                <Suspense fallback={<PageSkeleton />}>
+                  <OrphanDetectionPage />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          { path: '/essay/:id', element: <LegacyEssayRedirect /> },
+          { path: '/history', element: withSuspense(HistoryPage) },
+          { path: '/profile', element: withSuspense(ProfilePage) },
+          {
+            path: '/admin/users',
+            element: (
+              <ProtectedRoute requiredCapabilities={['manage_users']}>
+                <Suspense fallback={<PageSkeleton />}>
+                  <AccountManagementPage />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: '/admin/system',
+            element: (
+              <ProtectedRoute requiredCapabilities={['view_system_health']}>
+                <Suspense fallback={<PageSkeleton />}>
+                  <SystemHealthPage />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: '/admin/audit',
+            element: (
+              <ProtectedRoute requiredCapabilities={['view_audit_log']}>
+                <Suspense fallback={<PageSkeleton />}>
+                  <AuditLogPage />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          { path: '/settings', element: withSuspense(SettingsPage) },
+          // Teacher (v1.15 / Phase 3) — gated by view_class_history capability
+          {
+            path: '/teacher/classes',
+            element: (
+              <ProtectedRoute requiredCapabilities={['view_class_history']}>
+                <Suspense fallback={<PageSkeleton />}>
+                  <MyClassesPage />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: '/teacher/classes/:classId',
+            element: (
+              <ProtectedRoute requiredCapabilities={['view_class_history']}>
+                <Suspense fallback={<PageSkeleton />}>
+                  <ClassDetailPage />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: '/teacher/reviews',
+            element: (
+              <ProtectedRoute requiredCapabilities={['override_verdict']}>
+                <Suspense fallback={<PageSkeleton />}>
+                  <PendingReviewsPage />
+                </Suspense>
+              </ProtectedRoute>
+            ),
+          },
+          // Legacy route redirects
+          { path: '/home', element: <Navigate to="/dashboard" replace /> },
+        ],
       },
+
+      // Catch-all redirect
       {
-        path: '/teacher/classes/:classId',
-        element: (
-          <ProtectedRoute requiredCapabilities={['view_class_history']}>
-            <Suspense fallback={<PageSkeleton />}>
-              <ClassDetailPage />
-            </Suspense>
-          </ProtectedRoute>
-        ),
+        path: '*',
+        element: <Navigate to="/" replace />,
       },
-      {
-        path: '/teacher/reviews',
-        element: (
-          <ProtectedRoute requiredCapabilities={['override_verdict']}>
-            <Suspense fallback={<PageSkeleton />}>
-              <PendingReviewsPage />
-            </Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      // Legacy route redirects
-      { path: '/home', element: <Navigate to="/dashboard" replace /> },
     ],
   },
-
-  // Catch-all redirect
-  {
-    path: '*',
-    element: <Navigate to="/" replace />,
-  },
 ]);
+
+if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+  document.title = getDocumentTitle(window.location.pathname);
+  router.subscribe((state) => {
+    document.title = getDocumentTitle(state.location.pathname);
+  });
+}
 
 /* ============================================================
    Router Export with AuthProvider
