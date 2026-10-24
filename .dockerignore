@@ -42,6 +42,7 @@ htmlcov/
 docs/
 
 # Frontend (sẽ được mount hoặc build riêng)
+node_modules/
 web/
 design-system/
 
@@ -50,6 +51,10 @@ data/
 reports/
 test-results/
 evaluation/
+20-theses/
+TDTU-MidtermReport/
+*.pdf
+*.docx
 
 # Logs
 *.log
@@ -61,7 +66,9 @@ Thumbs.db
 
 # Confidential
 .env
-.env.local
+.env.*
+!.env.example
+.mcp.json
 *.pem
 *.key
 

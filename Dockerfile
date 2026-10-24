@@ -79,7 +79,7 @@ COPY --chown=appuser:appgroup configs/ ./configs/
 RUN pip install --no-cache-dir -e .
 
 # Tạo data dirs với quyền appuser
-RUN mkdir -p data/essays data/ground_truth data/cache && \
+RUN mkdir -p data/essays data/essays/uploads data/avatars data/ground_truth data/cache data/cache/grobid && \
     chown -R appuser:appgroup data/
 
 # Switch to non-root user
