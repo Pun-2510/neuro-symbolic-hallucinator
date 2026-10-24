@@ -602,18 +602,20 @@ class RetrievalOrchestrator:
         local_db: LocalDatabase | None = None,
         use_local_db: bool | None = None,
     ) -> None:
-        settings = get_settings().retrieval
-        self.crossref = crossref or CrossrefClient(contact_email=settings.contact_email)
-        self.openalex = openalex or OpenAlexClient(contact_email=settings.contact_email)
+        settings_global = get_settings()
+        settings = settings_global.retrieval
+        contact_email = settings_global.contact_email or settings.contact_email
+        self.crossref = crossref or CrossrefClient(contact_email=contact_email)
+        self.openalex = openalex or OpenAlexClient(contact_email=contact_email)
         self.semantic_scholar = semantic_scholar or SemanticScholarClient()
         self._coreapi_explicit = coreapi is not None
-        self.coreapi = coreapi or CoreAPIClient()
+        self.coreapi = coreapi or CoreAPIClient(contact_email=contact_email)
         self.serpapi = serpapi  # Lazy init - không tạo nếu không có API key
         self.parallel = parallel
         # Backward-compatible injection point for tests/legacy callers.  The
         # production default is ``None``: local_papers.db is the source cache.
         self.cache = cache
-        env = get_settings().app.env.casefold()
+        env = settings_global.app.env.casefold()
         self.use_local_db = (
             use_local_db
             if use_local_db is not None
@@ -626,8 +628,8 @@ class RetrievalOrchestrator:
             self.openalex.name: RateLimiter(settings.rate_limits.openalex_per_sec),
             self.semantic_scholar.name: RateLimiter(settings.rate_limits.semantic_scholar_per_sec),
         }
-        # CoreAPI rate limiter only if enabled
-        if settings.sources.coreapi:
+        # CoreAPI rate limiter if enabled or explicitly injected
+        if settings.sources.coreapi or self._coreapi_explicit:
             self._rate_limiters[self.coreapi.name] = RateLimiter(settings.rate_limits.coreapi_per_sec)
         # SerpApi rate limiter (lazy init)
         self._serpapi_limiter: RateLimiter | None = None
@@ -750,9 +752,14 @@ class RetrievalOrchestrator:
 
         # ===== 4. SerpApi Fallback =====
         # Chỉ gọi SerpApi khi KHÔNG có candidate nào found
-        # và ít nhất 2 nguồn chính đã thất bại
+        # và các nguồn chính đã thất bại
         serpapi_candidate = None
-        if not any(c.found for c in deduped) and len(failed) >= 2:
+        min_failed_for_serpapi = 1 if len(sources_queried) <= 1 else 2
+        if (
+            not any(c.found for c in deduped)
+            and len(failed) >= min_failed_for_serpapi
+            and get_settings().retrieval.sources.serpapi
+        ):
             serpapi_candidate = await self._lookup_serpapi_fallback(citation)
             if serpapi_candidate:
                 sources_queried.append("serpapi")
@@ -765,7 +772,12 @@ class RetrievalOrchestrator:
         # Health check: nếu tất cả sources fail (không có candidate found nào)
         # → UNRESOLVED sentinel
         any_found = any(c.found for c in deduped)
-        min_failures_for_unresolved = 2 if len(sources_queried) <= 2 else len(sources_queried) // 2 + 1
+        if len(sources_queried) <= 1:
+            min_failures_for_unresolved = 1
+        elif len(sources_queried) == 2:
+            min_failures_for_unresolved = 2
+        else:
+            min_failures_for_unresolved = len(sources_queried) // 2 + 1
         if not any_found and len(failed) >= min_failures_for_unresolved:
             # Đa số sources failed → trả UNRESOLVED
             logger.warning(
@@ -1151,6 +1163,12 @@ class RetrievalOrchestrator:
         # arXiv ID format: YYMM.NNNNN(vN)?
         ARXIV_ID_RE = re.compile(r"\b(\d{4}\.\d{4,5})(v\d+)?\b")
 
+        # Check DOI (e.g. 10.48550/arXiv.1706.03762)
+        if citation.doi and "arxiv" in citation.doi.lower():
+            m = ARXIV_ID_RE.search(citation.doi)
+            if m:
+                return m.group(1)
+
         # Check URL
         if citation.url:
             if "arxiv.org" in citation.url:
@@ -1280,6 +1298,15 @@ class RetrievalOrchestrator:
         """
         limiter = self._rate_limiters.get(client.name)
         if limiter:
+            if limiter.is_in_backoff() is True:
+                logger.debug(
+                    f"Skipping {client.name} lookup while rate-limit backoff is active"
+                )
+                return SourceCandidate(
+                    source_name=client.name,
+                    found=False,
+                    error=f"{client.name}: skipped (rate-limit backoff active)",
+                )
             await limiter.wait()
 
         cand = await client.lookup(citation)
@@ -1419,7 +1446,7 @@ class RetrievalOrchestrator:
             # Get arXiv ID from external_ids
             arxiv_id = None
             if cand.external_ids:
-                arxiv_id = cand.external_ids.get("arxiv")
+                arxiv_id = cand.external_ids.get("arxiv") or cand.external_ids.get("ArXiv")
 
             # Create paper
             paper = Paper(

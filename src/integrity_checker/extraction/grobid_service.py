@@ -296,6 +296,23 @@ class GrobidServiceManager:
         try:
             client = self._docker_client()
 
+            # Reuse existing stopped/exited container if present (avoids Docker 409 Conflict)
+            try:
+                existing = client.containers.get(self._container_name)
+                logger.info(
+                    "Starting existing GROBID container: %s (status: %s, id: %s)",
+                    self._container_name,
+                    existing.status,
+                    existing.id[:12],
+                )
+                existing.start()
+                self.stats.container_id = existing.id[:12]
+                self._started_automatically = auto_cleanup
+                self._status = GROBID_STATUS.STARTING
+                return True
+            except self._docker.errors.NotFound:
+                pass
+
             # Pull image nếu chưa có
             try:
                 client.images.get(self._image)

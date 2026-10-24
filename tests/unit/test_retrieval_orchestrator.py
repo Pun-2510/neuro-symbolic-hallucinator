@@ -850,3 +850,62 @@ class TestArxivDoiRouting:
         assert filtered[0].doi == "10.1109/real.2023"
         assert succeeded == ["openalex"]
 
+    @pytest.mark.asyncio
+    async def test_serpapi_fallback_triggers_on_single_source_arxiv_failure(
+        self,
+        mock_cache,
+    ):
+        """When only 1 source is queried (e.g. arXiv DOI with coreapi disabled) and fails, SerpApi fallback triggers."""
+        citation = Citation(
+            raw_text="Unknown Author (2021). Obscure Arxiv Preprint. arXiv:2199.99999.",
+            title="Obscure Arxiv Preprint on Quantum Widgets",
+            year="2021",
+            doi="10.48550/arXiv.2199.99999",
+            authors=["Unknown Author"],
+        )
+
+        mock_s2 = AsyncMock()
+        mock_s2.name = "semantic_scholar"
+        mock_s2.lookup.return_value = SourceCandidate(
+            source_name="semantic_scholar", found=False, error="S2: rate limited (429)"
+        )
+
+        orchestrator = RetrievalOrchestrator(
+            crossref=AsyncMock(),
+            openalex=AsyncMock(),
+            semantic_scholar=mock_s2,
+            parallel=True,
+            cache=mock_cache,
+            use_local_db=False,
+        )
+        # Simulate coreapi disabled
+        orchestrator._coreapi_explicit = False
+        orchestrator.coreapi = None
+
+        serpapi_cand = SourceCandidate(
+            source_name="serpapi",
+            found=True,
+            title="Obscure Arxiv Preprint on Quantum Widgets",
+            authors=["Unknown Author"],
+            year="2021",
+            confidence=0.5,
+        )
+
+        with patch.object(
+            orchestrator, "_lookup_serpapi_fallback", return_value=serpapi_cand
+        ) as mock_serp:
+            result = await orchestrator.retrieve(citation)
+
+        mock_serp.assert_called_once()
+        assert "serpapi" in result.sources_succeeded
+        assert any(c.source_name == "serpapi" and c.found for c in result.candidates)
+
+    def test_extract_arxiv_id_from_doi(self):
+        """RetrievalOrchestrator._extract_arxiv_id extracts arXiv ID from 10.48550/arXiv.* DOI."""
+        cit = Citation(
+            raw_text="Vaswani et al. (2017). Attention Is All You Need.",
+            doi="10.48550/arXiv.1706.03762",
+        )
+        assert RetrievalOrchestrator._extract_arxiv_id(cit) == "1706.03762"
+
+

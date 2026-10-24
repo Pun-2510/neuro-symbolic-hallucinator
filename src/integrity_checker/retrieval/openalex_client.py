@@ -23,8 +23,11 @@ from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate
 from integrity_checker.retrieval.base import BaseScholarClient
+from integrity_checker.retrieval.normalization import title_similarity
 
 logger = get_logger(__name__)
+
+MIN_TITLE_SIMILARITY = 0.55
 
 
 class OpenAlexClient(BaseScholarClient):
@@ -49,9 +52,15 @@ class OpenAlexClient(BaseScholarClient):
     ) -> None:
         super().__init__(timeout=timeout)
         settings = get_settings()
-        self.contact_email = contact_email or os.getenv("CONTACT_EMAIL", "") or settings.retrieval.contact_email
+        self.contact_email = (
+            contact_email
+            or os.getenv("CONTACT_EMAIL", "")
+            or settings.contact_email
+            or settings.retrieval.contact_email
+        )
         self.max_retries = max_retries or settings.retrieval.retry.max_attempts
         self._backoff = settings.retrieval.retry.backoff
+        self._last_status_code: int | None = None
 
         # Get API key from env or settings
         self.api_key = api_key or os.environ.get("OPENALEX_API_KEY", "")
@@ -74,17 +83,29 @@ class OpenAlexClient(BaseScholarClient):
         OpenAlex DOI URL convention: https://api.openalex.org/works/doi:{doi}
         Falls back to /works?search={title} nếu không có DOI.
         """
+        self._last_status_code = None
+
         # 1. DOI exact lookup
         if citation.doi:
             doi_norm = self._normalize_doi(citation.doi)
-            result = await self._lookup_by_doi(doi_norm)
+            result = await self._lookup_by_doi(doi_norm, citation=citation)
             if result and result.found:
                 return result
+            if self._last_status_code == 429:
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"OpenAlex: rate limited (429) for DOI '{doi_norm}'",
+                )
 
         # 2. Title-based search
         return await self._lookup_by_search(citation)
 
-    async def _lookup_by_doi(self, doi: str) -> SourceCandidate | None:
+    async def _lookup_by_doi(
+        self,
+        doi: str,
+        citation: Citation | None = None,
+    ) -> SourceCandidate | None:
         """GET /works/doi:{doi}."""
         path = f"/works/doi:{doi}"
         data = await self._fetch_json_with_retry(path)
@@ -93,12 +114,37 @@ class OpenAlexClient(BaseScholarClient):
         cand = self._work_to_candidate(data)
         if not cand.doi and not cand.title:
             return None
+        # Guard against OpenAlex resolving an arXiv/external DOI to an unrelated work DOI
+        if cand.doi and cand.doi.lower() != doi.lower():
+            if citation and citation.title and cand.title:
+                if title_similarity(citation.title, cand.title) < 0.75:
+                    return None
+            else:
+                return None
         cand.found = True
         cand.confidence = 1.0
         return cand
 
+    def _pick_best_search_result(
+        self,
+        results: list[dict],
+        query_title: str,
+    ) -> tuple[SourceCandidate | None, dict | None, float]:
+        """Select the result from OpenAlex /works list with the highest title similarity."""
+        best_cand: SourceCandidate | None = None
+        best_raw: dict | None = None
+        best_sim = -1.0
+        for item in results:
+            cand = self._work_to_candidate(item)
+            sim = title_similarity(query_title, cand.title) if cand.title else 0.0
+            if sim > best_sim:
+                best_sim = sim
+                best_cand = cand
+                best_raw = item
+        return best_cand, best_raw, best_sim
+
     async def _lookup_by_search(self, citation: Citation) -> SourceCandidate:
-        """GET /works?search={title}&per_page=1."""
+        """GET /works?search={title}&per_page=5."""
         if not citation.title:
             return SourceCandidate(
                 source_name=self.name,
@@ -108,9 +154,9 @@ class OpenAlexClient(BaseScholarClient):
 
         # Truncate title để URL không quá dài
         title = citation.title[:200]
-        params = {"search": title, "per_page": 1}
+        params: dict[str, Any] = {"search": title, "per_page": 5}
 
-        # Thêm filter nếu có author/year
+        # Thêm filter nếu có year
         filters: list[str] = []
         if citation.year:
             filters.append(f"publication_year:{citation.year}")
@@ -119,6 +165,12 @@ class OpenAlexClient(BaseScholarClient):
 
         data = await self._fetch_json_with_retry("/works", params=params)
         if not data:
+            if self._last_status_code == 429:
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"OpenAlex: rate limited (429) for '{title[:60]}'",
+                )
             return SourceCandidate(
                 source_name=self.name,
                 found=False,
@@ -126,27 +178,47 @@ class OpenAlexClient(BaseScholarClient):
             )
 
         results = data.get("results") or []
-        if not results:
+        best_cand, best_raw, best_sim = self._pick_best_search_result(results, citation.title)
+
+        # Fallback without year filter if strict publication_year filter missed or returned wrong/derivative paper
+        if "filter" in params and (best_cand is None or best_sim < 0.90):
+            unfiltered_data = await self._fetch_json_with_retry(
+                "/works",
+                params={"search": title, "per_page": 5},
+            )
+            if unfiltered_data:
+                unfiltered_results = unfiltered_data.get("results") or []
+                alt_cand, alt_raw, alt_sim = self._pick_best_search_result(
+                    unfiltered_results, citation.title
+                )
+                if alt_cand is not None and alt_sim > best_sim:
+                    results = unfiltered_results
+                    best_cand, best_raw, best_sim = alt_cand, alt_raw, alt_sim
+
+        if not results or best_cand is None or best_raw is None:
             return SourceCandidate(
                 source_name=self.name,
                 found=False,
                 error=f"OpenAlex: no results for '{title[:60]}'",
             )
 
-        top = results[0]
-        cand = self._work_to_candidate(top)
-        cand.found = True
-        # Confidence: relevance_score 0–∞, normalize về 0–1 (kèm kiểm tra title_similarity)
-        relevance = float(top.get("relevance_score", 0) or 0)
-        cand.score = relevance
-        cand.confidence = min(relevance, 1.0)
-        if citation.title and cand.title:
-            from integrity_checker.retrieval.normalization import title_similarity
+        if best_sim < MIN_TITLE_SIMILARITY:
+            return SourceCandidate(
+                source_name=self.name,
+                found=False,
+                error=f"OpenAlex: no title match ({best_sim:.2f}) for '{title[:60]}'",
+            )
 
-            t_sim = title_similarity(citation.title, cand.title)
-            if t_sim < 0.85:
-                cand.confidence = round(min(relevance, 1.0) * t_sim, 4)
-        return cand
+        best_cand.found = True
+        # Confidence: relevance_score 0–∞, normalize về 0–1 (kèm kiểm tra title_similarity)
+        relevance = float(best_raw.get("relevance_score", 0) or 0)
+        best_cand.score = relevance
+        base_conf = min(relevance, 1.0) if relevance > 0 else 0.75
+        if best_sim < 0.85:
+            best_cand.confidence = round(base_conf * best_sim, 4)
+        else:
+            best_cand.confidence = base_conf
+        return best_cand
 
     async def _fetch_json_with_retry(
         self, path: str, params: dict[str, Any] | None = None
@@ -175,6 +247,7 @@ class OpenAlexClient(BaseScholarClient):
                         resp = await client.get(
                             url, headers=self._headers, params=params or {}
                         )
+                        self._last_status_code = resp.status_code
                         if resp.status_code == 404:
                             return None
                         if resp.status_code == 429 or resp.status_code >= 500:
@@ -199,6 +272,8 @@ class OpenAlexClient(BaseScholarClient):
         d = doi.strip().lower()
         if d.startswith("doi:"):
             d = d[4:].strip()
+        if d.startswith("https://doi.org/"):
+            d = d[16:].strip()
         return d.rstrip(".")
 
     @staticmethod

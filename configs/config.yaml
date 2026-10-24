@@ -89,7 +89,7 @@ retrieval:
     openalex: true
     semantic_scholar: true
     serpapi: true
-    coreapi: false
+    coreapi: true
   per_source_top_k: 5
   parallel: true
   retry:                 # FIX Bug 3: Increased for better resilience

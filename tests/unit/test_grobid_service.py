@@ -383,6 +383,39 @@ class TestAutoStart:
 
         reset_grobid_manager()
 
+    def test_start_reuses_existing_exited_container(self):
+        """start() should call existing.start() instead of containers.run() when container exists in exited state."""
+        from integrity_checker.extraction.grobid_service import (
+            GROBID_STATUS,
+            GrobidServiceManager,
+        )
+        from integrity_checker.config import GrobidConfig
+
+        config = GrobidConfig()
+        manager = GrobidServiceManager(config=config)
+
+        mock_container = MagicMock()
+        mock_container.id = "abcdef1234567890"
+        mock_container.status = "exited"
+
+        mock_client = MagicMock()
+        mock_client.containers.get.return_value = mock_container
+
+        mock_docker = MagicMock()
+        mock_docker.errors.NotFound = Exception
+        manager._docker = mock_docker
+
+        with patch.object(manager, "is_container_running", return_value=False):
+            with patch.object(manager, "_docker_client", return_value=mock_client):
+                ok = manager.start()
+
+        assert ok is True
+        mock_container.start.assert_called_once()
+        mock_client.containers.run.assert_not_called()
+        assert manager._status == GROBID_STATUS.STARTING
+        assert manager.stats.container_id == "abcdef123456"
+
+
 
 class TestProcessPDF:
     """Test process_pdf functionality."""

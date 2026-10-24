@@ -24,8 +24,11 @@ from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate
 from integrity_checker.retrieval.base import BaseScholarClient
+from integrity_checker.retrieval.normalization import title_similarity
 
 logger = get_logger(__name__)
+
+MIN_TITLE_SIMILARITY = 0.50
 
 
 class CrossrefClient(BaseScholarClient):
@@ -52,9 +55,15 @@ class CrossrefClient(BaseScholarClient):
     ) -> None:
         super().__init__(timeout=timeout)
         settings = get_settings()
-        self.contact_email = contact_email or os.getenv("CONTACT_EMAIL", "") or settings.retrieval.contact_email
+        self.contact_email = (
+            contact_email
+            or os.getenv("CONTACT_EMAIL", "")
+            or settings.contact_email
+            or settings.retrieval.contact_email
+        )
         self.max_retries = max_retries or settings.retrieval.retry.max_attempts
         self._backoff = settings.retrieval.retry.backoff
+        self._last_status_code: int | None = None
 
         # Get API key from env
         self.api_key = api_key or os.environ.get("CROSSREF_API_KEY", "")
@@ -77,12 +86,20 @@ class CrossrefClient(BaseScholarClient):
         Returns:
             SourceCandidate với found=True nếu tìm thấy, found=False + error nếu không.
         """
+        self._last_status_code = None
+
         # 1. DOI exact lookup (priority)
         if citation.doi:
             doi_norm = self._normalize_doi(citation.doi)
             result = await self._lookup_by_doi(doi_norm)
             if result and result.found:
                 return result
+            if self._last_status_code == 429:
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"Crossref: rate limited (429) for DOI '{doi_norm}'",
+                )
 
         # 2. Bibliographic query fallback
         return await self._lookup_by_bibliographic(citation)
@@ -104,7 +121,7 @@ class CrossrefClient(BaseScholarClient):
         return cand
 
     async def _lookup_by_bibliographic(self, citation: Citation) -> SourceCandidate:
-        """GET /works?query.bibliographic=...&rows=1."""
+        """GET /works?query.bibliographic=...&rows=3."""
         query = self._build_bibliographic_query(citation)
         if not query:
             return SourceCandidate(
@@ -113,9 +130,15 @@ class CrossrefClient(BaseScholarClient):
                 error="Crossref: empty bibliographic query (no title/author/year)",
             )
 
-        params = {"query.bibliographic": query, "rows": 1}
+        params = {"query.bibliographic": query, "rows": 3}
         data = await self._fetch_json_with_retry("/works", params=params)
         if not data:
+            if self._last_status_code == 429:
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"Crossref: rate limited (429) for query '{query[:60]}'",
+                )
             return SourceCandidate(
                 source_name=self.name,
                 found=False,
@@ -130,15 +153,46 @@ class CrossrefClient(BaseScholarClient):
                 error=f"Crossref: no results for '{query[:60]}'",
             )
 
-        top = items[0]
-        cand = self._message_to_candidate(top)
-        cand.found = True
+        best_cand: SourceCandidate | None = None
+        best_item: dict | None = None
+        best_sim = -1.0
+        for item in items:
+            cand = self._message_to_candidate(item)
+            if citation.title and cand.title:
+                sim = title_similarity(citation.title, cand.title)
+            else:
+                sim = 1.0
+            if sim > best_sim:
+                best_sim = sim
+                best_cand = cand
+                best_item = item
+
+        if best_cand is None or best_item is None:
+            return SourceCandidate(
+                source_name=self.name,
+                found=False,
+                error=f"Crossref: no results for '{query[:60]}'",
+            )
+
+        doi_matched = bool(
+            citation.doi
+            and best_cand.doi
+            and self._normalize_doi(citation.doi) == self._normalize_doi(best_cand.doi)
+        )
+        if citation.title and not doi_matched and best_sim < MIN_TITLE_SIMILARITY:
+            return SourceCandidate(
+                source_name=self.name,
+                found=False,
+                error=f"Crossref: no title match ({best_sim:.2f}) for '{query[:60]}'",
+            )
+
+        best_cand.found = True
         # Confidence: heuristic — Crossref score là relevance, không phải similarity.
         # Score 0–∞, normalize về 0–1 với cap.
-        score = float(top.get("score", 0) or 0)
-        cand.score = score
-        cand.confidence = min(score / 100.0, 1.0)
-        return cand
+        score = float(best_item.get("score", 0) or 0)
+        best_cand.score = score
+        best_cand.confidence = min(score / 100.0, 1.0)
+        return best_cand
 
     async def _fetch_json_with_retry(
         self, path: str, params: dict[str, Any] | None = None
@@ -172,6 +226,7 @@ class CrossrefClient(BaseScholarClient):
                         resp = await client.get(
                             url, headers=self._headers, params=params or {}
                         )
+                        self._last_status_code = resp.status_code
                         if resp.status_code == 404:
                             # 404 = not found, không retry
                             return None
@@ -198,6 +253,8 @@ class CrossrefClient(BaseScholarClient):
         d = doi.strip().lower()
         if d.startswith("doi:"):
             d = d[4:].strip()
+        if d.startswith("https://doi.org/"):
+            d = d[16:].strip()
         return d.rstrip(".")
 
     @staticmethod

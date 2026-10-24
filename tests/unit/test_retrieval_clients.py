@@ -277,7 +277,7 @@ class TestSemanticScholarClient:
         assert result.external_ids.get("DOI") == "10.1234/abc"
 
     def test_extract_arxiv_id_from_url(self, client):
-        """arXiv ID extraction từ URL."""
+        """arXiv ID extraction từ URL, DOI, và raw_text."""
         assert client._extract_arxiv_id(_make_citation(
             url="https://arxiv.org/abs/2106.12345"
         )) == "2106.12345"
@@ -289,10 +289,52 @@ class TestSemanticScholarClient:
         assert client._extract_arxiv_id(_make_citation(
             url="https://arxiv.org/pdf/2106.12345.pdf"
         )) == "2106.12345"
+        # DataCite arXiv DOI
+        assert client._extract_arxiv_id(_make_citation(
+            doi="10.48550/arXiv.1706.03762"
+        )) == "1706.03762"
+        # raw_text with arXiv ID
+        assert client._extract_arxiv_id(_make_citation(
+            raw_text="Devlin et al. (2019). BERT. arXiv:1810.04805."
+        )) == "1810.04805"
         # No arXiv
         assert client._extract_arxiv_id(_make_citation(
             url="https://example.com/paper"
         )) is None
+
+    @pytest.mark.asyncio
+    async def test_arxiv_doi_uses_arxiv_endpoint_directly(self, client):
+        """10.48550/arXiv.* DOI skips /paper/DOI: and calls /paper/ARXIV:{id}."""
+        called_urls: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            called_urls.append(str(request.url))
+            assert "/paper/ARXIV:1706.03762" in str(request.url)
+            return httpx.Response(
+                200,
+                json={
+                    "paperId": "204e3073870fae3d05bcbc2f6a8e263d9b72e776",
+                    "title": "Attention is All you Need",
+                    "authors": [{"name": "Ashish Vaswani"}],
+                    "year": 2017,
+                    "venue": "Neural Information Processing Systems",
+                    "externalIds": {"ArXiv": "1706.03762"},
+                    "url": "https://www.semanticscholar.org/paper/204e3073870fae3d05bcbc2f6a8e263d9b72e776",
+                },
+            )
+
+        with _patch_httpx(handler):
+            cit = _make_citation(
+                doi="10.48550/arXiv.1706.03762",
+                title="Attention Is All You Need",
+            )
+            result = await client.lookup(cit)
+
+        assert len(called_urls) == 1
+        assert result.found is True
+        assert result.confidence == 1.0
+        assert result.doi == "10.48550/arxiv.1706.03762"
+        assert result.external_ids.get("arxiv") == "1706.03762"
 
 
 # ============================================================
@@ -311,20 +353,21 @@ class TestCoreAPIClient:
         """DOI exact lookup trả về candidate với confidence=1.0."""
         def handler(request: httpx.Request) -> httpx.Response:
             url_str = str(request.url)
-            assert "/works/search" in url_str
+            assert "/search/works/" in url_str
             # doi: gets URL-encoded as doi%3A in the query string
             assert "doi%3A" in url_str or "doi:" in url_str
             return httpx.Response(
                 200,
                 json={
-                    "total": 1,
+                    "totalHits": 1,
                     "results": [
                         {
+                            "id": 148303725,
                             "title": "Attention Is All You Need",
                             "doi": "10.48550/arXiv.1706.03762",
                             "authors": [{"name": "Vaswani"}],
-                            "year": 2017,
-                            "venue": "NeurIPS",
+                            "yearPublished": 2017,
+                            "journals": [{"title": "NeurIPS"}],
                             "downloadUrl": "https://arxiv.org/abs/1706.03762",
                         }
                     ],
@@ -338,6 +381,8 @@ class TestCoreAPIClient:
         assert result.found is True
         assert result.confidence == 1.0
         assert result.title == "Attention Is All You Need"
+        assert result.year == "2017"
+        assert result.venue == "NeurIPS"
 
     @pytest.mark.asyncio
     async def test_lookup_by_title(self, client):
@@ -346,13 +391,13 @@ class TestCoreAPIClient:
             return httpx.Response(
                 200,
                 json={
-                    "total": 1,
+                    "totalHits": 1,
                     "results": [
                         {
                             "title": "BERT: Pre-training of Deep Bidirectional Transformers",
                             "doi": "10.48550/arXiv.1810.04805",
                             "authors": [{"name": "Devlin"}],
-                            "year": 2018,
+                            "yearPublished": 2018,
                         }
                     ],
                 },
@@ -364,6 +409,41 @@ class TestCoreAPIClient:
 
         assert result.found is True
         assert result.confidence == 0.7  # Search match
+
+    @pytest.mark.asyncio
+    async def test_lookup_by_title_rejects_unrelated_result(self, client):
+        """Unrelated search hit with low title similarity returns found=False."""
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "totalHits": 1,
+                    "results": [
+                        {
+                            "title": "Completely Unrelated Agricultural Survey in Brazil",
+                            "doi": "10.1000/unrelated",
+                            "authors": [{"name": "Other Author"}],
+                            "yearPublished": 2020,
+                        }
+                    ],
+                },
+            )
+
+        with _patch_httpx(handler):
+            cit = _make_citation(title="Deep Residual Learning for Image Recognition")
+            result = await client.lookup(cit)
+
+        assert result.found is False
+        assert "no title match" in (result.error or "")
+
+    def test_sanitize_query_removes_lucene_special_chars(self, client):
+        """_sanitize_query strips colons and hyphens that cause CORE API 500 errors."""
+        q = client._sanitize_query("RoBERTa: A Robustly Optimized BERT Pretraining Approach (Low-Rank)")
+        assert ":" not in q
+        assert "-" not in q
+        assert "(" not in q
+        assert "RoBERTa" in q
+        assert "Low Rank" in q
 
     def test_normalize_doi(self, client):
         """_normalize_doi handles various DOI formats."""

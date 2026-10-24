@@ -33,7 +33,7 @@ class RateLimiter:
         self._backoff_until: float = 0.0
         self._consecutive_failures: int = 0
         self._base_backoff: float = 5.0  # seconds
-        self._max_backoff: float = 300.0  # 5 minutes max
+        self._max_backoff: float = 60.0  # 1 minute max
 
     async def wait(self) -> None:
         """Wait until rate limit allows next request."""

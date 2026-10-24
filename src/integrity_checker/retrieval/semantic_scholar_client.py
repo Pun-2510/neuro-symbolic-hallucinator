@@ -7,6 +7,8 @@ Docs: https://api.semanticscholar.org/api-docs/
 from __future__ import annotations
 
 import os
+import re
+import time
 from typing import Any
 
 import httpx
@@ -23,8 +25,12 @@ from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate
 from integrity_checker.retrieval.base import BaseScholarClient
+from integrity_checker.retrieval.normalization import title_similarity
 
 logger = get_logger(__name__)
+
+MIN_TITLE_SIMILARITY = 0.50
+_ARXIV_ID_RE = re.compile(r"\b(\d{4}\.\d{4,5})(?:v\d+)?\b")
 
 
 class SemanticScholarClient(BaseScholarClient):
@@ -51,27 +57,46 @@ class SemanticScholarClient(BaseScholarClient):
         max_retries: int | None = None,
     ) -> None:
         super().__init__(timeout=timeout)
-        self.api_key = api_key or os.getenv("S2_API_KEY", "")
         settings = get_settings()
+        self.api_key = api_key or os.getenv("S2_API_KEY", "") or settings.s2_api_key
         self.max_retries = max_retries or settings.retrieval.retry.max_attempts
         self._backoff = settings.retrieval.retry.backoff
         self._headers = {"x-api-key": self.api_key} if self.api_key else {}
+        self._last_status_code: int | None = None
+        self._rate_limited_until: float = 0.0
 
     async def lookup(self, citation: Citation) -> SourceCandidate:
         """Lookup bằng DOI / arXiv ID exact; fallback bằng search."""
-        # 1. DOI exact
+        self._last_status_code = None
+
+        # 1. DOI exact (skip DataCite arXiv DOIs 10.48550/arXiv.* as S2 only resolves them via ARXIV:{id})
         if citation.doi:
             doi_norm = self._normalize_doi(citation.doi)
-            result = await self._lookup_by_id(f"DOI:{doi_norm}")
-            if result and result.found:
-                return result
+            if not doi_norm.startswith("10.48550/arxiv."):
+                result = await self._lookup_by_id(f"DOI:{doi_norm}")
+                if result and result.found:
+                    return result
+                if self._last_status_code == 429:
+                    return SourceCandidate(
+                        source_name=self.name,
+                        found=False,
+                        error=f"S2: rate limited (429) for DOI:{doi_norm}",
+                    )
 
-        # 2. arXiv ID exact (nếu có)
+        # 2. arXiv ID exact (từ URL, arXiv DOI 10.48550/arXiv.*, hoặc raw_text)
         arxiv_id = self._extract_arxiv_id(citation)
         if arxiv_id:
             result = await self._lookup_by_id(f"ARXIV:{arxiv_id}")
             if result and result.found:
+                if not result.doi and citation.doi and self._normalize_doi(citation.doi).startswith("10.48550/arxiv."):
+                    result.doi = self._normalize_doi(citation.doi)
                 return result
+            if self._last_status_code == 429:
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"S2: rate limited (429) for ARXIV:{arxiv_id}",
+                )
 
         # 3. Title search fallback
         return await self._lookup_by_search(citation)
@@ -90,7 +115,7 @@ class SemanticScholarClient(BaseScholarClient):
         return cand
 
     async def _lookup_by_search(self, citation: Citation) -> SourceCandidate:
-        """GET /paper/search?query={title}&limit=1."""
+        """GET /paper/search?query={title}&limit=5."""
         if not citation.title:
             return SourceCandidate(
                 source_name=self.name,
@@ -100,7 +125,7 @@ class SemanticScholarClient(BaseScholarClient):
 
         params = {
             "query": citation.title[:200],
-            "limit": 1,
+            "limit": 5,
             "fields": self.PAPER_FIELDS,
         }
         # Optional year filter
@@ -109,6 +134,12 @@ class SemanticScholarClient(BaseScholarClient):
 
         data = await self._fetch_json_with_retry("/paper/search", params=params)
         if not data:
+            if self._last_status_code == 429:
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"S2: rate limited (429) for '{citation.title[:60]}'",
+                )
             return SourceCandidate(
                 source_name=self.name,
                 found=False,
@@ -123,11 +154,25 @@ class SemanticScholarClient(BaseScholarClient):
                 error=f"S2: no results for '{citation.title[:60]}'",
             )
 
-        top = results[0]
-        cand = self._paper_to_candidate(top)
-        cand.found = True
-        cand.confidence = 0.7  # Search match — không exact
-        return cand
+        best_cand: SourceCandidate | None = None
+        best_sim = -1.0
+        for item in results:
+            cand = self._paper_to_candidate(item)
+            sim = title_similarity(citation.title, cand.title) if cand.title else 0.0
+            if sim > best_sim:
+                best_sim = sim
+                best_cand = cand
+
+        if best_cand is None or (citation.title and best_sim < MIN_TITLE_SIMILARITY):
+            return SourceCandidate(
+                source_name=self.name,
+                found=False,
+                error=f"S2: no title match ({best_sim:.2f}) for '{citation.title[:60]}'",
+            )
+
+        best_cand.found = True
+        best_cand.confidence = 0.7 if best_sim >= 0.85 else round(0.7 * best_sim, 4)
+        return best_cand
 
     async def _fetch_json_with_retry(
         self, path: str, params: dict[str, Any] | None = None
@@ -137,6 +182,10 @@ class SemanticScholarClient(BaseScholarClient):
         Backoff config từ settings: initial=5s, max=60s, multiplier=2.0
         """
         url = f"{self.BASE_URL}{path}"
+        if not self.api_key and time.monotonic() < self._rate_limited_until:
+            self._last_status_code = 429
+            return None
+
         # FIX: Use correct httpx timeout exception types
         retry = AsyncRetrying(
             stop=stop_after_attempt(self.max_retries),
@@ -161,9 +210,18 @@ class SemanticScholarClient(BaseScholarClient):
                         resp = await client.get(
                             url, headers=self._headers, params=params or {}
                         )
+                        self._last_status_code = resp.status_code
                         if resp.status_code == 404:
                             return None
-                        if resp.status_code == 429 or resp.status_code >= 500:
+                        if resp.status_code == 429:
+                            if not self.api_key:
+                                # Without an API key, S2 public pool 429s persist for minutes;
+                                # fast-fail and cooldown for 30s to avoid stalling the pipeline.
+                                self._rate_limited_until = time.monotonic() + 30.0
+                                logger.warning(f"S2 anonymous 429 rate limit on {path}; cooling down 30s")
+                                return None
+                            resp.raise_for_status()
+                        if resp.status_code >= 500:
                             resp.raise_for_status()
                         if resp.status_code != 200:
                             logger.warning(
@@ -185,13 +243,15 @@ class SemanticScholarClient(BaseScholarClient):
         d = doi.strip().lower()
         if d.startswith("doi:"):
             d = d[4:].strip()
+        if d.startswith("https://doi.org/"):
+            d = d[16:].strip()
         return d.rstrip(".")
 
     @staticmethod
     def _extract_arxiv_id(citation: Citation) -> str | None:
-        """Extract arXiv ID từ URL hoặc external_ids nếu có."""
-        # Check URL field
-        if citation.url and "arxiv.org" in citation.url:
+        """Extract arXiv ID từ URL, DOI (10.48550/arXiv.*), hoặc raw_text."""
+        # 1. Check URL field
+        if citation.url and "arxiv.org" in citation.url.lower():
             # Format: https://arxiv.org/abs/2106.12345 hoặc /pdf/2106.12345
             for marker in ("/abs/", "/pdf/"):
                 idx = citation.url.find(marker)
@@ -201,6 +261,22 @@ class SemanticScholarClient(BaseScholarClient):
                     arxiv_id = arxiv_id.split("v")[0] if "v" in arxiv_id else arxiv_id
                     arxiv_id = arxiv_id.replace(".pdf", "")
                     return arxiv_id.rstrip("/")
+            m = _ARXIV_ID_RE.search(citation.url)
+            if m:
+                return m.group(1)
+
+        # 2. Check DOI field (e.g. 10.48550/arXiv.1706.03762)
+        if citation.doi and "arxiv" in citation.doi.lower():
+            m = _ARXIV_ID_RE.search(citation.doi)
+            if m:
+                return m.group(1)
+
+        # 3. Check raw_text if it mentions arXiv
+        if citation.raw_text and "arxiv" in citation.raw_text.lower():
+            m = _ARXIV_ID_RE.search(citation.raw_text)
+            if m:
+                return m.group(1)
+
         return None
 
     @staticmethod
@@ -231,6 +307,14 @@ class SemanticScholarClient(BaseScholarClient):
         # URL
         url = paper.get("url")
 
+        filtered_ext_ids = {
+            k: str(v)
+            for k, v in ext_ids.items()
+            if k in ("DOI", "ArXiv", "MAG", "PMID", "PMCID") and v is not None
+        }
+        if arxiv_id and "arxiv" not in filtered_ext_ids:
+            filtered_ext_ids["arxiv"] = str(arxiv_id)
+
         return SourceCandidate(
             source_name="semantic_scholar",
             doi=doi.lower() if doi else None,
@@ -239,9 +323,5 @@ class SemanticScholarClient(BaseScholarClient):
             year=year_str,
             venue=venue,
             url=url,
-            external_ids={
-                k: v
-                for k, v in ext_ids.items()
-                if k in ("DOI", "ArXiv", "MAG", "PMID", "PMCID")
-            },
+            external_ids=filtered_ext_ids,
         )
