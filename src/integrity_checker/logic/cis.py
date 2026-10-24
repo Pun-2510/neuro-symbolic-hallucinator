@@ -157,14 +157,32 @@ class CISCalculator:
             style_profile, academic_verdicts
         )
 
-        # 5. Identifier validity: tỉ lệ DOI/URL có resolve được
-        with_doi = sum(1 for v in academic_verdicts if v.citation.doi)
-        with_doi_valid = sum(
-            1
-            for v in academic_verdicts
-            if v.citation.doi and v.label in (ValidationLabel.VERIFIED, ValidationLabel.METADATA_ERROR)
-        )
-        identifier_validity = (with_doi_valid / with_doi) if with_doi > 0 else 1.0
+        # 5. Identifier validity: ratio of DOIs/URLs that resolve without broken/fake link flags
+        invalid_id_rules = {
+            "R-FAKE-URL",
+            "R-FABRICATED-DOI",
+            "R-NONEXISTENT-DOI",
+            "R-DEAD-URL",
+            "R-BROKEN-LINK",
+        }
+        with_identifier = 0
+        with_identifier_valid = 0
+        for v in academic_verdicts:
+            has_id = bool(v.citation.doi or v.citation.url)
+            if not has_id:
+                continue
+            with_identifier += 1
+            rules_set = set(v.triggered_rules or [])
+            url_stat = getattr(v.matched_source, "url_status", None) if v.matched_source else None
+            has_broken_id = bool(
+                (rules_set & invalid_id_rules)
+                or v.domain_exception
+                or url_stat in ("dead_link", "fake_domain")
+            )
+            if not has_broken_id and v.label in (ValidationLabel.VERIFIED, ValidationLabel.METADATA_ERROR):
+                with_identifier_valid += 1
+
+        identifier_validity = (with_identifier_valid / with_identifier) if with_identifier > 0 else 1.0
 
         return CISComponents(
             verified_ratio=verified_ratio,

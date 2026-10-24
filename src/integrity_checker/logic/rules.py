@@ -652,7 +652,24 @@ class SymbolicRules:
                 logger.debug(f"Error parsing year from '{citation_year}': {exc}")
 
         # --- Rule 5: No candidates returned ---
+        url_status = getattr(source, "url_status", None)
+        url_status_code = getattr(source, "url_status_code", None)
+
         if not source.candidates or not source.best_candidate():
+            if url_status == "dead_link" and not is_known_author:
+                status_detail = f"HTTP {url_status_code}" if url_status_code else "unreachable/DNS error"
+                return RuleOutcome(
+                    label=ValidationLabel.SUSPECTED_HALLUCINATION,
+                    confidence=max(0.0, 0.85 - style_penalty),
+                    reasoning=(
+                        f"Citation URL '{citation_url}' is dead ({status_detail}) and no matching "
+                        f"scholarly record was found. Suspected hallucinated link/reference."
+                    ),
+                    triggered_rules=["R-DEAD-URL", "R-NO-CANDIDATE"],
+                    mismatched_fields=["url"],
+                    style_penalty=style_penalty,
+                )
+
             if source.sources_failed:
                 clean_empty_sources = [
                     s for s, err in source.sources_failed.items()
@@ -1128,6 +1145,27 @@ class SymbolicRules:
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=["doi", "title"],
+                style_penalty=style_penalty,
+            )
+
+        # --- Rule 4d: Dead URL with low title similarity and no DOI match → SUSPECTED_HALLUCINATION ---
+        if (
+            url_status == "dead_link"
+            and not doi_match
+            and title_sim < 0.60
+            and not is_known_author
+        ):
+            triggered_rules.append("R-DEAD-URL")
+            status_detail = f"HTTP {url_status_code}" if url_status_code else "unreachable"
+            return RuleOutcome(
+                label=ValidationLabel.SUSPECTED_HALLUCINATION,
+                confidence=max(0.0, 0.85 - style_penalty),
+                reasoning=(
+                    f"Citation URL '{citation_url}' is dead ({status_detail}) and candidate title "
+                    f"similarity is low ({title_sim:.2f}). Suspected hallucinated link/reference."
+                ),
+                triggered_rules=triggered_rules,
+                mismatched_fields=["url", "title"],
                 style_penalty=style_penalty,
             )
 

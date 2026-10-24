@@ -292,20 +292,25 @@ class NeuroSymbolicChecker:
                             sources_succeeded=["known_papers"] + other_succeeded,
                             sources_failed=source.sources_failed,
                             api_exhausted=source.api_exhausted,
+                            url_status=source.url_status,
+                            url_status_code=source.url_status_code,
                         )
                         features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
 
-                        return CitationVerdict(
-                            citation=citation,
-                            label=ValidationLabel.METADATA_ERROR,
-                            confidence=0.75,
-                            matched_source=enhanced_source,
-                            features=features,
-                            reasoning=f"Known author '{citation.authors[0] if citation.authors else 'unknown'}' found, "
-                                      f"but title '{citation_title}' does not match known paper '{known_title}' "
-                                      f"(similarity: {title_sim:.2f}). This appears to be a wrong title attribution.",
-                            triggered_rules=["R-KNOWN-PAPER", "R-TITLE-MISMATCH"],
-                            mismatched_fields=["title"],
+                        return self._apply_dead_link_exception(
+                            CitationVerdict(
+                                citation=citation,
+                                label=ValidationLabel.METADATA_ERROR,
+                                confidence=0.75,
+                                matched_source=enhanced_source,
+                                features=features,
+                                reasoning=f"Known author '{citation.authors[0] if citation.authors else 'unknown'}' found, "
+                                          f"but title '{citation_title}' does not match known paper '{known_title}' "
+                                          f"(similarity: {title_sim:.2f}). This appears to be a wrong title attribution.",
+                                triggered_rules=["R-KNOWN-PAPER", "R-TITLE-MISMATCH"],
+                                mismatched_fields=["title"],
+                            ),
+                            enhanced_source,
                         )
                     # Otherwise fall through to normal verification of the real matching candidate
                 else:
@@ -317,18 +322,23 @@ class NeuroSymbolicChecker:
                         sources_succeeded=["known_papers"] + other_succeeded,
                         sources_failed=source.sources_failed,
                         api_exhausted=source.api_exhausted,
+                        url_status=source.url_status,
+                        url_status_code=source.url_status_code,
                     )
                     features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
 
-                    return CitationVerdict(
-                        citation=citation,
-                        label=ValidationLabel.VERIFIED,
-                        confidence=0.90,
-                        matched_source=enhanced_source,
-                        features=features,
-                        reasoning=f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. APIs failed but paper is well-documented.",
-                        triggered_rules=["R-KNOWN-PAPER"],
-                        mismatched_fields=[],
+                    return self._apply_dead_link_exception(
+                        CitationVerdict(
+                            citation=citation,
+                            label=ValidationLabel.VERIFIED,
+                            confidence=0.90,
+                            matched_source=enhanced_source,
+                            features=features,
+                            reasoning=f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. APIs failed but paper is well-documented.",
+                            triggered_rules=["R-KNOWN-PAPER"],
+                            mismatched_fields=[],
+                        ),
+                        enhanced_source,
                     )
             else:
                 # Citation has no title (in-text citation) → VERIFIED via known paper
@@ -339,18 +349,23 @@ class NeuroSymbolicChecker:
                     sources_succeeded=["known_papers"] + other_succeeded,
                     sources_failed=source.sources_failed,
                     api_exhausted=source.api_exhausted,
+                    url_status=source.url_status,
+                    url_status_code=source.url_status_code,
                 )
                 features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
 
-                return CitationVerdict(
-                    citation=citation,
-                    label=ValidationLabel.VERIFIED,
-                    confidence=0.90,
-                    matched_source=enhanced_source,
-                    features=features,
-                    reasoning=f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. APIs failed but paper is well-documented.",
-                    triggered_rules=["R-KNOWN-PAPER"],
-                    mismatched_fields=[],
+                return self._apply_dead_link_exception(
+                    CitationVerdict(
+                        citation=citation,
+                        label=ValidationLabel.VERIFIED,
+                        confidence=0.90,
+                        matched_source=enhanced_source,
+                        features=features,
+                        reasoning=f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. APIs failed but paper is well-documented.",
+                        triggered_rules=["R-KNOWN-PAPER"],
+                        mismatched_fields=[],
+                    ),
+                    enhanced_source,
                 )
 
         # Compute features với context (nếu có) cho Neural content alignment
@@ -378,18 +393,43 @@ class NeuroSymbolicChecker:
             outcome.reasoning, features, outcome.triggered_rules
         )
 
-        return CitationVerdict(
-            citation=citation,
-            label=outcome.label,
-            confidence=outcome.confidence,
-            matched_source=source,
-            features=features,
-            reasoning=enhanced_reasoning,
-            triggered_rules=outcome.triggered_rules,
-            mismatched_fields=outcome.mismatched_fields,
-            style_penalty=outcome.style_penalty,
-            domain_exception=outcome.domain_exception,
+        return self._apply_dead_link_exception(
+            CitationVerdict(
+                citation=citation,
+                label=outcome.label,
+                confidence=outcome.confidence,
+                matched_source=source,
+                features=features,
+                reasoning=enhanced_reasoning,
+                triggered_rules=list(outcome.triggered_rules),
+                mismatched_fields=list(outcome.mismatched_fields),
+                style_penalty=outcome.style_penalty,
+                domain_exception=outcome.domain_exception,
+            ),
+            source,
         )
+
+    @staticmethod
+    def _apply_dead_link_exception(
+        verdict: CitationVerdict,
+        source: SourceResult,
+    ) -> CitationVerdict:
+        """If scholarly record is verified/matched but the cited URL is dead, flag domain_exception."""
+        if (
+            getattr(source, "url_status", None) == "dead_link"
+            and verdict.label in (ValidationLabel.VERIFIED, ValidationLabel.METADATA_ERROR)
+        ):
+            verdict.domain_exception = True
+            if "R-DOMAIN-EXCEPTION" not in verdict.triggered_rules:
+                verdict.triggered_rules.append("R-DOMAIN-EXCEPTION")
+            if "R-BROKEN-LINK" not in verdict.triggered_rules:
+                verdict.triggered_rules.append("R-BROKEN-LINK")
+            if "url" not in verdict.mismatched_fields:
+                verdict.mismatched_fields.append("url")
+            verdict.reasoning += (
+                " [Link check: Cited URL is dead/unreachable, but scholarly record exists in academic registries.]"
+            )
+        return verdict
 
     def _enhance_reasoning_with_neural(
         self,

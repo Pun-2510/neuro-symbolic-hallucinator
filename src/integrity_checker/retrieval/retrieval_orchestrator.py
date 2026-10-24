@@ -572,6 +572,8 @@ class RetrievalOrchestrator:
         cache: DiskCache | None = None,
         local_db: LocalDatabase | None = None,
         use_local_db: bool | None = None,
+        link_validator: "object | None" = None,
+        enable_link_validation: bool | None = None,
     ) -> None:
         settings_global = get_settings()
         settings = settings_global.retrieval
@@ -592,6 +594,12 @@ class RetrievalOrchestrator:
             if use_local_db is not None
             else self.cache is None and env not in {"test", "testing"}
         )
+        self.enable_link_validation = (
+            enable_link_validation
+            if enable_link_validation is not None
+            else (link_validator is not None or (self.cache is None and env not in {"test", "testing"}))
+        )
+        self.link_validator = link_validator
 
         # Rate limiters (only for enabled sources)
         self._rate_limiters: dict[str, RateLimiter] = {
@@ -752,6 +760,16 @@ class RetrievalOrchestrator:
             min_failures_for_unresolved = 2
         else:
             min_failures_for_unresolved = len(sources_queried) // 2 + 1
+        url_status: str | None = None
+        url_status_code: int | None = None
+        if citation.url and self.enable_link_validation:
+            from integrity_checker.retrieval.link_validator import LinkValidator
+
+            validator = self.link_validator or LinkValidator()
+            link_res = await validator.validate_url(citation.url)
+            url_status = link_res.status.value
+            url_status_code = link_res.status_code
+
         if not any_found and len(failed) >= min_failures_for_unresolved:
             # Distinguish hard API/network failures from clean HTTP 200 "no results" responses
             has_clean_search_response = any(
@@ -778,6 +796,8 @@ class RetrievalOrchestrator:
                 sources_succeeded=[],
                 sources_failed=failed,
                 api_exhausted=not has_clean_search_response,
+                url_status=url_status,
+                url_status_code=url_status_code,
             )
 
         # ===== 4. Quality filtering - remove garbage/unrelated candidates =====
@@ -813,6 +833,8 @@ class RetrievalOrchestrator:
             sources_queried=sources_queried,
             sources_succeeded=succeeded,
             sources_failed=failed,
+            url_status=url_status,
+            url_status_code=url_status_code,
         )
 
     def _lookup_local_db(self, citation: Citation) -> SourceResult | None:

@@ -77,6 +77,8 @@ class SourceResult:
     sources_succeeded: list[str] = field(default_factory=list)
     sources_failed: dict[str, str] = field(default_factory=dict)  # source → error
     api_exhausted: bool = False
+    url_status: Optional[str] = None
+    url_status_code: Optional[int] = None
 
     def best_candidate(self) -> Optional[SourceCandidate]:
         """Trả về candidate tốt nhất (highest confidence hoặc được chọn bởi FeatureCalculator) trong số found=True."""

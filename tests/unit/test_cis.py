@@ -162,3 +162,40 @@ def test_cis_linking_consistency_falls_back_when_no_in_text_links() -> None:
     assert abs(cis.components.in_text_bib_consistency - 0.85) < 1e-6
 
 
+def test_cis_identifier_validity_evaluates_urls_and_penalizes_dead_links() -> None:
+    """identifier_validity evaluates both DOI and URL identifiers and penalizes dead links."""
+    from integrity_checker.models.source import SourceResult
+
+    c_alive = Citation(
+        raw_text="Paper A (2022). https://arxiv.org/abs/2201.00001",
+        citation_type=CitationType.REFERENCE_LIST,
+        style=CitationStyle.APA,
+        url="https://arxiv.org/abs/2201.00001",
+    )
+    v_alive = CitationVerdict(
+        citation=c_alive,
+        label=ValidationLabel.VERIFIED,
+        confidence=0.95,
+        matched_source=SourceResult(citation_raw="Paper A", url_status="alive", url_status_code=200),
+    )
+
+    c_dead = Citation(
+        raw_text="Paper B (2022). https://example-university.edu/dead-paper.pdf",
+        citation_type=CitationType.REFERENCE_LIST,
+        style=CitationStyle.APA,
+        url="https://example-university.edu/dead-paper.pdf",
+    )
+    v_dead = CitationVerdict(
+        citation=c_dead,
+        label=ValidationLabel.VERIFIED,
+        confidence=0.90,
+        domain_exception=True,
+        triggered_rules=["R-HIGH-CONF", "R-DOMAIN-EXCEPTION", "R-BROKEN-LINK"],
+        matched_source=SourceResult(citation_raw="Paper B", url_status="dead_link", url_status_code=404),
+    )
+
+    cis = CISCalculator().compute([v_alive, v_dead])
+    assert abs(cis.components.identifier_validity - 0.5) < 1e-6
+
+
+
