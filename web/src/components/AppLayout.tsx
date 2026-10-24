@@ -186,10 +186,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50/90 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-medium text-indigo-700 dark:text-indigo-300 capitalize">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-            {user?.role || 'user'}
-          </span>
+          <span
+            className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/15"
+            aria-hidden="true"
+          />
         </div>
       </header>
 
