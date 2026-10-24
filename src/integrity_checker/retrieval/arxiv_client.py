@@ -1,0 +1,377 @@
+"""arXiv API client — Preprints in CS, AI, ML, NLP, Math, Physics, Q-Bio.
+
+Docs: https://info.arxiv.org/help/api/user-manual.html
+Endpoint: https://export.arxiv.org/api/query
+No API key required. Returns Atom XML with full Title, Authors, Year, Abstract,
+arXiv ID, and optional publisher DOI / journal_ref.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import xml.etree.ElementTree as ET
+from typing import Any
+
+import httpx
+from tenacity import (
+    AsyncRetrying,
+    RetryError,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
+
+from integrity_checker.config import get_settings
+from integrity_checker.logging import get_logger
+from integrity_checker.models.citation import Citation
+from integrity_checker.models.source import SourceCandidate
+from integrity_checker.retrieval.base import BaseScholarClient
+from integrity_checker.retrieval.normalization import (
+    author_key,
+    normalize_doi,
+    title_similarity,
+)
+
+logger = get_logger(__name__)
+
+MIN_TITLE_SIMILARITY = 0.55
+
+_ATOM_NS = {
+    "atom": "http://www.w3.org/2005/Atom",
+    "arxiv": "http://arxiv.org/schemas/atom",
+}
+
+_ARXIV_ID_PATTERNS = [
+    re.compile(r"10\.48550/arxiv\.(\d{4}\.\d{4,5})(?:v\d+)?", re.IGNORECASE),
+    re.compile(r"arxiv\.org/(?:abs|pdf)/(\d{4}\.\d{4,5})(?:v\d+)?", re.IGNORECASE),
+    re.compile(r"\barxiv\s*[:/]\s*(\d{4}\.\d{4,5})(?:v\d+)?\b", re.IGNORECASE),
+    re.compile(r"\babs/(\d{4}\.\d{4,5})(?:v\d+)?\b", re.IGNORECASE),
+]
+
+_STOPWORDS = frozenset({
+    "the", "and", "for", "with", "from", "into", "using", "via", "over",
+    "under", "towards", "toward", "through", "based", "between", "about",
+})
+
+
+class ArxivClient(BaseScholarClient):
+    """arXiv Atom API client for exact arXiv ID lookup and preprint title/author search."""
+
+    BASE_URL = "https://export.arxiv.org/api/query"
+    name = "arxiv"
+
+    def __init__(
+        self,
+        contact_email: str | None = None,
+        timeout: float = 15.0,
+        max_retries: int | None = None,
+    ) -> None:
+        super().__init__(timeout=timeout)
+        settings = get_settings()
+        self.contact_email = (
+            contact_email
+            or os.getenv("CONTACT_EMAIL", "")
+            or settings.contact_email
+            or settings.retrieval.contact_email
+        )
+        self.max_retries = max_retries or min(settings.retrieval.retry.max_attempts, 3)
+        self._backoff = settings.retrieval.retry.backoff
+        self._last_status_code: int | None = None
+        self._headers = {
+            "User-Agent": (
+                f"EssayIntegrityChecker/0.2 (mailto:{self.contact_email})"
+                if self.contact_email
+                else "EssayIntegrityChecker/0.2"
+            ),
+        }
+
+    async def lookup(self, citation: Citation) -> SourceCandidate:
+        """Lookup by exact arXiv ID first; fallback to title/author search."""
+        self._last_status_code = None
+
+        # 1. Exact arXiv ID lookup if present in DOI, URL, venue, or raw_text
+        arxiv_id = self.extract_arxiv_id(citation)
+        if arxiv_id:
+            by_id = await self._lookup_by_id(arxiv_id, citation=citation)
+            if by_id and by_id.found:
+                return by_id
+            if self._last_status_code == 429:
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"arXiv: rate limited (429) for ID '{arxiv_id}'",
+                )
+
+        # 2. Title + Author search
+        return await self._lookup_by_search(citation)
+
+    @classmethod
+    def extract_arxiv_id(cls, citation: Citation) -> str | None:
+        """Extract canonical YYMM.NNNNN arXiv ID from citation fields."""
+        fields = [
+            citation.doi or "",
+            citation.url or "",
+            citation.venue or "",
+            citation.raw_text or "",
+        ]
+        for text in fields:
+            if not text:
+                continue
+            for pat in _ARXIV_ID_PATTERNS:
+                m = pat.search(text)
+                if m:
+                    return m.group(1)
+        return None
+
+    async def _lookup_by_id(
+        self,
+        arxiv_id: str,
+        citation: Citation | None = None,
+    ) -> SourceCandidate | None:
+        xml_text = await self._fetch_xml_with_retry({"id_list": arxiv_id, "max_results": 1})
+        if not xml_text:
+            return None
+        entries = self._parse_atom_entries(xml_text)
+        if not entries:
+            return None
+        cand = entries[0]
+        if not cand.title:
+            return None
+        # Guard against mismatched ID if citation has an explicit title
+        if citation and citation.title:
+            if title_similarity(citation.title, cand.title) < 0.65:
+                return None
+        cand.found = True
+        cand.confidence = 0.98
+        cand.score = 1.0
+        return cand
+
+    async def _lookup_by_search(self, citation: Citation) -> SourceCandidate:
+        if not citation.title:
+            return SourceCandidate(
+                source_name=self.name,
+                found=False,
+                error="arXiv: no title for search",
+            )
+
+        queries = self._build_search_queries(citation)
+        if not queries:
+            return SourceCandidate(
+                source_name=self.name,
+                found=False,
+                error="arXiv: empty search query",
+            )
+
+        entries: list[SourceCandidate] = []
+        for search_query in queries:
+            xml_text = await self._fetch_xml_with_retry(
+                {"search_query": search_query, "start": 0, "max_results": 5}
+            )
+            if not xml_text:
+                if self._last_status_code == 429:
+                    return SourceCandidate(
+                        source_name=self.name,
+                        found=False,
+                        error=f"arXiv: rate limited (429) for '{citation.title[:50]}'",
+                    )
+                continue
+            parsed = self._parse_atom_entries(xml_text)
+            if parsed:
+                entries.extend(parsed)
+                # Stop querying fallback patterns if we already have a strong title match
+                best_so_far = max(
+                    (title_similarity(citation.title, c.title) for c in entries if c.title),
+                    default=0.0,
+                )
+                if best_so_far >= 0.85:
+                    break
+
+        if not entries:
+            return SourceCandidate(
+                source_name=self.name,
+                found=False,
+                error=f"arXiv: no results for '{citation.title[:60]}'",
+            )
+
+        cit_year = str(citation.year)[:4] if citation.year else None
+        cit_first_author = author_key(citation.authors[0]) if citation.authors else None
+
+        best_cand: SourceCandidate | None = None
+        best_sim = -1.0
+        best_rank = -1.0
+
+        for cand in entries:
+            if not cand.title:
+                continue
+            sim = title_similarity(citation.title, cand.title)
+            rank = sim
+            if cit_year and cand.year == cit_year:
+                rank += 0.02
+            if cit_first_author and cand.authors:
+                cand_authors = {author_key(a) for a in cand.authors if a}
+                if cit_first_author in cand_authors:
+                    rank += 0.03
+            if rank > best_rank:
+                best_rank = rank
+                best_sim = sim
+                best_cand = cand
+
+        if best_cand is None or best_sim < MIN_TITLE_SIMILARITY:
+            return SourceCandidate(
+                source_name=self.name,
+                found=False,
+                error=(
+                    f"arXiv: no title match above {MIN_TITLE_SIMILARITY:.2f} "
+                    f"(best={best_sim:.2f}) for '{citation.title[:60]}'"
+                ),
+            )
+
+        best_cand.found = True
+        best_cand.score = best_sim
+        best_cand.confidence = min(0.95, max(0.60, best_sim))
+        return best_cand
+
+    @classmethod
+    def _build_search_queries(cls, citation: Citation) -> list[str]:
+        """Build progressive arXiv search_query strings (exact phrase -> keyword + author)."""
+        title = re.sub(r"\s+", " ", (citation.title or "")).strip()
+        if not title:
+            return []
+
+        cleaned_phrase = re.sub(r'["\'\\():;!?]', " ", title)
+        cleaned_phrase = re.sub(r"\s+", " ", cleaned_phrase).strip()
+
+        queries: list[str] = []
+        if cleaned_phrase:
+            queries.append(f'ti:"{cleaned_phrase}"')
+
+        # Keyword + first author fallback (handles hyphenation / subtitle differences)
+        words = [
+            w
+            for w in re.sub(r"[^\w\s]", " ", title).split()
+            if len(w) >= 3 and w.lower() not in _STOPWORDS
+        ]
+        if words:
+            ti_terms = " AND ".join(f"ti:{w}" for w in words[:7])
+            if citation.authors:
+                surname = author_key(citation.authors[0])
+                if surname and len(surname) >= 2:
+                    queries.append(f"({ti_terms}) AND au:{surname}")
+            queries.append(ti_terms)
+
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        unique: list[str] = []
+        for q in queries:
+            if q not in seen:
+                seen.add(q)
+                unique.append(q)
+        return unique[:2]
+
+    @classmethod
+    def _parse_atom_entries(cls, xml_text: str) -> list[SourceCandidate]:
+        try:
+            root = ET.fromstring(xml_text)
+        except ET.ParseError as exc:
+            logger.warning(f"arXiv XML parse error: {exc}")
+            return []
+
+        candidates: list[SourceCandidate] = []
+        for entry in root.findall("atom:entry", _ATOM_NS):
+            id_text = (entry.findtext("atom:id", default="", namespaces=_ATOM_NS) or "").strip()
+            raw_title = (entry.findtext("atom:title", default="", namespaces=_ATOM_NS) or "").strip()
+            title = re.sub(r"\s+", " ", raw_title).strip()
+            if not title or title.lower() == "error":
+                continue
+
+            raw_summary = (entry.findtext("atom:summary", default="", namespaces=_ATOM_NS) or "").strip()
+            abstract = re.sub(r"\s+", " ", raw_summary).strip() or None
+
+            authors: list[str] = []
+            for author_el in entry.findall("atom:author", _ATOM_NS):
+                name = (author_el.findtext("atom:name", default="", namespaces=_ATOM_NS) or "").strip()
+                if name:
+                    authors.append(name)
+
+            published = (entry.findtext("atom:published", default="", namespaces=_ATOM_NS) or "").strip()
+            year = published[:4] if len(published) >= 4 and published[:4].isdigit() else None
+
+            # Extract arXiv ID from <id>http://arxiv.org/abs/2404.06395v1</id>
+            arxiv_id = None
+            m_id = re.search(r"/abs/([^?\s]+?)(?:v\d+)?$", id_text)
+            if m_id:
+                arxiv_id = m_id.group(1)
+
+            pub_doi = (entry.findtext("arxiv:doi", default="", namespaces=_ATOM_NS) or "").strip()
+            if pub_doi:
+                doi = normalize_doi(pub_doi)
+            elif arxiv_id and re.match(r"^\d{4}\.\d{4,5}$", arxiv_id):
+                doi = f"10.48550/arxiv.{arxiv_id}"
+            else:
+                doi = None
+
+            journal_ref = (entry.findtext("arxiv:journal_ref", default="", namespaces=_ATOM_NS) or "").strip()
+            venue = re.sub(r"\s+", " ", journal_ref).strip() if journal_ref else "arXiv"
+
+            external_ids: dict[str, str] = {}
+            if arxiv_id:
+                external_ids["arxiv"] = arxiv_id
+            if doi:
+                external_ids["doi"] = doi
+
+            candidates.append(
+                SourceCandidate(
+                    source_name=cls.name,
+                    found=False,
+                    doi=doi,
+                    title=title,
+                    authors=authors,
+                    year=year,
+                    venue=venue,
+                    url=id_text or (f"https://arxiv.org/abs/{arxiv_id}" if arxiv_id else None),
+                    abstract=abstract,
+                    external_ids=external_ids,
+                )
+            )
+        return candidates
+
+    async def _fetch_xml_with_retry(self, params: dict[str, Any]) -> str | None:
+        retryer = AsyncRetrying(
+            stop=stop_after_attempt(self.max_retries),
+            wait=wait_exponential(
+                multiplier=self._backoff.multiplier,
+                min=min(self._backoff.initial_seconds, 2.0),
+                max=min(self._backoff.max_seconds, 15.0),
+            ),
+            retry=retry_if_exception_type((httpx.RequestError, httpx.HTTPStatusError)),
+            reraise=False,
+        )
+        try:
+            async for attempt in retryer:
+                with attempt:
+                    async with httpx.AsyncClient(
+                        timeout=self.timeout, follow_redirects=True
+                    ) as client:
+                        resp = await client.get(
+                            self.BASE_URL,
+                            params=params,
+                            headers=self._headers,
+                        )
+                    self._last_status_code = resp.status_code
+                    if resp.status_code == 404:
+                        return None
+                    if resp.status_code == 429 or resp.status_code >= 500:
+                        if getattr(resp, "_request", None) is None:
+                            resp._request = httpx.Request("GET", self.BASE_URL)
+                        resp.raise_for_status()
+                    if resp.status_code != 200:
+                        return None
+                    return resp.text
+        except RetryError as exc:
+            logger.warning(f"arXiv retry exhausted: {exc}")
+            return None
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"arXiv error: {exc}")
+            return None
+        return None
