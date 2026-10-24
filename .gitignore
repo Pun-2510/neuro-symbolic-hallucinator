@@ -42,8 +42,8 @@ Thumbs.db
 # Data — generated, không commit
 data/essays/*.pdf
 !data/essays/.gitkeep
-data/cache/*.json
-data/cache/*.sqlite
+data/cache/
+!data/cache/.gitkeep
 data/app.db
 data/app.db-shm
 data/app.db-wal
