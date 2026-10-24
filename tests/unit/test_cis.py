@@ -142,3 +142,23 @@ def test_analysis_report_round_trips_neural_and_venue_features() -> None:
     assert rehydrated.verdicts[0].features.content_alignment_confidence == "high"
     assert rehydrated.verdicts[0].features.content_is_aligned is True
 
+
+def test_cis_linking_consistency_falls_back_when_no_in_text_links() -> None:
+    """When linking_result has 0 active links, CIS falls back to Strategy B (verdict-level mapping_status)."""
+    from integrity_checker.linking.citation_linker import LinkingResult
+    from integrity_checker.linking.statuses import CitationMappingStatus
+
+    v1 = _make_verdict("Welling (2008)", ValidationLabel.VERIFIED)
+    v1.mapping_status = CitationMappingStatus.IN_TEXT_MISMATCH
+    v2 = _make_verdict("Resig (2006)", ValidationLabel.VERIFIED)
+    v2.mapping_status = CitationMappingStatus.IN_TEXT_MISMATCH
+
+    linking_result = LinkingResult(
+        links=[],
+        unmatched_reference_ids=["ref-0000", "ref-0001"],
+    )
+
+    cis = CISCalculator().compute([v1, v2], linking_result=linking_result)
+    assert abs(cis.components.in_text_bib_consistency - 0.85) < 1e-6
+
+

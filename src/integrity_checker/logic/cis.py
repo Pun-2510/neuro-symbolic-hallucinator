@@ -234,32 +234,30 @@ class CISCalculator:
                     uncited_count = len(unmatched_refs)
 
             total = len(links) + uncited_count + verdict_dup
-            if total == 0:
-                return 1.0
+            if total > 0:
+                penalty = 0.0
+                status_counts: dict[str, int] = {}
+                for link in links:
+                    status = (
+                        link.status.value
+                        if hasattr(link.status, "value")
+                        else str(link.status)
+                    )
+                    status_counts[status] = status_counts.get(status, 0) + 1
+                    penalty += MAPPING_PENALTIES.get(status, 0.0)
 
-            penalty = 0.0
-            status_counts: dict[str, int] = {}
-            for link in links:
-                status = (
-                    link.status.value
-                    if hasattr(link.status, "value")
-                    else str(link.status)
-                )
-                status_counts[status] = status_counts.get(status, 0) + 1
-                penalty += MAPPING_PENALTIES.get(status, 0.0)
+                if uncited_count > 0:
+                    status_counts[uncited_key] = status_counts.get(uncited_key, 0) + uncited_count
+                    penalty += uncited_count * MAPPING_PENALTIES.get(uncited_key, 0.0)
 
-            if uncited_count > 0:
-                status_counts[uncited_key] = status_counts.get(uncited_key, 0) + uncited_count
-                penalty += uncited_count * MAPPING_PENALTIES.get(uncited_key, 0.0)
+                if verdict_dup > 0:
+                    status_counts[dup_key] = status_counts.get(dup_key, 0) + verdict_dup
+                    penalty += verdict_dup * MAPPING_PENALTIES.get(dup_key, 0.0)
 
-            if verdict_dup > 0:
-                status_counts[dup_key] = status_counts.get(dup_key, 0) + verdict_dup
-                penalty += verdict_dup * MAPPING_PENALTIES.get(dup_key, 0.0)
-
-            logger.debug(f"CIS from ALL links: status_counts={status_counts}, penalty={penalty:.2f}, total={total}")
-            result = max(0.0, 1.0 - penalty / total) if total > 0 else 1.0
-            logger.debug(f"CIS link consistency result: {result:.4f}")
-            return result
+                logger.debug(f"CIS from ALL links: status_counts={status_counts}, penalty={penalty:.2f}, total={total}")
+                result = max(0.0, 1.0 - penalty / total)
+                logger.debug(f"CIS link consistency result: {result:.4f}")
+                return result
 
         # Strategy B: verdict-level (fallback khi không có linking_result)
         n = len(verdicts)
