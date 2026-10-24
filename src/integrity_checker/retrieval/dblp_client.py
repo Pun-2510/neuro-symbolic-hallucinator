@@ -12,6 +12,7 @@ import asyncio
 import html
 import os
 import re
+import time
 from typing import Any
 
 import httpx
@@ -40,6 +41,16 @@ MIN_TITLE_SIMILARITY = 0.55
 _DBLP_DISAMBIG_RE = re.compile(r"\s+\d{4}$")
 _CORR_VOL_RE = re.compile(r"abs/(\d{4}\.\d{4,5})", re.IGNORECASE)
 _SHARED_DBLP_COOKIES = httpx.Cookies()
+_DBLP_LOOP_LOCKS: dict[int, tuple[asyncio.Semaphore, asyncio.Lock]] = {}
+_LAST_DBLP_REQ_AT: float = 0.0
+
+
+def _get_dblp_sync_primitives() -> tuple[asyncio.Semaphore, asyncio.Lock]:
+    loop = asyncio.get_running_loop()
+    loop_id = id(loop)
+    if loop_id not in _DBLP_LOOP_LOCKS:
+        _DBLP_LOOP_LOCKS[loop_id] = (asyncio.Semaphore(1), asyncio.Lock())
+    return _DBLP_LOOP_LOCKS[loop_id]
 
 
 class DBLPClient(BaseScholarClient):
@@ -295,6 +306,7 @@ class DBLPClient(BaseScholarClient):
         )
 
     async def _fetch_json_with_retry(self, params: dict[str, Any]) -> dict[str, Any] | None:
+        sem, challenge_lock = _get_dblp_sync_primitives()
         retryer = AsyncRetrying(
             stop=stop_after_attempt(self.max_retries),
             wait=wait_exponential(
@@ -306,54 +318,25 @@ class DBLPClient(BaseScholarClient):
             reraise=False,
         )
         try:
-            async for attempt in retryer:
-                with attempt:
-                    async with httpx.AsyncClient(
-                        timeout=self.timeout,
-                        follow_redirects=True,
-                        cookies=_SHARED_DBLP_COOKIES,
-                    ) as client:
-                        resp = await client.get(
-                            self.BASE_URL,
-                            params=params,
-                            headers=self._headers,
-                        )
-                        # Handle 1-time DBLP Anubis cookie refresh challenge transparently
-                        refresh = resp.headers.get("refresh") if hasattr(resp, "headers") else None
-                        if resp.status_code == 202 and refresh and "url=" in refresh:
-                            try:
-                                wait_str, next_part = refresh.split(";", 1)
-                                wait_sec = min(float(wait_str.strip()), 3.0)
-                                next_path = next_part.split("url=", 1)[1].strip()
-                                await asyncio.sleep(wait_sec + 0.5)
-                                challenge_url = (
-                                    f"{self.BASE_ORIGIN}{next_path}"
-                                    if next_path.startswith("/")
-                                    else next_path
-                                )
-                                resp = await client.get(challenge_url, headers=self._headers)
-                                if resp.status_code == 202:
-                                    await asyncio.sleep(0.6)
-                                    resp = await client.get(
-                                        self.BASE_URL,
-                                        params=params,
-                                        headers=self._headers,
-                                    )
-                                _SHARED_DBLP_COOKIES.update(client.cookies)
-                            except Exception as chal_exc:  # noqa: BLE001
-                                logger.debug(f"DBLP challenge follow failed: {chal_exc}")
+            async with sem:
+                async for attempt in retryer:
+                    with attempt:
+                        # Serialize initial request when DBLP Anubis cookie has not been acquired yet
+                        if len(_SHARED_DBLP_COOKIES) == 0:
+                            async with challenge_lock:
+                                resp = await self._execute_dblp_get(params)
                         else:
-                            _SHARED_DBLP_COOKIES.update(client.cookies)
-                    self._last_status_code = resp.status_code
-                    if resp.status_code == 404:
-                        return None
-                    if resp.status_code == 429 or resp.status_code >= 500:
-                        if getattr(resp, "_request", None) is None:
-                            resp._request = httpx.Request("GET", self.BASE_URL)
-                        resp.raise_for_status()
-                    if resp.status_code != 200:
-                        return None
-                    return resp.json()
+                            resp = await self._execute_dblp_get(params)
+                        self._last_status_code = resp.status_code
+                        if resp.status_code == 404:
+                            return None
+                        if resp.status_code == 429 or resp.status_code >= 500:
+                            if getattr(resp, "_request", None) is None:
+                                resp._request = httpx.Request("GET", self.BASE_URL)
+                            resp.raise_for_status()
+                        if resp.status_code != 200:
+                            return None
+                        return resp.json()
         except RetryError as exc:
             logger.warning(f"DBLP retry exhausted: {exc}")
             return None
@@ -361,3 +344,47 @@ class DBLPClient(BaseScholarClient):
             logger.warning(f"DBLP error: {exc}")
             return None
         return None
+
+    async def _execute_dblp_get(self, params: dict[str, Any]) -> httpx.Response:
+        global _LAST_DBLP_REQ_AT
+        if len(_SHARED_DBLP_COOKIES) > 0:
+            elapsed = time.monotonic() - _LAST_DBLP_REQ_AT
+            if elapsed < 0.65:
+                await asyncio.sleep(0.65 - elapsed)
+        async with httpx.AsyncClient(
+            timeout=self.timeout,
+            follow_redirects=True,
+            cookies=_SHARED_DBLP_COOKIES,
+        ) as client:
+            resp = await client.get(
+                self.BASE_URL,
+                params=params,
+                headers=self._headers,
+            )
+            _LAST_DBLP_REQ_AT = time.monotonic()
+            refresh = resp.headers.get("refresh") if hasattr(resp, "headers") else None
+            if resp.status_code == 202 and refresh and "url=" in refresh:
+                try:
+                    wait_str, next_part = refresh.split(";", 1)
+                    wait_sec = min(float(wait_str.strip()), 3.0)
+                    next_path = next_part.split("url=", 1)[1].strip()
+                    await asyncio.sleep(wait_sec + 0.5)
+                    challenge_url = (
+                        f"{self.BASE_ORIGIN}{next_path}"
+                        if next_path.startswith("/")
+                        else next_path
+                    )
+                    resp = await client.get(challenge_url, headers=self._headers)
+                    if resp.status_code == 202:
+                        await asyncio.sleep(0.6)
+                        resp = await client.get(
+                            self.BASE_URL,
+                            params=params,
+                            headers=self._headers,
+                        )
+                    _SHARED_DBLP_COOKIES.update(client.cookies)
+                except Exception as chal_exc:  # noqa: BLE001
+                    logger.debug(f"DBLP challenge follow failed: {chal_exc}")
+            else:
+                _SHARED_DBLP_COOKIES.update(client.cookies)
+            return resp

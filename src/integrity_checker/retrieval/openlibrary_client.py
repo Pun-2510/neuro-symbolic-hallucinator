@@ -9,6 +9,7 @@ Pearson, Wiley, Springer, Cambridge/MIT/Oxford Press), and edition publication y
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 from typing import Any
@@ -44,6 +45,16 @@ _ISBN_RE = re.compile(
     r"\b(?:ISBN(?:-1[03])?\s*[:\s]?\s*)?(97[89][-\s]?(?:\d[-\s]?){9}\d|(?:\d[-\s]?){9}[\dXx])\b",
     re.IGNORECASE,
 )
+
+_OPENLIB_LOOP_SEMS: dict[int, asyncio.Semaphore] = {}
+
+
+def _get_openlib_sem() -> asyncio.Semaphore:
+    loop = asyncio.get_running_loop()
+    loop_id = id(loop)
+    if loop_id not in _OPENLIB_LOOP_SEMS:
+        _OPENLIB_LOOP_SEMS[loop_id] = asyncio.Semaphore(2)
+    return _OPENLIB_LOOP_SEMS[loop_id]
 
 
 class OpenLibraryClient(BaseScholarClient):
@@ -150,8 +161,12 @@ class OpenLibraryClient(BaseScholarClient):
         # Check best OpenLibrary similarity before deciding whether to call Google Books
         best_cand, best_sim = self._select_best_candidate(candidates, citation)
 
-        # 2. Google Books fallback when OpenLibrary missed or returned low similarity (<0.80)
-        if self.enable_google_books_fallback and best_sim < 0.80 and (clean_title or isbn):
+        # 2. Google Books fallback when OpenLibrary missed (< MIN_TITLE_SIMILARITY)
+        if (
+            self.enable_google_books_fallback
+            and best_sim < MIN_TITLE_SIMILARITY
+            and (clean_title or isbn)
+        ):
             gb_cands = await self._search_google_books(clean_title, isbn, citation)
             if gb_cands:
                 candidates.extend(gb_cands)
@@ -206,12 +221,13 @@ class OpenLibraryClient(BaseScholarClient):
                 if clean_query_title
                 else 0.0
             )
-            # Also check base title before colon if candidate has a long subtitle
+            # Also check base title before colon if candidate or query has a long subtitle
             sim_base = 0.0
-            if ":" in cand_clean_title and ":" not in clean_query_title:
-                base_part = cand_clean_title.split(":", 1)[0].strip()
-                if len(base_part) >= 8:
-                    sim_base = title_similarity(clean_query_title, base_part) * 0.96
+            if ":" in cand_clean_title or ":" in clean_query_title:
+                cand_base = cand_clean_title.split(":", 1)[0].strip()
+                query_base = clean_query_title.split(":", 1)[0].strip()
+                if len(cand_base) >= 8 and len(query_base) >= 8:
+                    sim_base = title_similarity(query_base, cand_base) * 0.96
 
             sim = max(sim_raw, sim_clean, sim_base)
             rank = sim
@@ -395,8 +411,10 @@ class OpenLibraryClient(BaseScholarClient):
         url: str,
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
+        sem = _get_openlib_sem()
+        is_google_books = url == self.GOOGLE_BOOKS_URL
         retryer = AsyncRetrying(
-            stop=stop_after_attempt(self.max_retries),
+            stop=stop_after_attempt(1 if is_google_books else self.max_retries),
             wait=wait_exponential(
                 multiplier=self._backoff.multiplier,
                 min=min(self._backoff.initial_seconds, 2.0),
@@ -406,22 +424,27 @@ class OpenLibraryClient(BaseScholarClient):
             reraise=False,
         )
         try:
-            async for attempt in retryer:
-                with attempt:
-                    async with httpx.AsyncClient(
-                        timeout=self.timeout, follow_redirects=True
-                    ) as client:
-                        resp = await client.get(url, params=params, headers=self._headers)
-                    self._last_status_code = resp.status_code
-                    if resp.status_code == 404:
-                        return None
-                    if resp.status_code == 429 or resp.status_code >= 500:
-                        if getattr(resp, "_request", None) is None:
-                            resp._request = httpx.Request("GET", url)
-                        resp.raise_for_status()
-                    if resp.status_code != 200:
-                        return None
-                    return resp.json()
+            async with sem:
+                async for attempt in retryer:
+                    with attempt:
+                        async with httpx.AsyncClient(
+                            timeout=self.timeout, follow_redirects=True
+                        ) as client:
+                            resp = await client.get(url, params=params, headers=self._headers)
+                        if not is_google_books or self._last_status_code is None:
+                            self._last_status_code = resp.status_code
+                        if resp.status_code == 404:
+                            return None
+                        if is_google_books and resp.status_code == 429:
+                            logger.debug("Google Books fallback rate limited (429); skipping fallback")
+                            return None
+                        if resp.status_code == 429 or resp.status_code >= 500:
+                            if getattr(resp, "_request", None) is None:
+                                resp._request = httpx.Request("GET", url)
+                            resp.raise_for_status()
+                        if resp.status_code != 200:
+                            return None
+                        return resp.json()
         except RetryError as exc:
             logger.warning(f"OpenLibrary retry exhausted: {exc}")
             return None

@@ -587,6 +587,52 @@ _CS_AI_SIGNAL_RE = re.compile(
     re.IGNORECASE,
 )
 
+_WEB_RESOURCE_PATTERNS = [
+    re.compile(
+        r"^(Google|Microsoft|Amazon|Apple|Facebook|Meta|Twitter|GitHub|IBM|Intel|"
+        r"Nvidia|Adobe|Atlassian|Oracle|Salesforce|"
+        r"OpenAI|Anthropic|Hugging\s*Face|Replicate|Cohere),?\s*[\"“]",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^[\"“](YouTube\s*Data\s*API|Google\s*API|AWS\s*SDK|"
+        r"Rest\s*API|GraphQL|Webhook|Twilio|Stripe|OpenAI|Anthropic)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(Google\s+for\s+Developers|Developer\s+Documentation|"
+        r"API\s+Reference|API\s+Documentation|REST\s+API\s+Documentation|"
+        r"Academic\s+Graph\s+API|Getting\s+Started|REST\s+API|"
+        r"The\s+DOI\s+Handbook)\s*[.,]",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(ACL\s+Anthology|Crossref\s+REST\s+API|Semantic\s+Scholar\s+(?:Academic\s+Graph\s+API|Open\s+Research\s+Corpus)|"
+        r"OpenAlex\s*:\s*An\s+open\s+catalogue|Handbook\s+of\s+the\s+DOI\s+Resolution\s+System|"
+        r"The\s+DOI\s+Handbook)\b.*?\bRetrieved\s+from\s+https?://",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^(Google|Amazon|Microsoft|GitHub|IBM|Intel|Nvidia)\s+"
+        r"(YouTube|Maps|AWS|Vertex|TensorFlow|BERT|Cloud|Compute|S3|"
+        r"Data\s*API|API|SDK|Tool)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^(Google\s+YouTube\s+Data\s*API|YouTube\s+Data\s*API|"
+        r"Google\s+API|Vertex\s+AI|Google\s+Cloud)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(YouTube\s+Data\s*API\s+v\d+|Google\s+for\s+Developers)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(\[Computer\s+software\]|\bGitHub\.\s*Retrieved\b)",
+        re.IGNORECASE,
+    ),
+]
+
 
 class RetrievalOrchestrator:
     """Smart domain-aware & tiered multi-source scholarly retrieval orchestrator.
@@ -717,6 +763,30 @@ class RetrievalOrchestrator:
         if (src_cfg.coreapi or self._coreapi_explicit) and self.coreapi is not None:
             result.append(self.coreapi)
         return result
+
+    @classmethod
+    def is_web_or_legal_resource(cls, citation: Citation) -> bool:
+        """Return True if citation is a raw URL, web/software/API doc, or VN legal document."""
+        if citation.doi:
+            return False
+        raw_text = citation.raw_text or ""
+        stripped = raw_text.strip()
+        url_candidate = stripped.rstrip(".,;:)\"'")
+        if re.match(r"^(?:https?://|www\.)(\S{10,})$", url_candidate, re.IGNORECASE):
+            return True
+        for pattern in _WEB_RESOURCE_PATTERNS:
+            if pattern.search(raw_text):
+                return True
+        if citation.matched_pattern == "vn_legal_document":
+            return True
+        try:
+            from integrity_checker.extraction.patterns import is_vn_legal_reference
+
+            if is_vn_legal_reference(raw_text):
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+        return False
 
     @classmethod
     def classify_citation_domain(cls, citation: Citation) -> dict[str, bool]:
@@ -952,6 +1022,31 @@ class RetrievalOrchestrator:
                 self._sync_to_local_db(known_result.candidates, ["known_papers"])
             return known_result
 
+        # ===== 2.5. Skip scholarly APIs for non-academic web/software/legal resources =====
+        if not self._legacy_explicit_mode and self.is_web_or_legal_resource(citation):
+            logger.debug(
+                f"Skipping external scholarly APIs for web/software/legal resource: {citation.raw_text[:55]}"
+            )
+            url_status: str | None = None
+            url_status_code: int | None = None
+            if citation.url and self.enable_link_validation:
+                from integrity_checker.retrieval.link_validator import LinkValidator
+
+                validator = self.link_validator or LinkValidator()
+                link_res = await validator.validate_url(citation.url)
+                url_status = link_res.status.value
+                url_status_code = link_res.status_code
+            return SourceResult(
+                citation_raw=citation.raw_text,
+                candidates=[],
+                sources_queried=[],
+                sources_succeeded=[],
+                sources_failed={},
+                api_exhausted=False,
+                url_status=url_status,
+                url_status_code=url_status_code,
+            )
+
         # ===== 3. Smart Multi-Stage External API Retrieval =====
         tier1_clients, tier2_clients = self._plan_retrieval_tiers(citation)
 
@@ -1180,11 +1275,43 @@ class RetrievalOrchestrator:
                 )
 
                 if results:
-                    # Take best match
+                    cit_year_int: int | None = None
+                    if citation.year and str(citation.year)[:4].isdigit():
+                        cit_year_int = int(str(citation.year)[:4])
+
+                    # Prefer a result whose title matches AND whose year is within ±1 of cited year
                     paper = results[0]
-                    match_score = title_similarity(citation.title, paper.title)
+                    for r_paper in results:
+                        r_sim = max(
+                            title_similarity(citation.title, r_paper.title),
+                            title_similarity(
+                                OpenLibraryClient.strip_edition_suffix(citation.title),
+                                OpenLibraryClient.strip_edition_suffix(r_paper.title),
+                            ),
+                        )
+                        if r_sim >= 0.75 and cit_year_int is not None and r_paper.year:
+                            if abs(int(r_paper.year) - cit_year_int) <= 1:
+                                paper = r_paper
+                                break
+
+                    match_score = max(
+                        title_similarity(citation.title, paper.title),
+                        title_similarity(
+                            OpenLibraryClient.strip_edition_suffix(citation.title),
+                            OpenLibraryClient.strip_edition_suffix(paper.title),
+                        ),
+                    )
                     if match_score < 0.70:
                         return None
+                    # Do not short-circuit external APIs on a non-DOI FTS hit if the cached year
+                    # disagrees with the cited year (e.g., cached 4th edition 2014 vs cited 5th edition 2018)
+                    if cit_year_int is not None and paper.year:
+                        if abs(int(paper.year) - cit_year_int) > 1:
+                            logger.debug(
+                                f"Local DB FTS year mismatch ({paper.year} vs cited {cit_year_int}) "
+                                f"for '{citation.title[:40]}' -> deferring to external APIs"
+                            )
+                            return None
                     cand = SourceCandidate(
                         source_name="local_db",
                         found=True,
@@ -1703,12 +1830,32 @@ class RetrievalOrchestrator:
                 )
                 title_matched = bool(
                     citation.title
-                    and title_similarity(citation.title, cand.title) >= 0.75
+                    and max(
+                        title_similarity(citation.title, cand.title),
+                        title_similarity(
+                            OpenLibraryClient.strip_edition_suffix(citation.title),
+                            OpenLibraryClient.strip_edition_suffix(cand.title),
+                        ),
+                    )
+                    >= 0.75
                 )
                 if not doi_matched and not title_matched:
                     logger.debug(
                         f"Skipping local DB sync for low-similarity search hit: "
                         f"'{cand.title[:50]}' (query='{str(citation.title)[:50]}')"
+                    )
+                    continue
+                if (
+                    not doi_matched
+                    and citation.year
+                    and str(citation.year)[:4].isdigit()
+                    and cand.year
+                    and str(cand.year)[:4].isdigit()
+                    and abs(int(str(cand.year)[:4]) - int(str(citation.year)[:4])) > 1
+                ):
+                    logger.debug(
+                        f"Skipping local DB sync for year-mismatched search hit: "
+                        f"'{cand.title[:50]}' ({cand.year} vs cited {citation.year})"
                     )
                     continue
 

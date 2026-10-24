@@ -246,17 +246,19 @@ class FeatureCalculator:
         if c_no_ed and cand_no_ed and c_no_ed == cand_no_ed:
             return 0.98
 
+        c_base = c_no_ed or c_clean
+        cand_base = cand_no_ed or cand_clean
         shorter, longer = (
-            (c_clean, cand_clean)
-            if len(c_clean) <= len(cand_clean)
-            else (cand_clean, c_clean)
+            (c_base, cand_base)
+            if len(c_base) <= len(cand_base)
+            else (cand_base, c_base)
         )
         len_ratio = len(shorter) / len(longer) if longer else 0.0
 
-        # 2. Safe prefix match: either length ratio >= 0.65, or followed by a subtitle separator (':', '.', '-', '(')
+        # 2. Safe prefix match: either length ratio >= 0.65, or followed by a subtitle separator (':', '.', ',', '-', '(')
         if len(shorter) >= 12 and longer.startswith(shorter):
             remainder = longer[len(shorter):].lstrip()
-            if len_ratio >= 0.65 or (remainder and remainder[0] in ".:-—–("):
+            if len_ratio >= 0.65 or (remainder and remainder[0] in ".:,-—–("):
                 return 0.95
 
         # 3. Safe substring match: require length ratio >= 0.70 (or candidate title in raw_text fallback)

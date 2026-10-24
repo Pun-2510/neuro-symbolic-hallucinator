@@ -8,6 +8,7 @@ arXiv ID, and optional publisher DOI / journal_ref.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -53,6 +54,16 @@ _STOPWORDS = frozenset({
     "the", "and", "for", "with", "from", "into", "using", "via", "over",
     "under", "towards", "toward", "through", "based", "between", "about",
 })
+
+_ARXIV_LOOP_SEMS: dict[int, asyncio.Semaphore] = {}
+
+
+def _get_arxiv_sem() -> asyncio.Semaphore:
+    loop = asyncio.get_running_loop()
+    loop_id = id(loop)
+    if loop_id not in _ARXIV_LOOP_SEMS:
+        _ARXIV_LOOP_SEMS[loop_id] = asyncio.Semaphore(2)
+    return _ARXIV_LOOP_SEMS[loop_id]
 
 
 class ArxivClient(BaseScholarClient):
@@ -337,6 +348,7 @@ class ArxivClient(BaseScholarClient):
         return candidates
 
     async def _fetch_xml_with_retry(self, params: dict[str, Any]) -> str | None:
+        sem = _get_arxiv_sem()
         retryer = AsyncRetrying(
             stop=stop_after_attempt(self.max_retries),
             wait=wait_exponential(
@@ -348,26 +360,27 @@ class ArxivClient(BaseScholarClient):
             reraise=False,
         )
         try:
-            async for attempt in retryer:
-                with attempt:
-                    async with httpx.AsyncClient(
-                        timeout=self.timeout, follow_redirects=True
-                    ) as client:
-                        resp = await client.get(
-                            self.BASE_URL,
-                            params=params,
-                            headers=self._headers,
-                        )
-                    self._last_status_code = resp.status_code
-                    if resp.status_code == 404:
-                        return None
-                    if resp.status_code == 429 or resp.status_code >= 500:
-                        if getattr(resp, "_request", None) is None:
-                            resp._request = httpx.Request("GET", self.BASE_URL)
-                        resp.raise_for_status()
-                    if resp.status_code != 200:
-                        return None
-                    return resp.text
+            async with sem:
+                async for attempt in retryer:
+                    with attempt:
+                        async with httpx.AsyncClient(
+                            timeout=self.timeout, follow_redirects=True
+                        ) as client:
+                            resp = await client.get(
+                                self.BASE_URL,
+                                params=params,
+                                headers=self._headers,
+                            )
+                        self._last_status_code = resp.status_code
+                        if resp.status_code == 404:
+                            return None
+                        if resp.status_code == 429 or resp.status_code >= 500:
+                            if getattr(resp, "_request", None) is None:
+                                resp._request = httpx.Request("GET", self.BASE_URL)
+                            resp.raise_for_status()
+                        if resp.status_code != 200:
+                            return None
+                        return resp.text
         except RetryError as exc:
             logger.warning(f"arXiv retry exhausted: {exc}")
             return None
