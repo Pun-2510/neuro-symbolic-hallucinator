@@ -335,10 +335,10 @@ export function setupAuthenticatedPage(page: Page): void {
     }
   });
 
-  // Mock essay report endpoints
-  page.route(/\/api\/essays\/\d+\/report/, (route) => {
+  // Mock essay report endpoints (/api/essays/:id and /api/essays/:id/report)
+  page.route(/\/api\/essays\/\d+(\/report)?$/, (route) => {
     const url = route.request().url();
-    const match = url.match(/\/api\/essays\/(\d+)\/report/);
+    const match = url.match(/\/api\/essays\/(\d+)(?:\/report)?$/);
     if (match) {
       const essayId = parseInt(match[1], 10);
       const report = MOCK_REPORTS[essayId];

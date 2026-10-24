@@ -170,17 +170,17 @@ test.describe('Phase 4 — Teacher flow', () => {
     await waitForAuth(page);
 
     // Header
-    await expect(page.getByRole('heading', { name: /My Classes/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /My Classes|Lớp học của tôi/i })).toBeVisible({ timeout: 10000 });
     // Create button (capability-gated)
-    const createBtn = page.getByRole('button', { name: /Tạo lớp/i });
+    const createBtn = page.getByRole('button', { name: /Create Class|Tạo lớp/i });
     await expect(createBtn).toBeVisible();
 
     // Open dialog
     await createBtn.click();
-    await expect(page.getByRole('dialog', { name: /Tạo lớp mới/i })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: /Create New Class|Create Class|Tạo lớp mới/i })).toBeVisible();
     // Close
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('dialog', { name: /Tạo lớp mới/i })).not.toBeVisible();
+    await expect(page.getByRole('dialog', { name: /Create New Class|Create Class|Tạo lớp mới/i })).not.toBeVisible();
 
     // Click into a class
     await page.getByText('Intro to AI').first().click();

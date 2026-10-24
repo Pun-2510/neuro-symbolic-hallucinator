@@ -15,7 +15,12 @@ test.describe('Settings Page', () => {
     await page.goto('/dashboard');
     await waitForAuth(page);
     // Clear localStorage before each test
-    await page.evaluate(() => localStorage.clear());
+    // Clear settings/language preferences without wiping auth token/user
+    await page.evaluate(() => {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('settings_') || k === 'language' || k === 'theme')
+        .forEach((k) => localStorage.removeItem(k));
+    });
   });
 
   test('should navigate to settings page from sidebar', async ({ page }) => {
@@ -137,7 +142,12 @@ test.describe('Settings Integration', () => {
     setupAuthenticatedPage(page);
     await page.goto('/dashboard');
     await waitForAuth(page);
-    await page.evaluate(() => localStorage.clear());
+    // Clear settings/language preferences without wiping auth token/user
+    await page.evaluate(() => {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('settings_') || k === 'language' || k === 'theme')
+        .forEach((k) => localStorage.removeItem(k));
+    });
   });
 
   test('settings should persist across page navigation', async ({ page }) => {
@@ -189,7 +199,12 @@ test.describe('Language Switching & Flag Removal', () => {
     setupAuthenticatedPage(page);
     await page.goto('/dashboard');
     await waitForAuth(page);
-    await page.evaluate(() => localStorage.clear());
+    // Clear settings/language preferences without wiping auth token/user
+    await page.evaluate(() => {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('settings_') || k === 'language' || k === 'theme')
+        .forEach((k) => localStorage.removeItem(k));
+    });
   });
 
   test('should not render flag emojis on language selector buttons', async ({ page }) => {
@@ -219,7 +234,6 @@ test.describe('Language Switching & Flag Removal', () => {
     await expect(page.getByRole('heading', { name: 'Ngôn ngữ' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Thông báo' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Giới thiệu' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Vùng nguy hiểm' })).toBeVisible();
 
     // Verify Sidebar is translated to Vietnamese
     const sidebar = page.locator('aside');

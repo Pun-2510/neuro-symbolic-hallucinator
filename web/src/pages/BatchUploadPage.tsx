@@ -169,7 +169,7 @@ export function BatchUploadPage() {
       navigateTimerRef.current = setTimeout(() => {
         if (!isMountedRef.current) return;
         if (completedFiles.length === 1 && completedFiles[0].essayId) {
-          navigate(`/essays/${completedFiles[0].essayId}`);
+          navigate(`/verification/report/${completedFiles[0].essayId}`);
         } else {
           navigate('/history');
         }

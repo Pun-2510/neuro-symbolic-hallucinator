@@ -87,15 +87,16 @@ test.describe('DOCX Export Button', () => {
     await page.waitForURL('/history');
 
     // Check if there are any essays
-    const essays = await page.locator('[data-testid="essay-item"], a[href^="/essays/"], a[href*="/verification/report/"]').count();
+    const essayLinks = page.locator('[data-testid="essay-item"], a[href*="/verification/report/"], a[href^="/essays/"]');
+    const essays = await essayLinks.count();
 
     if (essays > 0) {
       // Click on first essay
-      await page.locator('a[href*="/verification/report/"]').first().click();
-      await page.waitForURL(/\/verification\/report\/\d+/);
+      await essayLinks.first().click();
+      await page.waitForURL(/\/(verification\/report|essays)\/\d+/);
 
       // Check DOCX button exists
-      await expect(page.locator('a:has-text("DOCX")')).toBeVisible();
+      await expect(page.locator('a:has-text("DOCX"), button:has-text("DOCX")').first()).toBeVisible();
     }
   });
 
@@ -104,17 +105,18 @@ test.describe('DOCX Export Button', () => {
     await page.click('text=History');
     await page.waitForURL('/history');
 
-    const essays = await page.locator('a[href*="/verification/report/"]').count();
+    const essayLinks = page.locator('[data-testid="essay-item"], a[href*="/verification/report/"], a[href^="/essays/"]');
+    const essays = await essayLinks.count();
 
     if (essays > 0) {
-      await page.locator('a[href*="/verification/report/"]').first().click();
-      await page.waitForURL(/\/verification\/report\/\d+/);
+      await essayLinks.first().click();
+      await page.waitForURL(/\/(verification\/report|essays)\/\d+/);
 
       // All export formats should be visible
-      await expect(page.locator('a:has-text("JSON")')).toBeVisible();
-      await expect(page.locator('a:has-text("CSV")')).toBeVisible();
-      await expect(page.locator('a:has-text("PDF")')).toBeVisible();
-      await expect(page.locator('a:has-text("DOCX")')).toBeVisible();
+      await expect(page.locator('a:has-text("JSON"), button:has-text("JSON")').first()).toBeVisible();
+      await expect(page.locator('a:has-text("CSV"), button:has-text("CSV")').first()).toBeVisible();
+      await expect(page.locator('a:has-text("PDF"), button:has-text("PDF")').first()).toBeVisible();
+      await expect(page.locator('a:has-text("DOCX"), button:has-text("DOCX")').first()).toBeVisible();
     }
   });
 });

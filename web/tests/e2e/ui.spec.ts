@@ -250,7 +250,7 @@ function setupMocks(page: Page) {
   });
 
   // Mock essay report
-  void page.route('**/api/essays/1/report', (route) => {
+  void page.route(/\/api\/essays\/1(\/report)?$/, (route) => {
     void route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -380,20 +380,20 @@ test.describe('Essay Page - CIS Score Card', () => {
     setupMocks(page);
     await page.goto('/login');
     await page.waitForTimeout(500);
-    await page.goto('/essay/1');
+    await page.goto('/verification/report/1');
 
     // Wait for content to load
     await page.waitForTimeout(2000);
     await expect(page.getByText(/citation integrity score/i)).toBeVisible();
     // Score should be visible (78.5)
-    await expect(page.getByText(/78/i)).toBeVisible();
+    await expect(page.getByText(/78/i).first()).toBeVisible();
   });
 
   test('should show CIS components', async ({ page }) => {
     setupMocks(page);
     await page.goto('/login');
     await page.waitForTimeout(500);
-    await page.goto('/essay/1');
+    await page.goto('/verification/report/1');
 
     await page.waitForTimeout(2000);
     // The CIS card shows three component percentages. The page may use the card heading
@@ -406,7 +406,7 @@ test.describe('Essay Page - CIS Score Card', () => {
     setupMocks(page);
     await page.goto('/login');
     await page.waitForTimeout(500);
-    await page.goto('/essay/1');
+    await page.goto('/verification/report/1');
 
     await page.waitForTimeout(2000);
     // The stat card shows "N citations" — the same count also appears in a footer
@@ -424,7 +424,7 @@ test.describe('Essay Page - Citation Graph View', () => {
     setupMocks(page);
     await page.goto('/login');
     await page.waitForTimeout(500);
-    await page.goto('/essay/1');
+    await page.goto('/verification/report/1');
 
     await page.waitForTimeout(2000);
     // Citations should be visible
@@ -435,7 +435,7 @@ test.describe('Essay Page - Citation Graph View', () => {
     setupMocks(page);
     await page.goto('/login');
     await page.waitForTimeout(500);
-    await page.goto('/essay/1');
+    await page.goto('/verification/report/1');
 
     await page.waitForTimeout(2000);
 
@@ -459,7 +459,7 @@ test.describe('Citation Detail Drawer', () => {
     setupMocks(page);
     await page.goto('/login');
     await page.waitForTimeout(500);
-    await page.goto('/essay/1');
+    await page.goto('/verification/report/1');
 
     await page.waitForTimeout(2000);
 
@@ -474,7 +474,7 @@ test.describe('Citation Detail Drawer', () => {
     setupMocks(page);
     await page.goto('/login');
     await page.waitForTimeout(500);
-    await page.goto('/essay/1');
+    await page.goto('/verification/report/1');
 
     await page.waitForTimeout(2000);
 
@@ -526,7 +526,7 @@ test.describe('Error Handling', () => {
     });
 
     // Override the report endpoint to fail
-    void page.route('**/api/essays/1/report', (route) => {
+    void page.route(/\/api\/essays\/1(\/report)?$/, (route) => {
       void route.fulfill({
         status: 500,
         contentType: 'application/json',
@@ -540,7 +540,7 @@ test.describe('Error Handling', () => {
 
     await page.goto('/login');
     await page.waitForTimeout(500);
-    await page.goto('/essay/1');
+    await page.goto('/verification/report/1');
 
     // Should show some error state
     await page.waitForTimeout(2000);
