@@ -549,7 +549,7 @@ def _pdf_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         colWidths=[1 * cm, 6 * cm, 3 * cm, 3 * cm, 2 * cm],
         repeatRows=1,
     )
-    verdict_table.setStyle(TableStyle([
+    verdict_table_styles = [
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#374151')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -559,9 +559,19 @@ def _pdf_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        # Color coding for source status
-        ('BACKGROUND', (2, 1), (2, -1), colors.HexColor('#dcfce7')),  # Default green
-    ]))
+    ]
+    for row_idx, v in enumerate(verdicts, 1):
+        status_label = _format_label(v.label)
+        if status_label in ("Verified", "Valid"):
+            bg_color = colors.HexColor('#dcfce7')
+        elif status_label == "Metadata Error":
+            bg_color = colors.HexColor('#fef9c3')
+        elif status_label == "Suspected Hallucination":
+            bg_color = colors.HexColor('#fee2e2')
+        else:
+            bg_color = colors.HexColor('#f3f4f6')
+        verdict_table_styles.append(('BACKGROUND', (2, row_idx), (2, row_idx), bg_color))
+    verdict_table.setStyle(TableStyle(verdict_table_styles))
     elements.append(verdict_table)
 
     # Build PDF

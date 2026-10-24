@@ -193,15 +193,50 @@ class CISCalculator:
         )
 
         # Strategy A: Use ALL links from LinkingResult (preferred)
-        # This includes BOTH in-text AND reference links, giving true consistency score.
-        # CitationLinker only produces MATCHED / MISSING_REFERENCE / AMBIGUOUS_MAPPING,
-        # so no need to filter RESOURCE (that's a validation-layer concept).
-        if linking_result is not None and linking_result.links:
-            links = linking_result.links
-            if not links:
+        # This includes BOTH in-text AND reference links (uncited/duplicate), giving true consistency score.
+        if linking_result is not None and (
+            linking_result.links or getattr(linking_result, "unmatched_reference_ids", None)
+        ):
+            links = linking_result.links or []
+            unmatched_refs = getattr(linking_result, "unmatched_reference_ids", None) or []
+
+            # Count reference-side penalties (uncited_reference, duplicate_reference) from academic verdicts
+            # if available (avoids penalizing filtered RESOURCE references), else fallback to unmatched_refs.
+            uncited_key = "uncited_reference"
+            dup_key = "duplicate_reference"
+            verdict_uncited = sum(
+                1
+                for v in verdicts
+                if (
+                    v.mapping_status.value
+                    if hasattr(v.mapping_status, "value")
+                    else str(v.mapping_status or "")
+                )
+                == uncited_key
+            )
+            verdict_dup = sum(
+                1
+                for v in verdicts
+                if (
+                    v.mapping_status.value
+                    if hasattr(v.mapping_status, "value")
+                    else str(v.mapping_status or "")
+                )
+                == dup_key
+            )
+            uncited_count = verdict_uncited if verdicts and verdict_uncited > 0 else (
+                len(unmatched_refs) if not verdicts else 0
+            )
+            if verdicts and verdict_uncited == 0 and unmatched_refs:
+                # Check if verdicts simply didn't have mapping_status populated in unit test
+                has_any_verdict_mapping = any(v.mapping_status is not None for v in verdicts)
+                if not has_any_verdict_mapping:
+                    uncited_count = len(unmatched_refs)
+
+            total = len(links) + uncited_count + verdict_dup
+            if total == 0:
                 return 1.0
 
-            total = len(links)
             penalty = 0.0
             status_counts: dict[str, int] = {}
             for link in links:
@@ -212,6 +247,14 @@ class CISCalculator:
                 )
                 status_counts[status] = status_counts.get(status, 0) + 1
                 penalty += MAPPING_PENALTIES.get(status, 0.0)
+
+            if uncited_count > 0:
+                status_counts[uncited_key] = status_counts.get(uncited_key, 0) + uncited_count
+                penalty += uncited_count * MAPPING_PENALTIES.get(uncited_key, 0.0)
+
+            if verdict_dup > 0:
+                status_counts[dup_key] = status_counts.get(dup_key, 0) + verdict_dup
+                penalty += verdict_dup * MAPPING_PENALTIES.get(dup_key, 0.0)
 
             logger.debug(f"CIS from ALL links: status_counts={status_counts}, penalty={penalty:.2f}, total={total}")
             result = max(0.0, 1.0 - penalty / total) if total > 0 else 1.0

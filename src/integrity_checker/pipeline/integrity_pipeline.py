@@ -165,6 +165,10 @@ class AnalysisReport:
                         "year_distance": v.features.year_distance if v.features else None,
                         "doi_exact_match": v.features.doi_exact_match if v.features else None,
                         "source_consensus": v.features.source_consensus if v.features else None,
+                        "venue_sim": v.features.venue_sim if v.features else None,
+                        "content_alignment_score": v.features.content_alignment_score if v.features else None,
+                        "content_alignment_confidence": v.features.content_alignment_confidence if v.features else None,
+                        "content_is_aligned": v.features.content_is_aligned if v.features else None,
                     },
                     # NEW v1.3: Provenance tracking
                     "provenance": {
@@ -1569,15 +1573,16 @@ def _deserialize_citation(data: dict[str, Any]) -> Citation:
 def _match_features_from_dict(data: dict[str, Any]) -> MatchFeatures:
     """Build ``MatchFeatures`` while tolerating older cache schemas."""
     return MatchFeatures(
-        title_sim_fuzzy=float(data.get("title_sim_fuzzy", 0.0)),
-        title_sim_semantic=float(data.get("title_sim_semantic", 0.0)),
-        author_jaccard=float(data.get("author_jaccard", 0.0)),
-        year_distance=int(data.get("year_distance", 999)),
-        doi_exact_match=bool(data.get("doi_exact_match", False)),
-        source_consensus=int(data.get("source_consensus", 0)),
-        content_alignment_score=float(data.get("content_alignment_score", 0.0)),
-        content_alignment_confidence=data.get("content_alignment_confidence", ""),
-        content_is_aligned=bool(data.get("content_is_aligned", False)),
+        title_sim_fuzzy=float(data.get("title_sim_fuzzy") or 0.0),
+        title_sim_semantic=float(data.get("title_sim_semantic") or 0.0),
+        author_jaccard=float(data.get("author_jaccard") or 0.0),
+        year_distance=int(data.get("year_distance") if data.get("year_distance") is not None else 999),
+        doi_exact_match=bool(data.get("doi_exact_match") or False),
+        source_consensus=int(data.get("source_consensus") or 0),
+        venue_sim=float(data.get("venue_sim") or 0.0),
+        content_alignment_score=float(data.get("content_alignment_score") or 0.0),
+        content_alignment_confidence=data.get("content_alignment_confidence") or "",
+        content_is_aligned=bool(data.get("content_is_aligned") or False),
     )
 
 
@@ -1617,12 +1622,16 @@ def _serialize_verdict_for_json(v: CitationVerdict) -> dict[str, Any]:
         "triggered_rules": v.triggered_rules,
         "mismatched_fields": v.mismatched_fields,
         "features": {
-            "title_sim_fuzzy": v.features.title_sim_fuzzy,
-            "title_sim_semantic": v.features.title_sim_semantic,
-            "author_jaccard": v.features.author_jaccard,
-            "year_distance": v.features.year_distance,
-            "doi_exact_match": v.features.doi_exact_match,
-            "source_consensus": v.features.source_consensus,
+            "title_sim_fuzzy": v.features.title_sim_fuzzy if v.features else 0.0,
+            "title_sim_semantic": v.features.title_sim_semantic if v.features else 0.0,
+            "author_jaccard": v.features.author_jaccard if v.features else 0.0,
+            "year_distance": v.features.year_distance if v.features else 999,
+            "doi_exact_match": v.features.doi_exact_match if v.features else False,
+            "source_consensus": v.features.source_consensus if v.features else 0,
+            "venue_sim": v.features.venue_sim if v.features else 0.0,
+            "content_alignment_score": v.features.content_alignment_score if v.features else 0.0,
+            "content_alignment_confidence": v.features.content_alignment_confidence if v.features else "",
+            "content_is_aligned": v.features.content_is_aligned if v.features else False,
         },
         # NEW v1.3: Provenance tracking
         "provenance": {

@@ -68,3 +68,77 @@ def test_cis_excludes_url_resources_from_score() -> None:
     assert cis.score > 90.0
     assert cis.num_citations == 1
     assert cis.num_unresolved == 0
+
+
+def test_cis_strategy_a_penalizes_uncited_and_duplicate_references() -> None:
+    """Strategy A (with LinkingResult) must penalize UNCITED_REFERENCE and DUPLICATE_REFERENCE."""
+    from integrity_checker.linking.citation_linker import LinkingResult
+    from integrity_checker.linking.statuses import CitationMappingStatus
+    from integrity_checker.models.validation import CitationLink, MappingMethod
+
+    v_matched = _make_verdict("Vaswani (2017)", ValidationLabel.VERIFIED, doi="10.1/a")
+    v_matched.mapping_status = CitationMappingStatus.MATCHED
+
+    v_uncited = _make_verdict("Devlin (2019)", ValidationLabel.VERIFIED, doi="10.1/b")
+    v_uncited.mapping_status = CitationMappingStatus.UNCITED_REFERENCE
+
+    v_dup = _make_verdict("Vaswani (2017) duplicate", ValidationLabel.VERIFIED, doi="10.1/a")
+    v_dup.mapping_status = CitationMappingStatus.DUPLICATE_REFERENCE
+
+    linking_result = LinkingResult(
+        links=[
+            CitationLink(
+                occurrence_id="occ-0000",
+                reference_id="ref-0000",
+                status=CitationMappingStatus.MATCHED,
+                confidence=1.0,
+                method=MappingMethod.AUTHOR_YEAR,
+            )
+        ],
+        unmatched_reference_ids=["ref-0001"],
+    )
+
+    cis = CISCalculator().compute([v_matched, v_uncited, v_dup], linking_result=linking_result)
+    assert cis.components.in_text_bib_consistency < 1.0
+
+
+def test_analysis_report_round_trips_neural_and_venue_features() -> None:
+    """AnalysisReport.to_dict() and from_dict() preserve venue_sim and content alignment features."""
+    from integrity_checker.models.validation import MatchFeatures
+    from integrity_checker.pipeline.integrity_pipeline import AnalysisReport
+
+    v = _make_verdict("Vaswani (2017)", ValidationLabel.VERIFIED, doi="10.1/a")
+    v.features = MatchFeatures(
+        title_sim_fuzzy=0.95,
+        title_sim_semantic=0.92,
+        author_jaccard=1.0,
+        year_distance=0,
+        doi_exact_match=True,
+        source_consensus=2,
+        venue_sim=0.88,
+        content_alignment_score=0.76,
+        content_alignment_confidence="high",
+        content_is_aligned=True,
+    )
+    report = AnalysisReport(
+        essay_id=1,
+        filename="test.pdf",
+        num_pages=5,
+        num_citations=1,
+        extracted_citations=[v.citation],
+        verdicts=[v],
+        cis=CISCalculator().compute([v]),
+    )
+    payload = report.to_dict()
+    feat_dict = payload["verdicts"][0]["features"]
+    assert feat_dict["venue_sim"] == 0.88
+    assert feat_dict["content_alignment_score"] == 0.76
+    assert feat_dict["content_alignment_confidence"] == "high"
+    assert feat_dict["content_is_aligned"] is True
+
+    rehydrated = AnalysisReport.from_dict(payload)
+    assert rehydrated.verdicts[0].features.venue_sim == 0.88
+    assert rehydrated.verdicts[0].features.content_alignment_score == 0.76
+    assert rehydrated.verdicts[0].features.content_alignment_confidence == "high"
+    assert rehydrated.verdicts[0].features.content_is_aligned is True
+

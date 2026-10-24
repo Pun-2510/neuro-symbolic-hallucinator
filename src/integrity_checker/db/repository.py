@@ -179,6 +179,10 @@ class Repository:
                         "year_distance": getattr(v.features, "year_distance", 0) if v.features else 0,
                         "doi_exact_match": getattr(v.features, "doi_exact_match", False) if v.features else False,
                         "source_consensus": getattr(v.features, "source_consensus", 0) if v.features else 0,
+                        "venue_sim": getattr(v.features, "venue_sim", 0.0) if v.features else 0.0,
+                        "content_alignment_score": getattr(v.features, "content_alignment_score", 0.0) if v.features else 0.0,
+                        "content_alignment_confidence": getattr(v.features, "content_alignment_confidence", "") if v.features else "",
+                        "content_is_aligned": getattr(v.features, "content_is_aligned", False) if v.features else False,
                         "matched_sources": _serialize_matched_sources(getattr(v, "matched_source", None)),
                         "citation_link": (
                             {
@@ -297,13 +301,64 @@ class Repository:
 
             verified_ratio = verified / n_academic
             metadata_accuracy = max(0.0, 1.0 - (meta_err + halluc) / n_academic)
-            total_penalty = sum(
-                MAPPING_PENALTIES.get(v.mapping_status or "matched", 0.0)
-                for v in academic_verdicts
+
+            # Include both in-text CitationRecords and reference VerdictRecords for link consistency
+            all_citations = (
+                self.session.query(CitationRecord)
+                .filter(CitationRecord.essay_id == essay_id)
+                .all()
             )
-            in_text_bib_consistency = max(0.0, 1.0 - total_penalty / n_academic)
+            in_text_citations = [
+                c for c in all_citations if c.citation_type != "reference_list"
+            ]
+            if in_text_citations:
+                in_text_penalty = sum(
+                    MAPPING_PENALTIES.get(c.mapping_status or "matched", 0.0)
+                    for c in in_text_citations
+                )
+                ref_non_matched = [
+                    v
+                    for v in academic_verdicts
+                    if (v.mapping_status or "matched") != "matched"
+                ]
+                ref_penalty = sum(
+                    MAPPING_PENALTIES.get(v.mapping_status or "matched", 0.0)
+                    for v in ref_non_matched
+                )
+                total_links = len(in_text_citations) + len(ref_non_matched)
+                in_text_bib_consistency = (
+                    max(0.0, 1.0 - (in_text_penalty + ref_penalty) / total_links)
+                    if total_links > 0
+                    else 1.0
+                )
+            else:
+                total_penalty = sum(
+                    MAPPING_PENALTIES.get(v.mapping_status or "matched", 0.0)
+                    for v in academic_verdicts
+                )
+                in_text_bib_consistency = max(0.0, 1.0 - total_penalty / n_academic)
+
             format_consistency = float(existing_comps.get("format_consistency", 1.0))
-            identifier_validity = float(existing_comps.get("identifier_validity", verified_ratio))
+
+            # Recalculate identifier_validity from verdicts that have DOIs
+            import re as _re
+            doi_by_raw = {c.raw_text: c.doi for c in all_citations if c.doi}
+
+            def _verdict_has_doi(v: VerdictRecord) -> bool:
+                if doi_by_raw.get(v.citation_raw):
+                    return True
+                return bool(_re.search(r"\b10\.\d{4,9}/\S+", v.citation_raw or ""))
+
+            verdicts_with_doi = [v for v in academic_verdicts if _verdict_has_doi(v)]
+            if verdicts_with_doi:
+                valid_doi_count = sum(
+                    1
+                    for v in verdicts_with_doi
+                    if v.label in ("verified", "metadata_error")
+                )
+                identifier_validity = valid_doi_count / len(verdicts_with_doi)
+            else:
+                identifier_validity = float(existing_comps.get("identifier_validity", 1.0))
 
             score = round(
                 (
