@@ -249,6 +249,167 @@ const RULE_DEFINITIONS: Record<string, Omit<Rule, "triggered">> = {
     ],
     conclusion: "UNRESOLVED",
   },
+  "R-LOCAL_DB_VERIFIED": {
+    id: "R-LOCAL_DB_VERIFIED",
+    name: "Local Scholarly Index Verified",
+    description: "Exact title, author, and publication year verified in local scholarly database",
+    conditions: [
+      { field: "source", operator: "IN", value: "[local_db, known_papers]" },
+      { field: "title_sim_fuzzy", operator: ">=", value: "0.95" },
+      { field: "author_jaccard", operator: ">=", value: "0.80" },
+    ],
+    conclusion: "VERIFIED",
+  },
+  "R-LOCAL_DB_GOOD_MATCH": {
+    id: "R-LOCAL_DB_GOOD_MATCH",
+    name: "Strong Local Index Match",
+    description: "High title and author similarity confirmed in local scholarly database",
+    conditions: [
+      { field: "source", operator: "IN", value: "[local_db, known_papers]" },
+      { field: "title_sim_fuzzy", operator: ">=", value: "0.85" },
+      { field: "author_jaccard", operator: ">=", value: "0.50" },
+    ],
+    conclusion: "VERIFIED",
+  },
+  "R-LOCAL_DB": {
+    id: "R-LOCAL_DB",
+    name: "Local Database Provenance",
+    description: "Candidate retrieved from local SQLite FTS5 scholarly paper index",
+    conditions: [
+      { field: "used_local_db", operator: "=", value: "true" },
+    ],
+    conclusion: "VERIFIED",
+  },
+  "R-LOCAL_DB_ONLY": {
+    id: "R-LOCAL_DB_ONLY",
+    name: "Standalone Local Database Verification",
+    description: "Verified via local scholarly index while external APIs were unavailable",
+    conditions: [
+      { field: "used_local_db", operator: "=", value: "true" },
+      { field: "external_apis", operator: "=", value: "0" },
+    ],
+    conclusion: "VERIFIED",
+  },
+  "R-KNOWN-PAPER": {
+    id: "R-KNOWN-PAPER",
+    name: "Known Seminal Publication",
+    description: "Matches canonical benchmark paper in curated seminal publications registry",
+    conditions: [
+      { field: "source", operator: "=", value: "known_papers" },
+      { field: "title_sim_fuzzy", operator: ">=", value: "0.85" },
+    ],
+    conclusion: "VERIFIED",
+  },
+  "R-KNOWN-PAPER-NO-TITLE": {
+    id: "R-KNOWN-PAPER-NO-TITLE",
+    name: "Known Seminal Paper (Author-Year Match)",
+    description: "In-text citation matches canonical seminal publication by author and year",
+    conditions: [
+      { field: "source", operator: "=", value: "known_papers" },
+      { field: "author_year_match", operator: "=", value: "true" },
+    ],
+    conclusion: "VERIFIED",
+  },
+  "R-SINGLE-SOURCE-VERIFIED": {
+    id: "R-SINGLE-SOURCE-VERIFIED",
+    name: "Single Registry High-Confidence Match",
+    description: "Verified by a live scholarly registry with strong title, author, and year agreement",
+    conditions: [
+      { field: "consensus", operator: ">=", value: "1" },
+      { field: "title_sim_fuzzy", operator: ">=", value: "0.90" },
+      { field: "author_jaccard", operator: ">=", value: "0.80" },
+      { field: "year_distance", operator: "<=", value: "1" },
+    ],
+    conclusion: "VERIFIED",
+  },
+  "R-SINGLE-SOURCE-PARTIAL": {
+    id: "R-SINGLE-SOURCE-PARTIAL",
+    name: "Single Registry Match with Metadata Discrepancy",
+    description: "Scholarly record found on live registry but has author, year, or title discrepancy",
+    conditions: [
+      { field: "consensus", operator: ">=", value: "1" },
+      { field: "title_sim", operator: ">=", value: "0.60" },
+    ],
+    conclusion: "METADATA_ERROR",
+  },
+  "R-BROKEN-LINK": {
+    id: "R-BROKEN-LINK",
+    name: "Broken Citation URL on Verified Work",
+    description: "Cited URL returned HTTP 404/410 or failed DNS, though the scholarly paper exists",
+    conditions: [
+      { field: "url_status", operator: "=", value: "dead_link" },
+      { field: "scholarly_record", operator: "=", value: "verified" },
+    ],
+    conclusion: "METADATA_ERROR (flagged)",
+  },
+  "R-DEAD-URL": {
+    id: "R-DEAD-URL",
+    name: "Dead Citation URL with No Scholarly Record",
+    description: "Cited URL is unreachable/404 and no matching scholarly paper exists across registries",
+    conditions: [
+      { field: "url_status", operator: "=", value: "dead_link" },
+      { field: "title_sim", operator: "<", value: "0.60" },
+    ],
+    conclusion: "SUSPECTED_HALLUCINATION",
+  },
+  "R-NONEXISTENT-DOI": {
+    id: "R-NONEXISTENT-DOI",
+    name: "Non-Existent DOI in Scholarly Registries",
+    description: "Cited DOI failed to resolve to the cited work across live scholarly registries",
+    conditions: [
+      { field: "doi_exact_match", operator: "=", value: "false" },
+      { field: "title_sim", operator: "<", value: "0.60" },
+    ],
+    conclusion: "SUSPECTED_HALLUCINATION",
+  },
+  "R-NO-SCHOLARLY-RECORD": {
+    id: "R-NO-SCHOLARLY-RECORD",
+    name: "Zero Records in Scholarly Registries",
+    description: "Multiple live scholarly registries responded cleanly (HTTP 200) with zero matching records",
+    conditions: [
+      { field: "clean_empty_registries", operator: ">=", value: "2" },
+      { field: "candidates", operator: "=", value: "0" },
+    ],
+    conclusion: "SUSPECTED_HALLUCINATION",
+  },
+  "R-HALLUCINATED-SOURCE": {
+    id: "R-HALLUCINATED-SOURCE",
+    name: "Hallucinated / Unverifiable Source Evidence",
+    description: "Retrieved candidates have extremely low title and author similarity below abstention threshold",
+    conditions: [
+      { field: "title_sim", operator: "<", value: "0.40" },
+      { field: "author_jaccard", operator: "<", value: "0.30" },
+      { field: "doi_exact_match", operator: "=", value: "false" },
+    ],
+    conclusion: "SUSPECTED_HALLUCINATION",
+  },
+  "R-URL-RESOURCE": {
+    id: "R-URL-RESOURCE",
+    name: "Direct URL Reference",
+    description: "Non-academic web link or software repository URL",
+    conditions: [
+      { field: "citation_type", operator: "=", value: "url_resource" },
+    ],
+    conclusion: "VERIFIED (Resource)",
+  },
+  "R-WEB-RESOURCE": {
+    id: "R-WEB-RESOURCE",
+    name: "Web / Technical Documentation Resource",
+    description: "Technical documentation, API guide, or non-scholarly web reference",
+    conditions: [
+      { field: "resource_type", operator: "=", value: "web_documentation" },
+    ],
+    conclusion: "VERIFIED (Resource)",
+  },
+  "R-VN-LEGAL-FORMAT": {
+    id: "R-VN-LEGAL-FORMAT",
+    name: "Legal / Statutory Document Format",
+    description: "Matches official statutory or government legal document citation format",
+    conditions: [
+      { field: "is_legal_reference", operator: "=", value: "true" },
+    ],
+    conclusion: "VERIFIED",
+  },
 }
 
 function getVerdictColorClass(conclusion: string): {

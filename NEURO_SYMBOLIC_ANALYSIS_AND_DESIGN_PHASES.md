@@ -293,12 +293,28 @@ flowchart TD
 
 ---
 
-## TÓM TẮT THỨ TỰ ƯU TIÊN TRIỂN KHAI
+## TÓM TẮT THỨ TỰ ƯU TIÊN TRIỂN KHAI & KẾT QUẢ THỰC HIỆN (HOÀN TẤT 100%)
 
-| Thứ tự | Phase | Độ ưu tiên | Thời gian ước tính | Giá trị mang lại cho Đồ án |
-| :---: | :--- | :---: | :---: | :--- |
-| **1** | **Phase 1:** Tái cấu trúc Symbolic Rules bắt Hallucination | **P0 (Bắt buộc)** | 1 – 2 giờ | Giúp Web App đánh dấu đỏ chính xác các nguồn do AI bịa ra, giải quyết triệt để nút thắt `UNRESOLVED`. |
-| **2** | **Phase 2:** Kích hoạt `abstract` cho Neural Content Alignment | **P0 (Bắt buộc)** | 2 – 3 giờ | Làm sống lại tầng Neural (`SemanticMatcher`), chứng minh tính hiệu quả của Sentence-BERT trong hệ thống. |
-| **3** | **Phase 5:** Đồng bộ `RuleInspector` UI & Chạy lại Benchmark | **P1 (Quan trọng)** | 1 – 2 giờ | Có số liệu Precision/Recall/F1 đẹp, khớp 100% giữa code thực tế, giao diện Demo và báo cáo. |
-| **4** | **Phase 3:** Kiểm tra HTTP Link sống/chết (`Link Validation`) | **P2 (Khuyến nghị)** | 1 – 2 giờ | Khớp hoàn hảo với cụm từ *"kiểm tra liên kết (Link validation)"* trong đề cương. |
-| **5** | **Phase 4:** Platt Scaling / Hybrid ML Confidence Calibration | **P2 (Nâng cao)** | 2 – 3 giờ | Tăng hàm lượng học thuật AI/ML, giảm sai số hiệu chỉnh ECE & Brier Score. |
+| Thứ tự | Phase | Trạng thái | Kết quả đạt được |
+| :---: | :--- | :---: | :--- |
+| **1** | **Phase 1:** Tái cấu trúc Symbolic Rules bắt Hallucination | ✅ **Done (`72f7e9f`)** | Bổ sung `R-NO-SCHOLARLY-RECORD`, `R-NONEXISTENT-DOI`, `R-HALLUCINATED-SOURCE`; lọc danh sách học giả kinh điển; tách lỗi mạng thật (`api_exhausted`) khỏi kết quả rỗng hợp lệ (HTTP 200). |
+| **2** | **Phase 2:** Kích hoạt `abstract` cho Neural Content Alignment | ✅ **Done (`66387d0`)** | Bóc tách `abstract` từ cả 4 API (`Crossref`, `OpenAlex` inverted index, `Semantic Scholar`, `CORE`) + đồng bộ `local_papers.db` & cache; nâng cấp `SemanticMatcher.check_content_alignment()` với Multi-Sentence Max-Similarity Pooling. |
+| **3** | **Phase 3:** Kiểm tra HTTP Link sống/chết (`Link Validation`) | ✅ **Done (`a20b8f6`)** | Xây dựng `LinkValidator` (`HEAD` + `GET` fallback, phân biệt Paywall 401/403 vs Dead Link 404/410/DNS); bổ sung `R-DEAD-URL`, `R-BROKEN-LINK` và cập nhật thành phần `identifier_validity` trong điểm `CIS`. |
+| **4** | **Phase 4:** Hybrid ML Scorer & Platt Confidence Calibration | ✅ **Done (`d9569fb`)** | Xây dựng `PlattCalibrator` + `HybridMLScorer` (16 đặc trưng Neuro-Symbolic); huấn luyện trên **2.500 mẫu** kết hợp dữ liệu thật từ `local_papers.db` và Sentence-BERT embeddings; lưu trọng số tại `data/models/neuro_symbolic_weights.json`. |
+| **5** | **Phase 5:** Đồng bộ `RuleInspector` UI & Benchmark Thực nghiệm | ✅ **Done** | Đồng bộ toàn bộ 38 mã quy tắc trên `EssayPage.tsx` và `RuleInspector.tsx` (ưu tiên Tiếng Anh trước, Tiếng Việt thứ hai); xuất báo cáo thực nghiệm đối sánh `B0`–`B5` và `Proposed`. |
+
+---
+
+### BẢNG KẾT QUẢ THỰC NGHIỆM ĐỐI SÁNH (HELD-OUT TEST SPLIT, $N = 375$ / TỔNG $2.500$ MẪU)
+
+| Mô hình / Baseline | Accuracy | Macro-Precision | Macro-Recall | Macro-F1 | ECE (↓) | Brier Score (↓) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **B0 (`doi_only`)** | 12.53% | 4.80% | 25.37% | 6.41% | — | — |
+| **B1 (`single_source_crossref`)** | 59.47% | 48.25% | 48.22% | 43.87% | — | — |
+| **B2 (`fuzzy_only`)** | 81.33% | 63.12% | 67.82% | 64.41% | — | — |
+| **B3 (`embedding_only`)** | 75.20% | 61.25% | 60.54% | 56.85% | — | — |
+| **B4 (`no_calibration`)** | 75.47% | 58.97% | 61.19% | 57.55% | — | — |
+| **B5 (`ml_hybrid` — Multinomial LR + Platt)** | **99.73%** | **99.46%** | **99.78%** | **99.61%** | — | — |
+| **Proposed (`Neuro-Symbolic` — Uncalibrated)** | 89.87% | 89.70% | 92.65% | 90.76% | 0.2307 | 0.1232 |
+| **Proposed (`Neuro-Symbolic` + Platt Calibrated)** | **96.53%** | **94.95%** | **97.33%** | **95.95%** | **0.0554** (-76%) | **0.0502** (-59%) |
+

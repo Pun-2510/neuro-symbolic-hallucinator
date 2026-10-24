@@ -416,18 +416,13 @@ class DisclaimerConfig(BaseModel):
 
 # Default out-of-scope items (v1.2) — được override bởi YAML nếu có
 _DEFAULT_OUT_OF_SCOPE: list[str] = [
-    "Chấm điểm content / organization / language / vocabulary / mechanics",
+    "Grading essay content / organization / language / vocabulary / mechanics",
     "AES rubric (QWK, holistic scoring)",
-    "Phát hiện đạo văn",
-    "Phát hiện toàn bộ văn bản do AI tạo",
-    "Tự động kết luận gian lận học thuật",
-    "Claim-level verification toàn diện",
-    "Phán xét việc trích cùng một nguồn nhiều lần là dư thừa",
-    "OCR scanned PDF (mở rộng)",
-    "Sách / ISBN (mở rộng)",
-    "Highlight trực tiếp lên PDF (mở rộng)",
-    "Google Scholar / SerpAPI (bị loại)",
-    "arXiv direct API (sử dụng CORE API thay thế)",
+    "Full-text plagiarism detection",
+    "AI-generated essay prose detection",
+    "Automated academic misconduct adjudication without human review",
+    "Treating repeated in-text citations to the same reference as redundant",
+    "OCR for scanned image-only PDFs (future extension)",
 ]
 
 
