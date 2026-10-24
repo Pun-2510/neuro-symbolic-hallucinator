@@ -46,6 +46,7 @@ class ProgressState:
     started_at: float = field(default_factory=lambda: time.time())
     finished_at: float | None = None
     error: str | None = None
+    retry_count: int = 0
 
     def to_snapshot(self) -> dict[str, Any]:
         """JSON-friendly snapshot for the API."""
@@ -56,26 +57,56 @@ class ProgressState:
         return out
 
 
+MAX_AUTO_RETRIES = 1
+STATE_TTL_SECONDS = 3600.0
+MAX_TRACKED_STATES = 500
+
+
 class ProgressTracker:
-    """Thread-safe in-memory dict of ``essay_id -> ProgressState``."""
+    """Thread-safe in-memory dict of ``essay_id -> ProgressState`` with bounded TTL cleanup."""
 
     def __init__(self) -> None:
         self._states: dict[int, ProgressState] = {}
+        self._retry_counts: dict[int, int] = {}
         self._lock = Lock()
 
-    def init(self, essay_id: int) -> ProgressState:
+    def _prune_unlocked(self, now: float) -> None:
+        if len(self._states) <= MAX_TRACKED_STATES:
+            return
+        expired = [
+            eid
+            for eid, st in self._states.items()
+            if st.finished_at is not None and (now - st.finished_at) > STATE_TTL_SECONDS
+        ]
+        for eid in expired:
+            self._states.pop(eid, None)
+            self._retry_counts.pop(eid, None)
+
+    def init(self, essay_id: int, is_retry: bool = False) -> ProgressState:
         """Create a fresh state for an essay (overwrites any prior state)."""
         with self._lock:
+            now = time.time()
+            self._prune_unlocked(now)
+            if is_retry:
+                self._retry_counts[essay_id] = self._retry_counts.get(essay_id, 0) + 1
+            else:
+                self._retry_counts.setdefault(essay_id, 0)
             state = ProgressState(
                 status="processing",
                 step=STEP_KEYS[0],
                 step_index=0,
                 total_steps=len(STEP_KEYS),
                 message="Parsing document...",
-                started_at=time.time(),
+                started_at=now,
+                retry_count=self._retry_counts.get(essay_id, 0),
             )
             self._states[essay_id] = state
             return state
+
+    def can_auto_retry(self, essay_id: int) -> bool:
+        """Return True if essay_id has not exceeded MAX_AUTO_RETRIES."""
+        with self._lock:
+            return self._retry_counts.get(essay_id, 0) < MAX_AUTO_RETRIES
 
     def get(self, essay_id: int) -> ProgressState | None:
         with self._lock:
@@ -115,6 +146,7 @@ class ProgressTracker:
     def clear(self, essay_id: int) -> None:
         with self._lock:
             self._states.pop(essay_id, None)
+            self._retry_counts.pop(essay_id, None)
 
 
 # Module-level singleton — backend is single-process for MVP

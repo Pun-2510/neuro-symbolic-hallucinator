@@ -68,7 +68,7 @@ async def _run_pipeline_task(
         # stays free to serve other requests (status polls, etc.).
         # run_in_executor requires a sync callable; we wrap run_async in a
         # sync runner that creates its own event loop in the worker thread.
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         def _run_pipeline_sync() -> Any:
             return asyncio.run(
@@ -182,7 +182,13 @@ async def _run_pipeline_task(
 
     except Exception as exc:
         logger.exception(f"Pipeline failed for essay {essay_id}: {exc}")
-        tracker.fail(essay_id, str(exc))
+        raw_err = str(exc)
+        safe_err = (
+            "Transient database disk I/O error"
+            if "disk I/O error" in raw_err
+            else "Analysis failed due to an internal processing error."
+        )
+        tracker.fail(essay_id, safe_err)
     finally:
         if cleanup_file:
             Path(tmp_path).unlink(missing_ok=True)
@@ -341,15 +347,16 @@ def get_essay_status(
     state = tracker.get(essay_id)
 
     if state is not None:
-        # Auto-retry if a prior background run failed solely due to transient sqlite I/O error
+        # Auto-retry at most once if a prior background run failed solely due to transient sqlite I/O error
         if (
             state.status == "failed"
             and state.error
             and "disk I/O error" in state.error
             and not is_test_runtime()
             and persisted_pdf.is_file()
+            and tracker.can_auto_retry(essay_id)
         ):
-            resumed_state = tracker.init(essay_id)
+            resumed_state = tracker.init(essay_id, is_retry=True)
             background_tasks.add_task(
                 _run_pipeline_task,
                 essay.id,
@@ -381,11 +388,11 @@ def get_essay_status(
             "error": None,
         }
 
-    # Server restarted before background analysis finished: auto-resume if the
-    # uploaded PDF is persisted on disk.
+    # Server restarted before background analysis finished: auto-resume at most once
+    # if the uploaded PDF is persisted on disk.
     persisted_pdf = _get_persisted_upload_path(essay_id)
-    if not is_test_runtime() and persisted_pdf.is_file():
-        resumed_state = tracker.init(essay_id)
+    if not is_test_runtime() and persisted_pdf.is_file() and tracker.can_auto_retry(essay_id):
+        resumed_state = tracker.init(essay_id, is_retry=True)
         background_tasks.add_task(
             _run_pipeline_task,
             essay.id,
@@ -493,7 +500,7 @@ def list_all_essays(
 
 
 @router.get("/{essay_id}")
-async def get_essay(
+def get_essay(
     essay_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -518,7 +525,7 @@ async def get_essay(
 
 
 @router.delete("/{essay_id}")
-async def delete_essay(
+def delete_essay(
     essay_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

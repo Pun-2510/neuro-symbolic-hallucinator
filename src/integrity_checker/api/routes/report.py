@@ -36,7 +36,7 @@ router = APIRouter()
 
 
 @router.get("/{essay_id}/report")
-async def get_report(
+def get_report(
     essay_id: int,
     format: str = "json",
     current_user: User = Depends(get_current_user),

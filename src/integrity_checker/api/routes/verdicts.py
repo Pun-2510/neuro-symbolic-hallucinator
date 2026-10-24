@@ -54,7 +54,7 @@ class OverrideRequest(BaseModel):
 
 
 @router.get("/{essay_id}/verdicts")
-async def get_verdicts(
+def get_verdicts(
     essay_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -119,7 +119,7 @@ def _load_citation_link(features_json: str | None) -> dict | None:
 
 
 @router.post("/{essay_id}/verdicts/{verdict_id}/override")
-async def override_verdict(
+def override_verdict(
     essay_id: int,
     verdict_id: str,
     body: OverrideRequest,

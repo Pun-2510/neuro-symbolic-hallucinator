@@ -64,7 +64,7 @@ def _get_grobid_health() -> GrobidHealthStatus:
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health() -> HealthResponse:
+def health() -> HealthResponse:
     settings = get_settings()
     return HealthResponse(
         status="ok",
@@ -75,13 +75,13 @@ async def health() -> HealthResponse:
 
 
 @router.get("/health/grobid")
-async def grobid_health() -> GrobidHealthStatus:
+def grobid_health() -> GrobidHealthStatus:
     """GROBID health endpoint."""
     return _get_grobid_health()
 
 
 @router.post("/health/grobid/start", dependencies=[Depends(require_admin)])
-async def grobid_start(admin: User = Depends(require_admin)) -> dict:
+def grobid_start(admin: User = Depends(require_admin)) -> dict:
     """Start GROBID container. Requires admin authentication."""
     try:
         manager = get_grobid_manager(auto_start=True)
@@ -100,7 +100,7 @@ async def grobid_start(admin: User = Depends(require_admin)) -> dict:
 
 
 @router.post("/health/grobid/stop", dependencies=[Depends(require_admin)])
-async def grobid_stop(admin: User = Depends(require_admin)) -> dict:
+def grobid_stop(admin: User = Depends(require_admin)) -> dict:
     """Stop GROBID container. Requires admin authentication."""
     try:
         manager = get_grobid_manager()
