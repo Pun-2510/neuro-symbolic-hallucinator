@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from integrity_checker.extraction.base import BasePDFParser, Document, Page
+
+MAX_PDF_PAGES = int(os.getenv("MAX_PDF_PAGES", "200"))
 
 
 class PdfPlumberParser(BasePDFParser):
@@ -33,7 +36,12 @@ class PdfPlumberParser(BasePDFParser):
 
         with pdfplumber.open(str(path)) as pdf:
             metadata = dict(pdf.metadata or {})
-            for idx, page in enumerate(pdf.pages):
+            total_doc_pages = len(pdf.pages)
+            if total_doc_pages > MAX_PDF_PAGES:
+                errors.append(
+                    f"Document has {total_doc_pages} pages; truncated to first {MAX_PDF_PAGES} pages."
+                )
+            for idx, page in enumerate(pdf.pages[:MAX_PDF_PAGES]):
                 try:
                     text = page.extract_text() or ""
                     has_text = len(text.strip()) > 0

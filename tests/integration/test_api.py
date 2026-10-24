@@ -111,3 +111,60 @@ def test_report_and_verdicts_require_authentication() -> None:
 
     resp_verdicts = client.get(f"/api/essays/{essay_id}/verdicts")
     assert resp_verdicts.status_code in (401, 422)
+
+
+def test_upload_rejects_pdf_without_magic_bytes() -> None:
+    """File .pdf nhưng không có %PDF- magic header -> 400."""
+    from io import BytesIO
+    from integrity_checker.api.main import app
+
+    client = TestClient(app)
+    login_resp = client.post(
+        "/api/auth/login",
+        json={"username": TEST_ADMIN_USER, "password": TEST_ADMIN_PASS},
+    )
+    token = login_resp.json()["token"]
+
+    resp = client.post(
+        "/api/essays",
+        files={"file": ("spoofed.pdf", BytesIO(b"<html>not a pdf</html>"), "application/pdf")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 400
+    assert "%pdf-" in resp.json()["detail"].lower()
+
+
+def test_upload_rejects_oversized_pdf(monkeypatch) -> None:
+    """Upload PDF vượt quá ngưỡng dung lượng -> 413 Payload Too Large."""
+    from io import BytesIO
+    import integrity_checker.api.routes.essays as essays_route
+    from integrity_checker.api.main import app
+
+    monkeypatch.setattr(essays_route, "MAX_PDF_UPLOAD_BYTES", 1024)
+
+    client = TestClient(app)
+    login_resp = client.post(
+        "/api/auth/login",
+        json={"username": TEST_ADMIN_USER, "password": TEST_ADMIN_PASS},
+    )
+    token = login_resp.json()["token"]
+
+    payload = b"%PDF-1.4\n" + (b"0" * 2048)
+    resp = client.post(
+        "/api/essays",
+        files={"file": ("oversized.pdf", BytesIO(payload), "application/pdf")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 413
+
+
+def test_security_headers_present() -> None:
+    """Mọi HTTP response đều có X-Content-Type-Options, X-Frame-Options, Referrer-Policy."""
+    from integrity_checker.api.main import app
+
+    client = TestClient(app)
+    resp = client.get("/api/health")
+    assert resp.status_code == 200
+    assert resp.headers.get("X-Content-Type-Options") == "nosniff"
+    assert resp.headers.get("X-Frame-Options") == "SAMEORIGIN"
+    assert resp.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"

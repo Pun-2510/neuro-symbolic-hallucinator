@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -188,6 +189,45 @@ async def _run_pipeline_task(
 
 
 # ---------------------------------------------------------------------------
+# Upload security constants & helpers
+# ---------------------------------------------------------------------------
+
+MAX_PDF_UPLOAD_BYTES = int(os.getenv("MAX_PDF_UPLOAD_BYTES", str(25 * 1024 * 1024)))
+_UPLOAD_CHUNK_SIZE = 64 * 1024
+
+
+def _sanitize_upload_filename(raw_name: str) -> str:
+    """Strip path traversal components and control characters from uploaded filename."""
+    base = Path(raw_name.replace("\\", "/")).name
+    cleaned = "".join(ch for ch in base if ch >= " " and ch != "\x7f").strip()
+    if not cleaned or cleaned.startswith("."):
+        cleaned = f"essay{cleaned}" if cleaned.endswith(".pdf") else "document.pdf"
+    if len(cleaned) > 200:
+        stem = cleaned[:-4][:196]
+        cleaned = f"{stem}.pdf"
+    return cleaned
+
+
+async def _read_pdf_upload_bounded(file: UploadFile, max_bytes: int | None = None) -> bytes:
+    """Read upload stream in chunks, aborting immediately if size exceeds max_bytes."""
+    limit = max_bytes if max_bytes is not None else MAX_PDF_UPLOAD_BYTES
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(_UPLOAD_CHUNK_SIZE)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > limit:
+            raise HTTPException(
+                status_code=413,
+                detail=f"PDF file too large. Maximum allowed size is {max(1, limit // (1024 * 1024))}MB.",
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
@@ -208,7 +248,13 @@ async def upload_essay(
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files allowed")
 
-    content = await file.read()
+    safe_filename = _sanitize_upload_filename(file.filename)
+    content = await _read_pdf_upload_bounded(file)
+
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded PDF file is empty")
+    if b"%PDF-" not in content[:1024]:
+        raise HTTPException(status_code=400, detail="Invalid PDF file: missing %PDF- header")
 
     repo = Repository(db)
     if class_id is not None:
@@ -224,7 +270,7 @@ async def upload_essay(
 
     # Create essay record immediately (num_pages=0 until pipeline fills it)
     essay = repo.create_essay_with_user(
-        filename=file.filename,
+        filename=safe_filename,
         num_pages=0,
         user_id=current_user.id,
         class_id=class_id,

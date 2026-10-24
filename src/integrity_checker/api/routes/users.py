@@ -308,13 +308,29 @@ async def upload_my_avatar(
     db=Depends(get_db),
 ):
     """Upload avatar for the current user. Max 2MB, JPG/PNG/WEBP only."""
-    avatar_svc = get_avatar_service()
+    from integrity_checker.api.services.avatar_service import MAX_BYTES
 
-    content = await file.read()
+    avatar_svc = get_avatar_service()
     mime = file.content_type or ""
 
+    # Read in bounded chunks up to MAX_BYTES + 1 to prevent memory exhaustion
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(64 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Avatar file too large. Max size is {MAX_BYTES} bytes (2MB)",
+            )
+        chunks.append(chunk)
+    content = b"".join(chunks)
+
     try:
-        avatar_svc.validate(mime, len(content))
+        avatar_svc.validate(mime, len(content), content)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

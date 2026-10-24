@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from integrity_checker.extraction.base import BasePDFParser, Document, Page
+
+MAX_PDF_PAGES = int(os.getenv("MAX_PDF_PAGES", "200"))
 
 
 class MuPdfParser(BasePDFParser):
@@ -31,8 +34,14 @@ class MuPdfParser(BasePDFParser):
         try:
             pages: list[Page] = []
             errors: list[str] = []
+            total_doc_pages = len(doc)
+            page_limit = min(total_doc_pages, MAX_PDF_PAGES)
+            if total_doc_pages > MAX_PDF_PAGES:
+                errors.append(
+                    f"Document has {total_doc_pages} pages; truncated to first {MAX_PDF_PAGES} pages."
+                )
 
-            for idx in range(len(doc)):
+            for idx in range(page_limit):
                 try:
                     page = doc[idx]
                     text = page.get_text("text") or ""

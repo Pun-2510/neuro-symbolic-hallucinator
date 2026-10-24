@@ -53,6 +53,14 @@ def create_app() -> FastAPI:
     )
     logger.info(f"CORS configured with origins: {origins}, credentials: {allow_credentials}")
 
+    @app.middleware("http")
+    async def add_security_headers(request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        return response
+
     # Init DB (MVP)
     init_db()
     logger.info("Database initialized")

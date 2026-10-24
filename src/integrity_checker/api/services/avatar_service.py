@@ -40,7 +40,18 @@ class AvatarService:
         self.public_prefix = public_prefix.rstrip("/")
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
-    def validate(self, mime: str, size: int) -> None:
+    @staticmethod
+    def _matches_magic_bytes(content: bytes, mime: str) -> bool:
+        """Verify that raw bytes match the declared image MIME type."""
+        if mime == "image/png":
+            return content.startswith(b"\x89PNG\r\n\x1a\n")
+        if mime == "image/jpeg":
+            return content.startswith(b"\xff\xd8\xff")
+        if mime == "image/webp":
+            return len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP"
+        return False
+
+    def validate(self, mime: str, size: int, content: bytes | None = None) -> None:
         """Raise ValueError if the file is not acceptable."""
         if mime not in ALLOWED_MIME:
             raise ValueError(
@@ -52,10 +63,14 @@ class AvatarService:
             raise ValueError(
                 f"Avatar file too large ({size} bytes). Max size is {MAX_BYTES} bytes (2MB)"
             )
+        if content is not None and not self._matches_magic_bytes(content, mime):
+            raise ValueError(
+                f"Invalid image file: content does not match declared type '{mime}'"
+            )
 
     def save(self, user_id: int, content: bytes, mime: str) -> str:
         """Save avatar bytes for user. Returns the public URL path (e.g. ``/api/avatars/3.jpg``)."""
-        self.validate(mime, len(content))
+        self.validate(mime, len(content), content)
         ext = MIME_TO_EXT[mime]
         # Remove any prior avatar for this user (different extension)
         for old_ext in MIME_TO_EXT.values():
@@ -73,9 +88,13 @@ class AvatarService:
         """Delete the file referenced by a public URL or path. Safe if missing."""
         if not avatar_url:
             return
-        # Accept either the public URL or a relative path; resolve to local file
-        name = avatar_url.rsplit("/", 1)[-1]
-        target = self.base_dir / name
+        # Accept either the public URL or a relative path; resolve to local file safely
+        name = Path(avatar_url.rsplit("/", 1)[-1]).name
+        if not name:
+            return
+        target = (self.base_dir / name).resolve()
+        if target.parent != self.base_dir:
+            return
         if target.exists() and target.is_file():
             try:
                 target.unlink()

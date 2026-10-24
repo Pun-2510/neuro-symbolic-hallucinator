@@ -556,6 +556,32 @@ class TestAvatarUpload:
         assert resp.status_code == 400
         assert "empty" in resp.json()["detail"].lower()
 
+    def test_upload_rejects_spoofed_magic_bytes_xss(self, clean_db):
+        token = get_user_token()
+        client = TestClient(app)
+
+        # HTML/SVG disguised with image/png Content-Type
+        resp = client.post(
+            "/api/users/me/avatar",
+            files={"file": ("xss.png", io.BytesIO(b"<svg onload=alert(1)></svg>"), "image/png")},
+            headers=auth_header(token),
+        )
+        assert resp.status_code == 400
+        assert "does not match" in resp.json()["detail"].lower()
+
+    def test_upload_rejects_oversized_avatar_stream(self, clean_db):
+        token = get_user_token()
+        client = TestClient(app)
+
+        big_bytes = b"\x89PNG\r\n\x1a\n" + (b"A" * (2 * 1024 * 1024 + 100))
+        resp = client.post(
+            "/api/users/me/avatar",
+            files={"file": ("huge.png", io.BytesIO(big_bytes), "image/png")},
+            headers=auth_header(token),
+        )
+        assert resp.status_code == 400
+        assert "too large" in resp.json()["detail"].lower()
+
 
 class TestAvatarDelete:
     def test_delete_own_avatar(self, clean_db):
