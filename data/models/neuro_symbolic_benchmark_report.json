@@ -1,179 +1,197 @@
 {
   "dataset_summary": {
-    "total_samples": 2500,
+    "total_samples": 80000,
+    "methodology": "Strict Paper-Disjoint Split (Zero Paper Overlap) + Real Sentence-BERT & RapidFuzz Feature Extraction",
     "class_distribution": {
-      "metadata_error": 550,
-      "suspected_hallucination": 750,
-      "verified": 900,
-      "unresolved": 300
+      "metadata_error": 17600,
+      "verified": 28800,
+      "suspected_hallucination": 24000,
+      "unresolved": 9600
+    },
+    "sub_taxonomy_distribution": {
+      "H1": 6000,
+      "H2": 6000,
+      "H3": 6000,
+      "H4": 6000,
+      "M1": 3520,
+      "M2": 3520,
+      "M3": 3520,
+      "M4": 3520,
+      "M5": 3520,
+      "U1": 6400,
+      "U2": 3200,
+      "V1": 7200,
+      "V2": 7200,
+      "V3": 7200,
+      "V4": 7200
     },
     "splits": {
-      "train": 1750,
-      "val": 375,
-      "test": 375
+      "train": 56000,
+      "val": 12000,
+      "test": 12000
     }
   },
   "baselines_on_test_set": {
     "B0": {
-      "accuracy": 0.1253,
-      "macro_precision": 0.048,
-      "macro_recall": 0.2537,
-      "macro_f1": 0.0641
+      "accuracy": 0.3023,
+      "macro_precision": 0.2235,
+      "macro_recall": 0.3766,
+      "macro_f1": 0.2187
     },
     "B1": {
-      "accuracy": 0.5947,
-      "macro_precision": 0.4825,
-      "macro_recall": 0.4822,
-      "macro_f1": 0.4387
+      "accuracy": 0.6965,
+      "macro_precision": 0.5546,
+      "macro_recall": 0.5683,
+      "macro_f1": 0.5336
     },
     "B2": {
-      "accuracy": 0.8133,
-      "macro_precision": 0.6312,
-      "macro_recall": 0.6782,
-      "macro_f1": 0.6441
+      "accuracy": 0.7826,
+      "macro_precision": 0.5975,
+      "macro_recall": 0.647,
+      "macro_f1": 0.6134
     },
     "B3": {
-      "accuracy": 0.752,
-      "macro_precision": 0.6125,
-      "macro_recall": 0.6054,
-      "macro_f1": 0.5685
+      "accuracy": 0.6489,
+      "macro_precision": 0.4507,
+      "macro_recall": 0.5082,
+      "macro_f1": 0.4565
     },
     "B4": {
-      "accuracy": 0.7547,
-      "macro_precision": 0.5897,
-      "macro_recall": 0.6119,
-      "macro_f1": 0.5755
+      "accuracy": 0.7726,
+      "macro_precision": 0.5841,
+      "macro_recall": 0.6357,
+      "macro_f1": 0.601
     },
     "B5": {
-      "accuracy": 0.9973,
-      "macro_precision": 0.9946,
-      "macro_recall": 0.9978,
-      "macro_f1": 0.9961
+      "accuracy": 0.9853,
+      "macro_precision": 0.9875,
+      "macro_recall": 0.9699,
+      "macro_f1": 0.9777
     },
     "proposed": {
-      "accuracy": 0.9653,
-      "macro_precision": 0.9495,
-      "macro_recall": 0.9733,
-      "macro_f1": 0.9595
+      "accuracy": 0.9859,
+      "macro_precision": 0.985,
+      "macro_recall": 0.9707,
+      "macro_f1": 0.9767
     }
   },
   "neuro_symbolic_uncalibrated": {
     "classification": {
-      "accuracy": 0.9147,
-      "macro_precision": 0.9071,
-      "macro_recall": 0.916,
-      "macro_f1": 0.9076,
+      "accuracy": 0.9741,
+      "macro_precision": 0.9593,
+      "macro_recall": 0.971,
+      "macro_f1": 0.9647,
       "support": {
-        "suspected_hallucination": 112,
-        "metadata_error": 83,
-        "unresolved": 45,
-        "verified": 135
+        "metadata_error": 2640,
+        "verified": 4320,
+        "suspected_hallucination": 3600,
+        "unresolved": 1440
       },
       "confusion_matrix": {
         "verified": {
-          "verified": 127,
-          "metadata_error": 6,
+          "verified": 4221,
+          "metadata_error": 99,
           "suspected_hallucination": 0,
-          "unresolved": 2
+          "unresolved": 0
         },
         "metadata_error": {
-          "verified": 17,
-          "metadata_error": 63,
+          "verified": 0,
+          "metadata_error": 2468,
           "suspected_hallucination": 0,
-          "unresolved": 3
+          "unresolved": 172
         },
         "suspected_hallucination": {
           "verified": 0,
           "metadata_error": 0,
-          "suspected_hallucination": 108,
-          "unresolved": 4
+          "suspected_hallucination": 3600,
+          "unresolved": 0
         },
         "unresolved": {
           "verified": 0,
-          "metadata_error": 0,
+          "metadata_error": 40,
           "suspected_hallucination": 0,
-          "unresolved": 45
+          "unresolved": 1400
         }
       }
     },
     "calibration": {
-      "ece": 0.2307,
-      "brier": 0.1232,
-      "coverage": 0.9253,
-      "n_samples": 375,
+      "ece": 0.2162,
+      "brier": 0.0787,
+      "coverage": 0.9724,
+      "n_samples": 12000,
       "coverage_accuracy": {
-        "0.5": 0.9096,
-        "0.7": 0.9351,
-        "0.9": 0.932,
-        "0.95": 0.9354,
-        "1.0": 0.9147
+        "0.5": 1.0,
+        "0.7": 0.9843,
+        "0.9": 0.9871,
+        "0.95": 0.9878,
+        "1.0": 0.9741
       },
       "abstention_band": [
         0.5,
-        0.9096
+        1.0
       ]
     }
   },
   "neuro_symbolic_platt_calibrated": {
     "classification": {
-      "accuracy": 0.9147,
-      "macro_precision": 0.9071,
-      "macro_recall": 0.916,
-      "macro_f1": 0.9076,
+      "accuracy": 0.9741,
+      "macro_precision": 0.9593,
+      "macro_recall": 0.971,
+      "macro_f1": 0.9647,
       "support": {
-        "suspected_hallucination": 112,
-        "metadata_error": 83,
-        "unresolved": 45,
-        "verified": 135
+        "metadata_error": 2640,
+        "verified": 4320,
+        "suspected_hallucination": 3600,
+        "unresolved": 1440
       },
       "confusion_matrix": {
         "verified": {
-          "verified": 127,
-          "metadata_error": 6,
+          "verified": 4221,
+          "metadata_error": 99,
           "suspected_hallucination": 0,
-          "unresolved": 2
+          "unresolved": 0
         },
         "metadata_error": {
-          "verified": 17,
-          "metadata_error": 63,
+          "verified": 0,
+          "metadata_error": 2468,
           "suspected_hallucination": 0,
-          "unresolved": 3
+          "unresolved": 172
         },
         "suspected_hallucination": {
           "verified": 0,
           "metadata_error": 0,
-          "suspected_hallucination": 108,
-          "unresolved": 4
+          "suspected_hallucination": 3600,
+          "unresolved": 0
         },
         "unresolved": {
           "verified": 0,
-          "metadata_error": 0,
+          "metadata_error": 40,
           "suspected_hallucination": 0,
-          "unresolved": 45
+          "unresolved": 1400
         }
       }
     },
     "calibration": {
-      "ece": 0.0554,
-      "brier": 0.0502,
-      "coverage": 0.9813,
-      "n_samples": 375,
+      "ece": 0.0408,
+      "brier": 0.0141,
+      "coverage": 0.9749,
+      "n_samples": 12000,
       "coverage_accuracy": {
-        "0.5": 0.9574,
-        "0.7": 0.9695,
-        "0.9": 0.9763,
-        "0.95": 0.9607,
-        "1.0": 0.9147
+        "0.5": 1.0,
+        "0.7": 0.9999,
+        "0.9": 0.9999,
+        "0.95": 0.9999,
+        "1.0": 0.9741
       },
       "abstention_band": [
         0.5,
-        0.9574
+        1.0
       ]
     }
   },
   "platt_parameters": {
-    "a": 1.723519,
-    "b": 0.664915,
+    "a": 1.952622,
+    "b": 0.833525,
     "min_prob": 0.01,
     "max_prob": 0.99
   }

@@ -73,6 +73,8 @@ class BaselineRunner:
                 "content_alignment_confidence": str(features.get("content_alignment_confidence", item.get("content_alignment_confidence", "")) or ""),
                 "content_is_aligned": bool(features.get("content_is_aligned", item.get("content_is_aligned", False))),
                 "has_candidate": features.get("has_candidate", item.get("has_candidate")),
+                "url_status": features.get("url_status", item.get("url_status")),
+                "cited_doi": features.get("cited_doi", item.get("cited_doi")),
                 "crossref_matched": bool(
                     features.get("crossref_matched", item.get("crossref_matched", False))
                     or any(
@@ -164,23 +166,39 @@ class BaselineRunner:
             pred_label, _, _ = self.ml_scorer.predict(feat)
             return pred_label
 
-        # proposed: Neuro-symbolic + multi-source consensus + content alignment + abstention calibration
+        # proposed: Neuro-symbolic + multi-source consensus + content alignment + link check + abstention calibration
         title_best = max(tf, ts)
         ca_score = feat.get("content_alignment_score", 0.0)
         ca_conf = feat.get("content_alignment_confidence", "")
         ca_aligned = feat.get("content_is_aligned", False)
+        url_status = feat.get("url_status")
+        cited_doi = feat.get("cited_doi")
 
-        # Content alignment contradiction check
+        # Pre-flight & hard symbolic guardrails (fake URL, dead URL with low title, non-existent DOI)
+        if url_status == "fake_domain":
+            return "suspected_hallucination"
+        if cited_doi and not doi_ok and title_best < 0.60:
+            return "suspected_hallucination"
+        if url_status == "dead_link" and not doi_ok and title_best < 0.60:
+            return "suspected_hallucination"
+
+        # Content alignment contradiction check (R-CONTENT-MISMATCH)
+        if not ca_aligned and ca_score >= 0.30 and tf >= 0.75 and aj >= 0.50 and not doi_ok and consensus <= 1:
+            return "suspected_hallucination"
         if ca_conf == "high" and not ca_aligned and 0.0 < ca_score < 0.25 and title_best >= 0.85:
             return "metadata_error"
 
+        # Content alignment rescue check (R-CONTENT-ALIGNMENT)
+        if ca_aligned and ca_score >= 0.60 and tf >= 0.60 and aj >= 0.50 and yd <= 1 and consensus >= 2:
+            return "verified"
+
         if doi_ok and title_best >= 0.85 and yd <= 1:
             return "verified"
-        if title_best >= 0.90 and aj >= 0.50 and yd <= 1 and consensus >= 1:
+        if title_best >= 0.85 and aj >= 0.50 and yd <= 1 and consensus >= 1:
             return "verified"
         if doi_ok and title_best < 0.85:
             return "metadata_error"
-        if title_best >= 0.60 and (aj < 0.50 or yd > 1 or title_best < 0.90):
+        if title_best >= 0.60 and (aj < 0.50 or yd > 1 or title_best < 0.85):
             return "metadata_error"
         if 0.40 <= title_best < 0.60:
             return "unresolved"
