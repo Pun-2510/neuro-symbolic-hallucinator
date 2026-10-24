@@ -244,12 +244,12 @@ export function AuthSplitShell({
       {/* ============================================================
           Right Panel — Executive Authentication Card (shadcn/ui)
           ============================================================ */}
-      <div className="flex-1 flex flex-col justify-between p-5 sm:p-8 lg:p-10 xl:p-12 relative overflow-hidden">
+      <div className="flex-1 flex flex-col justify-between p-3.5 sm:p-6 md:p-8 lg:p-10 xl:p-12 relative overflow-hidden">
         {/* Subtle ambient glow for right panel */}
         <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/5 dark:bg-indigo-500/10 blur-3xl rounded-full -z-10" />
 
         {/* Main Centered Container (First in DOM order so #password toggle is first SVG button) */}
-        <div className={`order-2 my-auto w-full ${maxWidthClass} mx-auto py-4`}>
+        <div className={`order-2 my-auto w-full ${maxWidthClass} mx-auto py-3 sm:py-4`}>
           {children}
         </div>
 

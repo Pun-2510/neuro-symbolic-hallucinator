@@ -83,7 +83,7 @@ export function ForgotPasswordPage() {
       <Card className="p-0 overflow-hidden border-slate-200/90 dark:border-slate-800/90 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm shadow-xl shadow-slate-900/5 dark:shadow-black/30 rounded-2xl">
         <div className="h-1.5 w-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-500" />
 
-        <CardHeader className="space-y-2 pb-4 pt-6 px-6 sm:px-7">
+        <CardHeader className="space-y-2 pb-4 pt-5 sm:pt-6 px-4 sm:px-7">
           <div className="flex items-center justify-between gap-2">
             <Badge
               variant="outline"
@@ -106,7 +106,7 @@ export function ForgotPasswordPage() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="px-6 sm:px-7 pb-6">
+        <CardContent className="px-4 sm:px-7 pb-5 sm:pb-6">
           {error && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />

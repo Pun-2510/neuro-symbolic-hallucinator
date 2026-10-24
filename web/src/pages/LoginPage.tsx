@@ -110,7 +110,7 @@ export function LoginPage() {
         {/* Top Gradient Accent Bar */}
         <div className="h-1.5 w-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-500" />
 
-        <CardHeader className="space-y-2 pb-5 pt-6 px-6 sm:px-7">
+        <CardHeader className="space-y-2 pb-4 sm:pb-5 pt-5 sm:pt-6 px-4 sm:px-7">
           <div className="flex items-center justify-between gap-2">
             <Badge
               variant="outline"
@@ -129,7 +129,7 @@ export function LoginPage() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="px-6 sm:px-7 pb-6">
+        <CardContent className="px-4 sm:px-7 pb-5 sm:pb-6">
           {/* Activated or Password Reset Success Banner */}
           {(activatedParam || resetParam || resentSuccess) && !error && (
             <Alert className="mb-5 border-emerald-200/90 dark:border-emerald-800/80 bg-emerald-50/90 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200">

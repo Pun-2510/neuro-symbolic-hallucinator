@@ -260,7 +260,7 @@ export function RegisterPage() {
              Registration Form View
              ============================================================ */
           <>
-            <CardHeader className="space-y-1.5 pb-4 pt-6 px-6 sm:px-7">
+            <CardHeader className="space-y-1.5 pb-4 pt-5 sm:pt-6 px-4 sm:px-7">
               <div className="flex items-center justify-between gap-2">
                 <Badge
                   variant="outline"
@@ -279,7 +279,7 @@ export function RegisterPage() {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="px-6 sm:px-7 pb-6">
+            <CardContent className="px-4 sm:px-7 pb-5 sm:pb-6">
               {error && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertCircle className="h-4 w-4" />
