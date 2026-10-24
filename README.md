@@ -16,7 +16,7 @@
 
 *An editorial-grade academic citation debugger and thesis integrity verification workspace engineered for researchers, instructors, and university committees — combining structural PDF parsing, smart domain-aware retrieval across 8 scholarly databases, and transparent 5-stage Neuro-Symbolic decision traces.*
 
-[Visual Demo](#-visual-demo--ui-walkthrough) · [Feature Matrix](#-complete-feature-matrix) · [Neuro-Symbolic Architecture](#-neuro-symbolic-architecture--cis-scoring) · [Quick Start](#-quick-start--deployment) · [Demo Credentials](#-default-demo-credentials) · [API & Docs](#-api-reference-overview)
+[Visual Demo](#visual-demo--ui-walkthrough) · [Feature Matrix](#complete-feature-matrix) · [Neuro-Symbolic Architecture](#neuro-symbolic-architecture--cis-scoring) · [Quick Start](#quick-start--deployment) · [Demo Credentials](#default-demo-credentials) · [API & Docs](#api-reference--automated-testing)
 
 </div>
 
@@ -26,24 +26,24 @@
 
 ---
 
-## 📖 Table of Contents
+## Table of Contents
 
-1. [Overview & Brand Philosophy](#-overview--brand-philosophy)
-2. [Visual Demo & UI Walkthrough](#-visual-demo--ui-walkthrough)
-3. [Complete Feature Matrix](#-complete-feature-matrix)
-4. [Neuro-Symbolic Architecture & CIS Scoring](#-neuro-symbolic-architecture--cis-scoring)
-5. [Real-World Evaluation & Benchmark Metrics](#-real-world-evaluation--benchmark-metrics)
-6. [Tech Stack](#-tech-stack)
-7. [Repository Structure](#-repository-structure)
-8. [Quick Start & Deployment](#-quick-start--deployment)
-9. [Default Demo Credentials](#-default-demo-credentials)
-10. [Docker Services & Port Matrix](#-docker-services--port-matrix)
-11. [API Reference & Automated Testing](#-api-reference--automated-testing)
-12. [Documentation Index & Contributors](#-documentation-index--contributors)
+1. [Overview & Brand Philosophy](#overview--brand-philosophy)
+2. [Visual Demo & UI Walkthrough](#visual-demo--ui-walkthrough)
+3. [Complete Feature Matrix](#complete-feature-matrix)
+4. [Neuro-Symbolic Architecture & CIS Scoring](#neuro-symbolic-architecture--cis-scoring)
+5. [Real-World Evaluation & Benchmark Metrics](#real-world-evaluation--benchmark-metrics)
+6. [Tech Stack](#tech-stack)
+7. [Repository Structure](#repository-structure)
+8. [Quick Start & Deployment](#quick-start--deployment)
+9. [Default Demo Credentials](#default-demo-credentials)
+10. [Docker Services & Port Matrix](#docker-services--port-matrix)
+11. [API Reference & Automated Testing](#api-reference--automated-testing)
+12. [Documentation Index & Contributors](#documentation-index--contributors)
 
 ---
 
-## 🏛️ Overview & Brand Philosophy
+## Overview & Brand Philosophy
 
 **CITRA** (*Essay Integrity Checker v2.0*) is a full-stack academic citation verification and bibliographic debugging platform developed as a Capstone Graduation Thesis (*Đồ án Tốt nghiệp CNTT*) at **Ton Duc Thang University (TDTU)**.
 
@@ -60,7 +60,7 @@ Large Language Models (LLMs) frequently hallucinate plausible-sounding reference
 
 ---
 
-## 📸 Visual Demo & UI Walkthrough
+## Visual Demo & UI Walkthrough
 
 > All screenshots below are captured directly from the live running platform (`1440×900 @ 2x Retina`) inspecting real undergraduate and research manuscripts.
 
@@ -120,7 +120,7 @@ Real-time health checks across GROBID, SQLite FTS5, and external scholarly APIs 
 
 ---
 
-## ✨ Complete Feature Matrix
+## Complete Feature Matrix
 
 | Domain | Capability | Implementation Details |
 | :--- | :--- | :--- |
@@ -135,7 +135,7 @@ Real-time health checks across GROBID, SQLite FTS5, and external scholarly APIs 
 
 ---
 
-## 🧠 Neuro-Symbolic Architecture & CIS Scoring
+## Neuro-Symbolic Architecture & CIS Scoring
 
 ### End-to-End Verification Pipeline
 
@@ -195,7 +195,7 @@ $$\text{CIS} = 100 \times \left( 0.35 \cdot S_{\text{validity}} + 0.25 \cdot S_{
 
 ---
 
-## 📊 Real-World Evaluation & Benchmark Metrics
+## Real-World Evaluation & Benchmark Metrics
 
 ### Live Verification Results Across Real Manuscripts (`reports/*.json`)
 
@@ -216,7 +216,7 @@ All 5 benchmark PDFs in the repository root were verified end-to-end with live m
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technologies |
 | :--- | :--- |
@@ -229,7 +229,7 @@ All 5 benchmark PDFs in the repository root were verified end-to-end with live m
 
 ---
 
-## 📂 Repository Structure
+## Repository Structure
 
 ```text
 essay-integrity-checker/
@@ -271,7 +271,7 @@ essay-integrity-checker/
 
 ---
 
-## 🚀 Quick Start & Deployment
+## Quick Start & Deployment
 
 ### Option 1: Full-Stack Docker Compose (Recommended)
 
@@ -279,7 +279,7 @@ Launch the entire 3-service stack (**React Web UI**, **FastAPI Backend**, and **
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/iannwendy/essay-integrity-checker.git
+git clone https://github.com/Pun-2510/neuro-symbolic-hallucinator.git
 cd essay-integrity-checker
 
 # 2. Copy environment configuration
@@ -348,7 +348,7 @@ python scripts/ingest_acl.py \
 
 ---
 
-## 🔐 Default Demo Credentials
+## Default Demo Credentials
 
 The database automatically seeds three role-based accounts on startup (`src/integrity_checker/db/session.py`) so you can immediately explore every portal:
 
@@ -360,7 +360,7 @@ The database automatically seeds three role-based accounts on startup (`src/inte
 
 ---
 
-## 🐳 Docker Services & Port Matrix
+## Docker Services & Port Matrix
 
 | Container Name | Service | Image / Build | Host Port | Internal Port | Purpose |
 | :--- | :--- | :--- | :---: | :---: | :--- |
@@ -370,7 +370,7 @@ The database automatically seeds three role-based accounts on startup (`src/inte
 
 ---
 
-## 🔌 API Reference & Automated Testing
+## API Reference & Automated Testing
 
 ### Key REST & SSE Endpoints (`/api/*`)
 
@@ -403,7 +403,7 @@ cd web && npm run build
 
 ---
 
-## 📚 Documentation Index & Contributors
+## Documentation Index & Contributors
 
 ### Architectural & Engineering Documentation (`docs/`)
 - [**`CLAUDE.md`**](./CLAUDE.md) — Developer & AI Agent quick-reference guide to the v2.0 architecture.
@@ -415,7 +415,7 @@ cd web && npm run build
 - [**`docs/IMPLEMENTATION_ROADMAP.md`**](./docs/IMPLEMENTATION_ROADMAP.md) — Phased implementation history from v1.0 prototype to v2.0 production platform.
 - [**`docs/reference/tai_lieu_tham_khao_TDTU.md`**](./docs/reference/tai_lieu_tham_khao_TDTU.md) — Ton Duc Thang University (TDTU) official citation and bibliography formatting guidelines.
 
-### 👥 Contributors — Capstone Graduation Thesis (ĐATN)
+### Contributors — Capstone Graduation Thesis (ĐATN)
 **Faculty of Information Technology — Ton Duc Thang University (TDTU)**
 
 | Full Name | Student ID | Role |
