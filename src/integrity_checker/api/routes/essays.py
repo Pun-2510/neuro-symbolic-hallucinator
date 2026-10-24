@@ -420,13 +420,26 @@ def get_essay_status(
     }
 
 
-def _serialize_essay_summary(repo: Repository, e: Any, dupes: list[int]) -> dict[str, Any]:
+def _serialize_essay_summary(
+    repo: Repository,
+    e: Any,
+    dupes: list[int],
+    verdicts_by_essay: dict[int, list[VerdictRecord]] | None = None,
+    in_text_counts_by_essay: dict[int, int] | None = None,
+) -> dict[str, Any]:
     """Serialize essay summary with aggregated CIS and citation counts."""
     import json
 
-    verdicts = repo.get_verdicts(e.id)
-    citations = repo.get_citations(e.id)
-    in_text_count = sum(1 for c in citations if c.citation_type in {"in_text", "numeric"})
+    verdicts = (
+        verdicts_by_essay.get(e.id, [])
+        if verdicts_by_essay is not None
+        else repo.get_verdicts(e.id)
+    )
+    if in_text_counts_by_essay is not None:
+        in_text_count = in_text_counts_by_essay.get(e.id, 0)
+    else:
+        citations = repo.get_citations(e.id)
+        in_text_count = sum(1 for c in citations if c.citation_type in {"in_text", "numeric"})
     num_citations = in_text_count or len(verdicts)
     num_verdicts = len(verdicts)
     num_verified = sum(1 for v in verdicts if v.label == "verified" or v.is_overridden)
@@ -460,6 +473,49 @@ def _serialize_essay_summary(repo: Repository, e: Any, dupes: list[int]) -> dict
     }
 
 
+def _serialize_essay_summaries_batch(
+    repo: Repository,
+    grouped: list[tuple[Any, list[int]]],
+) -> list[dict[str, Any]]:
+    """Batch-load verdicts and in-text citation counts for all canonical essays in 2 queries."""
+    if not grouped:
+        return []
+    from sqlalchemy import func
+
+    essay_ids = [e.id for e, _ in grouped]
+    verdicts_by_essay: dict[int, list[VerdictRecord]] = {eid: [] for eid in essay_ids}
+    for v in (
+        repo.session.query(VerdictRecord)
+        .filter(VerdictRecord.essay_id.in_(essay_ids))
+        .all()
+    ):
+        verdicts_by_essay.setdefault(v.essay_id, []).append(v)
+
+    in_text_counts_by_essay = {
+        row[0]: int(row[1] or 0)
+        for row in repo.session.query(
+            CitationRecord.essay_id, func.count(CitationRecord.id)
+        )
+        .filter(
+            CitationRecord.essay_id.in_(essay_ids),
+            CitationRecord.citation_type.in_(["in_text", "numeric"]),
+        )
+        .group_by(CitationRecord.essay_id)
+        .all()
+    }
+
+    return [
+        _serialize_essay_summary(
+            repo,
+            e,
+            dupes,
+            verdicts_by_essay=verdicts_by_essay,
+            in_text_counts_by_essay=in_text_counts_by_essay,
+        )
+        for e, dupes in grouped
+    ]
+
+
 @router.get("", response_model=list[dict])
 def list_essays(
     current_user: User = Depends(get_current_user),
@@ -471,20 +527,26 @@ def list_essays(
     The underlying duplicate ids are returned in ``duplicate_ids`` so the UI
     can offer cleanup without hiding the fact that they exist.
     """
+    from integrity_checker.db.models import Class, ClassMembership
+
     repo = Repository(db)
 
     if current_user.role == "admin":
         grouped = repo.get_all_essays_deduped()
     elif current_user.role == "teacher":
         visible_ids = {current_user.id}
-        for cls in repo.list_classes_for_teacher(current_user.id):
-            for student in repo.list_students_in_class(cls.id):
-                visible_ids.add(student.id)
+        for (student_id,) in (
+            db.query(ClassMembership.student_id)
+            .join(Class, Class.id == ClassMembership.class_id)
+            .filter(Class.teacher_id == current_user.id)
+            .all()
+        ):
+            visible_ids.add(student_id)
         grouped = repo.get_all_essays_deduped(user_ids=list(visible_ids))
     else:
         grouped = repo.get_all_essays_deduped(user_id=current_user.id)
 
-    return [_serialize_essay_summary(repo, e, dupes) for e, dupes in grouped]
+    return _serialize_essay_summaries_batch(repo, grouped)
 
 
 @router.get("/all", response_model=list[dict])
@@ -496,7 +558,7 @@ def list_all_essays(
     repo = Repository(db)
     grouped = repo.get_all_essays_deduped()
 
-    return [_serialize_essay_summary(repo, e, dupes) for e, dupes in grouped]
+    return _serialize_essay_summaries_batch(repo, grouped)
 
 
 @router.get("/{essay_id}")

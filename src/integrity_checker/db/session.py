@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool, StaticPool
@@ -92,11 +92,16 @@ def _run_inline_migrations(engine: Engine) -> None:
             render the sentence a citation appears in.
     """
     with engine.begin() as conn:
+        inspector = inspect(conn)
+
+        def _col_names(table_name: str) -> set[str]:
+            try:
+                return {col["name"] for col in inspector.get_columns(table_name)}
+            except Exception:
+                return set()
+
         # --- citations ---
-        cit_cols = {
-            row[1]
-            for row in conn.exec_driver_sql("PRAGMA table_info(citations)").fetchall()
-        }
+        cit_cols = _col_names("citations")
         if "mapping_status" not in cit_cols:
             conn.exec_driver_sql(
                 "ALTER TABLE citations ADD COLUMN mapping_status VARCHAR"
@@ -115,30 +120,21 @@ def _run_inline_migrations(engine: Engine) -> None:
             )
 
         # --- verdicts (v1.16 citation context) ---
-        verdict_cols = {
-            row[1]
-            for row in conn.exec_driver_sql("PRAGMA table_info(verdicts)").fetchall()
-        }
+        verdict_cols = _col_names("verdicts")
         if "context" not in verdict_cols:
             conn.exec_driver_sql(
                 "ALTER TABLE verdicts ADD COLUMN context TEXT"
             )
 
         # --- essays (class_id assignment) ---
-        essay_cols = {
-            row[1]
-            for row in conn.exec_driver_sql("PRAGMA table_info(essays)").fetchall()
-        }
+        essay_cols = _col_names("essays")
         if "class_id" not in essay_cols:
             conn.exec_driver_sql(
                 "ALTER TABLE essays ADD COLUMN class_id INTEGER REFERENCES classes(id)"
             )
 
         # --- users (v1.10 account management) ---
-        user_cols = {
-            row[1]
-            for row in conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()
-        }
+        user_cols = _col_names("users")
         if "email" not in user_cols:
             conn.exec_driver_sql("ALTER TABLE users ADD COLUMN email VARCHAR(255)")
             # Unique index (separate from column unique=True so existing DBs migrate)

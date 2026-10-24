@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Literal
 
-from sqlalchemy import Index, JSON, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Index, JSON, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -66,7 +66,7 @@ class Session(Base):
     __tablename__ = "sessions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -122,8 +122,8 @@ class EssayRecord(Base):
     filename: Mapped[str] = mapped_column(String, nullable=False)
     num_pages: Mapped[int] = mapped_column(Integer, default=0)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    class_id: Mapped[int | None] = mapped_column(ForeignKey("classes.id", ondelete="SET NULL"), nullable=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    class_id: Mapped[int | None] = mapped_column(ForeignKey("classes.id", ondelete="SET NULL"), nullable=True, index=True)
     # v1.2 — full pipeline output (JSON serialized)
     style_profile_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     cis_json: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -142,7 +142,7 @@ class CitationRecord(Base):
     __tablename__ = "citations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    essay_id: Mapped[int] = mapped_column(ForeignKey("essays.id", ondelete="CASCADE"), nullable=False)
+    essay_id: Mapped[int] = mapped_column(ForeignKey("essays.id", ondelete="CASCADE"), nullable=False, index=True)
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
     citation_type: Mapped[str] = mapped_column(String, default="unknown")
     style: Mapped[str] = mapped_column(String, default="unknown")
@@ -175,7 +175,7 @@ class VerdictRecord(Base):
     __tablename__ = "verdicts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    essay_id: Mapped[int] = mapped_column(ForeignKey("essays.id", ondelete="CASCADE"), nullable=False)
+    essay_id: Mapped[int] = mapped_column(ForeignKey("essays.id", ondelete="CASCADE"), nullable=False, index=True)
     citation_raw: Mapped[str] = mapped_column(Text, nullable=False)
     label: Mapped[str] = mapped_column(String, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
@@ -209,7 +209,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    verdict_id: Mapped[int] = mapped_column(ForeignKey("verdicts.id", ondelete="CASCADE"), nullable=False)
+    verdict_id: Mapped[int] = mapped_column(ForeignKey("verdicts.id", ondelete="CASCADE"), nullable=False, index=True)
     original_label: Mapped[str] = mapped_column(String, nullable=False)
     new_label: Mapped[str] = mapped_column(String, nullable=False)
     user: Mapped[str] = mapped_column(String, nullable=False)
@@ -230,7 +230,7 @@ class Class(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -248,10 +248,13 @@ class ClassMembership(Base):
     """Many-to-many User ↔ Class. Student enrolled in N classes."""
 
     __tablename__ = "class_memberships"
+    __table_args__ = (
+        UniqueConstraint("class_id", "student_id", name="uq_class_membership_class_student"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    class_id: Mapped[int] = mapped_column(ForeignKey("classes.id"), nullable=False)
-    student_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    class_id: Mapped[int] = mapped_column(ForeignKey("classes.id", ondelete="CASCADE"), nullable=False, index=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     class_: Mapped["Class"] = relationship(back_populates="memberships")

@@ -510,6 +510,15 @@ class Repository:
         user = self.session.get(User, user_id)
         if not user:
             return False
+        # Clean up classes taught by this user and detach essay references
+        for cls in self.list_classes_for_teacher(user_id):
+            self.session.query(EssayRecord).filter(EssayRecord.class_id == cls.id).update(
+                {EssayRecord.class_id: None}, synchronize_session=False
+            )
+            self.session.delete(cls)
+        self.session.query(EssayRecord).filter(EssayRecord.user_id == user_id).update(
+            {EssayRecord.user_id: None}, synchronize_session=False
+        )
         self.session.delete(user)
         self.session.flush()
         return True
@@ -767,6 +776,17 @@ class Repository:
     def save_cache_entry(
         self, cache_key: str, source: str, raw_response: str, matched_fields: str | None = None
     ) -> CitationCache:
+        existing = (
+            self.session.query(CitationCache)
+            .filter(CitationCache.cache_key == cache_key)
+            .first()
+        )
+        if existing is not None:
+            existing.source = source
+            existing.raw_response = raw_response
+            existing.matched_fields = matched_fields
+            self.session.flush()
+            return existing
         entry = CitationCache(
             cache_key=cache_key,
             source=source,
@@ -785,13 +805,20 @@ class Repository:
             self.session.flush()
 
     def get_cache_stats(self) -> dict:
-        total = self.session.query(CitationCache).count()
-        by_source: dict[str, int] = {}
-        for src in ["crossref", "openalex", "semantic_scholar", "arxiv", "core"]:
-            count = self.session.query(CitationCache).filter(CitationCache.source == src).count()
-            by_source[src] = count
-        total_hits = sum(
-            (e.hit_count or 0) for e in self.session.query(CitationCache).all()
+        total = self.session.query(func.count(CitationCache.id)).scalar() or 0
+        by_source: dict[str, int] = {
+            src: 0 for src in ["crossref", "openalex", "semantic_scholar", "arxiv", "core"]
+        }
+        for src, cnt in (
+            self.session.query(CitationCache.source, func.count(CitationCache.id))
+            .group_by(CitationCache.source)
+            .all()
+        ):
+            if src:
+                by_source[str(src)] = int(cnt or 0)
+        total_hits = int(
+            self.session.query(func.coalesce(func.sum(CitationCache.hit_count), 0)).scalar()
+            or 0
         )
 
         local_papers_count = 0

@@ -343,6 +343,46 @@ class TestDeleteUser:
         resp = client.delete("/api/users/99999", headers=auth_header(token))
         assert resp.status_code == 404
 
+    def test_admin_deletes_teacher_with_class_and_essays(self, clean_db):
+        """Deleting a teacher who owns a class and essays must not fail with IntegrityError."""
+        from integrity_checker.api.deps import get_pipeline
+        from integrity_checker.db.repository import Repository
+        from integrity_checker.db.session import get_session
+
+        assert get_pipeline() is get_pipeline()
+
+        token = get_admin_token()
+        client = TestClient(app)
+        create_resp = client.post(
+            "/api/users",
+            json={
+                "username": "teacher_to_del",
+                "password": "password123",
+                "role": "teacher",
+                "email": "tdel@example.com",
+            },
+            headers=auth_header(token),
+        )
+        assert create_resp.status_code == 200
+        teacher_id = create_resp.json()["id"]
+
+        session = get_session()
+        try:
+            repo = Repository(session)
+            cls = repo.create_class(name="TempClassToDelete", teacher_id=teacher_id)
+            repo.create_essay_with_user(
+                filename="teacher_essay.pdf",
+                num_pages=1,
+                user_id=teacher_id,
+                class_id=cls.id,
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        del_resp = client.delete(f"/api/users/{teacher_id}", headers=auth_header(token))
+        assert del_resp.status_code == 200
+
 
 # ---------------------------------------------------------------------------
 # Self-service endpoints
