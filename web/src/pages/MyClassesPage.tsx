@@ -191,9 +191,9 @@ export function MyClassesPage() {
           </span>
         </div>
 
-        <div className="p-5 space-y-3">
+        <div className="p-4 sm:p-5 space-y-3">
           {dashboard?.classes.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
+            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-8 sm:p-12 text-center">
               <p className="text-slate-700 dark:text-slate-300 font-medium">
                 {t('teacher.noClassesYet')}
               </p>

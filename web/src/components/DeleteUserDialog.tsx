@@ -83,7 +83,7 @@ export function DeleteUserDialog({
           </Alert>
         )}
 
-        <div className="flex justify-end gap-2.5">
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-2.5">
           <DialogClose asChild>
             <Button type="button" variant="secondary">
               Cancel

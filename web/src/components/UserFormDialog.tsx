@@ -155,7 +155,7 @@ export function UserFormDialog({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Full Name</Label>
               <Input
@@ -192,7 +192,7 @@ export function UserFormDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Role</Label>
               <Select
@@ -213,7 +213,7 @@ export function UserFormDialog({
               </Select>
             </div>
 
-            <div className="flex flex-col justify-end gap-2 pt-4">
+            <div className="flex flex-col justify-end gap-2 sm:pt-4">
               <div className="flex items-center gap-3">
                 <Switch
                   checked={isActive}
@@ -239,7 +239,7 @@ export function UserFormDialog({
             </div>
           </div>
 
-          <div className="flex justify-end gap-2.5 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-2.5 pt-2">
             <Button
               type="button"
               variant="secondary"

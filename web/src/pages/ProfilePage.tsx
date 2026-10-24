@@ -217,8 +217,8 @@ export function ProfilePage() {
           </div>
         </div>
 
-        <div className="p-6">
-          <div className="flex flex-col sm:flex-row sm:items-start gap-6">
+        <div className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-5 sm:gap-6">
             {/* Avatar upload */}
             <div className="flex flex-col items-center gap-3 shrink-0 sm:w-44 p-4 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800">
               <AvatarUpload
@@ -276,7 +276,7 @@ export function ProfilePage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-1">
+              <div className="flex flex-wrap items-center gap-3 pt-1">
                 <Button
                   onClick={handleProfileSave}
                   disabled={profileLoading}
@@ -316,7 +316,7 @@ export function ProfilePage() {
 
       {/* Change Password IDE Container */}
       <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
@@ -334,7 +334,7 @@ export function ProfilePage() {
           </span>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <form onSubmit={handlePasswordChange} className="space-y-4">
             {/* Hidden username field for accessibility (WCAG 1.3.5) */}
             <input

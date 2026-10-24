@@ -236,7 +236,7 @@ export function PendingReviewsPage() {
                   <button
                     key={r.verdict_id}
                     onClick={() => navigate(`/verification/report/${r.essay_id}`)}
-                    className="w-full text-left px-5 py-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 flex items-start gap-3.5 focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800/50 transition-colors group"
+                    className="w-full text-left px-4 sm:px-5 py-3.5 sm:py-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 flex items-start gap-3 focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-800/50 transition-colors group"
                   >
                     <span className="text-xs font-mono text-slate-400 dark:text-slate-500 pt-0.5 shrink-0">
                       #{String(idx + 1).padStart(2, '0')}

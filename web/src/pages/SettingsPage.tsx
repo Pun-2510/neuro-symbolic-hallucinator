@@ -185,7 +185,7 @@ export function SettingsPage(): JSX.Element {
             <span className="text-[11px] font-mono text-slate-400">01</span>
           </div>
 
-          <div className="p-6 flex-1">
+          <div className="p-4 sm:p-6 flex-1">
             <div>
               <Label className="input-label">{t('settings.theme')}</Label>
               <div className="mt-2.5">
@@ -216,13 +216,13 @@ export function SettingsPage(): JSX.Element {
             <span className="text-[11px] font-mono text-slate-400">02</span>
           </div>
 
-          <div className="p-6 flex-1 flex flex-col justify-center">
+          <div className="p-4 sm:p-6 flex-1 flex flex-col justify-center">
             <div className="grid grid-cols-2 gap-3">
               {languages.map((lang) => (
                 <button
                   key={lang.code}
                   onClick={() => changeLanguage(lang.code)}
-                  className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                  className={`flex items-center gap-2 sm:gap-3 p-3.5 sm:p-4 rounded-xl border-2 transition-all ${
                     currentLang === lang.code
                       ? 'border-indigo-500 bg-indigo-50/80 dark:bg-indigo-950/60 shadow-2xs'
                       : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -238,7 +238,7 @@ export function SettingsPage(): JSX.Element {
                     {lang.label}
                   </span>
                   {currentLang === lang.code && (
-                    <Check className="w-4 h-4 text-indigo-500 ml-auto" />
+                    <Check className="w-4 h-4 text-indigo-500 ml-auto shrink-0" />
                   )}
                 </button>
               ))}
@@ -249,7 +249,7 @@ export function SettingsPage(): JSX.Element {
 
       {/* Notifications Section */}
       <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
@@ -268,7 +268,7 @@ export function SettingsPage(): JSX.Element {
           </span>
         </div>
 
-        <div className="p-6 divide-y divide-slate-100 dark:divide-slate-800/80">
+        <div className="p-4 sm:p-6 divide-y divide-slate-100 dark:divide-slate-800/80">
           <div className="pb-4">
             <ToggleSetting
               label={t('settings.enableNotifications')}

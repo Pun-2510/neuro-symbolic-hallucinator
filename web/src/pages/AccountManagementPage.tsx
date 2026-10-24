@@ -317,39 +317,39 @@ export function AccountManagementPage() {
             </p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
+          <Table className="block md:table">
+            <TableHeader className="hidden md:table-header-group">
               <TableRow className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                <TableHead className="text-left py-3 px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <TableHead className="text-left py-3 px-3 lg:px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {t('admin.tableUser')}
                 </TableHead>
-                <TableHead className="text-left py-3 px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <TableHead className="text-left py-3 px-3 lg:px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {t('admin.tableRole')}
                 </TableHead>
-                <TableHead className="text-left py-3 px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <TableHead className="text-left py-3 px-3 lg:px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {t('admin.tableStatus')}
                 </TableHead>
-                <TableHead className="text-left py-3 px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <TableHead className="text-left py-3 px-3 lg:px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {t('admin.tableClass')}
                 </TableHead>
-                <TableHead className="text-left py-3 px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <TableHead className="hidden lg:table-cell text-left py-3 px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {t('admin.tableLastLogin')}
                 </TableHead>
-                <TableHead className="text-left py-3 px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <TableHead className="hidden lg:table-cell text-left py-3 px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {t('admin.tableMemberSince')}
                 </TableHead>
-                <TableHead className="text-right py-3 px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <TableHead className="text-right py-3 px-3 lg:px-4 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {t('admin.tableActions')}
                 </TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <TableBody className="block md:table-row-group divide-y divide-slate-100 dark:divide-slate-800">
               {filtered.map((u) => (
                 <TableRow
                   key={u.id}
-                  className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                  className="flex flex-col md:table-row p-4 md:p-0 gap-2.5 md:gap-0 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
                 >
-                  <TableCell className="py-3 px-4">
+                  <TableCell className="block md:table-cell p-0 md:py-3 md:px-3 lg:px-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl overflow-hidden bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 flex items-center justify-center shrink-0">
                         {u.avatar_url ? (
@@ -362,7 +362,7 @@ export function AccountManagementPage() {
                           <ImageIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                         )}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
                           {u.full_name || u.username}
                         </p>
@@ -373,34 +373,53 @@ export function AccountManagementPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="py-3 px-4">
+                  <TableCell className="flex md:table-cell items-center justify-between p-0 md:py-3 md:px-3 lg:px-4">
+                    <span className="md:hidden text-[11px] font-mono uppercase text-slate-400">
+                      {t('admin.tableRole')}
+                    </span>
                     <RoleBadge role={u.role} />
                   </TableCell>
-                  <TableCell className="py-3 px-4">
+                  <TableCell className="flex md:table-cell items-center justify-between p-0 md:py-3 md:px-3 lg:px-4">
+                    <span className="md:hidden text-[11px] font-mono uppercase text-slate-400">
+                      {t('admin.tableStatus')}
+                    </span>
                     <StatusBadge active={u.is_active} />
                   </TableCell>
-                  <TableCell className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">
-                    {u.institution ?? '—'}
+                  <TableCell className="flex md:table-cell items-center justify-between p-0 md:py-3 md:px-3 lg:px-4 text-sm text-slate-600 dark:text-slate-300">
+                    <span className="md:hidden text-[11px] font-mono uppercase text-slate-400">
+                      {t('admin.tableClass')}
+                    </span>
+                    <span className="truncate max-w-[180px]">{u.institution ?? '—'}</span>
                   </TableCell>
-                  <TableCell className="py-3 px-4 text-xs font-mono text-slate-600 dark:text-slate-300">
-                    {u.last_login_at
-                      ? new Date(u.last_login_at).toLocaleDateString(dateLocale, {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })
-                      : '—'}
+                  <TableCell className="flex md:hidden lg:table-cell items-center justify-between p-0 md:py-3 md:px-4 text-xs font-mono text-slate-600 dark:text-slate-300">
+                    <span className="md:hidden text-[11px] font-mono uppercase text-slate-400">
+                      {t('admin.tableLastLogin')}
+                    </span>
+                    <span>
+                      {u.last_login_at
+                        ? new Date(u.last_login_at).toLocaleDateString(dateLocale, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
+                        : '—'}
+                    </span>
                   </TableCell>
-                  <TableCell className="py-3 px-4 text-xs font-mono text-slate-600 dark:text-slate-300">
-                    {u.created_at
-                      ? new Date(u.created_at).toLocaleDateString(dateLocale, {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })
-                      : '—'}
+                  <TableCell className="flex md:hidden lg:table-cell items-center justify-between p-0 md:py-3 md:px-4 text-xs font-mono text-slate-600 dark:text-slate-300">
+                    <span className="md:hidden text-[11px] font-mono uppercase text-slate-400">
+                      {t('admin.tableMemberSince')}
+                    </span>
+                    <span>
+                      {u.created_at
+                        ? new Date(u.created_at).toLocaleDateString(dateLocale, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
+                        : '—'}
+                    </span>
                   </TableCell>
-                  <TableCell className="py-3 px-4">
+                  <TableCell className="block md:table-cell p-0 pt-2 md:pt-0 border-t border-slate-100 dark:border-slate-800/80 md:border-0 md:py-3 md:px-3 lg:px-4">
                     <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => handleEdit(u)}

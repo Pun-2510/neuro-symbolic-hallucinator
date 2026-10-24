@@ -194,8 +194,8 @@ export function AuditLogPage() {
             <p className="text-slate-500 text-sm font-mono">{t('common.loading')}</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader className="bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-mono uppercase text-slate-500">
+          <Table className="block sm:table">
+            <TableHeader className="hidden sm:table-header-group bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-mono uppercase text-slate-500">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="text-left px-4 py-3 font-semibold">
                   {t('admin.when')}
@@ -214,12 +214,12 @@ export function AuditLogPage() {
                 </TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <TableBody className="block sm:table-row-group divide-y divide-slate-100 dark:divide-slate-800">
               {entries.length === 0 ? (
-                <TableRow>
+                <TableRow className="block sm:table-row">
                   <TableCell
                     colSpan={5}
-                    className="px-4 py-10 text-center text-slate-500 font-mono text-xs"
+                    className="block sm:table-cell px-4 py-10 text-center text-slate-500 font-mono text-xs"
                   >
                     {t('admin.noAuditLogs')}
                   </TableCell>
@@ -228,21 +228,21 @@ export function AuditLogPage() {
                 entries.map((e) => (
                   <TableRow
                     key={e.id}
-                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
+                    className="flex flex-col sm:table-row p-4 sm:p-0 gap-1.5 sm:gap-0 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
                   >
-                    <TableCell className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap font-mono text-xs">
+                    <TableCell className="block sm:table-cell p-0 sm:px-4 sm:py-3 text-slate-600 dark:text-slate-400 sm:whitespace-nowrap font-mono text-xs">
                       {e.logged_at ? new Date(e.logged_at).toLocaleString() : '—'}
                     </TableCell>
-                    <TableCell className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100 font-mono text-xs">
+                    <TableCell className="block sm:table-cell p-0 sm:px-4 sm:py-3 font-medium text-slate-900 dark:text-slate-100 font-mono text-xs">
                       {e.user}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-slate-500 font-mono text-xs">
+                    <TableCell className="block sm:table-cell p-0 sm:px-4 sm:py-3 text-slate-500 font-mono text-xs">
                       <Badge variant="outline" className="font-mono text-xs">
                         #{e.verdict_id}
                       </Badge>
                     </TableCell>
-                    <TableCell className="px-4 py-3">
-                      <span className="font-mono text-xs">
+                    <TableCell className="block sm:table-cell p-0 sm:px-4 sm:py-3">
+                      <span className="font-mono text-xs break-all sm:break-normal">
                         <span className="text-rose-600 dark:text-rose-400">
                           {e.original_label}
                         </span>
@@ -252,7 +252,7 @@ export function AuditLogPage() {
                         </span>
                       </span>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-slate-600 dark:text-slate-400 max-w-xs truncate text-xs">
+                    <TableCell className="block sm:table-cell p-0 sm:px-4 sm:py-3 text-slate-600 dark:text-slate-400 sm:max-w-xs truncate text-xs">
                       {e.note ?? '—'}
                     </TableCell>
                   </TableRow>

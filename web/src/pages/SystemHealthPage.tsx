@@ -196,16 +196,16 @@ export function SystemHealthPage() {
 
       {/* IDE Container for Verdict Label Distribution */}
       <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
               <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
             </div>
             <Separator orientation="vertical" className="h-4" />
-            <Terminal className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-200">
+            <Terminal className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-200 truncate">
               telemetry_verdict_distribution.json
             </span>
           </div>
@@ -214,7 +214,7 @@ export function SystemHealthPage() {
           </span>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <h2 className="text-sm font-display font-semibold text-slate-900 dark:text-white mb-4">
             {t('admin.verdictsByLabel')}
           </h2>
