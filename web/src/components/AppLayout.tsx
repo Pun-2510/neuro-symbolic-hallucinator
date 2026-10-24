@@ -146,7 +146,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-50/80 dark:bg-slate-950 flex selection:bg-indigo-500/20 selection:text-indigo-600 dark:selection:text-indigo-300">
+    <div className="h-screen supports-[height:100dvh]:h-dvh overflow-hidden bg-slate-50/80 dark:bg-slate-950 flex selection:bg-indigo-500/20 selection:text-indigo-600 dark:selection:text-indigo-300">
       {/* Skip-to-content — visually hidden until focused. WCAG 2.1 Level A */}
       <a
         href="#main-content"
@@ -161,14 +161,37 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {t('nav.skipToContent')}
       </a>
 
-      {/* Mobile menu button */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        aria-label="Open navigation menu"
-        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 min-h-11 min-w-11 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg"
-      >
-        <Menu className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-      </button>
+      {/* Mobile & Tablet Sticky Header Bar (< lg) */}
+      <header className="lg:hidden fixed top-0 inset-x-0 z-30 h-14 px-3.5 sm:px-6 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <button
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open navigation menu"
+            className="p-2 min-h-10 min-w-10 rounded-xl bg-slate-100/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors flex items-center justify-center shrink-0"
+          >
+            <Menu className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+          </button>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-white dark:bg-white/95 p-1 flex items-center justify-center shadow-2xs ring-1 ring-slate-200/90 dark:ring-white/20 shrink-0">
+              <img
+                src="/citra-logo.png"
+                alt="CITRA"
+                className="w-full h-full object-contain select-none"
+              />
+            </div>
+            <span className="font-display text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
+              CITRA
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50/90 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-medium text-indigo-700 dark:text-indigo-300 capitalize">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+            {user?.role || 'user'}
+          </span>
+        </div>
+      </header>
 
       {/* Mobile overlay */}
       {mobileOpen && (
@@ -182,10 +205,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-50
-          w-72 h-screen shrink-0 overflow-hidden bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800/80
+          w-72 max-w-[85vw] h-screen supports-[height:100dvh]:h-dvh shrink-0 overflow-hidden bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800/80
           transform transition-transform duration-300 ease-out
           lg:transform-none
-          ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          ${mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'}
         `}
       >
         {/* Mobile close button */}
@@ -360,7 +383,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative">
+      <div className="flex-1 flex flex-col min-w-0 h-screen supports-[height:100dvh]:h-dvh overflow-hidden relative">
         {/* Subtle Architectural Background Aura */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div
@@ -377,7 +400,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="relative z-10 flex-1 overflow-y-auto p-6 lg:p-10 pt-16 lg:pt-8 focus:outline-none"
+          className="relative z-10 flex-1 overflow-y-auto px-3.5 sm:px-6 lg:px-10 pb-6 lg:pb-10 pt-[4.5rem] sm:pt-20 lg:pt-8 focus:outline-none"
         >
           <div className="max-w-6xl mx-auto">
             {children}
@@ -385,17 +408,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
 
         {/* Footer */}
-        <footer className="relative z-10 shrink-0 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-6 py-3">
-          <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <p className="flex items-center gap-2 font-medium">
+        <footer className="relative z-10 shrink-0 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-3.5 sm:px-6 py-2.5 sm:py-3">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 text-center sm:text-left">
+            <p className="flex items-center justify-center sm:justify-start gap-2 font-medium">
               <img
                 src="/citra-logo.png"
                 alt="CITRA"
-                className="h-4 w-4 object-contain dark:bg-white/95 dark:rounded-xs dark:p-0.5 select-none"
+                className="h-4 w-4 object-contain dark:bg-white/95 dark:rounded-xs dark:p-0.5 select-none shrink-0"
               />
-              {t('nav.footerBrand')}
+              <span className="truncate">{t('nav.footerBrand')}</span>
             </p>
-            <p className="font-mono text-[11px]">{t('nav.footerSystem')}</p>
+            <p className="font-mono text-[10px] sm:text-[11px] truncate max-w-full">{t('nav.footerSystem')}</p>
           </div>
         </footer>
       </div>

@@ -134,27 +134,27 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
       />
 
       {/* Modal Container */}
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xl w-full max-w-4xl h-[620px] max-h-[86vh] overflow-hidden flex flex-col animate-scale-in">
+      <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xl w-full max-w-4xl h-[620px] max-h-[88dvh] overflow-hidden flex flex-col animate-scale-in">
         {/* Full-Width Executive Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/90 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-white dark:bg-white/95 p-1.5 border border-slate-200/90 dark:border-white/20 flex items-center justify-center shadow-2xs">
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/90 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-white dark:bg-white/95 p-1.5 border border-slate-200/90 dark:border-white/20 flex items-center justify-center shadow-2xs shrink-0">
               <img
                 src="/citra-logo.png"
                 alt="CITRA Logo"
                 className="w-full h-full object-contain select-none"
               />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-display text-base font-semibold text-slate-900 dark:text-white tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-display text-sm sm:text-base font-semibold text-slate-900 dark:text-white tracking-tight truncate">
                   {t('help.title')}
                 </h2>
-                <span className="inline-flex items-center rounded-md bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-600/20">
+                <span className="inline-flex items-center rounded-md bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 text-[10px] sm:text-[11px] font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-600/20">
                   CITRA Docs
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">
                 {t('nav.academicVerification')} · {t('nav.footerSystem')}
               </p>
             </div>
@@ -183,8 +183,8 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
         {/* Split Body */}
         <div className="flex flex-1 min-h-0 overflow-hidden flex-col md:flex-row">
           {/* Sidebar Navigation */}
-          <div className="w-full md:w-64 shrink-0 bg-slate-50/60 dark:bg-slate-900/50 border-b md:border-b-0 md:border-r border-slate-200/80 dark:border-slate-800 p-3 flex flex-col justify-between">
-            <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible">
+          <div className="w-full md:w-64 shrink-0 bg-slate-50/60 dark:bg-slate-900/50 border-b md:border-b-0 md:border-r border-slate-200/80 dark:border-slate-800 p-2.5 sm:p-3 flex flex-col justify-between">
+            <nav className="flex md:flex-col gap-1 overflow-x-auto scrollbar-none md:overflow-x-visible">
               {sections.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
@@ -238,7 +238,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           </div>
 
           {/* Scrollable Content Pane */}
-          <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-slate-950/30">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-white dark:bg-slate-950/30">
             {activeSection === 'overview' && (
               <div className="space-y-6">
                 <div>
@@ -396,7 +396,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
                     {t('help.cisDesc')}
                   </p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div className="rounded-lg bg-white dark:bg-slate-900 p-2.5 border border-slate-200/80 dark:border-slate-800">
                       <div className="flex items-center justify-between text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
                         <span>80–100%</span>
@@ -475,12 +475,12 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/80 shrink-0">
-          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-            <ShieldCheck className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>{t('auth.footerNote')}</span>
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/80 shrink-0">
+          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 min-w-0">
+            <ShieldCheck className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span className="truncate">{t('auth.footerNote')}</span>
           </div>
-          <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs">
+          <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs shrink-0">
             {t('common.close')}
           </Button>
         </div>
