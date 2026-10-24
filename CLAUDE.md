@@ -1,199 +1,85 @@
-# CLAUDE.md — Essay Integrity Checker
+# CLAUDE.md — CITRA (`SourceLogic`) · Essay Integrity Checker
 
-## Mục đích
+## Purpose
 
-Đây là hướng dẫn cho Claude Code (AI assistant) khi làm việc trong repository này.
+Engineering reference and architectural guide for AI coding assistants and contributors working on **CITRA (`SourceLogic` — Essay Integrity Checker)**.
 
-## Dự án
+## Project Overview
 
-**Essay Integrity Checker** - Hệ thống kiểm tra tính toàn vẹn trích dẫn trong tiểu luận học thuật.
+**CITRA (`SourceLogic`)** is an explainable **Neuro-Symbolic Citation & Source Integrity Verification Platform** for academic manuscripts, theses, and research papers.
 
-- **Version:** v1.12 (2026-10-08)
-- **Tests:** 993 passed, 4 skipped
-- **Status:** MVP Ready
+- **Version:** v2.0 (Phase 5 Complete — 2026-10-24)
+- **Unit & Integration Tests:** `1,251 passed, 0 failed`
+- **Role-Based Web Workspace:** Student / Researcher (`Workspace`), Teacher (`Classroom`), Administrator (`Control`)
+- **Decision-Support Principle:** All outputs are strictly decision-support signals for academic reviewers; the system never automatically concludes academic misconduct.
 
-## Cấu trúc quan trọng
+## Repository Architecture
 
-```
+```text
 essay-integrity-checker/
 ├── src/integrity_checker/
-│   ├── api/              # FastAPI routes
-│   ├── config.py         # Settings (YAML + env)
-│   ├── database/         # Local SQLite + FTS5
-│   ├── export/           # Report export (JSON, CSV, PDF, DOCX)
-│   ├── extraction/       # PDF parsing (PyMuPDF + GROBID)
-│   ├── linking/         # Citation-Reference linking
-│   ├── logic/           # Neuro-symbolic rules, CIS
-│   ├── matching/        # Author/Title/Venue matching
-│   ├── models/          # Pydantic models
-│   ├── pipeline/        # Main pipeline
-│   └── retrieval/        # Multi-source retrieval
-├── tests/
-│   └── unit/           # Unit tests
-├── web/                # React frontend
-└── configs/            # Configuration
+│   ├── api/                  # FastAPI backend routes (auth, essays, report, verdicts, classes, admin)
+│   ├── config.py             # Centralized Pydantic settings (YAML + environment variables)
+│   ├── database/             # Local SQLite + FTS5 paper knowledge base (127K+ ACL & scholarly papers)
+│   ├── db/                   # Application database (SQLAlchemy: Users, Classes, Essays, Citations, Verdicts, AuditLogs)
+│   ├── evaluation/           # Metrics, Baselines (B0–B4), 2,500-sample Benchmark & Ablation Runner
+│   ├── export/               # Multi-format report exporters (JSON, CSV, PDF, DOCX, Class CSV/ZIP)
+│   ├── extraction/           # Hybrid PDF parsing (PyMuPDF + GROBID TEI XML + 11 modular regex styles)
+│   ├── linking/              # Bidirectional in-text <-> bibliography CitationLinker (7 link statuses)
+│   ├── logic/                # NeuroSymbolicChecker, SymbolicRules, HybridMLScorer, PlattCalibration, CISCalculator
+│   ├── matching/             # RapidFuzz lexical, Sentence-BERT semantic, AuthorMatcher, VenueNormalizer
+│   ├── models/               # Pydantic & dataclass domain models
+│   ├── pipeline/             # IntegrityPipeline end-to-end orchestrator
+│   └── retrieval/            # Domain-routed multi-source retrieval + Active HTTP/DOI LinkValidator
+├── web/                      # React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui frontend
+├── configs/                  # YAML configurations (default, Docker, production)
+├── docs/                     # Architectural specs, test plans, research reports & UI screenshots
+└── tests/                    # 1,251 unit, integration & E2E tests
 ```
 
-## Modular Citation Patterns (v1.6)
+## Two-Layer Orthogonal Output Model
 
-Citation format patterns are organized in a modular system:
+### Layer 1: Citation <-> Reference Linking (`CitationMappingStatus`)
+- `MATCHED` — In-text citation linked to a bibliography entry
+- `MISSING_REFERENCE` — In-text citation has no matching bibliography entry
+- `UNCITED_REFERENCE` — Bibliography entry is never cited in the body text
+- `IN_TEXT_MISMATCH` — Linked but author/year metadata diverges between body and bibliography
+- `DUPLICATE_REFERENCE` — Duplicate entries in the reference list
+- `AMBIGUOUS_MAPPING` — Multiple candidate references match the same in-text citation
+- `STYLE_INCONSISTENT` — Citation formatting deviates from the document's dominant style
 
-```
-src/integrity_checker/extraction/patterns/
-├── __init__.py      # Public API
-├── base.py          # CitationFormat Protocol, PatternType enum
-├── registry.py      # Format registry
-├── utils.py         # DOI/URL/Year patterns (single source)
-├── apa.py           # APA format (priority: 100)
-├── ieee.py          # IEEE format (priority: 90)
-├── vancouver.py     # Vancouver format (priority: 80)
-├── chicago.py       # Chicago format (placeholder)
-└── mla.py          # MLA format (placeholder)
-```
+### Layer 2: Scholarly Source Verification (`ValidationLabel`)
+| Label | Badge Color | Meaning |
+| :--- | :--- | :--- |
+| `VERIFIED` | Emerald (`#10B981`) | Confirmed across scholarly databases with matching metadata |
+| `METADATA_ERROR` | Amber (`#F59E0B`) | Work exists, but cited year, author, venue, or title has discrepancies |
+| `SUSPECTED_HALLUCINATION` | Red (`#EF4444`) | Fabricated DOI/URL, non-existent work across all scholarly indices, or severe content mismatch |
+| `UNRESOLVED` | Slate (`#64748B`) | Insufficient evidence to verify or refute (abstention zone) |
+| `RESOURCE` | Violet (`#8B5CF6`) | Non-article web/API documentation, software repositories, or legal statutes |
 
-Adding new formats:
-1. Create `new_format.py` implementing `CitationFormat` Protocol
-2. Set priority (higher = checked first)
-3. Implement `in_text_patterns`, `reference_patterns`
-4. Implement `parse_reference_entry()` and `is_valid_citation()`
-5. Auto-register via `register_format(YourFormat())`
+## Smart Multi-Source Retrieval Tiering
 
-See `docs/format_development_guide.md`
+`RetrievalOrchestrator` routes citations by domain signals and identifier availability:
+1. **Tier 0 (Instant Local):** Known Seminal Papers Whitelist + SQLite FTS5 Local Database (`data/local_papers.db`)
+2. **Tier 1 (Primary Scholarly APIs):**
+   - **Crossref REST API** — Exact DOI resolution & bibliographic search
+   - **OpenAlex REST API** — Broad scholarly graph & inverted-index abstract reconstruction
+   - **DBLP Search API** — Computer Science, AI, ML, NLP venues & CoRR
+   - **arXiv Atom API** — Direct arXiv ID & preprint verification
+   - **OpenLibrary + Google Books API** — Textbooks, monographs & multi-edition books
+   - **Europe PMC REST API** — PubMed/MEDLINE, biomedical, clinical, psychology & life sciences
+3. **Tier 2 (Fallback):** **SerpAPI (Google Scholar)** when primary tiers return no high-confidence match
+4. **Active Link & DOI Validator (`LinkValidator`):** Asynchronous `HEAD`/`GET` reachability checks for URLs and DOIs (`R-DEAD-LINK`, `R-URL-UNREACHABLE`).
 
-## Validation Labels (v1.4)
-
-Hệ thống trả về 5 loại verdict:
-
-| Label | Màu | Ý nghĩa |
-|-------|-----|----------|
-| VERIFIED | 🟢 xanh | Nguồn xác minh thành công |
-| METADATA_ERROR | 🟡 vàng | Metadata không khớp |
-| SUSPECTED_HALLUCINATION | 🔴 đỏ | Nghi ngờ bịa đặt |
-| UNRESOLVED | ⚪ xám | Không đủ bằng chứng |
-| RESOURCE | 🟣 tím | URL/Reference links |
-
-## Retrieval Sources
-
-Hệ thống sử dụng 4 nguồn truy hồi:
-- **Crossref** - Journal articles
-- **OpenAlex** - Wide coverage (OpenAlex API key)
-- **Semantic Scholar** - Supplement (S2 API key)
-- **CORE API** - Open access papers, preprints (CORE API key)
-
-## Known Papers Whitelist
-
-Papers được auto-verify dù APIs fail:
-- Vaswani et al. (2017) - Attention Is All You Need
-- Devlin et al. (2019) - BERT
-- Parikh et al. (2016) - Decomposable Attention Model
-- Mikolov et al. (2013) - Word2Vec
-- Kim (2017) - CNN for Sentence Classification
-- Sennrich et al. (2016) - Neural Machine Translation
-- Brown et al. (2020) - GPT-3
-- (xem `_KNOWN_PAPERS` trong `retrieval_orchestrator.py`)
-
-## Bug Fixes & Features (2026-10-08)
-
-| ID | Description | Files Changed |
-|----|-------------|---------------|
-| Fix 1 | FTS5 search for local DB | retrieval orchestrator |
-| Fix 2 | Crossref author parsing | crossref_client |
-| Fix 3 | OpenAlex API key support | openalex_client |
-| Fix 4 | Remove disk cache (use local DB only) | retrieval orchestrator, api |
-| Fix 5 | URL Classification as RESOURCE | models/validation, neuro_symbolic_checker, cis, pipeline |
-| Fix 6 | Add known papers (Parikh, Taylor, etc.) | retrieval_orchestrator |
-| Fix 7 | to_dict() None features crash | pipeline/integrity_pipeline.py |
-| Fix 8 | Replace arXiv với CORE API | coreapi_client, retrieval_orchestrator, config, tests |
-| Fix 9 | LOCAL_DB perfect match rule ordering | rules.py |
-| Fix 10 | GROBID Docker auto-detect | grobid_service.py, docker-compose.yml |
-| Fix 11 | Security checks (ownership) | verdicts.py, report.py |
-| Fix 12 | Verdict override persistence | repository.py, verdicts.py |
-| Fix 13 | SerpAPI httpx import | serpapi_client.py |
-| Fix 14 | Auth test isolation (env check runtime) | auth.py |
-| Feat 1 | DOCX Export | export/docx_exporter.py, api/routes/report.py, EssayPage.tsx |
-| Feat 2 | Help Modal System | components/HelpModal.tsx, AppLayout.tsx |
-| Feat 3 | Keyboard shortcuts (Ctrl+/) | AppLayout.tsx |
-
-## Test Commands
+## Common Commands
 
 ```bash
-# Run all tests
-source .venv/bin/activate && python -m pytest tests/ -v
+# Run full unit test suite (1,251 tests)
+.venv/bin/python -m pytest tests/unit/ -q
 
-# Run bug fix tests only
-python -m pytest tests/unit/test_bug_fixes.py -v
+# Run pipeline on a PDF and output JSON report to reports/<stem>.json
+.venv/bin/python -m integrity_checker.pipeline.integrity_pipeline thesis.pdf
 
-# Run with coverage
-python -m pytest tests/ --cov=src/integrity_checker --cov-report=html
-```
-
-## Pipeline Commands
-
-```bash
-# Run pipeline on PDF
-source .venv/bin/activate
-python -m integrity_checker.pipeline.integrity_pipeline your_paper.pdf --output report.json
-
-# Start backend
-uvicorn src.integrity_checker.api.main:app --reload --port 8000
-
-# Start frontend
-cd web && npm run dev
-```
-
-## Key Files
-
-| File | Description |
-|------|-------------|
-| `src/.../pipeline/integrity_pipeline.py` | Main pipeline orchestration |
-| `src/.../extraction/document_parser.py` | PDF parsing + reference extraction |
-| `src/.../linking/citation_linker.py` | Bidirectional citation-reference linking |
-| `src/.../logic/neuro_symbolic_checker.py` | Verification logic |
-| `src/.../logic/cis.py` | Citation Integrity Score calculation |
-| `src/.../retrieval/retrieval_orchestrator.py` | Multi-source retrieval + known papers |
-| `tests/unit/test_bug_fixes.py` | Bug fix tests |
-
-## Cache Locations
-
-- **Report cache:** `data/cache/reports/` (SHA-256 based)
-- **Local DB:** `data/local_papers.db` (SQLite + FTS5)
-- **Xóa cache:** `rm -rf data/cache data/local_papers.db`
-
-## Metrics hiện tại
-
-| File | CIS | Verified | Resource |
-|------|-----|----------|----------|
-| BERT.pdf | 97.43 | 93.1% | 5 |
-| Attention.pdf | 92.99 | 98.6% | 0 |
-| VietDepression.pdf | ~100 | 100% | 0 |
-
-## Known Issues
-
-1. **GROBID Docker** - 4 tests skipped (memory constraint)
-2. **Remaining suspected cases** - 1-2 cases/paper (có thể là legitimate hoặc truly hallucinated)
-
-## Important Notes
-
-1. **Disclaimer bắt buộc** - Mọi output phải có disclaimer
-2. **Không tự kết luận gian lận** - System là decision-support
-3. **SECURITY** - Không commit API keys, credentials
-
-## Conventions
-
-- Vietnamese comments for user-facing code
-- English comments for internal logic
-- PEP 8 style guide
-- Type hints everywhere
-
-## Git Workflow
-
-```bash
-# Tạo branch cho feature
-git checkout -b fix/bug-description
-
-# Commit với message rõ ràng
-git commit -m "fix: description (YYYY-MM-DD)"
-
-# Push
-git push origin fix/bug-description
+# Launch full Docker stack (GROBID :8070 + FastAPI :8000 + React Web :5173)
+docker compose up -d --build
 ```
