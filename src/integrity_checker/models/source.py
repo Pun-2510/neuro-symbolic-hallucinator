@@ -108,8 +108,12 @@ class SourceResult:
         if not fingerprints:
             return 0
 
-        # Đếm số nguồn trùng nhau trên mỗi fingerprint
-        count_by_fp: Counter[str] = Counter(fingerprints)
+        # Đếm số nguồn trùng nhau trên mỗi fingerprint (cộng thêm các nguồn đã được merge qua _dedupe_candidates)
+        count_by_fp: Counter[str] = Counter()
+        for c in self.candidates:
+            if c.found and (c.doi or c.title):
+                merged_n = int(getattr(c, "_consensus_count", 1) or 1)
+                count_by_fp[c.fingerprint()] += merged_n
 
         # Consensus = số nguồn đồng thuận trên paper được nhiều nguồn nhất
         # Nếu tất cả đều khác nhau → max count = 1

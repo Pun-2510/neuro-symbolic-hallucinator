@@ -266,23 +266,33 @@ class LinkingConfig(BaseModel):
 class SourceToggleConfig(BaseModel):
     crossref: bool = True
     openalex: bool = True
-    semantic_scholar: bool = True
+    dblp: bool = True
+    arxiv: bool = True
+    openlibrary: bool = True
+    europepmc: bool = True
     serpapi: bool = True  # Fallback khi các API free thất bại
-    coreapi: bool = True  # CORE API v3 (/v3/search/works/)
+    semantic_scholar: bool = False  # Replaced by DBLP/arXiv/OpenLibrary/EuropePMC
+    coreapi: bool = False  # Replaced by DBLP/arXiv/OpenLibrary/EuropePMC
 
 
 class RateLimitsConfig(BaseModel):
-    # CoreAPI: 5 req/10s = 0.5 req/s (free tier)
-    # Batch endpoint allows more requests per call
-    coreapi_per_sec: float = 0.5
-    # OpenAlex: high with API key (50 req/s)
+    # Crossref: moderate with polite pool (10 req/s)
+    crossref_per_sec: float = 10.0
+    # OpenAlex: high with polite pool (50 req/s)
     openalex_per_sec: float = 50.0
-    # Semantic Scholar: very conservative (1 req/s with API key, less without)
-    semantic_scholar_per_sec: float = 1.0
-    # Crossref: moderate with polite pool + API key (3 req/s recommended)
-    crossref_per_sec: float = 3.0
-    # SerpApi: conservative (rate limit depends on subscription)
+    # DBLP: CS/AI publication API (3 req/s polite rate)
+    dblp_per_sec: float = 3.0
+    # arXiv: preprint Atom API (2 req/s polite rate)
+    arxiv_per_sec: float = 2.0
+    # OpenLibrary / Google Books: book & textbook API (3 req/s)
+    openlibrary_per_sec: float = 3.0
+    # Europe PMC / PubMed: biomedical & psychology API (5 req/s)
+    europepmc_per_sec: float = 5.0
+    # SerpApi: conservative fallback (rate limit depends on subscription)
     serpapi_per_sec: float = 1.0
+    # Legacy sources (disabled by default)
+    semantic_scholar_per_sec: float = 1.0
+    coreapi_per_sec: float = 0.5
 
 
 class RetryBackoffConfig(BaseModel):

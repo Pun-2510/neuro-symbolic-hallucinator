@@ -233,13 +233,18 @@ class FeatureCalculator:
         if not c_clean or not cand_clean:
             return 0.0
 
-        # 1. Direct match (or match after removing hyphens between letters, e.g. Scikitlearn vs Scikit-learn)
+        # 1. Direct match (or match after removing hyphens/edition suffix, e.g. "Book Title, 5th Edition" vs "Book Title")
         if c_clean == cand_clean:
             return 1.0
         c_dehyph = re.sub(r"(?<=\w)-(?=\w)", "", c_clean)
         cand_dehyph = re.sub(r"(?<=\w)-(?=\w)", "", cand_clean)
         if c_dehyph == cand_dehyph:
             return 1.0
+        from integrity_checker.retrieval.openlibrary_client import OpenLibraryClient
+        c_no_ed = OpenLibraryClient.strip_edition_suffix(c_clean).lower().strip()
+        cand_no_ed = OpenLibraryClient.strip_edition_suffix(cand_clean).lower().strip()
+        if c_no_ed and cand_no_ed and c_no_ed == cand_no_ed:
+            return 0.98
 
         shorter, longer = (
             (c_clean, cand_clean)

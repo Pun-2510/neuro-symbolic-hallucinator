@@ -807,7 +807,16 @@ class Repository:
     def get_cache_stats(self) -> dict:
         total = self.session.query(func.count(CitationCache.id)).scalar() or 0
         by_source: dict[str, int] = {
-            src: 0 for src in ["crossref", "openalex", "semantic_scholar", "arxiv", "core"]
+            src: 0
+            for src in [
+                "crossref",
+                "openalex",
+                "dblp",
+                "arxiv",
+                "openlibrary",
+                "europepmc",
+                "serpapi",
+            ]
         }
         for src, cnt in (
             self.session.query(CitationCache.source, func.count(CitationCache.id))

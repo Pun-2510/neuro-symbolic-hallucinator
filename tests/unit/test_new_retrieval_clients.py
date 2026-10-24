@@ -349,3 +349,236 @@ class TestEuropePMCClient:
         assert res.year == "2001"
         assert res.external_ids.get("pmid") == "11556941"
         assert "<p>" not in (res.abstract or "")
+
+
+# ============================================================
+# 5. Smart Domain-Aware & Tiered Orchestrator Routing Tests
+# ============================================================
+
+
+class TestSmartDomainOrchestratorRouting:
+    """Verify RetrievalOrchestrator routes intelligently by domain and stops early when Tier 1 succeeds."""
+
+    def _make_mock_client(self, name: str, found: bool = False, **kwargs):
+        from unittest.mock import AsyncMock
+        from integrity_checker.models.source import SourceCandidate
+
+        client = AsyncMock()
+        client.name = name
+        client.lookup.return_value = SourceCandidate(
+            source_name=name,
+            found=found,
+            **kwargs,
+        )
+        return client
+
+    def test_classify_citation_domain_signals(self):
+        from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
+
+        c_arxiv = Citation(
+            raw_text="Hu et al. (2024). MiniCPM. arXiv:2404.06395.",
+            title="MiniCPM",
+            doi="10.48550/arXiv.2404.06395",
+        )
+        sig_arxiv = RetrievalOrchestrator.classify_citation_domain(c_arxiv)
+        assert sig_arxiv["is_arxiv_doi"] is True
+        assert sig_arxiv["is_arxiv"] is True
+
+        c_book = Citation(
+            raw_text="Flanagan, D. (2020). JavaScript: The Definitive Guide, 7th Edition. O'Reilly.",
+            title="JavaScript: The Definitive Guide, 7th Edition",
+            year="2020",
+        )
+        sig_book = RetrievalOrchestrator.classify_citation_domain(c_book)
+        assert sig_book["is_book"] is True
+
+        c_biomed = Citation(
+            raw_text="Kroenke et al. (2001). The PHQ-9: validity of a brief depression severity measure.",
+            title="The PHQ-9: validity of a brief depression severity measure",
+            year="2001",
+        )
+        sig_biomed = RetrievalOrchestrator.classify_citation_domain(c_biomed)
+        assert sig_biomed["is_biomed"] is True
+
+        c_cs = Citation(
+            raw_text="Beltagy et al. (2019). SciBERT: A Pretrained Language Model for Scientific Text. EMNLP.",
+            title="SciBERT: A Pretrained Language Model for Scientific Text",
+            venue="EMNLP",
+            year="2019",
+        )
+        sig_cs = RetrievalOrchestrator.classify_citation_domain(c_cs)
+        assert sig_cs["is_cs_ai"] is True
+
+    @pytest.mark.asyncio
+    async def test_tier1_consensus_skips_tier2_specialist_apis(self):
+        """When Tier 1 (crossref + openalex + dblp) achieves strong consensus for a CS paper,
+        Tier 2 (arxiv, openlibrary) and EuropePMC are NOT called (no blind fan-out).
+        """
+        from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
+
+        m_crossref = self._make_mock_client(
+            "crossref",
+            found=True,
+            doi="10.18653/v1/d19-1371",
+            title="SciBERT: A Pretrained Language Model for Scientific Text",
+            authors=["Iz Beltagy", "Kyle Lo", "Arman Cohan"],
+            year="2019",
+            confidence=0.95,
+        )
+        m_openalex = self._make_mock_client(
+            "openalex",
+            found=True,
+            doi="10.18653/v1/d19-1371",
+            title="SciBERT: A Pretrained Language Model for Scientific Text",
+            authors=["Iz Beltagy", "Kyle Lo", "Arman Cohan"],
+            year="2019",
+            abstract="We release SciBERT, a pretrained language model based on BERT.",
+            confidence=0.92,
+        )
+        m_dblp = self._make_mock_client(
+            "dblp",
+            found=True,
+            doi="10.18653/v1/d19-1371",
+            title="SciBERT: A Pretrained Language Model for Scientific Text",
+            authors=["Iz Beltagy", "Kyle Lo", "Arman Cohan"],
+            year="2019",
+            confidence=0.90,
+        )
+        m_arxiv = self._make_mock_client("arxiv", found=False, error="Should not be called")
+        m_openlib = self._make_mock_client("openlibrary", found=False, error="Should not be called")
+        m_epmc = self._make_mock_client("europepmc", found=False, error="Should not be called")
+
+        orch = RetrievalOrchestrator(
+            crossref=m_crossref,
+            openalex=m_openalex,
+            dblp=m_dblp,
+            arxiv=m_arxiv,
+            openlibrary=m_openlib,
+            europepmc=m_epmc,
+            use_local_db=False,
+            enable_link_validation=False,
+        )
+
+        cit = Citation(
+            raw_text="Beltagy et al. (2019). SciBERT: A Pretrained Language Model for Scientific Text. EMNLP.",
+            title="SciBERT: A Pretrained Language Model for Scientific Text",
+            authors=["Iz Beltagy"],
+            year="2019",
+            venue="EMNLP",
+        )
+        res = await orch.retrieve(cit)
+
+        # Tier 1 called
+        m_crossref.lookup.assert_called_once()
+        m_openalex.lookup.assert_called_once()
+        m_dblp.lookup.assert_called_once()
+        # Tier 2 and unrelated domain APIs NOT called!
+        m_arxiv.lookup.assert_not_called()
+        m_openlib.lookup.assert_not_called()
+        m_epmc.lookup.assert_not_called()
+
+        # Consensus count preserved across deduplicated candidates
+        assert res.consensus_count() == 3
+        best = res.best_candidate()
+        assert best is not None
+        assert best.abstract == "We release SciBERT, a pretrained language model based on BERT."
+
+    @pytest.mark.asyncio
+    async def test_tier1_miss_escalates_to_tier2_and_rescues_preprint(self):
+        """When Tier 1 fails to find a recent CS paper, Tier 2 (arXiv + OpenLibrary) is automatically triggered."""
+        from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
+
+        m_crossref = self._make_mock_client("crossref", found=False, error="Crossref: no results for query")
+        m_openalex = self._make_mock_client("openalex", found=False, error="OpenAlex: no results for query")
+        m_dblp = self._make_mock_client("dblp", found=False, error="DBLP: no results for query")
+        m_arxiv = self._make_mock_client(
+            "arxiv",
+            found=True,
+            doi="10.48550/arxiv.2401.12345",
+            title="A Novel LLM Hallucination Benchmark in 2024",
+            authors=["Wei Jin"],
+            year="2024",
+            confidence=0.92,
+        )
+        m_openlib = self._make_mock_client("openlibrary", found=False, error="OpenLibrary: no results for query")
+        m_epmc = self._make_mock_client("europepmc", found=False, error="Should not be called")
+
+        orch = RetrievalOrchestrator(
+            crossref=m_crossref,
+            openalex=m_openalex,
+            dblp=m_dblp,
+            arxiv=m_arxiv,
+            openlibrary=m_openlib,
+            europepmc=m_epmc,
+            use_local_db=False,
+            enable_link_validation=False,
+        )
+
+        cit = Citation(
+            raw_text="Jin, W. (2024). A Novel LLM Hallucination Benchmark in 2024.",
+            title="A Novel LLM Hallucination Benchmark in 2024",
+            authors=["Wei Jin"],
+            year="2024",
+        )
+        res = await orch.retrieve(cit)
+
+        # Both Tier 1 and Tier 2 were queried
+        m_crossref.lookup.assert_called_once()
+        m_arxiv.lookup.assert_called_once()
+        assert "arxiv" in res.sources_succeeded
+        assert res.best_candidate() is not None
+        assert res.best_candidate().year == "2024"
+
+    @pytest.mark.asyncio
+    async def test_book_routing_merges_edition_year_from_openlibrary(self):
+        """For a 5th-edition textbook, OpenLibrary's matched edition year (2018) overrides OpenAlex's 1st-edition year (2014)."""
+        from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
+
+        m_openlib = self._make_mock_client(
+            "openlibrary",
+            found=True,
+            title="Learning PHP, MySQL & JavaScript",
+            authors=["Robin Nixon"],
+            year="2018",
+            venue="O'Reilly Media",
+            confidence=0.88,
+        )
+        m_crossref = self._make_mock_client("crossref", found=False, error="Crossref: no results for query")
+        m_openalex = self._make_mock_client(
+            "openalex",
+            found=True,
+            title="Learning PHP, MySQL & JavaScript",
+            authors=["Robin Nixon"],
+            year="2014",
+            confidence=0.92,
+        )
+        m_dblp = self._make_mock_client("dblp", found=False)
+        m_arxiv = self._make_mock_client("arxiv", found=False)
+        m_epmc = self._make_mock_client("europepmc", found=False)
+
+        orch = RetrievalOrchestrator(
+            crossref=m_crossref,
+            openalex=m_openalex,
+            dblp=m_dblp,
+            arxiv=m_arxiv,
+            openlibrary=m_openlib,
+            europepmc=m_epmc,
+            use_local_db=False,
+            enable_link_validation=False,
+        )
+
+        cit = Citation(
+            raw_text="Robin Nixon (2018). Learning PHP, MySQL & JavaScript, 5th Edition. O'Reilly.",
+            title="Learning PHP, MySQL & JavaScript, 5th Edition",
+            authors=["Robin Nixon"],
+            year="2018",
+        )
+        res = await orch.retrieve(cit)
+
+        best = res.best_candidate()
+        assert best is not None
+        assert best.year == "2018"
+        assert res.consensus_count() == 2
+        m_arxiv.lookup.assert_not_called()
+        m_epmc.lookup.assert_not_called()
+

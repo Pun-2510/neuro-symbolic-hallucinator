@@ -86,8 +86,12 @@ retrieval:
   sources:
     crossref: true
     openalex: true
-    semantic_scholar: true
+    dblp: true
+    arxiv: true
+    openlibrary: true
+    europepmc: true
     serpapi: true
+    semantic_scholar: false
     coreapi: false
   per_source_top_k: 5
   parallel: true
@@ -99,10 +103,14 @@ retrieval:
       max_seconds: 120.0
       multiplier: 2.0
   rate_limits:
-    crossref_per_sec: 3.0
+    crossref_per_sec: 10.0
     openalex_per_sec: 50.0
-    semantic_scholar_per_sec: 1.0   # polite default
+    dblp_per_sec: 3.0
+    arxiv_per_sec: 2.0
+    openlibrary_per_sec: 3.0
+    europepmc_per_sec: 5.0
     serpapi_per_sec: 1.0
+    semantic_scholar_per_sec: 1.0
     coreapi_per_sec: 0.5
   contact_email: "noreply@citra.edu.vn"   # cho Crossref polite pool
 

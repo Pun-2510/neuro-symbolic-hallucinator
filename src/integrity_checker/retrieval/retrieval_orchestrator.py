@@ -29,10 +29,12 @@ from integrity_checker.config import get_settings
 from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate, SourceResult
-from integrity_checker.retrieval.coreapi_client import CoreAPIClient
+from integrity_checker.retrieval.arxiv_client import ArxivClient
 from integrity_checker.retrieval.base import BaseScholarClient
+from integrity_checker.retrieval.coreapi_client import CoreAPIClient
 from integrity_checker.retrieval.crossref_client import CrossrefClient
-from integrity_checker.retrieval.openalex_client import OpenAlexClient
+from integrity_checker.retrieval.dblp_client import DBLPClient
+from integrity_checker.retrieval.europepmc_client import EuropePMCClient
 from integrity_checker.retrieval.normalization import (
     author_key,
     author_keys,
@@ -40,6 +42,8 @@ from integrity_checker.retrieval.normalization import (
     normalize_doi,
     title_similarity,
 )
+from integrity_checker.retrieval.openalex_client import OpenAlexClient
+from integrity_checker.retrieval.openlibrary_client import OpenLibraryClient
 from integrity_checker.retrieval.rate_limiter import RateLimiter
 from integrity_checker.retrieval.semantic_scholar_client import SemanticScholarClient
 from integrity_checker.retrieval.serpapi_client import SerpApiClient
@@ -550,21 +554,62 @@ _VENUE_YEAR_KNOWN: dict[tuple[str, str], tuple[str, str]] = {
 }
 
 
-class RetrievalOrchestrator:
-    """Gộp kết quả từ Crossref + OpenAlex + Semantic Scholar + CoreAPI + SerpApi.
+# Domain routing regexes for Smart Multi-Stage RetrievalOrchestrator
+_BOOK_SIGNAL_RE = re.compile(
+    r"\b(?:"
+    r"(?:\d+(?:st|nd|rd|th)|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|revised|updated)\s+(?:ed\.?|edition)"
+    r"|isbn(?:-1[03])?"
+    r"|o['’]reilly|addison-wesley|prentice\s+hall|pearson|wiley|mcgraw-hill|manning\s+publications|apress|packt|no\s+starch"
+    r"|cambridge\s+university\s+press|oxford\s+university\s+press|mit\s+press|harvard\s+university\s+press|princeton\s+university\s+press"
+    r"|academic\s+press|crc\s+press|morgan\s+kaufmann|definitive\s+guide|textbook|nhà\s+xuất\s+bản|nxb"
+    r")\b",
+    re.IGNORECASE,
+)
 
-    Features v1.4:
-        - Local database (SQLite) cho fast lookup
-        - Auto-sync: thêm papers mới vào DB sau khi query thành công
-        - No disk cache: sử dụng local DB thay vì cache
-        - SerpApi fallback: gọi khi các API free thất bại
-        - CoreAPI: open access paper metadata (thay thế arXiv)
+_BIOMED_SIGNAL_RE = re.compile(
+    r"\b(?:"
+    r"pubmed|medline|lancet|jama|bmj|nejm|new\s+england\s+journal|plos\s+(?:one|medicine|biology)|nature\s+medicine"
+    r"|psychiatr\w*|psychol\w*|clinical|medical|medicine|patient\w*|health|depress\w*|mental\s+health|mental\s+disorder\w*"
+    r"|syndrome|therap\w*|disease\w*|epidemiol\w*|neuroimaging|pharmacol\w*|dsm-(?:iv|5|v)|icd-1[01]|phq-9|gad-7"
+    r"|world\s+health\s+organization|biomedical|pubmedbert|cardiol\w*|oncol\w*|pediatr\w*"
+    r")\b",
+    re.IGNORECASE,
+)
+
+_CS_AI_SIGNAL_RE = re.compile(
+    r"\b(?:"
+    r"ieee|acm|neurips|nips|icml|iclr|acl|emnlp|naacl|coling|conll|cvpr|iccv|eccv|aaai|ijcai|kdd|sigir|usenix|vldb|sigmod|icse|fse"
+    r"|neural\w*|deep\s+learning|machine\s+learning|transformer\w*|language\s+model\w*|llm\w*|bert|roberta|gpt|vit5|phobert"
+    r"|embedding\w*|attention|convolutional|reinforcement\s+learning|graph\s+neural|natural\s+language|computer\s+vision"
+    r"|sentiment|classification|algorithm\w*|software|database\w*|hallucination\w*|citation\w*|neuro-?symbolic|grobid|arxiv"
+    r"|data\s+mining|imbalanced\s+datasets|bm25|scibert|specter|simcse|factscore|selfcheckgpt|lora"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+class RetrievalOrchestrator:
+    """Smart domain-aware & tiered multi-source scholarly retrieval orchestrator.
+
+    Primary sources (no API keys required):
+        - Local database (SQLite FTS5) & Known Papers whitelist (Tier 0)
+        - Crossref REST API (DOI & journal/conference bibliography)
+        - OpenAlex REST API (wide scholarly graph & abstracts)
+        - DBLP Search API (Computer Science, AI, ML, NLP venues & CoRR)
+        - arXiv Atom API (exact arXiv IDs & recent AI/ML/CS/Math preprints)
+        - OpenLibrary + Google Books API (Books, ISBNs, multi-edition textbooks)
+        - Europe PMC REST API (PubMed/MEDLINE, biomedical, psychology, health)
+        - SerpApi Google Scholar (Last-resort fallback when free APIs find 0 matches)
     """
 
     def __init__(
         self,
         crossref: CrossrefClient | None = None,
         openalex: OpenAlexClient | None = None,
+        dblp: DBLPClient | None = None,
+        arxiv: ArxivClient | None = None,
+        openlibrary: OpenLibraryClient | None = None,
+        europepmc: EuropePMCClient | None = None,
         semantic_scholar: SemanticScholarClient | None = None,
         coreapi: CoreAPIClient | None = None,
         serpapi: SerpApiClient | None = None,
@@ -578,10 +623,25 @@ class RetrievalOrchestrator:
         settings_global = get_settings()
         settings = settings_global.retrieval
         contact_email = settings_global.contact_email or settings.contact_email
+
         self.crossref = crossref or CrossrefClient(contact_email=contact_email)
         self.openalex = openalex or OpenAlexClient(contact_email=contact_email)
-        self.semantic_scholar = semantic_scholar or SemanticScholarClient()
+        self.dblp = dblp or DBLPClient(contact_email=contact_email)
+        self.arxiv = arxiv or ArxivClient(contact_email=contact_email)
+        self.openlibrary = openlibrary or OpenLibraryClient(contact_email=contact_email)
+        self.europepmc = europepmc or EuropePMCClient(contact_email=contact_email)
+
+        # Legacy clients retained for backward compatibility when explicitly injected or enabled
+        self._s2_explicit = semantic_scholar is not None
         self._coreapi_explicit = coreapi is not None
+        self._new_clients_explicit = any(
+            c is not None for c in (dblp, arxiv, openlibrary, europepmc)
+        )
+        self._legacy_explicit_mode = (
+            (self._s2_explicit or self._coreapi_explicit)
+            and not self._new_clients_explicit
+        )
+        self.semantic_scholar = semantic_scholar or SemanticScholarClient()
         self.coreapi = coreapi or CoreAPIClient(contact_email=contact_email)
         self.serpapi = serpapi  # Lazy init - không tạo nếu không có API key
         self.parallel = parallel
@@ -601,13 +661,16 @@ class RetrievalOrchestrator:
         )
         self.link_validator = link_validator
 
-        # Rate limiters (only for enabled sources)
+        # Rate limiters for all sources
         self._rate_limiters: dict[str, RateLimiter] = {
             self.crossref.name: RateLimiter(settings.rate_limits.crossref_per_sec),
             self.openalex.name: RateLimiter(settings.rate_limits.openalex_per_sec),
+            self.dblp.name: RateLimiter(getattr(settings.rate_limits, "dblp_per_sec", 3.0)),
+            self.arxiv.name: RateLimiter(getattr(settings.rate_limits, "arxiv_per_sec", 2.0)),
+            self.openlibrary.name: RateLimiter(getattr(settings.rate_limits, "openlibrary_per_sec", 3.0)),
+            self.europepmc.name: RateLimiter(getattr(settings.rate_limits, "europepmc_per_sec", 5.0)),
             self.semantic_scholar.name: RateLimiter(settings.rate_limits.semantic_scholar_per_sec),
         }
-        # CoreAPI rate limiter if enabled or explicitly injected
         if settings.sources.coreapi or self._coreapi_explicit:
             self._rate_limiters[self.coreapi.name] = RateLimiter(settings.rate_limits.coreapi_per_sec)
         # SerpApi rate limiter (lazy init)
@@ -627,34 +690,249 @@ class RetrievalOrchestrator:
                 self._local_db = None
 
     def clients(self) -> list[BaseScholarClient]:
-        """Trả về danh sách clients theo thứ tự ưu tiên."""
-        settings = get_settings().retrieval
-        result = [self.crossref, self.openalex, self.semantic_scholar]
-        # Only include CoreAPI if enabled in settings (default: disabled due to free tier limits)
-        if settings.sources.coreapi:
+        """Trả về danh sách các active clients theo cấu hình."""
+        if self._legacy_explicit_mode:
+            settings = get_settings().retrieval
+            result = [self.crossref, self.openalex, self.semantic_scholar]
+            if settings.sources.coreapi or self._coreapi_explicit:
+                result.append(self.coreapi)
+            return result
+
+        src_cfg = get_settings().retrieval.sources
+        result: list[BaseScholarClient] = []
+        if src_cfg.crossref and self.crossref is not None:
+            result.append(self.crossref)
+        if src_cfg.openalex and self.openalex is not None:
+            result.append(self.openalex)
+        if getattr(src_cfg, "dblp", True) and self.dblp is not None:
+            result.append(self.dblp)
+        if getattr(src_cfg, "arxiv", True) and self.arxiv is not None:
+            result.append(self.arxiv)
+        if getattr(src_cfg, "openlibrary", True) and self.openlibrary is not None:
+            result.append(self.openlibrary)
+        if getattr(src_cfg, "europepmc", True) and self.europepmc is not None:
+            result.append(self.europepmc)
+        if (src_cfg.semantic_scholar or self._s2_explicit) and self.semantic_scholar is not None:
+            result.append(self.semantic_scholar)
+        if (src_cfg.coreapi or self._coreapi_explicit) and self.coreapi is not None:
             result.append(self.coreapi)
         return result
 
+    @classmethod
+    def classify_citation_domain(cls, citation: Citation) -> dict[str, bool]:
+        """Classify citation signals to route to the right specialist APIs without blind fan-out."""
+        is_arxiv_doi = cls.is_arxiv_doi(citation.doi)
+        arxiv_id = ArxivClient.extract_arxiv_id(citation)
+        combined_text = " ".join(
+            part
+            for part in (
+                citation.title or "",
+                citation.venue or "",
+                citation.raw_text or "",
+                citation.url or "",
+            )
+            if part
+        )
+        is_arxiv = bool(
+            is_arxiv_doi
+            or arxiv_id
+            or re.search(r"\barxiv\b|\bcorr\b", combined_text, re.IGNORECASE)
+        )
+        isbn = OpenLibraryClient.extract_isbn(citation)
+        is_book = bool(isbn or _BOOK_SIGNAL_RE.search(combined_text)) and not is_arxiv
+        is_biomed = bool(_BIOMED_SIGNAL_RE.search(combined_text))
+        is_cs_ai = bool(_CS_AI_SIGNAL_RE.search(combined_text))
+        return {
+            "is_arxiv_doi": is_arxiv_doi,
+            "is_arxiv": is_arxiv,
+            "is_book": is_book,
+            "is_biomed": is_biomed,
+            "is_cs_ai": is_cs_ai,
+        }
+
+    def _plan_retrieval_tiers(
+        self,
+        citation: Citation,
+    ) -> tuple[list[BaseScholarClient], list[BaseScholarClient]]:
+        """Build (tier1_clients, tier2_clients) for smart domain-aware staged execution.
+
+        - Tier 1 runs immediately in parallel (2–3 targeted sources).
+        - Tier 2 only runs if Tier 1 does not achieve strong verified consensus.
+        """
+        if self._legacy_explicit_mode:
+            use_coreapi = (
+                self._coreapi_explicit or get_settings().retrieval.sources.coreapi
+            )
+            if self.is_arxiv_doi(citation.doi):
+                t1 = [c for c in [self.semantic_scholar] if c is not None]
+                if use_coreapi and self.coreapi is not None:
+                    t1.append(self.coreapi)
+                return t1, []
+            t1 = [c for c in [self.crossref, self.openalex, self.semantic_scholar] if c is not None]
+            if use_coreapi and self.coreapi is not None:
+                t1.append(self.coreapi)
+            return t1, []
+
+        src_cfg = get_settings().retrieval.sources
+        enabled: dict[str, BaseScholarClient] = {}
+        if src_cfg.crossref and self.crossref is not None:
+            enabled["crossref"] = self.crossref
+        if src_cfg.openalex and self.openalex is not None:
+            enabled["openalex"] = self.openalex
+        if getattr(src_cfg, "dblp", True) and self.dblp is not None:
+            enabled["dblp"] = self.dblp
+        if getattr(src_cfg, "arxiv", True) and self.arxiv is not None:
+            enabled["arxiv"] = self.arxiv
+        if getattr(src_cfg, "openlibrary", True) and self.openlibrary is not None:
+            enabled["openlibrary"] = self.openlibrary
+        if getattr(src_cfg, "europepmc", True) and self.europepmc is not None:
+            enabled["europepmc"] = self.europepmc
+        if (src_cfg.semantic_scholar or self._s2_explicit) and self.semantic_scholar is not None:
+            enabled["semantic_scholar"] = self.semantic_scholar
+        if (src_cfg.coreapi or self._coreapi_explicit) and self.coreapi is not None:
+            enabled["coreapi"] = self.coreapi
+
+        def _pick(names: list[str]) -> list[BaseScholarClient]:
+            return [enabled[n] for n in names if n in enabled]
+
+        signals = self.classify_citation_domain(citation)
+
+        # 1. Explicit arXiv DOI (10.48550/arXiv.*): Crossref/OpenAlex DOI endpoints return 404
+        if signals["is_arxiv_doi"]:
+            tier1 = _pick(["arxiv", "dblp", "semantic_scholar", "coreapi"])
+            tier2 = _pick(["openalex"]) if citation.title else []
+            return tier1, tier2
+
+        # 2. Preprint / arXiv citation (by arXiv ID in URL/text or venue="arXiv")
+        if signals["is_arxiv"]:
+            tier1 = _pick(["arxiv", "dblp", "openalex"])
+            tier2 = _pick(["crossref"])
+            return tier1, tier2
+
+        # 3. Book / Textbook / Edition / ISBN citation
+        if signals["is_book"]:
+            tier1 = _pick(["openlibrary", "crossref", "openalex"])
+            tier2 = _pick(["dblp"]) if signals["is_cs_ai"] else []
+            return tier1, tier2
+
+        # 4. Biomedical / Psychology / Clinical / Public Health citation
+        if signals["is_biomed"]:
+            tier1 = _pick(["crossref", "openalex", "europepmc"])
+            tier2_names = ["dblp", "arxiv"] if signals["is_cs_ai"] else (["openlibrary"] if not citation.doi else [])
+            return tier1, _pick(tier2_names)
+
+        # 5. Computer Science / AI / ML / NLP / Software Engineering citation
+        if signals["is_cs_ai"]:
+            tier1 = _pick(["crossref", "openalex", "dblp"])
+            tier2 = _pick(["arxiv", "openlibrary"])
+            return tier1, tier2
+
+        # 6. General academic citation: start lean with Crossref + OpenAlex, escalate only if needed
+        tier1 = _pick(["crossref", "openalex"])
+        if citation.doi:
+            tier2 = _pick(["europepmc", "dblp"])
+        else:
+            tier2 = _pick(["dblp", "arxiv", "openlibrary", "europepmc"])
+        return tier1, tier2
+
+    @classmethod
+    def _is_tier1_sufficient(
+        cls,
+        valid_candidates: list[SourceCandidate],
+        citation: Citation,
+    ) -> bool:
+        """Return True when Tier 1 already produced a high-confidence, year-consistent match with consensus."""
+        found_cands = [c for c in valid_candidates if c.found and (c.title or c.doi)]
+        if not found_cands:
+            return False
+
+        cit_doi = normalize_doi(citation.doi) if citation.doi else None
+        cit_year_int: int | None = None
+        if citation.year and str(citation.year)[:4].isdigit():
+            cit_year_int = int(str(citation.year)[:4])
+        clean_cit_title = (
+            OpenLibraryClient.strip_edition_suffix(citation.title)
+            if citation.title
+            else ""
+        )
+
+        strong_sources: set[str] = set()
+        exact_id_matched = False
+
+        for cand in found_cands:
+            # Check title similarity
+            if clean_cit_title and cand.title:
+                cand_clean_title = OpenLibraryClient.strip_edition_suffix(cand.title)
+                sim = max(
+                    title_similarity(citation.title or "", cand.title),
+                    title_similarity(clean_cit_title, cand_clean_title),
+                )
+                if sim < 0.85:
+                    continue
+            elif clean_cit_title and not cand.title:
+                continue
+
+            # Check year consistency (if year disagrees by > 1 year, escalate to Tier 2 in case
+            # OpenLibrary has the exact textbook edition year or Crossref/arXiv has the published year)
+            if cit_year_int is not None:
+                if not cand.year or not str(cand.year)[:4].isdigit():
+                    continue
+                if abs(int(str(cand.year)[:4]) - cit_year_int) > 1:
+                    continue
+
+            strong_sources.add(cand.source_name)
+            if cit_doi and cand.doi and normalize_doi(cand.doi) == cit_doi:
+                exact_id_matched = True
+
+        # Sufficient if >= 2 independent sources strongly agree, or exact DOI/arXiv match with >= 2 found
+        if len(strong_sources) >= 2:
+            return True
+        if exact_id_matched and len(found_cands) >= 2 and len(strong_sources) >= 1:
+            return True
+        return False
+
+    async def _execute_client_batch(
+        self,
+        clients: list[BaseScholarClient],
+        citation: Citation,
+    ) -> list[SourceCandidate | BaseException]:
+        if not clients:
+            return []
+        lookup = (
+            self._lookup_with_cache_and_ratelimit
+            if self.cache is not None
+            else self._lookup_with_ratelimit
+        )
+        if self.parallel:
+            return await asyncio.gather(
+                *[lookup(c, citation) for c in clients],
+                return_exceptions=True,
+            )
+        results: list[SourceCandidate | BaseException] = []
+        for c in clients:
+            try:
+                results.append(await lookup(c, citation))
+            except Exception as exc:  # noqa: BLE001
+                results.append(exc)
+        return results
+
     async def retrieve(self, citation: Citation) -> SourceResult:
-        """Main retrieval entry point.
+        """Main retrieval entry point with smart domain-aware staged execution.
 
         Flow:
-            1. Check local database first
-            2. Query external APIs if DB miss
-            3. Sync result to local DB for future use
-
-        arXiv DOIs (10.48550/arXiv.XXX) được resolve qua:
-        - Semantic Scholar (resolves arXiv DOIs)
-        - CoreAPI (open access papers)
-
-        Crossref và OpenAlex trả về 404 cho arXiv DOIs → bỏ qua để tiết kiệm API calls.
+            1. Check local database first (Tier 0)
+            2. Check known seminal papers whitelist (Tier 0)
+            3. Stage 1 (Tier 1): Query primary + domain-matched APIs (2–3 sources)
+            4. Stage 2 (Tier 2): Escalate to specialist APIs (arXiv, OpenLibrary, EuropePMC, DBLP)
+               ONLY if Tier 1 did not achieve strong year-consistent consensus
+            5. Stage 3 (Tier 3): SerpApi Google Scholar fallback if 0 candidates found
+            6. Deduplicate, filter low-quality noise, and sync verified papers to local DB
         """
         # ===== 1. Check local database first =====
         if self._local_db is not None:
             local_result = self._lookup_local_db(citation)
             if local_result is not None:
                 logger.debug(f"Local DB HIT: {citation.raw_text[:50]}")
-                # Log query
                 local_candidate = local_result.best_candidate()
                 self._local_db.log_query(
                     {"doi": citation.doi, "title": citation.title},
@@ -674,63 +952,46 @@ class RetrievalOrchestrator:
                 self._sync_to_local_db(known_result.candidates, ["known_papers"])
             return known_result
 
-        # ===== 3. Query external APIs =====
-        # arXiv DOIs được resolve qua Semantic Scholar (+ CoreAPI nếu được bật/inject)
-        use_coreapi = (
-            self._coreapi_explicit or get_settings().retrieval.sources.coreapi
-        )
+        # ===== 3. Smart Multi-Stage External API Retrieval =====
+        tier1_clients, tier2_clients = self._plan_retrieval_tiers(citation)
 
-        if self.is_arxiv_doi(citation.doi):
-            # arXiv DOIs: use Semantic Scholar (+ CoreAPI if enabled)
-            clients = [self.semantic_scholar]
-            if use_coreapi and self.coreapi is not None:
-                clients.append(self.coreapi)
-            logger.debug(
-                f"arXiv DOI detected, skipping Crossref/OpenAlex: {citation.doi}"
-            )
-        else:
-            # Non-arXiv: use Crossref, OpenAlex, Semantic Scholar (+ CoreAPI if enabled)
-            clients = [self.crossref, self.openalex, self.semantic_scholar]
-            if use_coreapi and self.coreapi is not None:
-                clients.append(self.coreapi)
-
-        if self.parallel:
-            # Parallel lookup
-            lookup = self._lookup_with_cache_and_ratelimit if self.cache is not None else self._lookup_with_ratelimit
-            candidates = await asyncio.gather(
-                *[lookup(c, citation) for c in clients],
-                return_exceptions=True,
-            )
-        else:
-            candidates = []
-            for c in clients:
-                lookup = self._lookup_with_cache_and_ratelimit if self.cache is not None else self._lookup_with_ratelimit
-                try:
-                    candidates.append(await lookup(c, citation))
-                except Exception as exc:  # noqa: BLE001
-                    candidates.append(exc)
-
-        # Filter exceptions
         valid: list[SourceCandidate] = []
         succeeded: list[str] = []
         failed: dict[str, str] = {}
         sources_queried: list[str] = []
 
-        for client, cand in zip(clients, candidates):
-            sources_queried.append(client.name)
-            if isinstance(cand, Exception):
-                failed[client.name] = str(cand)
-                continue
-            if not isinstance(cand, SourceCandidate):
-                failed[client.name] = "client returned an invalid candidate"
-                continue
-            valid.append(cand)  # type: ignore[arg-type]
-            if cand.found:
-                succeeded.append(client.name)
-            elif cand.error:
-                failed[client.name] = cand.error
+        def _collect_batch(
+            batch_clients: list[BaseScholarClient],
+            batch_results: list[SourceCandidate | BaseException],
+        ) -> None:
+            for client, cand in zip(batch_clients, batch_results):
+                sources_queried.append(client.name)
+                if isinstance(cand, BaseException):
+                    failed[client.name] = str(cand)
+                    continue
+                if not isinstance(cand, SourceCandidate):
+                    failed[client.name] = "client returned an invalid candidate"
+                    continue
+                valid.append(cand)
+                if cand.found:
+                    succeeded.append(client.name)
+                elif cand.error:
+                    failed[client.name] = cand.error
 
-        deduped = self._dedupe_candidates(valid)
+        # Execute Tier 1
+        tier1_results = await self._execute_client_batch(tier1_clients, citation)
+        _collect_batch(tier1_clients, tier1_results)
+
+        # Escalate to Tier 2 ONLY when Tier 1 did not already achieve strong consensus
+        if tier2_clients and not self._is_tier1_sufficient(valid, citation):
+            logger.debug(
+                f"Tier 1 insufficient for '{(citation.title or citation.raw_text)[:45]}' "
+                f"(succeeded={succeeded}) -> escalating to Tier 2 {[c.name for c in tier2_clients]}"
+            )
+            tier2_results = await self._execute_client_batch(tier2_clients, citation)
+            _collect_batch(tier2_clients, tier2_results)
+
+        deduped = self._dedupe_candidates(valid, citation=citation)
 
         # ===== 4. SerpApi Fallback =====
         # Chỉ gọi SerpApi khi KHÔNG có candidate nào found
@@ -1277,9 +1538,11 @@ class RetrievalOrchestrator:
 
             # Passed all checks - keep this candidate
             filtered.append(cand)
-            # Only add to succeeded if this source was originally in succeeded list
-            if cand.source_name in succeeded:
-                filtered_succeeded.append(cand.source_name)
+            # Preserve all succeeded sources that agreed on this valid candidate
+            agreed_sources = getattr(cand, "_agreed_sources", None) or [cand.source_name]
+            for s_name in agreed_sources:
+                if s_name in succeeded and s_name not in filtered_succeeded:
+                    filtered_succeeded.append(s_name)
 
         # If ALL candidates were filtered, log a warning
         if not filtered and candidates:
@@ -1485,27 +1748,84 @@ class RetrievalOrchestrator:
                 logger.warning(f"Failed to sync to local DB: {e}")
 
     @staticmethod
-    def _dedupe_candidates(candidates: list[SourceCandidate]) -> list[SourceCandidate]:
-        """Dedupe by fingerprint (DOI > normalized title), keeping highest confidence and preserving abstract."""
+    def _dedupe_candidates(
+        candidates: list[SourceCandidate],
+        citation: Citation | None = None,
+    ) -> list[SourceCandidate]:
+        """Dedupe by fingerprint (DOI > normalized title), keeping highest confidence,
+        preserving abstract/edition year, and recording multi-source consensus count.
+        """
         bucket: dict[str, SourceCandidate] = {}
+        title_to_key: dict[str, str] = {}
+        sources_by_key: dict[str, set[str]] = {}
+
+        cit_year_int: int | None = None
+        if citation and citation.year and str(citation.year)[:4].isdigit():
+            cit_year_int = int(str(citation.year)[:4])
+
+        def _title_fp(title: str | None) -> str | None:
+            if not title:
+                return None
+            clean = OpenLibraryClient.strip_edition_suffix(title)
+            norm = "".join(ch for ch in clean.lower() if ch.isalnum())
+            return f"title:{norm[:120]}" if len(norm) >= 6 else None
+
+        def _year_matches(y_str: str | None) -> bool:
+            if cit_year_int is None or not y_str or not str(y_str)[:4].isdigit():
+                return False
+            return abs(int(str(y_str)[:4]) - cit_year_int) <= 1
+
         for c in candidates:
             fp = c.fingerprint()
             if not c.found:
-                # vẫn lưu failed candidate để debug
                 bucket.setdefault(f"raw:{id(c)}", c)
                 continue
-            if fp in bucket:
-                existing = bucket[fp]
-                # Keep candidate with higher confidence, preserving abstract if one has it
-                if c.confidence > existing.confidence:
-                    if not c.abstract and existing.abstract:
-                        c.abstract = existing.abstract
-                    bucket[fp] = c
-                else:
-                    if not existing.abstract and c.abstract:
-                        existing.abstract = c.abstract
+
+            t_fp = _title_fp(c.title)
+            # Link DOI-based candidate and title-only candidate (e.g. OpenLibrary vs OpenAlex)
+            canonical_key = fp
+            if fp not in bucket and t_fp and t_fp in title_to_key:
+                canonical_key = title_to_key[t_fp]
+            elif fp in bucket:
+                canonical_key = fp
+
+            if t_fp and t_fp not in title_to_key:
+                title_to_key[t_fp] = canonical_key
+
+            sources_by_key.setdefault(canonical_key, set())
+            if c.source_name:
+                sources_by_key[canonical_key].add(c.source_name)
+
+            if canonical_key in bucket:
+                existing = bucket[canonical_key]
+                # Merge complementary fields
+                primary, secondary = (c, existing) if c.confidence > existing.confidence else (existing, c)
+                if not primary.abstract and secondary.abstract:
+                    primary.abstract = secondary.abstract
+                if not primary.doi and secondary.doi:
+                    primary.doi = secondary.doi
+                if not primary.venue and secondary.venue:
+                    primary.venue = secondary.venue
+                if not primary.url and secondary.url:
+                    primary.url = secondary.url
+                if not primary.authors and secondary.authors:
+                    primary.authors = secondary.authors
+                # Preserve edition-matching year when one source (e.g. OpenLibrary) has the exact cited edition year
+                if not _year_matches(primary.year) and _year_matches(secondary.year):
+                    primary.year = secondary.year
+                if secondary.external_ids:
+                    merged_ext = dict(secondary.external_ids)
+                    merged_ext.update(primary.external_ids or {})
+                    primary.external_ids = merged_ext
+                bucket[canonical_key] = primary
             else:
-                bucket[fp] = c
+                bucket[canonical_key] = c
+
+        for key, cand in bucket.items():
+            if cand.found and key in sources_by_key:
+                cand._agreed_sources = list(sources_by_key[key])  # type: ignore[attr-defined]
+                cand._consensus_count = max(1, len(sources_by_key[key]))  # type: ignore[attr-defined]
+
         return list(bucket.values())
 
     async def _lookup_serpapi_fallback(self, citation: Citation) -> SourceCandidate | None:

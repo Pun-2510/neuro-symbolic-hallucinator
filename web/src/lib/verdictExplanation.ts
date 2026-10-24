@@ -3,10 +3,15 @@ import type { Verdict } from '@/api/client';
 const SOURCE_LABELS: Record<string, string> = {
   crossref: 'Crossref',
   openalex: 'OpenAlex',
+  dblp: 'DBLP',
+  arxiv: 'arXiv',
+  openlibrary: 'OpenLibrary / Google Books',
+  europepmc: 'Europe PMC (PubMed)',
+  serpapi: 'Google Scholar',
   s2: 'Semantic Scholar',
   semantic_scholar: 'Semantic Scholar',
-  arxiv: 'arXiv',
   core: 'CORE',
+  coreapi: 'CORE',
   local_db: 'the local library',
   known_papers: 'the known-papers library',
 };

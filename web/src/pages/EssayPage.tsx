@@ -430,20 +430,30 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
     known_papers: 'CSDL công trình kinh điển (Known Papers)',
     crossref: 'Crossref',
     openalex: 'OpenAlex',
+    dblp: 'DBLP',
+    arxiv: 'arXiv',
+    openlibrary: 'OpenLibrary / Google Books',
+    europepmc: 'Europe PMC (PubMed)',
+    serpapi: 'Google Scholar',
     s2: 'Semantic Scholar',
     semantic_scholar: 'Semantic Scholar',
-    arxiv: 'arXiv',
     core: 'CORE',
+    coreapi: 'CORE',
   };
   const sourceMapEn: Record<string, string> = {
     local_db: 'the local scholarly index (ACL / SQLite FTS5)',
     known_papers: 'the canonical Known Papers index',
     crossref: 'Crossref',
     openalex: 'OpenAlex',
+    dblp: 'DBLP',
+    arxiv: 'arXiv',
+    openlibrary: 'OpenLibrary / Google Books',
+    europepmc: 'Europe PMC (PubMed)',
+    serpapi: 'Google Scholar',
     s2: 'Semantic Scholar',
     semantic_scholar: 'Semantic Scholar',
-    arxiv: 'arXiv',
     core: 'CORE',
+    coreapi: 'CORE',
   };
 
   const fieldMapVi: Record<string, string> = {
