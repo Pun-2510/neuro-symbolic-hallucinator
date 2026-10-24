@@ -10,9 +10,10 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![GROBID](https://img.shields.io/badge/GROBID-0.8.0_TEI--XML-E34F26?style=for-the-badge)](https://github.com/kermitt2/grobid)
 [![Sentence-BERT](https://img.shields.io/badge/SBERT-MiniLM--L6--v2-FF6F00?style=for-the-badge)](https://sbert.net)
-[![SQLite FTS5](https://img.shields.io/badge/ACL_Anthology-127K+_Papers_FTS5-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://aclanthology.org)
+[![SQLite FTS5](https://img.shields.io/badge/ACL_Anthology-128K+_Papers_FTS5-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://aclanthology.org)
+[![Benchmark](https://img.shields.io/badge/Benchmark-80%2C000_Samples_%C2%B7_98.6%25_Acc_%C2%B7_0.041_ECE-6B21A8?style=for-the-badge)](./data/models/neuro_symbolic_benchmark_report.json)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
-[![Pytest](https://img.shields.io/badge/Unit_Tests-1%2C251_Passed-0A0A0A?style=for-the-badge&logo=pytest&logoColor=00E676)](./tests/unit)
+[![Pytest](https://img.shields.io/badge/Tests-1%2C304_Backend_%C2%B7_41_Frontend_Passed-0A0A0A?style=for-the-badge&logo=pytest&logoColor=00E676)](./tests)
 
 *An editorial-grade academic citation debugger and thesis integrity verification workspace engineered for researchers, instructors, and university committees — combining structural PDF parsing, smart domain-aware retrieval across 8 scholarly databases, and transparent 5-stage Neuro-Symbolic decision traces.*
 
@@ -126,8 +127,8 @@ Real-time health checks across GROBID, SQLite FTS5, and external scholarly APIs 
 | :--- | :--- | :--- |
 | **Document Parsing** | **Multi-Modal PDF & DOCX Extraction** | **GROBID 0.8.0 TEI-XML** deep structural parsing with automatic **PyMuPDF (`fitz`)** + `python-docx` fallback; supports Vietnamese & English section headers (`Tài liệu tham khảo`, `References`, `Bibliography`). |
 | **Citation Formats** | **11 Citation Styles + Vietnamese Legal Docs** | Auto-detects **IEEE** (`[1]`, `[1]-[3]`), **APA** (`(Smith et al., 2020)`), **Vancouver**, **Harvard**, **MLA**, **Chicago**, **ACM**, **Nature**, **Springer**, **Footnotes**, and **Vietnamese Legal Documents** (`Luật số`, `Nghị định`, `Thông tư` per TDTU standards). |
-| **Smart Retrieval** | **Domain-Aware 8-Source Federated Search** | Local **ACL Anthology SQLite FTS5** (`127,498+` papers) + **Crossref**, **OpenAlex**, **Semantic Scholar**, **ArXiv**, **PubMed**, **DBLP**, and **Docear** with dynamic domain routing (`general`, `cs_ai`, `biomedical`), global concurrency semaphores, and SQLite response caching. |
-| **Neuro-Symbolic Verification** | **8D Feature Vector + Hybrid ML + Symbolic Rules** | Computes 8 normalized similarity features (`title`, `author`, `year`, `venue`, `doi`, `arxiv`, `shingle`, `number_jaccard`), feeds a **Random Forest + Platt Scaling** scorer, and applies deterministic symbolic guardrails. |
+| **Smart Retrieval** | **Domain-Aware Federated Search & Active Link Validation** | Local **ACL Anthology SQLite FTS5** (`128,626` papers with `81,973` abstracts) + **Crossref**, **OpenAlex**, **DBLP**, **arXiv**, **OpenLibrary**, **Europe PMC**, and **SerpApi Google Scholar** fallback, paired with active **HTTP Link Validation** (`HTTP 200 OK`, `403 Restricted/Paywall`, `404 Dead Link`, `Fake Domain`). |
+| **Neuro-Symbolic Verification** | **16D Feature Vector + 23 Symbolic Rules + Platt Calibration** | Combines **Sentence-BERT (`all-MiniLM-L6-v2`)** title & multi-sentence abstract content alignment, **RapidFuzz**, **AuthorMatcher**, and **VenueNormalizer** with **23 deterministic Symbolic Rules** and a **Multinomial Logistic Regression + Logit-Space Platt Scaling** scorer trained on **80,000 paper-disjoint samples** (`Macro-F1 = 0.9777`, `ECE = 0.0408`). |
 | **Scoring Engine** | **5-Component Citation Integrity Score (`CIS`)** | Weighted composite score (`0–100`) combining Reference Validity (`35%`), Citation Mapping (`25%`), Metadata Accuracy (`15%`), Format Compliance (`15%`), and Bibliography Hygiene (`10%`) with critical failure caps. |
 | **Interactive IDE** | **4 Specialized Inspection Views** | **Bibliography Table** (side-by-side diff), **Logic Trace** (5-stage Neuro-Symbolic pipeline), **Consistency Matrix** (dangling & orphan detection), and **Document Context** (inline sentence highlights + SBERT semantic relevance). |
 | **Role-Based Portals** | **User, Teacher, and Admin Workflows** | JWT authentication, **Batch SSE Upload**, **Classroom Management** (`join_code`, cohort analytics), **Teacher Verdict Overrides**, and **Admin System Telemetry & Audit Logs**. |
@@ -197,7 +198,51 @@ $$\text{CIS} = 100 \times \left( 0.35 \cdot S_{\text{validity}} + 0.25 \cdot S_{
 
 ## Real-World Evaluation & Benchmark Metrics
 
-### Live Verification Results Across Real Manuscripts (`reports/*.json`)
+### 1. Large-Scale 80,000-Sample Neuro-Symbolic Benchmark & Ablation Study
+
+To rigorously evaluate the **Neuro-Symbolic Logic Checker**, **HybridMLScorer**, and **PlattCalibrator** without data leakage, we constructed an **80,000-sample scholarly benchmark** ([`scripts/train_neuro_symbolic_model.py`](./scripts/train_neuro_symbolic_model.py), full report in [`data/models/neuro_symbolic_benchmark_report.json`](./data/models/neuro_symbolic_benchmark_report.json)):
+
+- **Strict Paper-Disjoint Partitioning (`0% Paper Overlap`)**:
+  We load **80,000 distinct real scholarly papers** with complete metadata and abstracts from `data/local_papers.db` (`128,626` total papers, `81,973` with full abstracts) and partition the base papers **before** generating any perturbations or cross-paper chimeric fabrications:
+  - **Train Pool (`70%`)**: `56,000` distinct base papers
+  - **Validation Pool (`15%`)**: `12,000` distinct base papers *(used for hyperparameter tuning & Platt Scaling fit)*
+  - **Held-Out Test Pool (`15%`)**: `12,000` distinct base papers *(used exclusively for final evaluation)*
+- **15 Sub-Taxonomies Across 4 Canonical Classes**:
+  - **`VERIFIED` (`28,800` samples — `36%`)**: Canonical citations (`V1`), abbreviated `et al.` / initial-only author lists (`V2`), subtitle truncations (`V3`), and OCR noise / neural content-alignment rescues (`V4`).
+  - **`SUSPECTED_HALLUCINATION` (`24,000` samples — `30%`)**: Complete LLM fabrications with zero scholarly records (`H1`), chimeric LLM keyword-spliced titles (`H2`), fabricated/non-existent DOIs (`H3`), and dead `HTTP 404` / fake-domain URLs or abstract-contradicting claims (`H4`).
+  - **`METADATA_ERROR` (`17,600` samples — `22%`)**: Publication year mismatches $|\Delta\text{year}| \ge 2$ (`M1`), wrong/swapped author lists (`M2`), valid DOIs with corrupted titles (`M3`), partial title alterations (`M4`), and multi-field / domain-exception discrepancies (`M5`).
+  - **`UNRESOLVED` (`9,600` samples — `12%`)**: Ambiguous grey-zone candidates (`0.40 ≤ title_sim < 0.60`, `U1`/`U2`) requiring human-in-the-loop faculty review.
+- **Authentic Feature Extraction**: Every pair is evaluated using real **Sentence-BERT (`all-MiniLM-L6-v2`)** embeddings (`>228,000` unique texts encoded on GPU), **`RapidFuzz`** token-set ratios, **`AuthorMatcher`**, and **`VenueNormalizer`**.
+
+#### Ablation Study on Held-Out Test Split ($N = 12,000$ Distinct Papers)
+
+| Method / Baseline | Description | Accuracy | Macro-Precision | Macro-Recall | **Macro-F1** |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **`B0` (`doi_only`)** | Exact DOI match only | `30.23%` | `0.2235` | `0.3766` | `0.2187` |
+| **`B3` (`embedding_only`)** | Pure neural `Sentence-BERT` cosine threshold on title | `64.89%` | `0.4507` | `0.5082` | `0.4565` |
+| **`B1` (`single_source_crossref`)** | Single-source lookup (`Crossref` only) | `69.65%` | `0.5546` | `0.5683` | `0.5336` |
+| **`B4` (`no_calibration`)** | Multi-feature linear combination without abstention band | `77.26%` | `0.5841` | `0.6357` | `0.6010` |
+| **`B2` (`fuzzy_only`)** | Lexical `RapidFuzz` title + `AuthorJaccard` only | `78.26%` | `0.5975` | `0.6470` | `0.6134` |
+| **`B5` (`ml_hybrid`)** | `HybridMLScorer` (Multinomial Logistic Regression on 16D Neuro-Symbolic features) | `98.53%` | `0.9875` | `0.9699` | **`0.9777`** |
+| **`Proposed` (`Neuro-Symbolic`)** | **Multi-Source Consensus + Neural Content Alignment + HTTP Link Check + 23 Symbolic Rules + Calibration** | **`98.59%`** | **`0.9850`** | **`0.9707`** | **`0.9767`** |
+
+> **Key Scientific Findings from the Ablation Study**:
+> 1. **Why Pure Neural (`B3`, `Macro-F1 = 0.4565`) Fails on LLM Hallucinations**: When LLMs fabricate chimeric references using plausible domain terminology, raw `Sentence-BERT` cosine similarity remains artificially elevated while ignoring publication year errors, author swaps, and dead links.
+> 2. **Why Single-Source (`B1`, `Macro-F1 = 0.5336`) is Insufficient**: Relying solely on Crossref misses arXiv preprints, DBLP computer science proceedings, OpenLibrary book monographs, and Europe PMC biomedical articles.
+> 3. **Why Neuro-Symbolic Rules + Hybrid ML (`Proposed` & `B5`) Excel**: Combining 16D neuro-symbolic interaction features with deterministic symbolic guardrails (`R-NO-SCHOLARLY-RECORD`, `R-NONEXISTENT-DOI`, `R-DEAD-URL`, `R-CONTENT-MISMATCH`, `R-BOOK-EDITION-VERIFIED`) achieves **`98.59%` accuracy** with full rule-level explainability (`0.0%` false-positive hallucination accusations on verified papers).
+
+#### Confidence Calibration Performance (Logit-Space Platt Scaling on $N = 12,000$ Test Samples)
+
+Fitted Platt parameters on the `12,000`-sample Validation split: $a = 1.9526$, $b = 0.8335$ ([`data/models/neuro_symbolic_weights.json`](./data/models/neuro_symbolic_weights.json)).
+
+| Configuration | Macro-F1 | **ECE** *(Expected Calibration Error)* | **Brier Score** | Coverage @ `90%` Acc | Coverage @ `50%` Acc |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Neuro-Symbolic (Uncalibrated Raw Confidence)** | `0.9647` | `0.2162` | `0.0787` | `98.61%` | `100.00%` |
+| **Neuro-Symbolic (Platt-Calibrated Confidence)** | **`0.9647`** | **`0.0408`** *(↓ **5.3×** error)* | **`0.0141`** *(↓ **5.6×** error)* | **`98.61%`** | **`100.00%`** |
+
+---
+
+### 2. Live End-to-End Verification Results Across Real PDF Manuscripts (`reports/*.json`)
 
 All 5 benchmark PDFs in the repository root were verified end-to-end with live multi-source scholarly retrieval (`use_report_cache=False`):
 
@@ -223,9 +268,9 @@ All 5 benchmark PDFs in the repository root were verified end-to-end with live m
 | **Frontend (`web/`)** | React 18.3, TypeScript 5.8, Vite 6, Tailwind CSS 3.4, Radix UI Primitives, Lucide Icons, Newsreader + Plus Jakarta Sans + JetBrains Mono |
 | **Backend API (`src/integrity_checker/api/`)** | Python 3.11+, FastAPI, Uvicorn, Pydantic v2, SQLAlchemy 2.0, JWT Auth (`python-jose`, `passlib[bcrypt]`), Server-Sent Events (SSE) |
 | **Document Parsing & NLP** | GROBID 0.8.0 (TEI-XML REST Service), PyMuPDF (`fitz`), `python-docx`, `RapidFuzz`, `ftfy`, `langdetect` |
-| **Neuro-Symbolic & ML Engine** | `sentence-transformers` (`all-MiniLM-L6-v2`), `scikit-learn` (Random Forest + Platt Scaling `CalibratedClassifierCV`), 8D Feature Engineering |
-| **Scholarly Knowledge & APIs** | SQLite FTS5 (`127,498+` ACL Anthology papers), Crossref, OpenAlex, Semantic Scholar, ArXiv, PubMed (NCBI Entrez), DBLP, Docear |
-| **Testing & DevOps** | Pytest (`1,251` unit tests), Playwright E2E, Docker & Docker Compose |
+| **Neuro-Symbolic & ML Engine** | `sentence-transformers` (`all-MiniLM-L6-v2` on MPS/GPU), `scikit-learn` (`HybridMLScorer` Multinomial Logistic Regression + Logit-Space `PlattCalibrator`), 16D Feature Engineering, 23 Deterministic Symbolic Rules |
+| **Scholarly Knowledge & APIs** | SQLite FTS5 (`128,626` papers with `81,973` abstracts), Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, Europe PMC, SerpApi Google Scholar, Active HTTP `LinkValidator` |
+| **Testing & DevOps** | Pytest (`1,304` backend tests), Vitest (`41` frontend tests), Playwright E2E, Docker & Docker Compose |
 
 ---
 
@@ -259,11 +304,11 @@ essay-integrity-checker/
 │   │   │                               # ConsistencyCheck, DocumentInspector, Teacher*, Admin*
 │   │   └── services/                   # Typed API client & authentication context
 │   └── package.json
-├── scripts/                            # Dataset ingest (`ingest_acl.py`), benchmark runners, ML training scripts
+├── scripts/                            # Dataset ingest (`ingest_acl.py`), 80K ML training (`train_neuro_symbolic_model.py`)
 ├── tests/
-│   ├── unit/                           # 1,251 fast isolated unit tests across all modules
+│   ├── unit/                           # 1,304 fast isolated backend unit & integration tests
 │   ├── integration/                    # Full-pipeline integration tests
-│   └── evaluation/                     # 2,500-sample benchmark evaluation suite & baseline comparators
+│   └── evaluation/                     # 80,000-sample benchmark evaluation suite & baseline comparators
 ├── docs/                               # Deep-dive architecture, roadmap, and TDTU reference standards
 │   └── screenshots/                    # High-resolution live UI screenshots
 └── reports/                            # Verified JSON audit reports for the 5 benchmark PDFs
@@ -386,19 +431,19 @@ The database automatically seeds three role-based accounts on startup (`src/inte
 | `POST` | `/api/teacher/essays/{id}/override` | Teacher human-in-the-loop override for a reference validation label |
 | `GET` | `/api/admin/system-health` | Live telemetry across GROBID, SQLite FTS5, and external scholarly APIs |
 
-### Running the Automated Test Suite
+### Running the Automated Test Suite & 80,000-Sample Benchmark
 
-The repository includes **1,251 fast, isolated unit tests** covering extraction, style detection, 8-source smart retrieval, 8D feature matching, symbolic rules, CIS calculation, and API endpoints:
+The repository includes **1,304 backend unit/integration tests** and **41 frontend Vitest tests** covering extraction, style detection, federated retrieval, HTTP link validation, 16D feature matching, 23 symbolic rules, Platt calibration, CIS calculation, and API/UI components:
 
 ```bash
-# Run the complete unit test suite (1,251 passed)
-pytest tests/unit/ -q
+# Run the complete backend test suite (1,304 passed)
+pytest tests/ -q
 
-# Run specific verification module tests
-pytest tests/unit/test_reference_verifier.py tests/unit/test_candidate_matcher.py -v
+# Re-train & evaluate the 80,000-sample paper-disjoint Neuro-Symbolic benchmark
+python scripts/train_neuro_symbolic_model.py
 
-# Run frontend TypeScript & production build check
-cd web && npm run build
+# Run frontend TypeScript check, Vitest unit tests (41 passed), & production build
+cd web && npx tsc --noEmit && npm test -- --run && npm run build
 ```
 
 ---
