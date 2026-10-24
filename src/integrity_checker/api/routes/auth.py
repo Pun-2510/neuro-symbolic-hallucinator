@@ -26,20 +26,25 @@ _USERNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 
 
 def _is_demo_enabled() -> bool:
-    """Check if demo users should be enabled at runtime."""
-    app_env = os.getenv("APP_ENV", "").lower()
-    demo_enabled = os.getenv("DEMO_USERS_ENABLED", "").lower()
+    """Check if demo users should be enabled at runtime (never in production)."""
+    settings = get_settings()
+    app_env = (os.getenv("APP_ENV") or settings.app.env or "").strip().lower()
+    demo_enabled = os.getenv("DEMO_USERS_ENABLED", "").strip().lower()
+
+    # Never allow demo users in production
+    if app_env in ("production", "prod", "live"):
+        return False
 
     # Disabled explicitly
     if demo_enabled in ("false", "0", "no"):
         return False
 
-    # Enabled explicitly
+    # Enabled explicitly (in non-production)
     if demo_enabled in ("true", "1", "yes"):
         return True
 
     # Auto-enable in test/dev environments
-    if app_env in ("test", "development", "dev"):
+    if app_env in ("test", "testing", "development", "dev") or is_test_runtime():
         return True
 
     return False
@@ -618,8 +623,12 @@ def get_me(current_user: User = Depends(get_current_user)):
 def get_latest_dev_email(email: str = Query(..., min_length=3)):
     """Dev/test-only helper to inspect the latest transactional email sent to an address."""
     settings = get_settings()
-    app_env = os.getenv("APP_ENV", settings.app.env).lower()
-    if app_env in ("production", "prod", "live") and not settings.app.debug:
+    app_env = (os.getenv("APP_ENV") or settings.app.env or "").strip().lower()
+    if app_env in ("production", "prod", "live"):
+        raise HTTPException(status_code=404, detail="Not found")
+    if app_env not in ("development", "dev", "test", "testing") and not is_test_runtime():
+        raise HTTPException(status_code=404, detail="Not found")
+    if not settings.app.debug and not is_test_runtime():
         raise HTTPException(status_code=404, detail="Not found")
 
     target = email.strip().lower()

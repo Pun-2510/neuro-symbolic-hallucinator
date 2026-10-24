@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import html
 import logging
+import os
 import smtplib
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -283,10 +284,14 @@ class EmailService:
             delivered_via_smtp=False,
         )
 
-        # Keep last 100 emails in memory for tests & diagnostics
-        if len(self.outbox) >= 100:
-            self.outbox.pop(0)
-        self.outbox.append(record)
+        # Keep last 100 emails in memory for dev/test & diagnostics only (never in production)
+        raw_cfg_env = getattr(getattr(settings, "app", None), "env", "")
+        cfg_env = raw_cfg_env if isinstance(raw_cfg_env, str) else ""
+        app_env = (os.getenv("APP_ENV") or cfg_env).strip().lower()
+        if app_env not in ("production", "prod", "live"):
+            if len(self.outbox) >= 100:
+                self.outbox.pop(0)
+            self.outbox.append(record)
 
         # Skip external network SMTP in pytest (unless force_smtp=True) or reserved RFC 2606 domains
         if (is_test_runtime() and not force_smtp) or (

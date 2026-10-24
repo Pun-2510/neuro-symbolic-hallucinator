@@ -177,11 +177,21 @@ def _run_inline_migrations(engine: Engine) -> None:
 
 
 def _seed_default_users(engine: Engine) -> None:
-    """Ensure default demo accounts (admin, teacher, user) exist in the main DB."""
+    """Ensure default demo accounts (admin, teacher, user) exist in the main DB (dev/test only)."""
     if is_test_runtime() or not is_main_app_db_url(str(engine.url)):
         return
-    demo_enabled = os.getenv("DEMO_USERS_ENABLED", "").lower()
+    settings = get_settings()
+    app_env = (os.getenv("APP_ENV") or settings.app.env or "").strip().lower()
+    if app_env in ("production", "prod", "live"):
+        return
+    demo_enabled = os.getenv("DEMO_USERS_ENABLED", "").strip().lower()
     if demo_enabled in ("false", "0", "no"):
+        return
+    if app_env not in ("development", "dev", "test", "testing") and demo_enabled not in (
+        "true",
+        "1",
+        "yes",
+    ):
         return
 
     import bcrypt

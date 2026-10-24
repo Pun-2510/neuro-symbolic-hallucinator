@@ -328,3 +328,45 @@ class TestForgotPasswordAndResetFlow:
         )
         assert resp.status_code == 200
         assert len(email_svc.outbox) == 0
+
+
+class TestProductionSecurityGuards:
+    def test_dev_latest_email_blocked_in_production_even_when_debug_true(self, monkeypatch):
+        client = TestClient(app)
+        email_svc = get_email_service()
+        email_svc.send_activation_email(
+            to_email="victim@example.com",
+            username="victim",
+            full_name="Victim",
+            raw_token="secret_tok_999",
+        )
+        # In test mode, dev endpoint works
+        dev_resp = client.get("/api/auth/dev/latest-email?email=victim@example.com")
+        assert dev_resp.status_code == 200
+        assert dev_resp.json()["token"] == "secret_tok_999"
+
+        # In production mode (even if debug=True), endpoint must return 404
+        monkeypatch.setenv("APP_ENV", "production")
+        prod_resp = client.get("/api/auth/dev/latest-email?email=victim@example.com")
+        assert prod_resp.status_code == 404
+
+    def test_email_outbox_not_populated_in_production(self, monkeypatch):
+        email_svc = get_email_service()
+        email_svc.clear_outbox()
+        monkeypatch.setenv("APP_ENV", "production")
+
+        email_svc.send_activation_email(
+            to_email="produser@example.com",
+            username="produser",
+            full_name="Prod User",
+            raw_token="prod_tok_123",
+        )
+        assert len(email_svc.outbox) == 0
+
+    def test_demo_users_disabled_in_production(self, monkeypatch):
+        from integrity_checker.api.routes.auth import _is_demo_enabled
+
+        monkeypatch.setenv("APP_ENV", "production")
+        monkeypatch.setenv("DEMO_USERS_ENABLED", "true")
+        assert _is_demo_enabled() is False
+
