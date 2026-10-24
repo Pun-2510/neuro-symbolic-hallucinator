@@ -32,11 +32,14 @@ from typing import Union
 from integrity_checker.matching.author_parser import Author
 
 # Multi-token particles (compound last names) — theo §1.1
-_PARTICLES = {
-    "van", "de", "der", "von", "den", "das", "der", "ten",
-    "du", "le", "la", "di", "el", "al", "st", "st.",
-    "nguyễn", "trần", "lê", "hoàng", "huỳnh", "phan", "võ", "đặng",  # VN
+# Note: "le" and "la" are French particles ("Le Pen") but also common Vietnamese/Asian
+# standalone surnames ("Lê", "La"), so they are only stripped when followed by another token.
+_PURE_PARTICLES = {
+    "van", "de", "der", "von", "den", "das", "ten",
+    "du", "di", "el", "al", "st", "st.",
 }
+_AMBIGUOUS_PARTICLES = {"le", "la"}
+_PARTICLES = _PURE_PARTICLES | _AMBIGUOUS_PARTICLES
 
 # Strip punctuation EXCEPT apostrophe (which joins words like O'Brien, D'Angelo)
 _PUNCT_RE = re.compile(r"[^\w\s']", re.UNICODE)
@@ -83,11 +86,11 @@ def _split_camel_author(name: str) -> str:
 
 
 def _fold_diacritics(text: str) -> str:
-    """Fold diacritics: 'Nguyễn' → 'Nguyen'.
+    """Fold diacritics: 'Nguyễn' → 'Nguyen', 'Đặng' → 'Dang'.
 
-    Dùng NFD + filter combining marks. Reverse nếu cần original.
+    Dùng NFD + filter combining marks + Vietnamese Đ/đ replacement.
     """
-    nfd = unicodedata.normalize("NFD", text)
+    nfd = unicodedata.normalize("NFD", text.replace("đ", "d").replace("Đ", "D"))
     return "".join(c for c in nfd if unicodedata.category(c) != "Mn")
 
 
@@ -99,7 +102,21 @@ def _strip_punctuation(text: str) -> str:
     return _PUNCT_RE.sub(" ", text)
 
 
-def _canonicalize_last_name(name: str) -> str:
+def _strip_leading_particles(tokens: list[str]) -> list[str]:
+    """Strip leading surname particles while preserving standalone 'Le'/'La' surnames."""
+    res = list(tokens)
+    while res:
+        head = res[0]
+        if head in _PURE_PARTICLES:
+            res.pop(0)
+        elif head in _AMBIGUOUS_PARTICLES and len(res) > 1:
+            res.pop(0)
+        else:
+            break
+    return res
+
+
+def _canonicalize_last_name(name: str, *, fold_diacritics: bool = True) -> str:
     """Canonicalize last_name cho matching.
 
     Handles:
@@ -107,7 +124,7 @@ def _canonicalize_last_name(name: str) -> str:
         - No-comma (IEEE): "J. K. Smith" → last_name = "smith"
         - Multi-word: "van der Berg" → "berg" (strip leading particles)
         - Vietnamese: "Nguyễn Bảo Minh" → "minh" (last token if no comma)
-        - Diacritics: "Nguyễn" → "nguyen"
+        - Diacritics: "Nguyễn" → "nguyen", "Đặng" → "dang", "Lê, L." → "le"
 
     Returns:
         Canonical last_name (lowercase, no diacritics, no particles).
@@ -115,33 +132,28 @@ def _canonicalize_last_name(name: str) -> str:
     if not name:
         return ""
     name = _split_camel_author(name)
-    # Normalize + fold
-    s = _fold_diacritics(name).lower()
     has_comma = "," in name
-    s = _strip_punctuation(s)
-    # Normalize whitespace + remove lone apostrophes (not within words)
-    s = _LONE_APOSTROPHE_RE.sub(" ", s)
-    s = _WHITESPACE_RE.sub(" ", s).strip()
-    if not s:
-        return ""
-    tokens = s.split()
 
     if has_comma:
-        # APA-like: "Smith, J." → "smith" is first token
-        # Note: sometimes comma in middle like "Smith, J. K." → still first token
-        # Strip particles from start
-        while tokens and tokens[0] in _PARTICLES:
-            tokens.pop(0)
+        # APA-like: "Smith, J." or "van der Berg, J." or "Pouget-Abadie, J."
+        surname_part = name.split(",", 1)[0]
+        s = (_fold_diacritics(surname_part) if fold_diacritics else surname_part).lower()
+        s = _strip_punctuation(s)
+        s = _LONE_APOSTROPHE_RE.sub(" ", s)
+        s = _WHITESPACE_RE.sub(" ", s).strip()
+        if not s:
+            return ""
+        tokens = _strip_leading_particles(s.split())
         if not tokens:
             return ""
-        return tokens[0]
+        return tokens[-1]
 
     # No comma: take LAST non-initial token
     # E.g. "Smith J. K." → ["smith", "j", "k"] → "smith" (last non-initial)
     # E.g. "J. K. Smith" → ["j", "k", "smith"] → "smith" (also last)
     # E.g. "John Smith" → ["john", "smith"] → "smith"
     # E.g. "Ziwei Ji" → ["ziwei", "ji"] → "ji" (2-letter TitleCase surname preserved)
-    raw_folded = _fold_diacritics(name)
+    raw_folded = _fold_diacritics(name) if fold_diacritics else name
     alpha_chars = [c for c in raw_folded if c.isalpha()]
     all_caps_name = bool(alpha_chars) and all(c.isupper() for c in alpha_chars)
     raw_tokens = raw_folded.split()
@@ -151,8 +163,18 @@ def _canonicalize_last_name(name: str) -> str:
         first_clean = _WHITESPACE_RE.sub(
             " ", _LONE_APOSTROPHE_RE.sub(" ", _strip_punctuation(raw_tokens[0].lower()))
         ).strip()
-        if first_clean in _PARTICLES:
+        if first_clean in _PURE_PARTICLES:
             raw_tokens.pop(0)
+        elif first_clean in _AMBIGUOUS_PARTICLES and len(raw_tokens) > 1:
+            # Check if remaining tokens have at least one non-initial token
+            has_other_surname = any(
+                not _is_initial_token(rt, all_caps_name=all_caps_name)
+                for rt in raw_tokens[1:]
+            )
+            if has_other_surname:
+                raw_tokens.pop(0)
+            else:
+                break
         else:
             break
     if not raw_tokens:
@@ -175,7 +197,7 @@ def _canonicalize_last_name(name: str) -> str:
     return last_non_initial if last_non_initial else (fallback_tokens[-1] if fallback_tokens else "")
 
 
-def _author_to_last_name(author: Union[Author, str]) -> str:
+def _author_to_last_name(author: Union[Author, str], *, fold_diacritics: bool = True) -> str:
     """Extract last_name string từ Author or str.
 
     Args:
@@ -192,14 +214,14 @@ def _author_to_last_name(author: Union[Author, str]) -> str:
         # normalize_author for ambiguous cases like "Alice Doe" where VN
         # heuristic incorrectly takes first token).
         last_name = str(author)
-    return _canonicalize_last_name(last_name)
+    return _canonicalize_last_name(last_name, fold_diacritics=fold_diacritics)
 
 
-def _to_last_name_set(authors: list) -> set[str]:
+def _to_last_name_set(authors: list, *, fold_diacritics: bool = True) -> set[str]:
     """Convert list[Author|str] → set[canonical last_name]."""
     result: set[str] = set()
     for a in authors:
-        ln = _author_to_last_name(a)
+        ln = _author_to_last_name(a, fold_diacritics=fold_diacritics)
         if ln:
             result.add(ln)
     return result
@@ -228,8 +250,8 @@ def author_match_score(
         0.0–1.0. 1.0 = perfect match; 0.0 = no overlap.
         Returns 0.0 nếu 1 trong 2 lists rỗng.
     """
-    cited_set = _to_last_name_set(cited)
-    cand_set = _to_last_name_set(candidate)
+    cited_set = _to_last_name_set(cited, fold_diacritics=fold_diacritics)
+    cand_set = _to_last_name_set(candidate, fold_diacritics=fold_diacritics)
     if not cited_set or not cand_set:
         return 0.0
 
@@ -273,8 +295,8 @@ def author_match_details(
             - only_cited: list[last_name] chỉ có ở cited
             - only_candidate: list[last_name] chỉ có ở candidate
     """
-    cited_set = _to_last_name_set(cited)
-    cand_set = _to_last_name_set(candidate)
+    cited_set = _to_last_name_set(cited, fold_diacritics=fold_diacritics)
+    cand_set = _to_last_name_set(candidate, fold_diacritics=fold_diacritics)
     matched = sorted(cited_set & cand_set)
     only_cited = sorted(cited_set - cand_set)
     only_cand = sorted(cand_set - cited_set)

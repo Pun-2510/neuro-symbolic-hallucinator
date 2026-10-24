@@ -79,7 +79,10 @@ class SourceResult:
     api_exhausted: bool = False
 
     def best_candidate(self) -> Optional[SourceCandidate]:
-        """Trả về candidate tốt nhất (highest confidence) trong số found=True."""
+        """Trả về candidate tốt nhất (highest confidence hoặc được chọn bởi FeatureCalculator) trong số found=True."""
+        selected = getattr(self, "_selected_best", None)
+        if selected is not None and selected in self.candidates and selected.found:
+            return selected
         found = [c for c in self.candidates if c.found]
         if not found:
             return None

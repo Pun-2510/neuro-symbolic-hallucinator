@@ -58,6 +58,17 @@ class TestCanonicalizeLastName:
         assert _canonicalize_last_name("Smith JK") == "smith"
         assert _canonicalize_last_name("Smith J.K.") == "smith"
 
+    def test_vietnamese_surnames_le_phan_dang_preserved(self) -> None:
+        assert _canonicalize_last_name("Lê, L.") == "le"
+        assert _canonicalize_last_name("Phan, T.") == "phan"
+        assert _canonicalize_last_name("Đặng, H.") == "dang"
+        assert author_match_score(["Lê, L.", "Phan, T.", "Đặng, H."], ["Le, L.", "Phan, T.", "Dang, H."]) == 1.0
+
+    def test_hyphenated_surname_comma_and_no_comma_consistent(self) -> None:
+        assert _canonicalize_last_name("Pouget-Abadie, J.") == "abadie"
+        assert _canonicalize_last_name("Jean Pouget-Abadie") == "abadie"
+        assert author_match_score(["Pouget-Abadie, J."], ["Jean Pouget-Abadie"]) == 1.0
+
 
 
 class TestAuthorMatchScore:

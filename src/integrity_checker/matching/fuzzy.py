@@ -28,8 +28,8 @@ _WS_RE = re.compile(r"\s+", re.UNICODE)
 
 
 def _fold_diacritics(text: str) -> str:
-    """NFC + strip combining marks: 'Nguyễn' → 'Nguyen'."""
-    nfd = unicodedata.normalize("NFD", text)
+    """NFC + strip combining marks + Đ/đ: 'Nguyễn' → 'Nguyen', 'Đặng' → 'Dang'."""
+    nfd = unicodedata.normalize("NFD", text.replace("đ", "d").replace("Đ", "D"))
     return "".join(c for c in nfd if unicodedata.category(c) != "Mn")
 
 

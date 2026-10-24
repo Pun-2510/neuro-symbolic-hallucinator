@@ -320,7 +320,7 @@ class SemanticMatcher:
 
         return segments
 
-    def _truncate_text(self, text: str, max_length: int) -> str:
+    def _truncate_text(self, text: str, max_length: int = 512) -> str:
         """Truncate text to max length."""
         if not text:
             return ""

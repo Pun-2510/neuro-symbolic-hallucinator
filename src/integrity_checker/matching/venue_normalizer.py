@@ -35,8 +35,11 @@ VENUE_DICT: dict[str, list[str]] = {
     # CS / ML
     "Journal of Machine Learning Research": ["JMLR", "J. Mach. Learn. Res."],
     "Machine Learning": ["ML", "Mach. Learn."],
-    "Neural Information Processing Systems": ["NeurIPS", "NIPS"],
-    "Advances in Neural Information Processing Systems": ["NeurIPS", "NIPS"],
+    "Advances in Neural Information Processing Systems": [
+        "NeurIPS",
+        "NIPS",
+        "Neural Information Processing Systems",
+    ],
     "International Conference on Machine Learning": ["ICML"],
     "Proceedings of the IEEE": ["Proc. IEEE", "PIEEE"],
     "IEEE Transactions on Pattern Analysis and Machine Intelligence": [
@@ -62,11 +65,9 @@ VENUE_DICT: dict[str, list[str]] = {
     # Vietnamese journals
     "Tạp chí Khoa học và Công nghệ": ["TC KH&CN"],
     # Common CS conferences (proceedings titles)
-    "Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition": [
-        "CVPR",
-    ],
     "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition": [
         "CVPR",
+        "Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition",
     ],
     "European Conference on Computer Vision": ["ECCV"],
 }
@@ -76,7 +77,7 @@ VENUE_DICT: dict[str, list[str]] = {
 
 
 def _fold_diacritics(text: str) -> str:
-    nfd = unicodedata.normalize("NFD", text)
+    nfd = unicodedata.normalize("NFD", text.replace("đ", "d").replace("Đ", "D"))
     return "".join(c for c in nfd if unicodedata.category(c) != "Mn")
 
 
@@ -127,8 +128,8 @@ def _fuzzy_token_set_ratio(a: str, b: str) -> float:
     """
     if not a or not b:
         return 0.0
-    set_a = set(a.split())
-    set_b = set(b.split())
+    set_a = set(a.lower().split())
+    set_b = set(b.lower().split())
     if not set_a or not set_b:
         return 0.0
     inter = set_a & set_b

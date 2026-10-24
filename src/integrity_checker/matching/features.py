@@ -61,9 +61,8 @@ class FeatureCalculator:
             raw = citation.raw_text or ""
             raw = re.sub(r'[\r\n]+', ' ', raw)  # Handle line breaks
             match = re.search(
-                r"^[\(\s]*([A-ZÀ-ÖØ-Þ][a-zà-ÿ'-]+)",
+                r"^[\(\s]*([A-ZÀ-ÖØ-ÞĐ][a-zà-ÿđ'-]+)",
                 raw,
-                flags=re.IGNORECASE,
             )
             if match:
                 extracted_author = match.group(1)
@@ -108,6 +107,13 @@ class FeatureCalculator:
         # DOI exact match (normalized + known arXiv/ACL equivalent DOIs)
         doi_match = self._doi_matches(citation.doi, best.doi)
 
+        # Venue similarity
+        venue_sim = 0.0
+        if citation.venue and best.venue:
+            from integrity_checker.matching.venue_normalizer import VenueNormalizer
+
+            venue_sim = VenueNormalizer().similarity(citation.venue, best.venue)
+
         # Content alignment (NEW v1.3) - Neural layer
         content_alignment_score = 0.0
         content_alignment_confidence = ""
@@ -129,6 +135,7 @@ class FeatureCalculator:
             author_jaccard=author_sim,
             year_distance=year_dist,
             doi_exact_match=doi_match,
+            venue_sim=venue_sim,
             source_consensus=source.consensus_count(),
             content_alignment_score=content_alignment_score,
             content_alignment_confidence=content_alignment_confidence,
@@ -198,10 +205,8 @@ class FeatureCalculator:
             return doi_bonus + t_sim * 1.0 + a_sim * 0.5 + y_bonus + (cand.confidence or 0.0) * 0.05
 
         best = max(valid, key=_score_cand)
-        # Ensure source.best_candidate() returns this same candidate downstream
-        max_conf = max((c.confidence or 0.0) for c in valid)
-        if (best.confidence or 0.0) < max_conf:
-            best.confidence = min(1.0, max_conf + 0.01)
+        # Ensure source.best_candidate() returns this same candidate downstream without mutating best.confidence
+        source._selected_best = best  # type: ignore[attr-defined]
         return best
 
     def _compute_title_similarity(

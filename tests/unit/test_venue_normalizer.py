@@ -145,3 +145,9 @@ class TestMatch:
         assert result.matched is False
         assert result.method == "none"
         assert result.score == 0.0
+
+    def test_neurips_aliases_all_match(self) -> None:
+        n = VenueNormalizer()
+        assert n.match("Neural Information Processing Systems", "NeurIPS").matched is True
+        assert n.match("Advances in Neural Information Processing Systems", "NIPS").matched is True
+        assert n.match("Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition", "CVPR").matched is True
