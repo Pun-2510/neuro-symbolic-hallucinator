@@ -19,7 +19,7 @@ from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate, SourceResult
 from integrity_checker.models.validation import CitationVerdict, MatchFeatures, ValidationLabel
 from integrity_checker.matching.features import FeatureCalculator
-from integrity_checker.logic.rules import SymbolicRules
+from integrity_checker.logic.rules import SymbolicRules, _is_fake_url
 from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
 
 if TYPE_CHECKING:
@@ -62,11 +62,12 @@ class NeuroSymbolicChecker:
         # Reuse shared FeatureCalculator instance to benefit from SemanticMatcher singleton
         if feature_calculator is not None:
             self.feature_calculator = feature_calculator
-        elif NeuroSymbolicChecker._feature_calculator is None:
-            NeuroSymbolicChecker._feature_calculator = FeatureCalculator(
-                enable_content_alignment=enable_content_alignment
-            )
-        self.feature_calculator = NeuroSymbolicChecker._feature_calculator
+        else:
+            if NeuroSymbolicChecker._feature_calculator is None:
+                NeuroSymbolicChecker._feature_calculator = FeatureCalculator(
+                    enable_content_alignment=enable_content_alignment
+                )
+            self.feature_calculator = NeuroSymbolicChecker._feature_calculator
         self.rules = rules or SymbolicRules()
         self.enable_content_alignment = enable_content_alignment
 
@@ -122,7 +123,7 @@ class NeuroSymbolicChecker:
                 label=ValidationLabel.RESOURCE,
                 confidence=0.95,
                 matched_source=source,
-                features=None,
+                features=MatchFeatures(),
                 reasoning=f"URL/Reference link detected: {raw_text[:60]}... (not an academic citation)",
                 triggered_rules=["R-URL-RESOURCE"],
                 mismatched_fields=[],
@@ -197,7 +198,7 @@ class NeuroSymbolicChecker:
                     label=ValidationLabel.RESOURCE,
                     confidence=0.95,
                     matched_source=source,
-                    features=None,
+                    features=MatchFeatures(),
                     reasoning=f"Web resource/API citation detected: {raw_text[:60]}... (not an academic paper)",
                     triggered_rules=["R-WEB-RESOURCE"],
                     mismatched_fields=[],
@@ -211,7 +212,7 @@ class NeuroSymbolicChecker:
                 label=ValidationLabel.RESOURCE,
                 confidence=0.95,
                 matched_source=source,
-                features=None,
+                features=MatchFeatures(),
                 reasoning=f"Vietnamese legal document detected: {raw_text[:60]}... (statutory/regulatory source)",
                 triggered_rules=["R-LEGAL-DOCUMENT"],
                 mismatched_fields=[],
@@ -224,10 +225,12 @@ class NeuroSymbolicChecker:
                 f"url_candidate='{url_candidate[:80]}'"
             )
 
-        # FIX Bug 5: Check for known seminal papers first
+        # FIX Bug 5: Check for known seminal papers first (skip if fake URL or fabricated DOI)
         # FIX v1.5: Now checks title similarity to detect METADATA_ERROR
+        has_fake_url, _ = _is_fake_url(citation.url)
+        has_fabricated_doi = self.rules._is_fabricated_doi(citation.doi)
         is_known, paper_info = RetrievalOrchestrator.is_known_paper(citation)
-        if is_known and paper_info:
+        if is_known and paper_info and not has_fake_url and not has_fabricated_doi:
             known_year = paper_info.get("year") or (
                 str(citation.year)[:4] if citation.year else None
             )
@@ -384,6 +387,8 @@ class NeuroSymbolicChecker:
             reasoning=enhanced_reasoning,
             triggered_rules=outcome.triggered_rules,
             mismatched_fields=outcome.mismatched_fields,
+            style_penalty=outcome.style_penalty,
+            domain_exception=outcome.domain_exception,
         )
 
     def _enhance_reasoning_with_neural(

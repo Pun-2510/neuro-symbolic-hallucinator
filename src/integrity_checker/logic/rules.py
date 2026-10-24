@@ -27,9 +27,12 @@ from integrity_checker.config import get_settings
 from integrity_checker.models.source import SourceResult
 from integrity_checker.models.validation import MatchFeatures, ValidationLabel
 from integrity_checker.matching.fuzzy import FuzzyMatcher
+from integrity_checker.logging import get_logger
 
 if TYPE_CHECKING:
     from integrity_checker.linking.statuses import CitationMappingStatus, StyleProfile
+
+logger = get_logger(__name__)
 
 
 # Known fake/non-academic URL domains — these should be flagged as SUSPECTED_HALLUCINATION
@@ -94,7 +97,7 @@ _FABRICATED_DOI_PATTERNS: list[re.Pattern[str]] = [
 _KNOWN_FAKE_AUTHORS: list[re.Pattern[str]] = [
     re.compile(r"\b(fictional|fabricated|fake|counterfeit|phantom|hypothetical|mystery|synthetic)\b.*\b(scholar|author|researcher|scientist|paper|research)\b", re.IGNORECASE),
     re.compile(r"\b(artificial|mock|pseudo|fraudulent)\b.*\b(author|scholar)\b", re.IGNORECASE),
-    re.compile(r"\bunknown|unnamed|anonymous\b", re.IGNORECASE),
+    re.compile(r"\b(?:unknown|unnamed|anonymous)\b", re.IGNORECASE),
     re.compile(r"\b(example|sample|test)\b.*\b(author|scholar)\b", re.IGNORECASE),
     # CamelCase suspicious names like "MysteryPaper", "FakeAuthor", "HypotheticalResearch"
     # Match: starts with suspicious word + optional second capitalized word
@@ -129,20 +132,44 @@ def _has_live_source(
     )
 
 
-def _is_fake_author_name(raw_text: str | None) -> tuple[bool, str]:
+def _is_fake_author_name(
+    raw_text: str | None,
+    citation_authors: list | None = None,
+) -> tuple[bool, str]:
     """Check if citation author name is clearly fake/fabricated.
+
+    Only inspects the author portion (parsed authors or prefix before publication year)
+    so real paper titles containing words like 'Unknown', 'Anonymous', 'Fake News',
+    or 'Synthetic' are not falsely flagged.
 
     Returns:
         (is_fake, matched_pattern) — True if author looks fake, empty string otherwise.
     """
-    if not raw_text:
+    if not raw_text and not citation_authors:
         return False, ""
 
-    raw_lower = raw_text.lower()
+    author_parts: list[str] = []
+    if citation_authors:
+        for a in citation_authors:
+            if hasattr(a, "raw") and getattr(a, "raw", ""):
+                author_parts.append(str(a.raw))
+            elif hasattr(a, "last_name") and getattr(a, "last_name", ""):
+                author_parts.append(str(a.last_name))
+            else:
+                author_parts.append(str(a))
 
-    # Check against known fake patterns
+    if raw_text:
+        # Extract the author prefix before the publication year (YYYY) or first sentence period
+        year_split = re.split(r"\(\s*(?:19|20)\d{2}[a-z]?\s*\)|\b(?:19|20)\d{2}[a-z]?\b", raw_text, maxsplit=1)
+        prefix = year_split[0].strip() if year_split else raw_text[:80].strip()
+        if prefix:
+            author_parts.append(prefix)
+
+    author_segment = " ; ".join(author_parts).lower()
+
+    # Check author segment against known fake patterns
     for pattern in _KNOWN_FAKE_AUTHORS:
-        match = pattern.search(raw_lower)
+        match = pattern.search(author_segment)
         if match:
             return True, match.group(0)
 
@@ -154,6 +181,7 @@ def _is_fake_author_name(raw_text: str | None) -> tuple[bool, str]:
         r"^[\(\s]*test\s+(?:author|scholar)",
     ]
 
+    raw_lower = (raw_text or "").lower()
     for pattern in suspicious_author_patterns:
         if re.search(pattern, raw_lower):
             return True, pattern
@@ -405,12 +433,14 @@ class SymbolicRules:
             "clark", "lewis", "walker", "young", "white",
         }
 
-        # Check raw text for known academic patterns
+        # Check author segment of raw text (before year) for known academic patterns
         # IMPORTANT: Use word boundary matching to avoid false positives
-        # e.g., "Scholar" should NOT match "cho" from "choi"
+        # e.g., "Scholar" should NOT match "cho" from "choi", and words in paper
+        # titles ("he", "sun", "white", "young", "brown") should NOT match as authors.
         import re
 
         raw_lower = (citation_raw or "").lower()
+        author_prefix = re.split(r"\b(?:19|20)\d{2}\b", raw_lower, maxsplit=1)[0]
 
         # Known author patterns in raw text - EXTENDED for METADATA_ERROR detection
         known_patterns = [
@@ -445,7 +475,7 @@ class SymbolicRules:
         for pattern in known_patterns:
             # Use word boundary to ensure we match whole words only
             # e.g., "cho" should NOT match inside "scholar" or "choi"
-            if re.search(r'\b' + re.escape(pattern) + r'\b', raw_lower):
+            if re.search(r'\b' + re.escape(pattern) + r'\b', author_prefix):
                 return True
 
         # Check individual authors
@@ -582,21 +612,24 @@ class SymbolicRules:
             )
 
         # --- Pre-flight: FAKE AUTHOR check (NEW v1.4) ---
-        # Check if author name is clearly fake/fabricated
-        is_fake_author, fake_author_pattern = _is_fake_author_name(citation_raw)
-        if is_fake_author:
-            triggered_rules = ["R-FAKE-AUTHOR"]
-            return RuleOutcome(
-                label=ValidationLabel.SUSPECTED_HALLUCINATION,
-                confidence=0.95,
-                reasoning=(
-                    f"Author name matches fake/fabricated pattern: '{fake_author_pattern}'. "
-                    f"This appears to be a fabricated citation."
-                ),
-                triggered_rules=triggered_rules,
-                mismatched_fields=["author"],
-                style_penalty=style_penalty,
+        # Check if author name is clearly fake/fabricated (skip if DOI + title strongly verified)
+        if not (features.doi_exact_match and features.title_sim_fuzzy >= 0.85):
+            is_fake_author, fake_author_pattern = _is_fake_author_name(
+                citation_raw, citation_authors=citation_authors
             )
+            if is_fake_author:
+                triggered_rules = ["R-FAKE-AUTHOR"]
+                return RuleOutcome(
+                    label=ValidationLabel.SUSPECTED_HALLUCINATION,
+                    confidence=0.95,
+                    reasoning=(
+                        f"Author name matches fake/fabricated pattern: '{fake_author_pattern}'. "
+                        f"This appears to be a fabricated citation."
+                    ),
+                    triggered_rules=triggered_rules,
+                    mismatched_fields=["author"],
+                    style_penalty=style_penalty,
+                )
 
         # --- Pre-flight: FUTURE YEAR detection (NEW v1.4) ---
         # Check if citation year is in the future (beyond current year)
@@ -605,24 +638,28 @@ class SymbolicRules:
         from datetime import datetime as _dt
         current_year = _dt.now().year
 
-        if citation_year:
+        if citation_year is not None and str(citation_year).strip():
             try:
-                year_match = re.search(r'\d{4}', citation_year)
+                year_match = re.search(r'\d{4}', str(citation_year))
                 if not year_match:
                     # No 4-digit year found in citation_year
                     pass
                 else:
                     cited_year = int(year_match.group())
                     if cited_year > current_year:
-                        # Future year detected - check if author is known
+                        # Future year detected - check if author is known or paper was retrieved
                         is_known_author = self._is_known_academic_author_pattern(
                             citation_authors=citation_authors,
-                            citation_year=citation_year,
+                            citation_year=str(citation_year),
                             citation_raw=citation_raw,
                         )
+                        has_matched_paper = bool(
+                            source.best_candidate()
+                            and (features.doi_exact_match or features.title_sim_fuzzy >= 0.85)
+                        )
 
-                        if is_known_author:
-                            # Known author + future year → likely METADATA_ERROR (wrong year)
+                        if is_known_author or has_matched_paper:
+                            # Known author or matched paper + future year → likely METADATA_ERROR (wrong year)
                             # Example: "Velickovic et al. (2027)" → real paper but wrong year
                             triggered_rules = ["R-FUTURE-YEAR-KNOWN-AUTHOR"]
                             return RuleOutcome(
@@ -651,7 +688,7 @@ class SymbolicRules:
                                 mismatched_fields=["year"],
                                 style_penalty=style_penalty,
                             )
-            except (ValueError, AttributeError) as exc:
+            except (ValueError, AttributeError, TypeError) as exc:
                 # FIX: Log exceptions instead of silent pass
                 logger.debug(f"Error parsing year from '{citation_year}': {exc}")
 

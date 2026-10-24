@@ -59,6 +59,7 @@ class MatchFeatures:
     year_distance: int = 999           # |cited.year - candidate.year|
     doi_exact_match: bool = False      # True nếu DOI khớp 100%
     source_consensus: int = 0          # số nguồn đồng thuận (≥1)
+    venue_sim: float = 0.0             # venue similarity (0.0–1.0)
 
     # NEW v1.3: Neural layer - content-context alignment
     content_alignment_score: float = 0.0  # Semantic similarity giữa cited context và source
@@ -145,6 +146,8 @@ class CitationVerdict:
     sources_failed: dict[str, str] = field(default_factory=dict)  # e.g. {"semantic_scholar": "429 Too Many Requests"}
     api_exhausted: bool = False  # True if all external APIs failed
     used_local_db: bool = False  # True if result came from local database
+    style_penalty: float = 0.0
+    domain_exception: bool = False
 
 
 @dataclass

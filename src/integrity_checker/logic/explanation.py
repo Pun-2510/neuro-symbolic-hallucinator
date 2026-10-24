@@ -27,6 +27,7 @@ class ExplanationGenerator:
         ValidationLabel.METADATA_ERROR: "có lỗi metadata",
         ValidationLabel.SUSPECTED_HALLUCINATION: "nghi ngờ ảo giác",
         ValidationLabel.UNRESOLVED: "chưa đủ bằng chứng",
+        ValidationLabel.RESOURCE: "tài nguyên tham khảo",
     }
 
     LABEL_VI_LONG = {
@@ -34,6 +35,7 @@ class ExplanationGenerator:
         ValidationLabel.METADATA_ERROR: "Nguồn có lỗi metadata",
         ValidationLabel.SUSPECTED_HALLUCINATION: "Nghi ngờ ảo giác nguồn",
         ValidationLabel.UNRESOLVED: "Chưa đủ bằng chứng",
+        ValidationLabel.RESOURCE: "Tài nguyên web/pháp lý",
     }
 
     # --- MappingStatus translations ---

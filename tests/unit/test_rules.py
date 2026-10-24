@@ -183,3 +183,86 @@ def test_single_source_year_mismatch_not_masked_by_content_alignment() -> None:
     assert outcome.label == ValidationLabel.METADATA_ERROR
     assert "R-SINGLE-SOURCE-PARTIAL" in outcome.triggered_rules
     assert "year" in outcome.mismatched_fields
+
+
+def test_fake_author_not_triggered_by_keywords_in_paper_title() -> None:
+    """Real paper titles containing 'Unknown', 'Anonymous', or 'Fake News' must not trigger R-FAKE-AUTHOR."""
+    from integrity_checker.logic.rules import _is_fake_author_name
+
+    is_fake, _ = _is_fake_author_name(
+        "Shu, K., Sliva, A., Wang, S., Tang, J., & Liu, H. (2017). Fake News Detection on Social Media: A Data Mining Perspective.",
+        citation_authors=["Shu, K.", "Sliva, A."],
+    )
+    assert is_fake is False
+
+    is_fake_2, _ = _is_fake_author_name(
+        "Bendale, A., & Boult, T. E. (2016). Towards Open Set Deep Networks and Unknown Classes.",
+        citation_authors=["Bendale, A.", "Boult, T. E."],
+    )
+    assert is_fake_2 is False
+
+    is_fake_true, _ = _is_fake_author_name(
+        "Unknown Author. (2023). Some Fabricated Study.",
+        citation_authors=["Unknown Author"],
+    )
+    assert is_fake_true is True
+
+
+def test_future_year_matched_paper_returns_metadata_error() -> None:
+    """A retrieved real paper cited with a future year typo should be METADATA_ERROR, not SUSPECTED_HALLUCINATION."""
+    rules = SymbolicRules()
+    cand = SourceCandidate(
+        source_name="crossref",
+        found=True,
+        doi="10.1145/1234567",
+        title="Graph Attention Networks in Practice",
+        authors=["Petar Velickovic"],
+        year="2018",
+        confidence=0.95,
+    )
+    source = SourceResult(
+        citation_raw="Zelickovic, P. (2099). Graph Attention Networks in Practice.",
+        candidates=[cand],
+        sources_queried=["crossref"],
+        sources_succeeded=["crossref"],
+    )
+    features = MatchFeatures(
+        title_sim_fuzzy=0.95,
+        author_jaccard=0.8,
+        year_distance=81,
+        doi_exact_match=True,
+        source_consensus=1,
+    )
+    outcome = rules.apply(
+        features,
+        source,
+        citation_authors=["Zelickovic, P."],
+        citation_year=2099,  # int year should also not crash re.search
+        citation_raw=source.citation_raw,
+    )
+    assert outcome.label == ValidationLabel.METADATA_ERROR
+    assert "year" in outcome.mismatched_fields
+
+
+def test_neuro_symbolic_checker_preserves_custom_feature_calculator_and_resource_explanation() -> None:
+    """NeuroSymbolicChecker keeps custom feature_calculator and RESOURCE verdicts have non-None features & Vietnamese label."""
+    from integrity_checker.logic.explanation import ExplanationGenerator
+    from integrity_checker.logic.neuro_symbolic_checker import NeuroSymbolicChecker
+    from integrity_checker.matching.features import FeatureCalculator
+    from integrity_checker.models.citation import Citation, CitationStyle, CitationType
+
+    custom_fc = FeatureCalculator(enable_content_alignment=False)
+    checker = NeuroSymbolicChecker(feature_calculator=custom_fc, enable_content_alignment=False)
+    assert checker.feature_calculator is custom_fc
+
+    cit = Citation(
+        raw_text="https://developer.mozilla.org/en-US/docs/Web/HTTP",
+        citation_type=CitationType.REFERENCE_LIST,
+        style=CitationStyle.APA,
+    )
+    verdict = checker.check(cit, SourceResult(citation_raw=cit.raw_text))
+    assert verdict.label == ValidationLabel.RESOURCE
+    assert verdict.features is not None
+    assert ValidationLabel.RESOURCE in ExplanationGenerator.LABEL_VI
+    assert "tài nguyên" in ExplanationGenerator.short(verdict).lower()
+
