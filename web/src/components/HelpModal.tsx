@@ -232,7 +232,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                 </span>
               </div>
               <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-                Crossref · OpenAlex · Semantic Scholar · CORE
+                Crossref · OpenAlex · DBLP · arXiv · OpenLibrary · Europe PMC
               </p>
             </div>
           </div>

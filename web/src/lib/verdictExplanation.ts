@@ -8,10 +8,6 @@ const SOURCE_LABELS: Record<string, string> = {
   openlibrary: 'OpenLibrary / Google Books',
   europepmc: 'Europe PMC (PubMed)',
   serpapi: 'Google Scholar',
-  s2: 'Semantic Scholar',
-  semantic_scholar: 'Semantic Scholar',
-  core: 'CORE',
-  coreapi: 'CORE',
   local_db: 'the local library',
   known_papers: 'the known-papers library',
 };

@@ -19,8 +19,8 @@ interface CandidateInfo {
   url?: string;
 }
 
-const EXTERNAL_DBS = ['crossref', 'openalex', 's2', 'arxiv', 'core'];
-const SOURCE_FLOW_ORDER = ['local_db', 'known_papers', 'crossref', 'openalex', 's2', 'arxiv', 'core'];
+const EXTERNAL_DBS = ['crossref', 'openalex', 'dblp', 'arxiv', 'openlibrary', 'europepmc'];
+const SOURCE_FLOW_ORDER = ['local_db', 'known_papers', 'crossref', 'openalex', 'dblp', 'arxiv', 'openlibrary', 'europepmc', 'serpapi'];
 
 /**
  * Build the hierarchical evidence graph for a single verdict.
@@ -81,7 +81,7 @@ export function buildEvidenceGraph(
           : `${databasesWithResults.length} sources queried`,
         children: [
           ...databasesWithResults.flatMap(([db, candidates]) => {
-            const config = SOURCE_CONFIG[db] ?? SOURCE_CONFIG.s2;
+            const config = SOURCE_CONFIG[db] ?? SOURCE_CONFIG.crossref;
             return candidates.map((c, idx) => ({
               id: `${db}-${idx}`,
               label: config.label,
@@ -104,7 +104,7 @@ export function buildEvidenceGraph(
             }));
           }),
           ...databasesWithoutResults.map(([db]) => {
-            const config = SOURCE_CONFIG[db] ?? SOURCE_CONFIG.s2;
+            const config = SOURCE_CONFIG[db] ?? SOURCE_CONFIG.crossref;
             return {
               id: `no-${db}`,
               label: config.label,

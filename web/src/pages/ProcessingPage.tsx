@@ -67,10 +67,10 @@ const STEP_LABELS: Array<{
   },
   {
     labelEn: 'Retrieving source metadata',
-    labelVi: 'Truy hồi dữ liệu từ 5 CSDL học thuật liên hợp',
-    detailsEn: 'Querying Crossref, OpenAlex, Semantic Scholar, CORE, Local FTS5',
-    detailsVi: 'Truy vấn song song Crossref, OpenAlex, Semantic Scholar, CORE & ACL FTS5',
-    tag: '5 INDEXES',
+    labelVi: 'Truy hồi dữ liệu từ hệ thống CSDL học thuật liên hợp',
+    detailsEn: 'Querying Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, Europe PMC & Local FTS5',
+    detailsVi: 'Truy vấn phân tầng Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, Europe PMC & ACL FTS5',
+    tag: '7 INDEXES',
   },
   {
     labelEn: 'Comparing candidate publications',
@@ -280,7 +280,7 @@ export function ProcessingPage() {
                   ? 'Đang chuyển hướng tới báo cáo kiểm chứng chi tiết…'
                   : 'Redirecting to your verification report…'
                 : lang === 'vi'
-                  ? 'Quá trình bóc tách GROBID và đối chiếu 5 CSDL có thể mất 30–60 giây tùy độ dài PDF.'
+                  ? 'Quá trình bóc tách GROBID và đối chiếu đa CSDL học thuật có thể mất 30–60 giây tùy độ dài PDF.'
                   : 'This may take a few minutes depending on document size.'}
           </p>
         </div>
@@ -492,8 +492,8 @@ export function ProcessingPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {(['crossref', 'openalex', 's2', 'core'] as const).map((db) => (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {(['crossref', 'openalex', 'dblp', 'arxiv', 'openlibrary', 'europepmc'] as const).map((db) => (
               <SourceTile
                 key={db}
                 name={db}
@@ -568,12 +568,17 @@ function SourceTile({
   name: string;
   state: string | undefined;
 }) {
+  const displayNameMap: Record<string, string> = {
+    crossref: 'Crossref',
+    openalex: 'OpenAlex',
+    dblp: 'DBLP (CS/AI)',
+    arxiv: 'arXiv Preprints',
+    openlibrary: 'OpenLibrary / Books',
+    europepmc: 'Europe PMC',
+    local_db: 'Local ACL FTS5',
+  };
   const displayName =
-    name === 's2'
-      ? 'Semantic Scholar'
-      : name === 'core'
-        ? 'CORE / Local FTS5'
-        : name.charAt(0).toUpperCase() + name.slice(1);
+    displayNameMap[name] ?? name.charAt(0).toUpperCase() + name.slice(1);
 
   let color = 'slate';
   let label = 'Pending';

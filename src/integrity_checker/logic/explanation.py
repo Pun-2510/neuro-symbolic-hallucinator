@@ -124,7 +124,7 @@ class ExplanationGenerator:
             "Đề nghị sinh viên cung cấp bản PDF nguồn gốc.",
         ],
         ValidationLabel.SUSPECTED_HALLUCINATION: [
-            "Không tìm thấy nguồn trên CrossRef, OpenAlex, Semantic Scholar, arXiv.",
+            "Không tìm thấy nguồn trên Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, Europe PMC.",
             "Cần giảng viên kiểm tra thủ công.",
             "Đề nghị sinh viên cung cấp URL/DOI bản gốc.",
         ],
@@ -252,7 +252,7 @@ class ExplanationGenerator:
                     f"Không tìm thấy nguồn sau khi thử {len(sources_tried)} chiến lược "
                     f"trên {', '.join(sources_tried) if sources_tried else 'các nguồn'}."
                 )
-            return "Không tìm thấy nguồn trên CrossRef, OpenAlex, Semantic Scholar, arXiv."
+            return "Không tìm thấy nguồn trên Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, Europe PMC."
 
         if label == ValidationLabel.UNRESOLVED:
             if verdict.matched_source:

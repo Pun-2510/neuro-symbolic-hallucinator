@@ -143,7 +143,7 @@ const DEMO_CITATIONS: DemoCitation[] = [
     },
     sources: [
       { name: 'Local ACL / ArXiv FTS5', status: 'matched', latency: '14ms', score: '0.99' },
-      { name: 'Semantic Scholar', status: 'matched', latency: '210ms', score: '0.99' },
+      { name: 'DBLP', status: 'matched', latency: '145ms', score: '0.99' },
       { name: 'OpenAlex', status: 'matched', latency: '185ms', score: '0.98' },
       { name: 'Crossref', status: 'matched', latency: '240ms', score: '0.96' },
     ],
@@ -210,8 +210,8 @@ const DEMO_CITATIONS: DemoCitation[] = [
     sources: [
       { name: 'Crossref', status: 'matched', latency: '195ms', score: '0.88' },
       { name: 'OpenAlex', status: 'matched', latency: '220ms', score: '0.86' },
-      { name: 'Semantic Scholar', status: 'partial', latency: '310ms', score: '0.82' },
-      { name: 'CORE', status: 'none', latency: '405ms', score: '—' },
+      { name: 'DBLP', status: 'partial', latency: '165ms', score: '0.84' },
+      { name: 'arXiv', status: 'none', latency: '210ms', score: '—' },
     ],
     rules: [
       {
@@ -271,7 +271,7 @@ const DEMO_CITATIONS: DemoCitation[] = [
       { name: 'Local ACL FTS5 (127K)', status: 'none', latency: '9ms', score: '0.18' },
       { name: 'Crossref', status: 'none', latency: '180ms', score: '0.00' },
       { name: 'OpenAlex', status: 'none', latency: '205ms', score: '0.14' },
-      { name: 'Semantic Scholar', status: 'none', latency: '260ms', score: '0.11' },
+      { name: 'DBLP', status: 'none', latency: '150ms', score: '0.11' },
     ],
     rules: [
       {
@@ -294,8 +294,8 @@ const DEMO_CITATIONS: DemoCitation[] = [
       },
     ],
     explanation: {
-      en: 'No matching publication found across Local ACL Anthology or 4 global indexes. DOI prefix 10.9999 is non-existent. Flagged for instructor review.',
-      vi: 'Không tìm thấy công bố nào khớp trên Local ACL Anthology và 4 CSDL quốc tế. Mã DOI 10.9999 không tồn tại. Đánh dấu cần giảng viên kiểm tra.',
+      en: 'No matching publication found across Local ACL Anthology or 6 global scholarly APIs. DOI prefix 10.9999 is non-existent. Flagged for instructor review.',
+      vi: 'Không tìm thấy công bố nào khớp trên Local ACL Anthology và 6 API học thuật quốc tế. Mã DOI 10.9999 không tồn tại. Đánh dấu cần giảng viên kiểm tra.',
     },
   },
   {
@@ -693,7 +693,7 @@ function HeroSection({
     { label: 'PDF Manuscript', icon: FileText },
     { label: 'GROBID TEI-XML' },
     { label: 'In-Text [N] ↔ Bib #N' },
-    { label: 'ACL FTS5 + 4 APIs' },
+    { label: 'ACL FTS5 + 6 APIs' },
     { label: 'VERIFIED (CIS 84.5)', isVerdict: true },
   ];
 
@@ -706,9 +706,9 @@ function HeroSection({
             sub: 'Truy vấn SQLite FTS5 < 15ms',
           },
           {
-            value: '5 Nguồn CSDL',
-            label: 'ACL · Crossref · OpenAlex · S2 · CORE',
-            sub: 'Đối chiếu song song đa nguồn',
+            value: '7 Nguồn CSDL',
+            label: 'ACL · Crossref · OpenAlex · DBLP · arXiv · Books · PMC',
+            sub: 'Điều phối phân tầng theo miền học thuật',
           },
           {
             value: '2 Lớp Kiểm chứng',
@@ -728,9 +728,9 @@ function HeroSection({
             sub: 'Sub-15ms SQLite FTS5 retrieval',
           },
           {
-            value: '5 Databases',
-            label: 'ACL · Crossref · OpenAlex · S2 · CORE',
-            sub: 'Federated scholarly verification',
+            value: '7 Databases',
+            label: 'ACL · Crossref · OpenAlex · DBLP · arXiv · Books · PMC',
+            sub: 'Smart domain-aware scholarly routing',
           },
           {
             value: '2-Layer Engine',
@@ -1650,8 +1650,8 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
                     </div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
                       {lang === 'vi'
-                        ? 'Xác thực sự tồn tại và độ khớp metadata trên 5 nguồn dữ liệu học thuật.'
-                        : 'Cross-validates existence and field-level accuracy across 5 scholarly indexes.'}
+                        ? 'Xác thực sự tồn tại và độ khớp metadata trên 7 nguồn dữ liệu học thuật.'
+                        : 'Cross-validates existence and field-level accuracy across 7 scholarly indexes.'}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       <span className="verdict-badge verdict-badge-verified text-[10px] px-2.5 py-0.5 font-mono">
@@ -1724,7 +1724,7 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
                     variant="outline"
                     className="font-mono text-xs bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800"
                   >
-                    5 DATA SOURCES
+                    7 DATA SOURCES
                   </Badge>
                   <span className="font-mono text-xs text-slate-400">
                     Local FTS5 + REST
@@ -1732,13 +1732,13 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
                 </div>
                 <CardTitle className="text-xl">
                   {lang === 'vi'
-                    ? 'Liên hợp 127K Bài báo Nội bộ & 4 API Quốc tế'
-                    : '127K Local ACL Anthology + 4 Global APIs'}
+                    ? 'Liên hợp 127K Bài báo Nội bộ & 6 API Quốc tế'
+                    : '127K Local ACL Anthology + 6 Global APIs'}
                 </CardTitle>
                 <CardDescription>
                   {lang === 'vi'
-                    ? 'Kết hợp tìm kiếm toàn văn SQLite FTS5 tốc độ cao với truy vấn bất đồng bộ tới các CSDL học thuật lớn nhất thế giới.'
-                    : 'Combines ultra-fast local SQLite FTS5 full-text indexing with asynchronous federated queries across global bibliographic registries.'}
+                    ? 'Kết hợp tìm kiếm toàn văn SQLite FTS5 tốc độ cao với điều phối phân tầng tới các CSDL học thuật lớn nhất thế giới.'
+                    : 'Combines ultra-fast local SQLite FTS5 full-text indexing with smart tiered routing across global bibliographic registries.'}
                 </CardDescription>
               </CardHeader>
 
@@ -1758,16 +1758,16 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
                     badgeClass: 'source-badge-crossref',
                   },
                   {
-                    name: 'OpenAlex & Semantic Scholar',
-                    meta: '250M+ scholarly works & AI-indexed citation graphs',
-                    badge: 'OPENALEX + S2',
+                    name: 'OpenAlex & Europe PMC',
+                    meta: '250M+ scholarly works, PubMed & biomedical literature',
+                    badge: 'OPENALEX + PMC',
                     badgeClass: 'source-badge-openalex',
                   },
                   {
-                    name: 'CORE Open Access',
-                    meta: 'Global open-access repositories & institutional theses',
-                    badge: 'CORE',
-                    badgeClass: 'source-badge-core',
+                    name: 'DBLP, arXiv & OpenLibrary',
+                    meta: 'CS/AI conferences, preprints & ISBN multi-edition books',
+                    badge: 'DBLP · ARXIV · BOOKS',
+                    badgeClass: 'source-badge-dblp',
                   },
                 ].map((src) => (
                   <div
@@ -1920,9 +1920,9 @@ function PipelineSection({ lang }: { lang: Lang }) {
           {
             step: '03',
             icon: Database,
-            tech: 'FTS5 + Async HTTPX',
+            tech: 'FTS5 + Smart Tiered APIs',
             title: 'Truy hồi Đa Nguồn',
-            desc: 'Tra cứu song song trên 127K bài báo ACL nội bộ và 4 API học thuật quốc tế (Crossref, OpenAlex, Semantic Scholar, CORE).',
+            desc: 'Tra cứu phân tầng trên 127K bài báo ACL nội bộ và 6 API học thuật quốc tế (Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, Europe PMC).',
           },
           {
             step: '04',
@@ -1950,9 +1950,9 @@ function PipelineSection({ lang }: { lang: Lang }) {
           {
             step: '03',
             icon: Database,
-            tech: 'FTS5 + Async HTTPX',
+            tech: 'FTS5 + Smart Tiered APIs',
             title: 'Federated Retrieval',
-            desc: 'Queries 127K+ local ACL Anthology papers and cross-checks Crossref, OpenAlex, Semantic Scholar, and CORE in parallel.',
+            desc: 'Queries 127K+ local ACL Anthology papers and smart-routes across Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, and Europe PMC.',
           },
           {
             step: '04',
@@ -2127,8 +2127,8 @@ function TaxonomySection({ lang }: { lang: Lang }) {
       title: lang === 'vi' ? 'Nghi ngờ Bịa đặt (Hallucination)' : 'Suspected Hallucination',
       desc:
         lang === 'vi'
-          ? 'Không tìm thấy bất kỳ công bố nào tương ứng trên cả 5 nguồn dữ liệu hoặc mã DOI hoàn toàn không tồn tại.'
-          : 'Zero matching publications across Local ACL FTS5, Crossref, OpenAlex, S2, and CORE, or fabricated DOI prefix.',
+          ? 'Không tìm thấy bất kỳ công bố nào tương ứng trên toàn bộ hệ thống CSDL học thuật hoặc mã DOI hoàn toàn không tồn tại.'
+          : 'Zero matching publications across Local ACL FTS5, Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, and Europe PMC, or fabricated DOI prefix.',
     },
     {
       badge: 'UNRESOLVED',

@@ -112,7 +112,7 @@ export function UploadPage() {
       icon: Database,
       title: t('auth.featureRetrieval'),
       desc: t('auth.featureRetrievalDesc'),
-      tag: '5 Scholarly DBs',
+      tag: '7 Scholarly DBs',
       tone: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
     },
     {
@@ -283,8 +283,8 @@ export function UploadPage() {
             <div className="text-xs font-mono text-slate-500 dark:text-slate-400">
               {!isUser &&
                 (lang === 'vi'
-                  ? 'Pipeline: Bóc tách PDF → 5 CSDL Học thuật → Suy diễn Luật R01–R12'
-                  : 'Pipeline: PDF Extraction → 5 Scholarly Indexes → Symbolic Rules R01–R12')}
+                  ? 'Pipeline: Bóc tách PDF → 7 CSDL Học thuật → Suy diễn Luật R01–R12'
+                  : 'Pipeline: PDF Extraction → 7 Scholarly Indexes → Symbolic Rules R01–R12')}
             </div>
 
             <Button

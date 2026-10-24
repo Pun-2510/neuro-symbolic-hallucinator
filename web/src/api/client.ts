@@ -48,7 +48,7 @@ export interface CitationLink {
 }
 
 export interface MatchedSource {
-  source: string; // 'crossref' | 'openalex' | 's2' | 'arxiv' | 'local_db' | 'known_papers' | 'core'
+  source: string; // 'crossref' | 'openalex' | 'dblp' | 'arxiv' | 'openlibrary' | 'europepmc' | 'local_db' | 'known_papers'
   matched_fields: string[];
   checked_at: string;
   url?: string | null;

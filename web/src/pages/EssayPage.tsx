@@ -507,10 +507,6 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
     openlibrary: 'OpenLibrary / Google Books',
     europepmc: 'Europe PMC (PubMed)',
     serpapi: 'Google Scholar',
-    s2: 'Semantic Scholar',
-    semantic_scholar: 'Semantic Scholar',
-    core: 'CORE',
-    coreapi: 'CORE',
   };
   const sourceMapEn: Record<string, string> = {
     local_db: 'the local scholarly index (ACL / SQLite FTS5)',
@@ -522,10 +518,6 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
     openlibrary: 'OpenLibrary / Google Books',
     europepmc: 'Europe PMC (PubMed)',
     serpapi: 'Google Scholar',
-    s2: 'Semantic Scholar',
-    semantic_scholar: 'Semantic Scholar',
-    core: 'CORE',
-    coreapi: 'CORE',
   };
 
   const fieldMapVi: Record<string, string> = {
@@ -636,7 +628,7 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
           : 'siêu dữ liệu (năm xuất bản / tiêu đề)';
       mainText = `Tìm thấy công trình học thuật tương ứng${srcStr}, nhưng phát hiện sai lệch ở trường: ${errFldStr}. Vui lòng đối chiếu và hiệu đính lại theo bản ghi gốc.${telemetrySuffix}`;
     } else if (verdict.label === 'suspected_hallucination') {
-      mainText = `Không tìm thấy bất kỳ công trình học thuật nào khớp với trích dẫn này trên cả 5 cơ sở dữ liệu (ACL, Crossref, OpenAlex, Semantic Scholar, CORE). Nghi ngờ trích dẫn suy diễn (hallucination) hoặc thông tin không có thật.${telemetrySuffix}`;
+      mainText = `Không tìm thấy bất kỳ công trình học thuật nào khớp với trích dẫn này trên hệ thống cơ sở dữ liệu học thuật (Local ACL FTS5, Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, Europe PMC). Nghi ngờ trích dẫn suy diễn (hallucination) hoặc thông tin không có thật.${telemetrySuffix}`;
     } else {
       const srcStr =
         sources.length > 0
@@ -688,7 +680,7 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
         : 'metadata fields (year / title)';
     mainTextEn = `Found a corresponding publication${srcStr}, but detected discrepancies in: ${errFldStr}. Please review against the canonical record.${telemetrySuffixEn}`;
   } else if (verdict.label === 'suspected_hallucination') {
-    mainTextEn = `No matching publication was found across all 5 scholarly databases (ACL, Crossref, OpenAlex, Semantic Scholar, CORE). Suspected hallucinated or fabricated reference.${telemetrySuffixEn}`;
+    mainTextEn = `No matching publication was found across all scholarly databases (Local ACL FTS5, Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, Europe PMC). Suspected hallucinated or fabricated reference.${telemetrySuffixEn}`;
   } else {
     mainTextEn =
       sources.length > 0
@@ -1032,13 +1024,15 @@ function enrichVerdictItem(
     };
   });
 
-  // Build Federated Sources List (combining actual matched_sources with the 5 standard engines)
+  // Build Federated Sources List (combining actual matched_sources with the standard scholarly engines)
   const standardEngines = [
     { key: 'local', label: 'Local ACL / Known Papers (SQLite FTS5)', matchTokens: ['local', 'known', 'acl'] },
     { key: 'crossref', label: 'Crossref REST API', matchTokens: ['crossref'] },
     { key: 'openalex', label: 'OpenAlex Scholarly Graph', matchTokens: ['openalex'] },
-    { key: 's2', label: 'Semantic Scholar (S2)', matchTokens: ['semantic', 's2'] },
-    { key: 'core', label: 'CORE / arXiv Open Access', matchTokens: ['core', 'arxiv'] },
+    { key: 'dblp', label: 'DBLP Computer Science Bibliography', matchTokens: ['dblp'] },
+    { key: 'arxiv', label: 'arXiv Preprint Repository', matchTokens: ['arxiv'] },
+    { key: 'openlibrary', label: 'OpenLibrary / Google Books', matchTokens: ['openlibrary', 'google_books'] },
+    { key: 'europepmc', label: 'Europe PMC / PubMed', matchTokens: ['europepmc', 'pubmed'] },
   ];
 
   const usedSourceIndices = new Set<number>();

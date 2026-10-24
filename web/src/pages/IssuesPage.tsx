@@ -95,9 +95,10 @@ function SourceIcon({ source }: { source: string }) {
   const lower = source.toLowerCase();
   if (lower.includes('crossref')) return <span className="text-[11px] font-mono font-bold">CR</span>;
   if (lower.includes('openalex')) return <span className="text-[11px] font-mono font-bold">OA</span>;
-  if (lower.includes('semantic') || lower.includes('s2'))
-    return <span className="text-[11px] font-mono font-bold">S2</span>;
-  if (lower.includes('core')) return <span className="text-[11px] font-mono font-bold">CO</span>;
+  if (lower.includes('dblp')) return <span className="text-[11px] font-mono font-bold">DB</span>;
+  if (lower.includes('arxiv')) return <span className="text-[11px] font-mono font-bold">AX</span>;
+  if (lower.includes('openlibrary')) return <span className="text-[11px] font-mono font-bold">OL</span>;
+  if (lower.includes('europepmc')) return <span className="text-[11px] font-mono font-bold">PM</span>;
   return <Database className="h-3.5 w-3.5" />;
 }
 

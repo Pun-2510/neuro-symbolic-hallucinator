@@ -58,7 +58,7 @@ export function AuthSplitShell({
       icon: Database,
       title: t('auth.featureRetrieval'),
       desc: t('auth.featureRetrievalDesc'),
-      tag: '127K ACL FTS5 + 4 APIs',
+      tag: '127K ACL FTS5 + 6 APIs',
       iconBox:
         'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
       tagBadge:

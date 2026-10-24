@@ -136,7 +136,7 @@ export function DashboardPage() {
       idx: '04',
       label: t('dashboard.verifiedRate'),
       value: stats.verified_rate > 0 ? `${stats.verified_rate}%` : 'N/A',
-      sub: lang === 'vi' ? 'Xác thực trên 5 CSDL học thuật' : 'Verified across 5 scholarly indexes',
+      sub: lang === 'vi' ? 'Xác thực trên 7 CSDL học thuật' : 'Verified across 7 scholarly indexes',
       icon: CheckCircle2,
       color: 'text-sky-600 dark:text-sky-400',
       iconBox:
