@@ -406,6 +406,10 @@ class CoreAPIClient(BaseScholarClient):
         if arxiv_id:
             external_ids["arxiv"] = str(arxiv_id)
 
+        # Abstract
+        raw_abs = work.get("abstract") or work.get("description")
+        abstract = str(raw_abs).strip() if raw_abs and str(raw_abs).strip() else None
+
         return SourceCandidate(
             source_name="coreapi",
             doi=doi,
@@ -414,5 +418,6 @@ class CoreAPIClient(BaseScholarClient):
             year=year_str,
             venue=venue,
             url=url,
+            abstract=abstract,
             external_ids=external_ids,
         )

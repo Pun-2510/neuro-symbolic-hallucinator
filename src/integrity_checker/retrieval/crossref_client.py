@@ -7,6 +7,7 @@ Docs: https://api.crossref.org/swagger-ui/index.html
 from __future__ import annotations
 
 import os
+import re
 from typing import Any
 from urllib.parse import quote
 
@@ -321,6 +322,15 @@ class CrossrefClient(BaseScholarClient):
         # URL
         url = message.get("URL")
 
+        # Abstract (Crossref sometimes includes JATS XML tags like <jats:p>)
+        raw_abstract = message.get("abstract")
+        abstract: str | None = None
+        if raw_abstract and isinstance(raw_abstract, str):
+            cleaned_abs = re.sub(r"<[^>]+>", " ", raw_abstract)
+            cleaned_abs = " ".join(cleaned_abs.split()).strip()
+            if cleaned_abs:
+                abstract = cleaned_abs
+
         return SourceCandidate(
             source_name="crossref",
             doi=doi.lower() if doi else None,
@@ -329,5 +339,6 @@ class CrossrefClient(BaseScholarClient):
             year=year,
             venue=venue,
             url=url,
+            abstract=abstract,
             external_ids={"doi": doi.lower()} if doi else {},
         )

@@ -489,3 +489,78 @@ class TestRetryBehavior:
         assert result.found is False
         # Có error message
         assert result.error is not None
+
+
+class TestClientAbstractExtraction:
+    """Test abstract extraction and deduplication across all 4 clients (Phase 2)."""
+
+    def test_crossref_strips_jats_xml_from_abstract(self):
+        cand = CrossrefClient._message_to_candidate(
+            {
+                "DOI": "10.1038/nature14539",
+                "title": ["Deep learning"],
+                "abstract": "<jats:p>Deep learning allows computational models to learn representations.</jats:p>",
+            }
+        )
+        assert cand.abstract == "Deep learning allows computational models to learn representations."
+
+    def test_openalex_reconstructs_abstract_from_inverted_index(self):
+        cand = OpenAlexClient._work_to_candidate(
+            {
+                "doi": "https://doi.org/10.48550/arXiv.1706.03762",
+                "title": "Attention Is All You Need",
+                "abstract_inverted_index": {
+                    "The": [0],
+                    "dominant": [1],
+                    "sequence": [2],
+                    "transduction": [3],
+                    "models": [4],
+                },
+            }
+        )
+        assert cand.abstract == "The dominant sequence transduction models"
+
+    def test_semantic_scholar_extracts_abstract(self):
+        cand = SemanticScholarClient._paper_to_candidate(
+            {
+                "title": "BERT",
+                "abstract": "We introduce a new language representation model called BERT.",
+                "externalIds": {"DOI": "10.18653/v1/N19-1423"},
+            }
+        )
+        assert cand.abstract == "We introduce a new language representation model called BERT."
+
+    def test_coreapi_extracts_abstract(self):
+        cand = CoreAPIClient._work_to_candidate(
+            {
+                "title": "RoBERTa",
+                "abstract": "Language model pretraining has led to significant performance gains.",
+                "doi": "10.48550/arXiv.1907.11692",
+            }
+        )
+        assert cand.abstract == "Language model pretraining has led to significant performance gains."
+
+    def test_dedupe_candidates_preserves_abstract_when_merging_doi(self):
+        from integrity_checker.models.source import SourceCandidate
+        from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
+
+        c_crossref = SourceCandidate(
+            source_name="crossref",
+            found=True,
+            doi="10.1038/nature14539",
+            title="Deep learning",
+            confidence=0.95,
+            abstract=None,
+        )
+        c_s2 = SourceCandidate(
+            source_name="semantic_scholar",
+            found=True,
+            doi="10.1038/nature14539",
+            title="Deep learning",
+            confidence=0.85,
+            abstract="Deep learning allows computational models that are composed of multiple processing layers.",
+        )
+        deduped = RetrievalOrchestrator._dedupe_candidates([c_crossref, c_s2])
+        assert len(deduped) == 1
+        assert deduped[0].source_name == "crossref"
+        assert deduped[0].abstract == c_s2.abstract

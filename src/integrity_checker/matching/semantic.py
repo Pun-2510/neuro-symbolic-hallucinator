@@ -181,41 +181,55 @@ class SemanticMatcher:
             cited_context = self._truncate_text(cited_context, max_length=512)
             source_title = self._truncate_text(source_title, max_length=256)
 
-            # Strategy 1: So sánh với title (nhanh nhất)
+            # Strategy 1: Compare with source title
             title_sim = self._compute_similarity(model, cited_context, source_title)
 
-            # Strategy 2: So sánh với abstract (nếu có)
+            # Strategy 2: Compare with source abstract (whole-abstract + sentence pooling)
             abstract_sim = 0.0
             if source_abstract:
-                source_abstract = self._truncate_text(source_abstract, max_length=512)
-                abstract_sim = self._compute_similarity(model, cited_context, source_abstract)
+                truncated_abstract = self._truncate_text(source_abstract, max_length=512)
+                whole_abs_sim = self._compute_similarity(model, cited_context, truncated_abstract)
+                abs_sentences = self._extract_sentences(source_abstract)
+                if len(abs_sentences) >= 2:
+                    sent_sims = [
+                        self._compute_similarity(model, cited_context, sent)
+                        for sent in abs_sentences[:6]
+                    ]
+                    max_sent_sim = max(sent_sims) if sent_sims else whole_abs_sim
+                    abstract_sim = max(whole_abs_sim, 0.6 * max_sent_sim + 0.4 * whole_abs_sim)
+                else:
+                    abstract_sim = whole_abs_sim
 
-            # Strategy 3: So sánh với body (nếu có, dùng sampling)
+            # Strategy 3: Compare with source body (if available, using segment sampling)
             body_sim = 0.0
             if source_body:
                 body_sim = self._compute_similarity_with_long_text(
                     model, cited_context, source_body, max_sample_length=512
                 )
 
-            # Combine scores -- lấy max nhưng có weight
+            # Combine scores with higher weight on abstract when available
             scores = [title_sim]
             weights = [0.3]  # Title weight
 
             if abstract_sim > 0:
                 scores.append(abstract_sim)
-                weights.append(0.5)  # Abstract weight cao hơn
+                weights.append(0.5)  # Abstract weight
 
             if body_sim > 0:
                 scores.append(body_sim)
-                weights.append(0.2)  # Body weight thấp hơn
+                weights.append(0.2)  # Body weight
 
             # Normalize weights
             total_weight = sum(weights)
             normalized_weights = [w / total_weight for w in weights]
             weighted_similarity = sum(s * w for s, w in zip(scores, normalized_weights))
 
-            # Final similarity - use weighted average
-            final_sim = weighted_similarity if scores else 0.0
+            # If abstract strongly aligns with cited context even when paper title is brief/metaphorical,
+            # ensure abstract alignment is preserved
+            if abstract_sim >= self.ALIGNMENT_THRESHOLD_HIGH:
+                final_sim = max(weighted_similarity, abstract_sim * 0.9)
+            else:
+                final_sim = weighted_similarity if scores else 0.0
 
             # Determine confidence và alignment
             confidence, is_aligned = self._determine_alignment(final_sim)
@@ -306,6 +320,18 @@ class SemanticMatcher:
 
         except Exception:  # noqa: BLE001
             return 0.0
+
+    def _extract_sentences(self, text: str) -> list[str]:
+        """Split abstract/text into individual substantive sentences for sentence-level alignment."""
+        if not text:
+            return []
+        import re
+        raw_sentences = re.split(r"[.!?]+(?:\s+|$)|\n+", text)
+        return [
+            s.strip()
+            for s in raw_sentences
+            if len(s.strip()) >= 25
+        ]
 
     def _split_into_segments(self, text: str, max_length: int) -> list[str]:
         """Split text thành các segments có độ dài ~max_length."""

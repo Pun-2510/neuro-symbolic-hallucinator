@@ -277,6 +277,24 @@ class OpenAlexClient(BaseScholarClient):
         return d.rstrip(".")
 
     @staticmethod
+    def _reconstruct_abstract(inverted_index: dict | None) -> str | None:
+        """Reconstruct plain-text abstract from OpenAlex abstract_inverted_index."""
+        if not inverted_index or not isinstance(inverted_index, dict):
+            return None
+        positions: list[tuple[int, str]] = []
+        for token, pos_list in inverted_index.items():
+            if not isinstance(pos_list, list):
+                continue
+            for pos in pos_list:
+                if isinstance(pos, int):
+                    positions.append((pos, str(token)))
+        if not positions:
+            return None
+        positions.sort(key=lambda item: item[0])
+        text = " ".join(tok for _, tok in positions).strip()
+        return text if text else None
+
+    @staticmethod
     def _work_to_candidate(work: dict) -> SourceCandidate:
         """Convert OpenAlex /works response → SourceCandidate."""
         # DOI — strip https://doi.org/ prefix
@@ -308,6 +326,15 @@ class OpenAlexClient(BaseScholarClient):
         # URL
         url = work.get("id")  # OpenAlex ID URL
 
+        # Abstract — plain text or reconstructed from OpenAlex inverted index
+        raw_abs = work.get("abstract")
+        if isinstance(raw_abs, str) and raw_abs.strip():
+            abstract: str | None = raw_abs.strip()
+        else:
+            abstract = OpenAlexClient._reconstruct_abstract(
+                work.get("abstract_inverted_index")
+            )
+
         return SourceCandidate(
             source_name="openalex",
             doi=doi,
@@ -316,5 +343,6 @@ class OpenAlexClient(BaseScholarClient):
             year=year_str,
             venue=venue,
             url=url,
+            abstract=abstract,
             external_ids={"doi": doi} if doi else {},
         )

@@ -284,3 +284,36 @@ class TestSemanticMatcherSegments:
 
         assert len(segments) == 1
         assert segments[0] == text
+
+    def test_multi_sentence_abstract_pooling_boosts_sentence_level_match(self):
+        """Multi-sentence abstract pooling should capture high similarity with a specific sentence."""
+        from integrity_checker.matching.semantic import SemanticMatcher
+
+        # Title sim = 0.35 (metaphorical title), whole abstract sim = 0.55,
+        # sentence 1 sim = 0.40, sentence 2 sim = 0.85 (direct match to cited claim)
+        sims = [0.35, 0.55, 0.40, 0.85]
+        idx = {"i": 0}
+
+        def fake_compute_sim(self, model, t1, t2):
+            val = sims[min(idx["i"], len(sims) - 1)]
+            idx["i"] += 1
+            return val
+
+        long_abstract = (
+            "Background on recurrent neural networks and convolutional models in sequence modeling. "
+            "We propose the Transformer, a model architecture eschewing recurrence and relying entirely on attention mechanisms."
+        )
+
+        with patch.object(SemanticMatcher, "_get_model", return_value=MagicMock()), patch.object(
+            SemanticMatcher, "_compute_similarity", fake_compute_sim
+        ):
+            matcher = SemanticMatcher()
+            res = matcher.check_content_alignment(
+                cited_context="The Transformer architecture dispenses with recurrence and relies on attention.",
+                source_title="Attention Is All You Need",
+                source_abstract=long_abstract,
+            )
+
+        assert res.is_aligned is True
+        assert res.similarity >= 0.65
+

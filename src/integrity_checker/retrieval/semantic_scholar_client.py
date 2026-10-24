@@ -307,6 +307,10 @@ class SemanticScholarClient(BaseScholarClient):
         # URL
         url = paper.get("url")
 
+        # Abstract
+        raw_abs = paper.get("abstract")
+        abstract = str(raw_abs).strip() if raw_abs and str(raw_abs).strip() else None
+
         filtered_ext_ids = {
             k: str(v)
             for k, v in ext_ids.items()
@@ -323,5 +327,6 @@ class SemanticScholarClient(BaseScholarClient):
             year=year_str,
             venue=venue,
             url=url,
+            abstract=abstract,
             external_ids=filtered_ext_ids,
         )

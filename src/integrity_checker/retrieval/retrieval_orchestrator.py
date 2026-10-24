@@ -837,6 +837,7 @@ class RetrievalOrchestrator:
                     year=str(paper.year) if paper.year else None,
                     venue=paper.venue,
                     url=paper.external_ids.get("url") if paper.external_ids else None,
+                    abstract=paper.abstract,
                     external_ids=paper.external_ids or {},
                     confidence=0.95,  # High confidence for local DB
                     cached=True,
@@ -864,6 +865,7 @@ class RetrievalOrchestrator:
                     year=str(paper.year) if paper.year else None,
                     venue=paper.venue,
                     url=paper.external_ids.get("url") if paper.external_ids else None,
+                    abstract=paper.abstract,
                     external_ids=paper.external_ids or {},
                     confidence=0.95,
                     cached=True,
@@ -909,6 +911,7 @@ class RetrievalOrchestrator:
                         year=str(paper.year) if paper.year else None,
                         venue=paper.venue,
                         url=paper.external_ids.get("url") if paper.external_ids else None,
+                        abstract=paper.abstract,
                         external_ids=paper.external_ids or {},
                         confidence=min(0.92, 0.70 + match_score * 0.20),
                         cached=True,
@@ -1351,6 +1354,7 @@ class RetrievalOrchestrator:
             "year": candidate.year,
             "venue": candidate.venue,
             "url": candidate.url,
+            "abstract": candidate.abstract,
             "external_ids": candidate.external_ids,
             "score": candidate.score,
             "confidence": candidate.confidence,
@@ -1370,6 +1374,7 @@ class RetrievalOrchestrator:
             year=data.get("year"),
             venue=data.get("venue"),
             url=data.get("url"),
+            abstract=data.get("abstract"),
             external_ids=data.get("external_ids", {}),
             score=data.get("score", 0.0),
             confidence=data.get("confidence", 0.0),
@@ -1444,7 +1449,7 @@ class RetrievalOrchestrator:
                 authors=cand.authors or [],
                 year=int(cand.year[:4]) if cand.year and cand.year[:4].isdigit() else None,
                 venue=cand.venue,
-                abstract=None,
+                abstract=cand.abstract,
                 categories=[],
                 external_ids=cand.external_ids or {},
                 source=source,
@@ -1459,7 +1464,7 @@ class RetrievalOrchestrator:
 
     @staticmethod
     def _dedupe_candidates(candidates: list[SourceCandidate]) -> list[SourceCandidate]:
-        """Dedupe theo fingerprint (DOI > normalized title). Giữ candidate confidence cao nhất."""
+        """Dedupe by fingerprint (DOI > normalized title), keeping highest confidence and preserving abstract."""
         bucket: dict[str, SourceCandidate] = {}
         for c in candidates:
             fp = c.fingerprint()
@@ -1468,9 +1473,15 @@ class RetrievalOrchestrator:
                 bucket.setdefault(f"raw:{id(c)}", c)
                 continue
             if fp in bucket:
-                # Giữ candidate có confidence cao hơn
-                if c.confidence > bucket[fp].confidence:
+                existing = bucket[fp]
+                # Keep candidate with higher confidence, preserving abstract if one has it
+                if c.confidence > existing.confidence:
+                    if not c.abstract and existing.abstract:
+                        c.abstract = existing.abstract
                     bucket[fp] = c
+                else:
+                    if not existing.abstract and c.abstract:
+                        existing.abstract = c.abstract
             else:
                 bucket[fp] = c
         return list(bucket.values())
