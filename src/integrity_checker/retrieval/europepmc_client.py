@@ -11,6 +11,7 @@ from __future__ import annotations
 import html
 import os
 import re
+import time
 from typing import Any
 
 import httpx
@@ -44,6 +45,7 @@ class EuropePMCClient(BaseScholarClient):
 
     BASE_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
     name = "europepmc"
+    _backoff_until: float = 0.0
 
     def __init__(
         self,
@@ -145,7 +147,7 @@ class EuropePMCClient(BaseScholarClient):
         results = self._extract_results(data)
 
         # Fallback to unquoted TITLE query if strict phrase returned nothing
-        if not results:
+        if not results and self._last_status_code not in (429, 500, 502, 503, 504):
             words = [w for w in re.sub(r"[^\w\s]", " ", clean_title).split() if len(w) >= 3]
             if words:
                 fallback_q = " AND ".join(f"TITLE:{w}" for w in words[:8])
@@ -169,6 +171,12 @@ class EuropePMCClient(BaseScholarClient):
                     source_name=self.name,
                     found=False,
                     error=f"EuropePMC: rate limited (429) for '{clean_title[:50]}'",
+                )
+            if self._last_status_code and self._last_status_code >= 500:
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"EuropePMC: service unavailable ({self._last_status_code}) for '{clean_title[:50]}'",
                 )
             return SourceCandidate(
                 source_name=self.name,
@@ -305,6 +313,10 @@ class EuropePMCClient(BaseScholarClient):
         )
 
     async def _fetch_json_with_retry(self, params: dict[str, Any]) -> dict[str, Any] | None:
+        if time.monotonic() < EuropePMCClient._backoff_until:
+            self._last_status_code = 503
+            return None
+
         retryer = AsyncRetrying(
             stop=stop_after_attempt(self.max_retries),
             wait=wait_exponential(
@@ -327,6 +339,10 @@ class EuropePMCClient(BaseScholarClient):
                     self._last_status_code = resp.status_code
                     if resp.status_code == 404:
                         return None
+                    if resp.status_code in (429, 502, 503, 504):
+                        EuropePMCClient._backoff_until = time.monotonic() + 60.0
+                        if resp.status_code == 503:
+                            return None
                     if resp.status_code == 429 or resp.status_code >= 500:
                         if getattr(resp, "_request", None) is None:
                             resp._request = httpx.Request("GET", self.BASE_URL)

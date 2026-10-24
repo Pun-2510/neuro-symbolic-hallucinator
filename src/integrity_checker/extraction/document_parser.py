@@ -668,6 +668,11 @@ class DocumentParser:
 
         def _enrich_grobid_ref(target: Citation, donor: Citation) -> None:
             """Fill in missing fields on a GROBID reference from its regex counterpart."""
+            donor_first_author = (
+                (getattr(donor.authors[0], "raw", None) or str(donor.authors[0]))
+                if donor.authors
+                else ""
+            )
             if not target.authors and donor.authors:
                 target.authors = [
                     getattr(a, "raw", None) or str(a) for a in donor.authors
@@ -675,20 +680,78 @@ class DocumentParser:
             elif (
                 donor.authors
                 and len(donor.authors) == 1
-                and len(target.authors) > 1
+                and "," not in donor_first_author
+                and (
+                    len(target.authors) > 1
+                    or (
+                        len(target.authors) == 1
+                        and "," in (getattr(target.authors[0], "raw", None) or str(target.authors[0]))
+                    )
+                )
                 and any(
-                    kw in (getattr(donor.authors[0], "raw", None) or str(donor.authors[0])).lower()
+                    kw in donor_first_author.lower()
                     for kw in (
                         "institute", "foundation", "association", "organization",
                         "ministry", "department", "committee", "commission",
                         "council", "society", "team", "center", "centre",
-                        "university", "group", "bank",
+                        "university", "group", "bank", "health",
                     )
                 )
             ):
-                target.authors = [
-                    getattr(a, "raw", None) or str(a) for a in donor.authors
-                ]
+                old_auth_str = ", ".join(
+                    getattr(a, "raw", None) or str(a) for a in target.authors
+                )
+                target.authors = [donor_first_author]
+                if old_auth_str and old_auth_str in (target.raw_text or ""):
+                    target.raw_text = (target.raw_text or "").replace(
+                        old_auth_str, donor_first_author, 1
+                    )
+
+            # Fix bleeding co-author into target.title (e.g. Welling, L., & Thomson, L., [2008]
+            # where GROBID sets title=", & Thomson, L" and venue="PHP and MySQL Web Development...")
+            if (
+                target.title
+                and donor.title
+                and len(donor.title.strip()) >= 5
+                and re.match(r"^[,;\s]*(?:&\s*|and\b)", target.title.strip(), re.IGNORECASE)
+            ):
+                target.title = donor.title
+                target.title_normalized = donor.title_normalized
+                if donor.authors:
+                    target.authors = [
+                        getattr(a, "raw", None) or str(a) for a in donor.authors
+                    ]
+                if donor.venue:
+                    target.venue = donor.venue
+                parts = []
+                if target.authors:
+                    parts.append(", ".join(str(a) for a in target.authors))
+                if target.year:
+                    parts.append(f"({target.year})")
+                if target.title:
+                    parts.append(target.title)
+                if target.venue:
+                    parts.append(target.venue)
+                target.raw_text = " ".join(parts)
+
+            # Fix GROBID concatenating "Title. Venue" into target.title when target.venue is None
+            # (e.g. Settles (2012): title="Active learning. Synthesis Lectures on...")
+            if (
+                not target.venue
+                and donor.venue
+                and target.title
+                and donor.title
+                and len(donor.title.strip()) >= 8
+            ):
+                d_title_clean = donor.title.strip().rstrip(".")
+                t_title_clean = target.title.strip()
+                if (
+                    t_title_clean.lower().startswith(d_title_clean.lower() + ".")
+                    and len(t_title_clean) > len(d_title_clean) + 3
+                ):
+                    target.title = donor.title
+                    target.title_normalized = donor.title_normalized
+
             donor_is_multi_chunk = len(donor.raw_text or "") > max(
                 len(target.raw_text or "") * 2.2, 320
             )

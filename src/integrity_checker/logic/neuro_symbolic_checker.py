@@ -170,7 +170,11 @@ class NeuroSymbolicChecker:
             re.compile(
                 r'\b(ACL\s+Anthology|Crossref\s+REST\s+API|Semantic\s+Scholar\s+(?:Academic\s+Graph\s+API|Open\s+Research\s+Corpus)|'
                 r'OpenAlex\s*:\s*An\s+open\s+catalogue|Handbook\s+of\s+the\s+DOI\s+Resolution\s+System|'
-                r'The\s+DOI\s+Handbook)\b.*?\bRetrieved\s+from\s+https?://',
+                r'The\s+DOI\s+Handbook)\b.*?(?:\bRe-?\s*trieved\s+from\s+)?https?://',
+                re.IGNORECASE
+            ),
+            re.compile(
+                r'https?://(?:www\.)?who\.int/(?:news-room|fact-sheets)/',
                 re.IGNORECASE
             ),
             # Company name + API/SDK/Tool keyword (short form từ GROBID)
@@ -217,7 +221,9 @@ class NeuroSymbolicChecker:
             ),
         ]
         check_resource_str = " ".join(
-            part for part in (raw_text, citation.url or "", citation.venue or "") if part
+            part
+            for part in (raw_text, citation.title or "", citation.url or "", citation.venue or "")
+            if part
         )
         for pattern in web_resource_patterns:
             if not citation.doi and pattern.search(check_resource_str):

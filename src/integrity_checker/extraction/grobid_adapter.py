@@ -151,6 +151,17 @@ def _grobid_bib_to_citation(bib: GrobidBibEntry, order_index: int) -> Citation:
         if prefix_match:
             title = title[prefix_match.end():].strip()
 
+    venue = bib.venue
+    if venue and title and venue.strip().rstrip(".,").lower() == title.strip().rstrip(".,").lower():
+        venue = None
+
+    url = getattr(bib, "url", None)
+    if url:
+        url = re.sub(r"[\(\[](?:ac-?\s*cessed|re-?\s*trieved)\b.*$", "", url, flags=re.IGNORECASE).rstrip(".,;)'\"\u2019\u201d")
+        host_m = re.match(r"^https?://([^/\s]+)", url, re.IGNORECASE)
+        if not host_m or "." not in host_m.group(1):
+            url = None
+
     # Build human-readable raw_text từ structured fields
     raw_parts = []
     if authors_raw:
@@ -160,12 +171,12 @@ def _grobid_bib_to_citation(bib: GrobidBibEntry, order_index: int) -> Citation:
         raw_parts.append(f"({year}{suffix_str})")
     if title:
         raw_parts.append(title)
-    if bib.venue:
-        raw_parts.append(bib.venue)
+    if venue:
+        raw_parts.append(venue)
     if bib.doi:
         raw_parts.append(f"DOI: {bib.doi}")
-    if getattr(bib, "url", None):
-        raw_parts.append(bib.url)
+    if url:
+        raw_parts.append(url)
     raw_text = " ".join(raw_parts) if raw_parts else title or getattr(bib, "raw_reference", "") or ""
 
     # Estimate confidence based on field completeness
@@ -181,9 +192,9 @@ def _grobid_bib_to_citation(bib: GrobidBibEntry, order_index: int) -> Citation:
         authors=authors_raw,
         year=year,
         title=title,
-        venue=bib.venue,
+        venue=venue,
         doi=bib.doi,
-        url=getattr(bib, "url", None),
+        url=url,
         order_index=order_index,
         numeric_index=order_index,  # GROBID bib order = numeric reference index
         year_suffix=year_suffix,

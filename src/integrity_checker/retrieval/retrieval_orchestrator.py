@@ -614,7 +614,11 @@ _WEB_RESOURCE_PATTERNS = [
     re.compile(
         r"\b(ACL\s+Anthology|Crossref\s+REST\s+API|Semantic\s+Scholar\s+(?:Academic\s+Graph\s+API|Open\s+Research\s+Corpus)|"
         r"OpenAlex\s*:\s*An\s+open\s+catalogue|Handbook\s+of\s+the\s+DOI\s+Resolution\s+System|"
-        r"The\s+DOI\s+Handbook)\b.*?\bRetrieved\s+from\s+https?://",
+        r"The\s+DOI\s+Handbook)\b.*?(?:\bRe-?\s*trieved\s+from\s+)?https?://",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"https?://(?:www\.)?who\.int/(?:news-room|fact-sheets)/",
         re.IGNORECASE,
     ),
     re.compile(
@@ -797,8 +801,18 @@ class RetrievalOrchestrator:
         url_candidate = stripped.rstrip(".,;:)\"'")
         if re.match(r"^(?:https?://|www\.)(\S{10,})$", url_candidate, re.IGNORECASE):
             return True
+        check_str = " ".join(
+            part
+            for part in (raw_text, citation.title or "", citation.url or "", citation.venue or "")
+            if part
+        )
         for pattern in _WEB_RESOURCE_PATTERNS:
-            if pattern.search(raw_text) or (citation.url and pattern.search(citation.url)) or (citation.venue and pattern.search(citation.venue)):
+            if (
+                pattern.search(raw_text)
+                or pattern.search(check_str)
+                or (citation.url and pattern.search(citation.url))
+                or (citation.venue and pattern.search(citation.venue))
+            ):
                 return True
         if citation.matched_pattern == "vn_legal_document":
             return True

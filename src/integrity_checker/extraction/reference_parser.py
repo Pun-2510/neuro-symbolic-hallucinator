@@ -246,6 +246,13 @@ _FAKE_ENTRY_PATTERNS = [
     re.compile(r'^(Predicting|Training|Using|Applying|Extracting|Computing|'
               r'Encoding|Decoding|Processing|Analyzing|Evaluating)'
               r'\s+[a-z]', re.IGNORECASE),
+    # Pattern: Table of Contents leader dots, leading colon, or structural headings
+    re.compile(r'(?:\.\s*){5,}'),
+    re.compile(r'^\s*:'),
+    re.compile(
+        r'^(?:CHAPTER|SECTION|TABLE\s+OF\s+CONTENTS|LIST\s+OF\s+(?:FIGURES|TABLES))\b',
+        re.IGNORECASE,
+    ),
 ]
 
 _METHOD_INDICATORS = [

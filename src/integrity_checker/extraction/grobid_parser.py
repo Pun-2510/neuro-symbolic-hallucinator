@@ -34,6 +34,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 from defusedxml.ElementTree import ParseError, fromstring, tostring
@@ -177,7 +178,8 @@ def call_grobid_fulltext(
 
     try:
         with open(pdf_path, "rb") as f:
-            files = {"input": (pdf_path, f, "application/pdf")}
+            filename = Path(pdf_path).name if pdf_path else "document.pdf"
+            files = {"input": (filename, f, "application/pdf")}
             data = {
                 "consolidateHeader": str(config.consolidate_header[0]).lower(),
                 "consolidateCitations": "0",
@@ -405,6 +407,13 @@ def _normalize_raw_ref_text(raw_ref_text: str) -> str:
     # Join broken percent-encoding across line wraps: "% 20" or "%F0... %9F..."
     text = re.sub(r"%\s+([0-9A-Fa-f]{2})", r"%\1", text)
     text = re.sub(r"(%[0-9A-Fa-f]{2}[0-9A-Za-z_%~:-]*)\s+(%[0-9A-Fa-f]{2})", r"\1\2", text)
+    # Join domain broken across line wrap right after dot: "https://doi. org/..." -> "https://doi.org/..."
+    text = re.sub(
+        r"((?:https?://|www\.)[a-z0-9-]+)\.\s+((?:org|com|edu|gov|net|io|int)/)",
+        r"\1.\2",
+        text,
+        flags=re.IGNORECASE,
+    )
     # Join URL paths broken after '/' or '-' before a lowercase slug/path
     text = re.sub(
         r"((?:https?://|www\.)[^\s]+[/\-])\s+([a-z0-9_~%#][^\s]*)",
@@ -466,10 +475,19 @@ def _extract_url_and_doi_from_raw(
                     url = "https://" + cand
 
     if url:
+        url = re.sub(
+            r"[\(\[](?:ac-?\s*cessed|re-?\s*trieved)\b.*$",
+            "",
+            url,
+            flags=re.IGNORECASE,
+        )
         # Strip any accidental trailing quote or punctuation
         url = url.rstrip(".,;)'\"\u2019\u201d")
         if not url.lower().startswith(("http://", "https://")):
             url = "https://" + url
+        host_m = re.match(r"^https?://([^/\s]+)", url, re.IGNORECASE)
+        if not host_m or ("." not in host_m.group(1) and host_m.group(1).lower() != "localhost"):
+            url = None
 
     return url, doi
 

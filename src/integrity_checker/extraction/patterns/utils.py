@@ -114,8 +114,18 @@ def extract_url(text: str) -> Optional[str]:
     match = _URL_REGEX.search(text)
     if match:
         url = match.group(0)
+        url = re.sub(
+            r"[\(\[](?:ac-?\s*cessed|re-?\s*trieved)\b.*$",
+            "",
+            url,
+            flags=re.IGNORECASE,
+        )
         # Clean trailing punctuation
-        return url.rstrip(".,;:")
+        url = url.rstrip(".,;:)'\"\u2019\u201d")
+        host_m = re.match(r"^https?://([^/\s]+)", url, re.IGNORECASE)
+        if not host_m or ("." not in host_m.group(1) and host_m.group(1).lower() != "localhost"):
+            return None
+        return url
     return None
 
 
