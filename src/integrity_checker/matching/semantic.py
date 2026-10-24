@@ -351,6 +351,9 @@ class SemanticMatcher:
         Returns:
             List of similarity scores
         """
+        if not text_pairs:
+            return []
+
         model = self._get_model()
         if model is None:
             return [0.0] * len(text_pairs)
@@ -369,12 +372,9 @@ class SemanticMatcher:
             )
 
             similarities = []
-            for i in range(0, len(embs), 2):
-                if i + 1 < len(embs):
-                    cos = (embs[i] @ embs[i + 1]).item()
-                    similarities.append(max(0.0, min(1.0, float(cos))))
-                else:
-                    similarities.append(0.0)
+            for i in range(0, len(texts), 2):
+                cos = (embs[i] @ embs[i + 1]).item()
+                similarities.append(max(0.0, min(1.0, float(cos))))
 
             return similarities
 
