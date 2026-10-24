@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { User } from '@/api/client';
+import { queryClient } from '@/lib/queryClient';
 
 interface AuthContextType {
   user: User | null;
@@ -16,7 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Exported for test utilities (renderWithProviders). Production code should use useAuth().
 export { AuthContext };
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -100,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await res.json();
+    queryClient.clear();
     localStorage.setItem('token', data.token);
     setToken(data.token);
     setUser(data.user);
@@ -118,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     localStorage.removeItem('token');
+    queryClient.clear();
     setToken(null);
     setUser(null);
   };

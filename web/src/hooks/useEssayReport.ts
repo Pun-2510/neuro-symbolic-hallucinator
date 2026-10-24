@@ -45,15 +45,16 @@ export function useOverrideVerdict() {
   return useMutation({
     mutationFn: ({
       essayId,
-      verdictId,
       req,
     }: {
       essayId?: number;
       verdictId?: number | string;
       req: OverrideRequest;
     }) => {
-      const targetEssayId = essayId ?? Number(verdictId);
-      return api.overrideVerdict(targetEssayId, req);
+      if (essayId == null || Number.isNaN(Number(essayId))) {
+        return Promise.reject(new Error('Valid essayId is required to override verdict'));
+      }
+      return api.overrideVerdict(Number(essayId), req);
     },
     onSuccess: () => {
       // Invalidate all essay-report queries so updated verdict reloads

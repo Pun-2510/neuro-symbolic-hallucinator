@@ -59,6 +59,8 @@ function OverrideForm({
       toast.success(t('override.successToast'));
       setDone(true);
       setTimeout(onClose, 500);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('override.errorToast', 'Override failed'));
     } finally {
       setSubmitting(false);
     }
@@ -172,8 +174,6 @@ export function OverrideControls({
 }) {
   const { t, i18n } = useTranslation();
   const { has } = useRole();
-  if (!has('override_verdict')) return null;
-
   const [open, setOpen] = useState(false);
 
   // Close on Escape
@@ -185,6 +185,8 @@ export function OverrideControls({
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [open]);
+
+  if (!has('override_verdict')) return null;
 
   return (
     <>
