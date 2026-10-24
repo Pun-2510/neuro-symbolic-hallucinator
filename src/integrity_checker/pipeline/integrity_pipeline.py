@@ -814,7 +814,16 @@ class IntegrityPipeline:
             citation.context = citation_context
 
             # NEW v1.3: Provenance tracking - compute before calling checker
-            api_exhausted = len(source.sources_succeeded) == 0 and len(source.sources_failed) > 0
+            has_clean_empty_search = any(
+                "no results for" in (err or "").lower()
+                or "no title match" in (err or "").lower()
+                for err in (source.sources_failed or {}).values()
+            )
+            api_exhausted = (
+                len(source.sources_succeeded) == 0
+                and len(source.sources_failed) > 0
+                and not has_clean_empty_search
+            )
             used_local_db = source.sources_succeeded == ["local_db"] if source.sources_succeeded else False
 
             # Pass mapping_status + style_profile + citation_context + provenance vào checker

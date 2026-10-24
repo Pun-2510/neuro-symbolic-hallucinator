@@ -753,7 +753,12 @@ class RetrievalOrchestrator:
         else:
             min_failures_for_unresolved = len(sources_queried) // 2 + 1
         if not any_found and len(failed) >= min_failures_for_unresolved:
-            # Đa số sources failed → trả UNRESOLVED
+            # Distinguish hard API/network failures from clean HTTP 200 "no results" responses
+            has_clean_search_response = any(
+                "no results for" in (err or "").lower()
+                or "no title match" in (err or "").lower()
+                for err in failed.values()
+            )
             logger.warning(
                 f"UNRESOLVED: citation='{citation.raw_text[:50]}', "
                 f"failed={list(failed.keys())}"
@@ -772,7 +777,7 @@ class RetrievalOrchestrator:
                 sources_queried=sources_queried,
                 sources_succeeded=[],
                 sources_failed=failed,
-                api_exhausted=True,
+                api_exhausted=not has_clean_search_response,
             )
 
         # ===== 4. Quality filtering - remove garbage/unrelated candidates =====

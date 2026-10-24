@@ -266,3 +266,149 @@ def test_neuro_symbolic_checker_preserves_custom_feature_calculator_and_resource
     assert ValidationLabel.RESOURCE in ExplanationGenerator.LABEL_VI
     assert "tài nguyên" in ExplanationGenerator.short(verdict).lower()
 
+
+def test_substantive_citation_no_scholarly_record_returns_suspected_hallucination() -> None:
+    """Substantive reference with 0 records across >=2 live registries → SUSPECTED_HALLUCINATION."""
+    rules = SymbolicRules()
+    raw = "Nguyen, V., & Smith, J. (2023). Quantum Neural Networks for Autonomous Legal Arbitration. Journal of AI Law, 12(4), 101-120."
+    source = SourceResult(
+        citation_raw=raw,
+        candidates=[],
+        sources_queried=["crossref", "openalex", "semantic_scholar", "coreapi"],
+        sources_succeeded=[],
+        sources_failed={
+            "crossref": "Crossref: no results for 'Quantum Neural Networks'",
+            "openalex": "OpenAlex: no results for 'Quantum Neural Networks'",
+            "semantic_scholar": "S2: no title match (0.21) for 'Quantum Neural Networks'",
+            "coreapi": "CoreAPI: no results for 'Quantum Neural Networks'",
+        },
+    )
+    outcome = rules.apply(
+        MatchFeatures(),
+        source,
+        citation_authors=["Nguyen, V.", "Smith, J."],
+        citation_year="2023",
+        citation_raw=raw,
+    )
+    assert outcome.label == ValidationLabel.SUSPECTED_HALLUCINATION
+    assert "R-NO-SCHOLARLY-RECORD" in outcome.triggered_rules
+    assert outcome.confidence >= 0.75
+
+
+def test_nonexistent_doi_no_candidates_returns_suspected_hallucination() -> None:
+    """Reference with a valid-syntax DOI that does not exist in >=2 live registries → SUSPECTED_HALLUCINATION."""
+    rules = SymbolicRules()
+    raw = "Wang, L. (2022). Hyperbolic Graph Transformers for Synthetic Biology. Nature Machine Intelligence. https://doi.org/10.1038/s42256-022-99999-z"
+    source = SourceResult(
+        citation_raw=raw,
+        candidates=[],
+        sources_queried=["crossref", "openalex", "semantic_scholar"],
+        sources_succeeded=[],
+        sources_failed={
+            "crossref": "Crossref: no results for 'Hyperbolic Graph Transformers'",
+            "openalex": "OpenAlex: no results for 'Hyperbolic Graph Transformers'",
+            "semantic_scholar": "S2: no results for 'Hyperbolic Graph Transformers'",
+        },
+    )
+    outcome = rules.apply(
+        MatchFeatures(),
+        source,
+        citation_doi="10.1038/s42256-022-99999-z",
+        citation_authors=["Wang, L."],
+        citation_year="2022",
+        citation_raw=raw,
+    )
+    assert outcome.label == ValidationLabel.SUSPECTED_HALLUCINATION
+    assert "R-NONEXISTENT-DOI" in outcome.triggered_rules
+    assert "doi" in outcome.mismatched_fields
+
+
+def test_nonexistent_doi_with_weak_candidate_returns_suspected_hallucination() -> None:
+    """When cited DOI fails to match and fallback candidate has low title similarity (<0.60) → SUSPECTED_HALLUCINATION."""
+    rules = SymbolicRules()
+    raw = "Zhang, H. (2023). Self-Evolving Symbolic Prompts in Medical Imaging. IEEE TMI. doi:10.1109/TMI.2023.9988776"
+    cand = SourceCandidate(
+        source_name="crossref",
+        found=True,
+        doi="10.1109/TMI.2020.1111111",
+        title="Medical Imaging Overview",
+        authors=["Other, A."],
+        year="2020",
+        confidence=0.45,
+    )
+    source = SourceResult(
+        citation_raw=raw,
+        candidates=[cand],
+        sources_queried=["crossref", "openalex"],
+        sources_succeeded=["crossref"],
+        sources_failed={"openalex": "OpenAlex: no results for 'Self-Evolving'"},
+    )
+    features = MatchFeatures(
+        title_sim_fuzzy=0.45,
+        title_sim_semantic=0.48,
+        author_jaccard=0.0,
+        year_distance=3,
+        doi_exact_match=False,
+        source_consensus=1,
+    )
+    outcome = rules.apply(
+        features,
+        source,
+        citation_doi="10.1109/TMI.2023.9988776",
+        citation_authors=["Zhang, H."],
+        citation_year="2023",
+        citation_raw=raw,
+    )
+    assert outcome.label == ValidationLabel.SUSPECTED_HALLUCINATION
+    assert "R-NONEXISTENT-DOI" in outcome.triggered_rules
+
+
+def test_weak_evidence_below_abstention_zone_returns_suspected_hallucination() -> None:
+    """Live candidate with title_sim < abstention_low (0.40) and author_jaccard < 0.30 → SUSPECTED_HALLUCINATION."""
+    rules = SymbolicRules()
+    raw = "Pham, T. (2023). Neural Symbolic Verification of Hallucinated Citations. Journal of Computation."
+    cand = SourceCandidate(
+        source_name="openalex",
+        found=True,
+        title="Unrelated Study on Database Indexing",
+        authors=["Miller, R."],
+        year="2019",
+        confidence=0.3,
+    )
+    source = SourceResult(
+        citation_raw=raw,
+        candidates=[cand],
+        sources_queried=["crossref", "openalex"],
+        sources_succeeded=["openalex"],
+        sources_failed={},
+    )
+    features = MatchFeatures(
+        title_sim_fuzzy=0.22,
+        title_sim_semantic=0.25,
+        author_jaccard=0.0,
+        year_distance=4,
+        doi_exact_match=False,
+        source_consensus=1,
+    )
+    outcome = rules.apply(
+        features,
+        source,
+        citation_authors=["Pham, T."],
+        citation_year="2023",
+        citation_raw=raw,
+    )
+    assert outcome.label == ValidationLabel.SUSPECTED_HALLUCINATION
+    assert "R-HALLUCINATED-SOURCE" in outcome.triggered_rules
+    assert "R-WEAK-EVIDENCE" in outcome.triggered_rules
+
+
+def test_common_surnames_excluded_from_known_seminal_authors() -> None:
+    """Common surnames (Smith, Nguyen, Wang, Zhang) must not be treated as seminal ML authors."""
+    rules = SymbolicRules()
+    assert rules._is_known_academic_author_pattern(["Smith, J."], "2022", "Smith, J. (2022). Fake Paper.") is False
+    assert rules._is_known_academic_author_pattern(["Nguyen, V."], "2023", "Nguyen, V. (2023). Fake Paper.") is False
+    assert rules._is_known_academic_author_pattern(["Wang, L."], "2021", "Wang, L. (2021). Fake Paper.") is False
+    assert rules._is_known_academic_author_pattern(["Vaswani, A."], "2017", "Vaswani et al. (2017). Attention.") is True
+    assert rules._is_known_academic_author_pattern(["Devlin, J."], "2019", "Devlin et al. (2019). BERT.") is True
+
+

@@ -111,6 +111,30 @@ _KNOWN_FAKE_AUTHORS: list[re.Pattern[str]] = [
 _NON_LIVE_SOURCES: frozenset[str] = frozenset({"local_db", "known_papers"})
 
 
+def _is_clean_no_result_message(err: str | None) -> bool:
+    """Return True when a scholarly client responded cleanly (HTTP 200) with no match."""
+    if not err:
+        return False
+    lower = err.lower()
+    return "no results for" in lower or "no title match" in lower
+
+
+def _has_substantive_citation_metadata(
+    citation_raw: str | None,
+    source_citation_raw: str | None,
+    citation_authors: list | None,
+    citation_year: str | None,
+) -> bool:
+    """Return True if the citation has real bibliographic metadata (not a bare unit-test stub)."""
+    raw_str = (citation_raw or source_citation_raw or "").strip()
+    has_year_in_raw = bool(re.search(r"\b(?:19|20)\d{2}\b", raw_str))
+    return bool(
+        citation_authors
+        or citation_year
+        or (len(raw_str) >= 25 and has_year_in_raw)
+    )
+
+
 def _has_live_source(
     source: SourceResult,
     verified_sources: list[str],
@@ -371,130 +395,65 @@ class SymbolicRules:
         citation_year: str | None = None,
         citation_raw: str | None = None,
     ) -> bool:
-        """Check if citation has known academic author patterns.
+        """Check if citation has specific seminal academic author patterns.
 
-        Returns True if the citation looks like a legitimate academic citation
-        (even if metadata is wrong), suggesting METADATA_ERROR rather than HALLUCINATION.
+        Returns True if the citation references a specific well-known ML/NLP scholar
+        from the curated seminal-paper registry (suggesting METADATA_ERROR rather
+        than HALLUCINATION when title/year is slightly wrong).
 
-        This helps distinguish:
-        - "Vaswani et al. (2017)" -> known author, might be METADATA_ERROR
-        - "FakeAuthor et al. (2020)" -> fake author -> HALLUCINATION
+        Generic common surnames (e.g., Smith, Jones, Wang, Zhang, Nguyen, Tran)
+        are intentionally excluded so fabricated citations using common surnames
+        are not misclassified as METADATA_ERROR.
         """
-        import re
-
-        # Known ML/NLP author last names (from known_papers) - EXTENDED
+        # Specific seminal ML/NLP scholar surnames (curated, excluding generic surnames)
         known_authors = {
-            "vaswani", "shazeer", "parmar", "uszkoreit", "jones", "nips",
-            "devlin", "chang", "lee", "toutanova",
-            "goodfellow", "pouget-abadie", "mirza", "xu", "warde-farley",
-            "lecun", "bottou", "bengio",
+            "vaswani", "shazeer", "parmar", "uszkoreit", "gomez", "kaiser", "polosukhin",
+            "devlin", "toutanova",
+            "goodfellow", "pouget-abadie", "mirza", "warde-farley",
+            "lecun", "bottou", "bengio", "hinton",
             "hochreiter", "schmidhuber",
-            "bahdanau", "cho",
+            "bahdanau",
             "sutskever", "vinyals",
-            "mikolov", "chen", "corrado", "dean",
+            "mikolov", "corrado",
             "radford", "narasimhan",
-            "brown", "mann", "ryder", "melnyk",
-            "raffel", "roberts", "lee",
-            "wolf", "debut", "sanh",
-            "dosovitskiy", "beyer", "kolesnikov",
-            "he", "zhang", "ren", "sun",
-            "kingma", "ba",
+            "raffel",
+            "dosovitskiy", "kolesnikov",
+            "kingma",
             "loshchilov", "hutter",
             "sennrich", "haddow", "birch",
-            "peng", "klein", "manning",
-            "miller", "tadepalli", "ferrucci",
-            "karpukhin", "oquab", "estan", "gopinath",
-            "yao",  # Tree of Thoughts
-            "wei",  # Chain of Thought
-            "kojima",  # Zero-Shot Reasoners",
-            "finn",  # MAML
-            "snell",  # Prototypical Networks
-            "bar-haim",  # RTE challenges
-            "dagan",  # Textual Entailment
-            "giampiccolo",  # RTE
-            "bentivogli",  # RTE
-            # Common ML authors
-            "wang", "zhang", "li", "yang", "huang",
-            "nguyen", "tran", "pham",
-            "kim", "lee", "park", "choi",
-            "liu", "chen", "zhao", "sun",
-            "wu", "zhou",
-            "velickovic",  # Graph Attention Networks
-            "socher", "lecun",
+            "manning",
+            "karpukhin",
+            "kojima",
+            "finn",
+            "snell",
+            "velickovic",
+            "socher",
             "mnih", "kavukcuoglu",
-            "brock", "tesla",  # BigGAN
-            "grill",  # BYOL
-            "bojanowski", "joulin", "laptev",
-            "mou", "bowman", "levy",
-            "arora", "hill", "cer", "subramanian",
-            # Common Western surnames
-            "jones", "smith", "johnson", "williams", "brown",
-            "garcia", "miller", "davis", "rodriguez", "martinez",
-            "clark", "lewis", "walker", "young", "white",
+            "bojanowski", "joulin",
+            "bowman",
         }
-
-        # Check author segment of raw text (before year) for known academic patterns
-        # IMPORTANT: Use word boundary matching to avoid false positives
-        # e.g., "Scholar" should NOT match "cho" from "choi", and words in paper
-        # titles ("he", "sun", "white", "young", "brown") should NOT match as authors.
-        import re
 
         raw_lower = (citation_raw or "").lower()
         author_prefix = re.split(r"\b(?:19|20)\d{2}\b", raw_lower, maxsplit=1)[0]
 
-        # Known author patterns in raw text - EXTENDED for METADATA_ERROR detection
-        known_patterns = [
-            # Well-known ML/NLP researchers
-            "vaswani", "devlin", "brown", "mikolov", "bahdanau",
-            "goodfellow", "he", "sennrich", "lecun", "hinton",
-            "kingma", "radford", "cho", "sutskever", "bengio",
-            "dosovitskiy", "karpukhin", "lewis", "liu",
-            "openai", "peng", "manning", "tomas",
-            "yao",  # Tree of Thoughts
-            "wei",  # Chain of Thought
-            "kojima",  # Zero-Shot Reasoners
-            "loshchilov", "hutter",  # Decoupled Weight Decay
-            "finn",  # MAML
-            "snell",  # Prototypical Networks
-            "velickovic",  # Graph Attention Networks
-            # Common Asian surnames (very common in ML)
-            "wang", "zhang", "li", "yang", "huang",
-            "nguyen", "tran", "pham",
-            "kim", "lee", "park", "choi",
-            "liu", "chen", "zhao", "sun",
-            "wu", "zhou", "xu", "guo",
-            # Common Western surnames
-            "jones", "smith", "johnson", "williams", "brown",
-            "garcia", "miller", "davis", "rodriguez", "martinez",
-            "clark", "lewis", "robinson", "walker", "young",
-            "mou", "socher",  # Specific authors
-            "brock",  # BigGAN
-            "grill",  # BYOL
-        ]
-
-        for pattern in known_patterns:
-            # Use word boundary to ensure we match whole words only
-            # e.g., "cho" should NOT match inside "scholar" or "choi"
-            if re.search(r'\b' + re.escape(pattern) + r'\b', author_prefix):
+        for pattern in known_authors:
+            if re.search(r"\b" + re.escape(pattern) + r"\b", author_prefix):
                 return True
 
         # Check individual authors
         if citation_authors:
             for author in citation_authors:
-                # Handle Author objects by converting to string first
-                if hasattr(author, 'last_name'):
+                if hasattr(author, "last_name"):
                     parts = [author.last_name]
-                    if getattr(author, 'first_name', None):
+                    if getattr(author, "first_name", None):
                         parts.append(author.first_name)
-                    if getattr(author, 'middle_name', None):
+                    if getattr(author, "middle_name", None):
                         parts.append(author.middle_name)
                     author_str = " ".join(p for p in parts if p)
                 else:
                     author_str = str(author)
                 author_lower = author_str.lower()
-                # Extract last name
                 last_name = author_lower.split()[-1] if author_lower else ""
-                # Check against known authors
                 if last_name in known_authors:
                     return True
 
@@ -586,8 +545,8 @@ class SymbolicRules:
                 label=ValidationLabel.SUSPECTED_HALLUCINATION,
                 confidence=0.95,
                 reasoning=(
-                    f"URL domain '{fake_pattern}' là domain giả/fake (example.com, "
-                    f"test.com, localhost, etc.). Không thuộc hệ thống học thuật."
+                    f"URL domain '{fake_pattern}' is a placeholder/fake domain (example.com, "
+                    f"test.com, localhost, etc.) and does not belong to a scholarly registry."
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=["url"],
@@ -603,8 +562,7 @@ class SymbolicRules:
                 confidence=0.9,
                 reasoning=(
                     f"DOI {citation_doi} matches known fabricated DOI pattern "
-                    f"(invalid/fake publisher prefix like 10.1234, 10.9999). "
-                    f"Không thuộc hệ thống học thuật."
+                    f"(invalid/fake publisher prefix like 10.1234, 10.9999)."
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=["doi"],
@@ -631,6 +589,13 @@ class SymbolicRules:
                     style_penalty=style_penalty,
                 )
 
+        # Compute known author pattern early for use across pre-flight and fallback rules
+        is_known_author = self._is_known_academic_author_pattern(
+            citation_authors=citation_authors,
+            citation_year=str(citation_year) if citation_year is not None else None,
+            citation_raw=citation_raw,
+        )
+
         # --- Pre-flight: FUTURE YEAR detection (NEW v1.4) ---
         # Check if citation year is in the future (beyond current year)
         # IMPORTANT: Distinguish between real paper with wrong year vs. fabricated paper
@@ -647,12 +612,6 @@ class SymbolicRules:
                 else:
                     cited_year = int(year_match.group())
                     if cited_year > current_year:
-                        # Future year detected - check if author is known or paper was retrieved
-                        is_known_author = self._is_known_academic_author_pattern(
-                            citation_authors=citation_authors,
-                            citation_year=str(citation_year),
-                            citation_raw=citation_raw,
-                        )
                         has_matched_paper = bool(
                             source.best_candidate()
                             and (features.doi_exact_match or features.title_sim_fuzzy >= 0.85)
@@ -692,27 +651,70 @@ class SymbolicRules:
                 # FIX: Log exceptions instead of silent pass
                 logger.debug(f"Error parsing year from '{citation_year}': {exc}")
 
-        # --- Rule 5 (default): không có gì để quyết định ---
+        # --- Rule 5: No candidates returned ---
         if not source.candidates or not source.best_candidate():
-            # FIX v1.4: When APIs fail completely, return UNRESOLVED, not METADATA_ERROR
-            # Previously this was too aggressive - returned METADATA_ERROR for known authors
-            # even when APIs fail, which caused many REAL papers to be misclassified
+            if source.sources_failed:
+                clean_empty_sources = [
+                    s for s, err in source.sources_failed.items()
+                    if _is_clean_no_result_message(err)
+                ]
+            else:
+                clean_empty_sources = [
+                    s for s in source.sources_queried
+                    if s not in _NON_LIVE_SOURCES
+                ]
+
+            has_substantive_meta = _has_substantive_citation_metadata(
+                citation_raw,
+                source.citation_raw,
+                citation_authors,
+                citation_year,
+            )
+
+            # When >= 2 live scholarly registries responded cleanly (HTTP 200) and found
+            # zero matching records for a substantive citation, flag as SUSPECTED_HALLUCINATION.
+            if has_substantive_meta and len(clean_empty_sources) >= 2 and not is_known_author:
+                if citation_doi and str(citation_doi).strip():
+                    return RuleOutcome(
+                        label=ValidationLabel.SUSPECTED_HALLUCINATION,
+                        confidence=max(0.0, 0.85 - style_penalty),
+                        reasoning=(
+                            f"Cited DOI '{citation_doi}' and title could not be found across "
+                            f"{len(clean_empty_sources)} scholarly registries ({', '.join(clean_empty_sources)}). "
+                            f"Suspected fabricated or non-existent source."
+                        ),
+                        triggered_rules=["R-NONEXISTENT-DOI", "R-NO-CANDIDATE"],
+                        mismatched_fields=["doi", "title"],
+                        style_penalty=style_penalty,
+                    )
+                return RuleOutcome(
+                    label=ValidationLabel.SUSPECTED_HALLUCINATION,
+                    confidence=max(0.0, 0.80 - style_penalty),
+                    reasoning=(
+                        f"No matching scholarly record found across {len(clean_empty_sources)} "
+                        f"academic databases ({', '.join(clean_empty_sources)}). "
+                        f"Suspected AI-hallucinated or non-existent reference."
+                    ),
+                    triggered_rules=["R-NO-CANDIDATE", "R-NO-SCHOLARLY-RECORD"],
+                    mismatched_fields=["title"],
+                    style_penalty=style_penalty,
+                )
+
             if source.sources_failed and not source.sources_succeeded:
                 return RuleOutcome(
                     label=ValidationLabel.UNRESOLVED,
                     confidence=0.3,
-                    reasoning="Tất cả API đều fail — không đủ bằng chứng để kết luận.",
+                    reasoning="All external scholarly APIs failed or timed out — insufficient evidence to conclude.",
                     triggered_rules=["R-FAIL-ALL"],
                     mismatched_fields=[],
                     style_penalty=style_penalty,
                 )
-            # Only return UNRESOLVED if APIs returned some results but no candidates matched
             return RuleOutcome(
-                label=ValidationLabel.UNRESOLVED,  # Changed from SUSPECTED_HALLUCINATION
+                label=ValidationLabel.UNRESOLVED,
                 confidence=0.5,
                 reasoning=(
-                    "Không tìm thấy candidate nào trong 4 nguồn (Crossref/OpenAlex/"
-                    "Semantic Scholar/arXiv). Không đủ bằng chứng để kết luận."
+                    "No matching candidates found across queried scholarly databases "
+                    "(Crossref/OpenAlex/Semantic Scholar/CORE) — insufficient evidence to conclude."
                 ),
                 triggered_rules=["R-NO-CANDIDATE"],
                 mismatched_fields=[],
@@ -727,13 +729,6 @@ class SymbolicRules:
         author_sim = features.author_jaccard
         year_dist = features.year_distance
         sources_found = len(source.candidates) if source.candidates else 0
-
-        # FIX v1.4: Move is_known_author outside of Rule 4b for reuse in other rules
-        is_known_author = self._is_known_academic_author_pattern(
-            citation_authors=citation_authors,
-            citation_year=citation_year,
-            citation_raw=citation_raw,
-        )
 
         mismatched: list[str] = []
         triggered_rules: list[str] = []
@@ -759,7 +754,7 @@ class SymbolicRules:
         if provenance_penalty > 0:
             provenance_note = f" [provenance penalty: -{provenance_penalty:.0%}]"
 
-        # --- Rule 1: DOI + title + author khớp mạnh → VERIFIED ---
+        # --- Rule 1: DOI + title + author strong match → VERIFIED ---
         # Guard against a self-confirming match: when the citation's DOI comes
         # from the local DB / known-paper cache, ``doi_exact_match`` only proves
         # the cache was keyed on the same DOI, not that an independent registry
@@ -781,7 +776,7 @@ class SymbolicRules:
                     - provenance_penalty,
                 ),
                 reasoning=(
-                    f"DOI khớp chính xác, title similarity={title_sim:.2f}, "
+                    f"Exact DOI match confirmed, title similarity={title_sim:.2f}, "
                     f"author overlap={author_sim:.2f}.{provenance_note}"
                 ),
                 triggered_rules=triggered_rules,
@@ -817,17 +812,17 @@ class SymbolicRules:
         ):
             triggered_rules.append("R-WELL-LINKED")
             author_note = (
-                f"Author overlap={author_sim:.2f} (đầy đủ)."
+                f"Author overlap={author_sim:.2f} (full match)."
                 if author_sim >= 0.99
-                else f"Partial author overlap (author_jaccard={author_sim:.2f}, có thể do 'et al.')."
+                else f"Partial author overlap (author_jaccard={author_sim:.2f}, likely due to 'et al.')."
             )
             return RuleOutcome(
                 label=ValidationLabel.VERIFIED,
                 confidence=max(0.0, 0.85 - style_penalty - provenance_penalty),
                 reasoning=(
-                    f"Citation được link chính xác và title "
-                    f"similarity cao ({features.title_sim_fuzzy:.2f}). {author_note} "
-                    f"Xác minh thành công.{provenance_note}"
+                    f"Citation is properly linked and has high title "
+                    f"similarity ({features.title_sim_fuzzy:.2f}). {author_note} "
+                    f"Verification succeeded.{provenance_note}"
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=[],
@@ -848,17 +843,17 @@ class SymbolicRules:
                 label=ValidationLabel.VERIFIED,
                 confidence=max(0.0, 0.75 - style_penalty - provenance_penalty),
                 reasoning=(
-                    f"Citation được link chính xác và title "
-                    f"similarity trung bình ({features.title_sim_fuzzy:.2f}), "
+                    f"Citation is properly linked with moderate title "
+                    f"similarity ({features.title_sim_fuzzy:.2f}), "
                     f"author_jaccard={author_sim:.2f}. "
-                    f"Có thể xác minh với lưu ý về metadata.{provenance_note}"
+                    f"Verified with minor metadata variation.{provenance_note}"
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=["author"] if author_sim < self.author_jaccard_verified else [],
                 style_penalty=style_penalty,
             )
 
-        # --- Rule 2: DOI + title similarity trung bình → METADATA_ERROR ---
+        # --- Rule 2: DOI resolves + moderate title similarity → METADATA_ERROR ---
         # Only apply for live sources, not for local_db (which is handled above)
         if (
             not mapping_is_matched  # Only apply if not already well-linked
@@ -876,22 +871,22 @@ class SymbolicRules:
                 label=ValidationLabel.METADATA_ERROR,
                 confidence=max(0.0, 0.7 - style_penalty),
                 reasoning=(
-                    f"DOI resolve được nhưng title similarity chỉ {title_sim:.2f}. "
-                    f"Các trường lệch: {', '.join(mismatched)}."
+                    f"DOI resolved but title similarity is moderate ({title_sim:.2f}). "
+                    f"Mismatched fields: {', '.join(mismatched)}."
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=mismatched,
                 style_penalty=style_penalty,
             )
 
-        # --- Rule 3: ≥2 nguồn đồng thuận ---
+        # --- Rule 3: ≥2 sources in consensus ---
         if consensus >= self.consensus_verified and title_sim >= self.title_sim_verified:
             if author_sim >= self.author_jaccard_verified and year_dist <= self.year_tolerance:
                 triggered_rules.append("R-CONSENSUS-FULL")
                 return RuleOutcome(
                     label=ValidationLabel.VERIFIED,
                     confidence=max(0.0, 0.8 - style_penalty - provenance_penalty),
-                    reasoning=f"{consensus} nguồn đồng thuận về title + author + year.{provenance_note}",
+                    reasoning=f"{consensus} scholarly sources agree on title, author, and year.{provenance_note}",
                     triggered_rules=triggered_rules,
                     mismatched_fields=[],
                     style_penalty=style_penalty,
@@ -905,7 +900,7 @@ class SymbolicRules:
                 label=ValidationLabel.METADATA_ERROR,
                 confidence=max(0.0, 0.65 - style_penalty),
                 reasoning=(
-                    f"{consensus} nguồn đồng thuận nhưng có trường lệch: "
+                    f"{consensus} scholarly sources matched the title but have mismatched fields: "
                     f"{', '.join(mismatched)}."
                 ),
                 triggered_rules=triggered_rules,
@@ -913,7 +908,7 @@ class SymbolicRules:
                 style_penalty=style_penalty,
             )
 
-        # --- Rule 3b: 1 nguồn live với title + author + year khớp rất cao → VERIFIED ---
+        # --- Rule 3b: 1 live source with high title + author + year match → VERIFIED ---
         if (
             consensus >= 1
             and _has_live_source(source, verified_sources)
@@ -927,7 +922,7 @@ class SymbolicRules:
                 label=ValidationLabel.VERIFIED,
                 confidence=max(0.0, 0.78 - style_penalty - provenance_penalty),
                 reasoning=(
-                    f"Xác minh qua nguồn học thuật ({', '.join(source.sources_succeeded)}): "
+                    f"Verified via scholarly registry ({', '.join(source.sources_succeeded)}): "
                     f"title similarity={features.title_sim_fuzzy:.2f}, "
                     f"author overlap={author_sim:.2f}, year match.{provenance_note}"
                 ),
@@ -936,7 +931,7 @@ class SymbolicRules:
                 style_penalty=style_penalty,
             )
 
-        # --- Rule 3c: 1 nguồn live với title + author khớp nhưng lệch năm → METADATA_ERROR ---
+        # --- Rule 3c: 1 live source with title + author match but year mismatch → METADATA_ERROR ---
         if (
             consensus >= 1
             and _has_live_source(source, verified_sources)
@@ -953,9 +948,9 @@ class SymbolicRules:
                 label=ValidationLabel.METADATA_ERROR,
                 confidence=max(0.0, 0.68 - style_penalty),
                 reasoning=(
-                    f"Tìm thấy công trình của cùng tác giả trên {', '.join(source.sources_succeeded)} "
+                    f"Found paper by the same author on {', '.join(source.sources_succeeded)} "
                     f"(title_sim={features.title_sim_fuzzy:.2f}, author_sim={author_sim:.2f}) "
-                    f"nhưng lệch trường: {', '.join(mismatched)}."
+                    f"with mismatched fields: {', '.join(mismatched)}."
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=mismatched,
@@ -963,12 +958,10 @@ class SymbolicRules:
             )
 
         # --- Rule 4 (NEW v1.2 #33): AMBIGUOUS_MAPPING → cap confidence ---
-        # Nếu linker không quyết định được → force abstention band
+        # If linker could not disambiguate → force abstention band
         if mapping_status is not None and hasattr(mapping_status, "value"):
             if mapping_status.value == "ambiguous_mapping":
-                # Cap confidence + giảm → don't return VERIFIED
                 triggered_rules.append("R-AMBIGUOUS-MAPPING")
-                # Trả về abstention với confidence thấp
                 return RuleOutcome(
                     label=ValidationLabel.UNRESOLVED,
                     confidence=max(
@@ -977,9 +970,9 @@ class SymbolicRules:
                         - style_penalty,
                     ),
                     reasoning=(
-                        f"Mapping ambiguous (linker không quyết định được occurrence "
-                        f"nào thuộc reference nào). title_sim={title_sim:.2f}, "
-                        f"consensus={consensus}. Hệ thống từ chối kết luận."
+                        f"Ambiguous citation mapping (linker could not uniquely resolve which reference "
+                        f"entry corresponds to the occurrence). title_sim={title_sim:.2f}, "
+                        f"consensus={consensus}. System abstains from a hard verdict."
                     ),
                     triggered_rules=triggered_rules,
                     mismatched_fields=[],
@@ -1107,25 +1100,46 @@ class SymbolicRules:
                     confidence=0.65,
                     reasoning=(
                         f"Known academic author detected but title mismatch ({title_sim:.2f}). "
-                        f"Các trường lệch: {', '.join(mismatched)}. "
-                        f"Đây là lỗi metadata (title/năm sai) chứ không phải nguồn bịa đặt."
+                        f"Mismatched fields: {', '.join(mismatched)}. "
+                        f"Classified as a metadata error rather than a fabricated source."
                     ),
                     triggered_rules=triggered_rules,
                     mismatched_fields=mismatched,
                     style_penalty=style_penalty,
                 )
 
-        # --- Rule 5: Vuong bien -> UNRESOLVED (abstention) ---
+        # --- Rule 4c: Non-existent / unresolvable DOI with low title similarity → SUSPECTED_HALLUCINATION ---
+        if (
+            citation_doi
+            and str(citation_doi).strip()
+            and _has_live_source(source, verified_sources)
+            and not doi_match
+            and title_sim < 0.60
+            and not is_known_author
+        ):
+            triggered_rules.append("R-NONEXISTENT-DOI")
+            return RuleOutcome(
+                label=ValidationLabel.SUSPECTED_HALLUCINATION,
+                confidence=max(0.0, 0.85 - style_penalty),
+                reasoning=(
+                    f"Cited DOI '{citation_doi}' did not resolve to any matching record and "
+                    f"best candidate title similarity is low ({title_sim:.2f}). "
+                    f"Suspected fabricated or non-existent DOI."
+                ),
+                triggered_rules=triggered_rules,
+                mismatched_fields=["doi", "title"],
+                style_penalty=style_penalty,
+            )
+
+        # --- Rule 5: Border zone -> UNRESOLVED (abstention) ---
         if self.abstention_low <= title_sim <= self.abstention_high:
             triggered_rules.append("R-ABSTENTION-BORDER")
-            # FIX v1.4: Remove aggressive METADATA_ERROR for known authors in border zone
-            # This was causing too many false METADATA_ERROR classifications
             return RuleOutcome(
                 label=ValidationLabel.UNRESOLVED,
                 confidence=max(0.0, title_sim - style_penalty),
                 reasoning=(
-                    f"Title similarity nằm vùng biên [{self.abstention_low}, "
-                    f"{self.abstention_high}] — hệ thống từ chối kết luận."
+                    f"Title similarity ({title_sim:.2f}) falls within the abstention border zone "
+                    f"[{self.abstention_low}, {self.abstention_high}] — system abstains for manual review."
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=[],
@@ -1134,9 +1148,6 @@ class SymbolicRules:
 
         # --- Rule 6 (NEW v1.2 #33): DOMAIN-EXCEPTION ---
         # URL broken + scholarly record exists → keep label + flag.
-        # Heuristic: nếu consensus ≥ 2 + best candidate found → record exists.
-        # URL broken heuristic: nếu DOI exact match nhưng title similarity thấp
-        # (URL/DOI có thể bị mistyped) → DOMAIN-EXCEPTION.
         if (
             doi_match
             and title_sim < self.title_sim_metadata_error
@@ -1148,9 +1159,9 @@ class SymbolicRules:
                 label=ValidationLabel.METADATA_ERROR,
                 confidence=max(0.0, 0.5 - style_penalty),
                 reasoning=(
-                    f"DOMAIN-EXCEPTION: DOI khớp nhưng title sim thấp ({title_sim:.2f}), "
-                    f"URL có thể broken. {consensus} nguồn vẫn trả về record → "
-                    f"giữ nhãn tồn tại nhưng flag BROKEN_LINK."
+                    f"DOMAIN-EXCEPTION: Exact DOI matched across {consensus} sources but title "
+                    f"similarity is low ({title_sim:.2f}). Record exists in scholarly registries "
+                    f"with metadata/link discrepancy."
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=["url"],
@@ -1160,11 +1171,7 @@ class SymbolicRules:
 
         # --- Rule fallback ---
         triggered_rules.append("R-WEAK-EVIDENCE")
-        # FIX v1.4: Only return METADATA_ERROR if we have quality evidence
-        # Previously this was too aggressive - returned METADATA_ERROR for known authors
-        # even when APIs returned poor quality candidates
         if is_known_author and sources_found > 0 and author_sim >= 0.5:
-            # Check if we have quality candidates with decent title match
             best = source.best_candidate()
             has_quality = best and best.title and best.title.lower() not in ["", "unknown", "n/a"]
 
@@ -1179,21 +1186,50 @@ class SymbolicRules:
                     label=ValidationLabel.METADATA_ERROR,
                     confidence=max(0.0, 0.55 - style_penalty),
                     reasoning=(
-                        f"Known academic author found but weak evidence (title_sim={title_sim:.2f}). "
-                        f"Các trường lệch: {', '.join(mismatched)}. "
-                        f"Đây là lỗi metadata chứ không phải nguồn bịa đặt."
+                        f"Known academic author found with weak title evidence (title_sim={title_sim:.2f}). "
+                        f"Mismatched fields: {', '.join(mismatched)}. "
+                        f"Classified as a metadata error rather than a fabricated source."
                     ),
                     triggered_rules=triggered_rules,
                     mismatched_fields=mismatched,
                     style_penalty=style_penalty,
                 )
 
+        # When live sources were queried and the best candidate has very low similarity
+        # (below abstention_low=0.40) and low author overlap (<0.30) without DOI match,
+        # classify as SUSPECTED_HALLUCINATION rather than hiding in UNRESOLVED.
+        if (
+            title_sim < self.abstention_low
+            and author_sim < 0.30
+            and not doi_match
+            and _has_live_source(source, verified_sources)
+            and not is_known_author
+        ):
+            triggered_rules.append("R-HALLUCINATED-SOURCE")
+            hallucination_conf = max(
+                0.55,
+                min(0.85, round(0.85 - title_sim * 0.5, 2) - style_penalty),
+            )
+            return RuleOutcome(
+                label=ValidationLabel.SUSPECTED_HALLUCINATION,
+                confidence=hallucination_conf,
+                reasoning=(
+                    f"Extremely weak scholarly evidence across queried databases "
+                    f"(title_sim={title_sim:.2f} < {self.abstention_low}, author_sim={author_sim:.2f}, "
+                    f"DOI match={doi_match}). Suspected AI-hallucinated or fabricated citation."
+                ),
+                triggered_rules=triggered_rules,
+                mismatched_fields=["title", "author"],
+                style_penalty=style_penalty,
+            )
+
         return RuleOutcome(
-            label=ValidationLabel.UNRESOLVED,  # Changed from SUSPECTED_HALLUCINATION
+            label=ValidationLabel.UNRESOLVED,
             confidence=max(0.0, 0.4 - style_penalty),
             reasoning=(
-                f"Có candidate nhưng title sim={title_sim:.2f}, author={author_sim:.2f}, "
-                f"DOI match={doi_match}, consensus={consensus} — không đủ để xác minh."
+                f"Candidate found with inconclusive evidence (title_sim={title_sim:.2f}, "
+                f"author_sim={author_sim:.2f}, DOI match={doi_match}, consensus={consensus}) — "
+                f"insufficient to verify."
             ),
             triggered_rules=triggered_rules,
             mismatched_fields=[],
