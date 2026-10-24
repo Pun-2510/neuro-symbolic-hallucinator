@@ -128,6 +128,7 @@ export function BatchUploadPage() {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
   const navigate = useNavigate();
 
   const stats = useMemo(
@@ -143,10 +144,46 @@ export function BatchUploadPage() {
   );
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (
+      !queueState.isProcessing &&
+      !queueState.hasAutoNavigated &&
+      files.length > 0 &&
+      stats.pending === 0 &&
+      stats.processing === 0 &&
+      stats.completed > 0
+    ) {
+      const completedFiles = files.filter(
+        (f) => f.status === 'completed' && f.essayId !== undefined
+      );
+      if (completedFiles.length === 0) return;
+
+      setQueueState((prev) => ({ ...prev, hasAutoNavigated: true }));
+      navigateTimerRef.current = setTimeout(() => {
+        if (!isMountedRef.current) return;
+        if (completedFiles.length === 1 && completedFiles[0].essayId) {
+          navigate(`/essays/${completedFiles[0].essayId}`);
+        } else {
+          navigate('/history');
+        }
+      }, 1200);
+    }
+  }, [
+    queueState.isProcessing,
+    queueState.hasAutoNavigated,
+    files,
+    stats.pending,
+    stats.processing,
+    stats.completed,
+    navigate,
+  ]);
 
   const processQueue = useCallback(async () => {
     const pendingFiles = files.filter((f) => f.status === 'pending');
@@ -166,6 +203,7 @@ export function BatchUploadPage() {
     });
 
     for (let i = 0; i < pendingFiles.length; i++) {
+      if (!isMountedRef.current) return;
       const fileItem = pendingFiles[i];
 
       setFiles((prev) =>
@@ -176,6 +214,7 @@ export function BatchUploadPage() {
 
       try {
         const response = await api.uploadEssay(fileItem.file, targetClassId);
+        if (!isMountedRef.current) return;
 
         setFiles((prev) =>
           prev.map((f) =>
@@ -192,12 +231,14 @@ export function BatchUploadPage() {
 
         let attempts = 0;
         const maxAttempts = 150;
-        while (attempts < maxAttempts) {
+        while (attempts < maxAttempts && isMountedRef.current) {
           await new Promise((resolve) => setTimeout(resolve, 2000));
+          if (!isMountedRef.current) return;
           attempts++;
 
           try {
             const status = await api.getEssayStatus(response.essay_id);
+            if (!isMountedRef.current) return;
             if (status.status === 'completed') {
               setFiles((prev) =>
                 prev.map((f) =>
@@ -237,7 +278,7 @@ export function BatchUploadPage() {
           }
         }
 
-        if (attempts >= maxAttempts) {
+        if (attempts >= maxAttempts && isMountedRef.current) {
           setFiles((prev) =>
             prev.map((f) =>
               f.id === fileItem.id
@@ -251,6 +292,7 @@ export function BatchUploadPage() {
           );
         }
       } catch (error) {
+        if (!isMountedRef.current) return;
         setFiles((prev) =>
           prev.map((f) =>
             f.id === fileItem.id
@@ -266,6 +308,7 @@ export function BatchUploadPage() {
       }
     }
 
+    if (!isMountedRef.current) return;
     setQueueState({
       isProcessing: false,
       currentIndex: -1,
