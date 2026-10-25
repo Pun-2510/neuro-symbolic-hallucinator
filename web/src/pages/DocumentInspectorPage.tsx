@@ -739,7 +739,7 @@ export function DocumentInspectorPage() {
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-serif text-slate-800 dark:text-slate-200 line-clamp-2">
-                          {citation.raw}
+                          {citation.raw.replace(/^\[\d+\]\s*/, '')}
                         </p>
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <span

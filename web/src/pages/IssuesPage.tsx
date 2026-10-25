@@ -115,7 +115,16 @@ function IssueCard({
   const severity = getSeverity(verdict.label);
   const config = severityConfig[severity];
 
-  const citationNum = verdict.citation_id.replace(/[^0-9]/g, '') || verdict.citation_id;
+  const rawPrefixMatch = verdict.citation_raw.match(/^\[(\d+)\]\s*/);
+  const refIdMatch = verdict.citation_link?.reference_id?.match(/^ref-0*(\d+)$/);
+  const citationNum =
+    rawPrefixMatch?.[1] ||
+    refIdMatch?.[1] ||
+    verdict.citation_id.replace(/[^0-9]/g, '') ||
+    verdict.citation_id;
+  const displayCitationRaw = rawPrefixMatch
+    ? verdict.citation_raw.slice(rawPrefixMatch[0].length)
+    : verdict.citation_raw;
 
   function getIssueDescription(v: Verdict): string {
     if (isUrlResource(v)) {
@@ -169,7 +178,7 @@ function IssueCard({
             )}
           </div>
           <p className="text-sm text-slate-900 dark:text-slate-100 mb-1.5 font-serif break-words">
-            {verdict.citation_raw}
+            {displayCitationRaw}
           </p>
           <p className={`text-xs font-medium ${config.textColor}`}>
             {getIssueDescription(verdict)}
