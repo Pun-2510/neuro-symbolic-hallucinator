@@ -48,6 +48,10 @@ data/app.db
 data/app.db-shm
 data/app.db-wal
 data/app.*.db
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/tdtu_github_reports/
 data/essays/uploads/
 # Generated paper knowledge base + its WAL sidecars (rebuild via
 # `python scripts/import_acl_xml.py && python scripts/clean_local_db.py --apply`).

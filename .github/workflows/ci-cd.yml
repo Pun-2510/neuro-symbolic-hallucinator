@@ -1,0 +1,183 @@
+name: CITRA CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20'
+  APP_ENV: 'testing'
+  JWT_SECRET: 'citra-ci-test-secret-key-at-least-32-bytes-long-2026'
+
+jobs:
+  # ============================================================================
+  # STAGE 1: Backend Quality & Unit Test Suite (Python 3.11 / FastAPI / Pytest)
+  # ============================================================================
+  backend-verify:
+    name: Backend Unit Tests (Python 3.11)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            pyproject.toml
+
+      - name: Install system dependencies for PyMuPDF & SQLite
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libmupdf-dev mupdf-tools libsqlite3-0
+
+      - name: Install Python dependencies (CPU-only PyTorch)
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-dev.txt
+          pip install --no-build-isolation --no-deps -e .
+
+      - name: Prepare test configuration & sample essays
+        run: |
+          cp -n .env.example .env || true
+          cp -n configs/config.example.yaml configs/config.yaml || true
+          python scripts/gen_sample_essays.py
+
+      - name: Run Backend Unit Test Suite
+        run: |
+          pytest tests/unit/ -q
+
+  # ============================================================================
+  # STAGE 2: Frontend Typecheck, Production Build & Vitest Suite (React 18 / TS)
+  # ============================================================================
+  frontend-verify:
+    name: Frontend Build & Vitest (Node 20)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Typecheck & build production SPA bundle
+        run: npm run build
+
+      - name: Run Frontend Vitest Unit Suite
+        run: npm test
+
+  # ============================================================================
+  # STAGE 3: Docker & Compose Production Configuration Verification
+  # ============================================================================
+  docker-config-verify:
+    name: Validate Docker & Compose Config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configurations
+        run: |
+          cp -n .env.example .env || true
+          docker compose -f docker-compose.yml config -q
+          JWT_SECRET="${{ env.JWT_SECRET }}" docker compose -f docker-compose.prod.yml config -q
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Verify Web Production Image Build
+        run: |
+          cp -n .env.example .env || true
+          JWT_SECRET="${{ env.JWT_SECRET }}" docker compose -f docker-compose.prod.yml build web
+
+  # ============================================================================
+  # STAGE 4: Automated Production Deployment (https://citra.io.vn)
+  # ============================================================================
+  deploy:
+    name: Auto Deploy to Production (citra.io.vn)
+    runs-on: ubuntu-latest
+    needs: [backend-verify, frontend-verify, docker-config-verify]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    concurrency:
+      group: citra-production-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Deploy latest commit to Production VM via SSH
+        env:
+          GCE_HOST: ${{ secrets.GCE_HOST }}
+          GCE_USER: ${{ secrets.GCE_USER }}
+          GCE_SSH_PRIVATE_KEY: ${{ secrets.GCE_SSH_PRIVATE_KEY }}
+        run: |
+          echo "Deploying CITRA commit ${{ github.sha }} to https://citra.io.vn..."
+          if [ -z "$GCE_SSH_PRIVATE_KEY" ] || [ -z "$GCE_HOST" ] || [ -z "$GCE_USER" ]; then
+            echo "Error: Missing GCE_HOST, GCE_USER, or GCE_SSH_PRIVATE_KEY secrets."
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$GCE_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$GCE_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$GCE_USER@$GCE_HOST" '
+            set -e
+            echo ">>> [1/4] Syncing /opt/citra with origin/main..."
+            sudo chown -R "$USER":1000 /opt/citra
+            cd /opt/citra
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo ">>> [2/4] Ensuring persistent data directory permissions for container UID 1000..."
+            sudo mkdir -p /opt/citra/data/essays/uploads /opt/citra/data/avatars /opt/citra/data/cache/grobid /opt/citra/data/logs
+            sudo chown -R 1000:1000 /opt/citra/data
+            sudo chmod -R ug+rwX /opt/citra/data
+
+            echo ">>> [3/4] Building and rolling out updated containers (api & web)..."
+            sudo docker compose -f docker-compose.prod.yml up -d --build --remove-orphans api web
+            sudo docker image prune -f >/dev/null 2>&1 || true
+
+            echo ">>> [4/4] Verifying container health on 127.0.0.1:8000 and https://citra.io.vn..."
+            HEALTHY=0
+            for i in $(seq 1 45); do
+              if curl -sf http://127.0.0.1:8000/api/health >/dev/null && curl -sf https://citra.io.vn/api/health >/dev/null; then
+                HEALTHY=1
+                echo "Production deployment verified healthy on https://citra.io.vn (attempt $i)!"
+                break
+              fi
+              sleep 2
+            done
+
+            sudo docker compose -f docker-compose.prod.yml ps
+            if [ "$HEALTHY" -ne 1 ]; then
+              echo "ERROR: Production healthcheck failed after rollout!"
+              sudo docker compose -f docker-compose.prod.yml logs --tail=50 api web
+              exit 1
+            fi
+          '
