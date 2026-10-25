@@ -30,6 +30,8 @@ export interface Toast {
   title?: string;
   message?: string;
   duration?: number;
+  /** Show toast even when notifications are disabled in Settings */
+  force?: boolean;
   action?: {
     label: string;
     onClick: () => void;
@@ -82,6 +84,14 @@ export function ToastProvider({
   // Add toast
   const addToast = useCallback(
     (toast: Omit<Toast, 'id' | 'createdAt'>): string => {
+      if (
+        !toast.force &&
+        typeof window !== 'undefined' &&
+        localStorage.getItem('settings_notifications') === 'false'
+      ) {
+        return '';
+      }
+
       const id = generateId();
       const newToast: Toast = {
         ...toast,

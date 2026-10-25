@@ -111,13 +111,38 @@ test.describe('Settings Page', () => {
     expect(pageContent).toContain('Version');
   });
 
-  test('should have about section', async ({ page }) => {
+  test('should have about section and point View Source Code to neuro-symbolic-hallucinator', async ({ page }) => {
     await page.goto('/settings');
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
 
     // About should be mentioned
     const pageContent = await page.content();
     expect(pageContent.toLowerCase()).toContain('about');
+
+    const sourceLink = page.getByRole('link', { name: /View Source Code|Xem mã nguồn/i });
+    await expect(sourceLink).toHaveAttribute(
+      'href',
+      'https://github.com/Pun-2510/neuro-symbolic-hallucinator'
+    );
+  });
+
+  test('should suppress action toasts when notifications are disabled', async ({ page }) => {
+    await page.goto('/settings');
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+
+    // Disable notifications
+    const switchButton = page.locator('button[role="switch"]').first();
+    await switchButton.click();
+
+    // Dismiss the confirmation toast
+    const dismissBtn = page.locator('[aria-label="Dismiss notification"]');
+    if ((await dismissBtn.count()) > 0) {
+      await dismissBtn.first().click();
+    }
+
+    // Trigger an action that normally shows a toast (change language)
+    await page.getByRole('button', { name: 'Tiếng Việt' }).click();
+    await expect(page.locator('[role="alert"]')).toHaveCount(0);
   });
 
   test('settings should be accessible from navigation', async ({ page }) => {

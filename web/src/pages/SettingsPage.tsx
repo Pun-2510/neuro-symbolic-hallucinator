@@ -14,8 +14,11 @@ import {
   Check,
   ShieldCheck,
   Terminal,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
-import { ThemeToggle } from '@/contexts/ThemeContext';
+import { useTheme, type Theme } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -42,11 +45,23 @@ const STORAGE_KEY_NOTIFICATIONS = 'settings_notifications';
 export function SettingsPage(): JSX.Element {
   const toast = useToast();
   const { t, i18n } = useTranslation();
+  const { theme, setTheme } = useTheme();
 
   // Load saved settings
   const [settings, setSettings] = useState<SettingsState>(() => ({
     notifications: localStorage.getItem(STORAGE_KEY_NOTIFICATIONS) !== 'false',
   }));
+
+  // Available themes
+  const themeOptions: {
+    value: Theme;
+    label: string;
+    icon: typeof Sun;
+  }[] = [
+    { value: 'light', label: t('settings.themeLight'), icon: Sun },
+    { value: 'dark', label: t('settings.themeDark'), icon: Moon },
+    { value: 'system', label: t('settings.themeSystem'), icon: Monitor },
+  ];
 
   // Available languages (without flag emojis)
   const languages = [
@@ -69,19 +84,17 @@ export function SettingsPage(): JSX.Element {
 
   // Toggle setting
   const toggleSetting = (key: keyof SettingsState): void => {
-    setSettings((prev) => {
-      const newValue = !prev[key];
-      localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, String(newValue));
+    const newValue = !settings[key];
+    localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, String(newValue));
+    setSettings((prev) => ({ ...prev, [key]: newValue }));
 
-      toast.success(
-        t('settings.settingsSaved'),
-        newValue
-          ? t('settings.notificationsEnabled')
-          : t('settings.notificationsDisabled')
-      );
-
-      return { ...prev, [key]: newValue };
-    });
+    toast.success(
+      t('settings.settingsSaved'),
+      newValue
+        ? t('settings.notificationsEnabled')
+        : t('settings.notificationsDisabled'),
+      { force: true }
+    );
   };
 
   // Change language — uses i18n.changeLanguage() for SPA navigation (no reload)
@@ -97,7 +110,7 @@ export function SettingsPage(): JSX.Element {
   };
 
   return (
-    <div className="space-y-6 w-full max-w-4xl pb-10">
+    <div className="space-y-6 w-full max-w-5xl mx-auto pb-10">
       {/* Executive Header Card */}
       <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-xs">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -151,15 +164,50 @@ export function SettingsPage(): JSX.Element {
             <span className="text-[11px] font-mono text-slate-400">01</span>
           </div>
 
-          <div className="p-4 sm:p-6 flex-1">
-            <div>
-              <Label className="input-label">{t('settings.theme')}</Label>
-              <div className="mt-2.5">
-                <ThemeToggle showLabel />
-              </div>
-              <p className="text-xs text-slate-500 mt-2.5 leading-relaxed">
+          <div className="p-4 sm:p-6 flex-1 flex flex-col justify-between gap-4">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="input-label mb-0">{t('settings.theme')}</Label>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('settings.themeDescription')}
               </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2.5">
+              {themeOptions.map((opt) => {
+                const Icon = opt.icon;
+                const isActive = theme === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setTheme(opt.value)}
+                    aria-pressed={isActive}
+                    className={`group relative flex flex-col items-center justify-center gap-2 p-3 rounded-xl border text-center transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? 'border-indigo-500/90 dark:border-indigo-500/80 bg-gradient-to-br from-indigo-50/90 via-indigo-50/40 to-white dark:from-indigo-950/70 dark:via-indigo-950/30 dark:to-slate-900 ring-2 ring-indigo-500/15 dark:ring-indigo-400/20 shadow-xs'
+                        : 'border-slate-200/90 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800/60 hover:border-indigo-200 dark:hover:border-indigo-800/80 hover:shadow-2xs'
+                    }`}
+                  >
+                    <span
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-xs shadow-indigo-500/30 dark:bg-indigo-500 dark:text-white'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200/80 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700/80 dark:group-hover:bg-indigo-950/70 dark:group-hover:text-indigo-300 dark:group-hover:border-indigo-800/70'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </span>
+                    <span
+                      className={`font-semibold text-xs leading-tight truncate ${
+                        isActive
+                          ? 'text-indigo-950 dark:text-indigo-100'
+                          : 'text-slate-700 group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-slate-100'
+                      }`}
+                    >
+                      {opt.label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -182,7 +230,13 @@ export function SettingsPage(): JSX.Element {
             <span className="text-[11px] font-mono text-slate-400">02</span>
           </div>
 
-          <div className="p-4 sm:p-6 flex-1 flex flex-col justify-center">
+          <div className="p-4 sm:p-6 flex-1 flex flex-col justify-between gap-4">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="input-label mb-0">{t('settings.language')}</Label>
+              <span className="text-xs font-mono text-slate-400 dark:text-slate-500">
+                vi-VN / en-US
+              </span>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               {languages.map((lang) => {
                 const isActive = currentLang === lang.code;
@@ -306,7 +360,7 @@ export function SettingsPage(): JSX.Element {
 
           <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
             <a
-              href="https://github.com/iannwendy/essay-integrity-checker"
+              href="https://github.com/Pun-2510/neuro-symbolic-hallucinator"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
