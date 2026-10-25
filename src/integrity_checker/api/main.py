@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from integrity_checker.api.routes import audit, auth, cache, essays, export, health, report, system, teacher, users, verdicts
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
     logger.info(f"CORS configured with origins: {origins}, credentials: {allow_credentials}")
 
     @app.middleware("http")

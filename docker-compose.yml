@@ -101,8 +101,9 @@ services:
     volumes:
       - ./web:/app/web
     environment:
-      # Use proxy (/api) - Vite will forward to host.docker.internal:8000
+      # Use proxy (/api) - Vite forwards directly over Docker bridge network to api:8000
       - VITE_API_BASE_URL=/api
+      - VITE_API_PROXY_TARGET=http://api:8000
     extra_hosts:
       - "host.docker.internal:host-gateway"
     command: >
