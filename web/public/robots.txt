@@ -14,4 +14,4 @@ Disallow: /activate-account
 Disallow: /reset-password
 Disallow: /api/
 
-Sitemap: /sitemap.xml
+Sitemap: https://citra.io.vn/sitemap.xml

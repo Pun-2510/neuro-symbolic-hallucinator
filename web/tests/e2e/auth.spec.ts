@@ -154,7 +154,7 @@ test.describe('Authentication', () => {
     await expect(page.getByRole('button', { name: /resend activation email/i })).toBeVisible();
 
     // 5. Retrieve activation token from backend outbox and activate account
-    const actMailRes = await request.get(`http://localhost:8000/api/auth/dev/latest-email?email=${encodeURIComponent(email)}`);
+    const actMailRes = await request.get(`/api/auth/dev/latest-email?email=${encodeURIComponent(email)}`);
     expect(actMailRes.ok()).toBeTruthy();
     const actMail = await actMailRes.json();
     expect(actMail.template_type).toBe('activation');
@@ -170,7 +170,7 @@ test.describe('Authentication', () => {
     await expect(page.getByRole('heading', { name: /password reset link sent/i })).toBeVisible({ timeout: 15000 });
 
     // 7. Retrieve reset token and reset password
-    const resetMailRes = await request.get(`http://localhost:8000/api/auth/dev/latest-email?email=${encodeURIComponent(email)}`);
+    const resetMailRes = await request.get(`/api/auth/dev/latest-email?email=${encodeURIComponent(email)}`);
     expect(resetMailRes.ok()).toBeTruthy();
     const resetMail = await resetMailRes.json();
     expect(resetMail.template_type).toBe('password_reset');

@@ -29,7 +29,8 @@ test.describe('Toast Notification System', () => {
     await page.goto('/dashboard');
 
     // Verify toast container has correct aria attributes
-    const toastContainer = page.locator('[aria-live="polite"]');
+    const toastContainer = page.locator('[aria-label="Notifications"]');
+    await expect(toastContainer).toHaveAttribute('aria-live', 'polite');
     await expect(toastContainer).toHaveAttribute('aria-label', 'Notifications');
   });
 

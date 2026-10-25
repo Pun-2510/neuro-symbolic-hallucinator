@@ -39,6 +39,7 @@ htmlcov/
 # Documentation
 *.md
 !requirements*.txt
+!README.md
 docs/
 
 # Frontend (sẽ được mount hoặc build riêng)

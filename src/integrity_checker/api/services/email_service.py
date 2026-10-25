@@ -32,6 +32,7 @@ _RESERVED_TEST_DOMAINS = (
     "@test.local",
     "@citra.test",
     "@localhost",
+    "@university.edu.vn",
 )
 
 
@@ -288,7 +289,8 @@ class EmailService:
         raw_cfg_env = getattr(getattr(settings, "app", None), "env", "")
         cfg_env = raw_cfg_env if isinstance(raw_cfg_env, str) else ""
         app_env = (os.getenv("APP_ENV") or cfg_env).strip().lower()
-        if app_env not in ("production", "prod", "live"):
+        demo_enabled = os.getenv("DEMO_USERS_ENABLED", "").strip().lower() in ("true", "1", "yes")
+        if app_env not in ("production", "prod", "live") or demo_enabled:
             if len(self.outbox) >= 100:
                 self.outbox.pop(0)
             self.outbox.append(record)

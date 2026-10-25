@@ -685,12 +685,14 @@ def get_latest_dev_email(email: str = Query(..., min_length=3)):
     """Dev/test-only helper to inspect the latest transactional email sent to an address."""
     settings = get_settings()
     app_env = (os.getenv("APP_ENV") or settings.app.env or "").strip().lower()
-    if app_env in ("production", "prod", "live"):
-        raise HTTPException(status_code=404, detail="Not found")
-    if app_env not in ("development", "dev", "test", "testing") and not is_test_runtime():
-        raise HTTPException(status_code=404, detail="Not found")
-    if not settings.app.debug and not is_test_runtime():
-        raise HTTPException(status_code=404, detail="Not found")
+    demo_enabled = os.getenv("DEMO_USERS_ENABLED", "").strip().lower() in ("true", "1", "yes")
+    if not demo_enabled:
+        if app_env in ("production", "prod", "live"):
+            raise HTTPException(status_code=404, detail="Not found")
+        if app_env not in ("development", "dev", "test", "testing") and not is_test_runtime():
+            raise HTTPException(status_code=404, detail="Not found")
+        if not settings.app.debug and not is_test_runtime():
+            raise HTTPException(status_code=404, detail="Not found")
 
     target = email.strip().lower()
     outbox = get_email_service().outbox
