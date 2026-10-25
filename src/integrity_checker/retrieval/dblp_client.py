@@ -31,8 +31,10 @@ from integrity_checker.models.source import SourceCandidate
 from integrity_checker.retrieval.base import BaseScholarClient
 from integrity_checker.retrieval.normalization import (
     author_key,
+    author_match_score,
     normalize_doi,
     title_similarity,
+    title_tokens,
 )
 
 logger = get_logger(__name__)
@@ -43,13 +45,16 @@ _CORR_VOL_RE = re.compile(r"abs/(\d{4}\.\d{4,5})", re.IGNORECASE)
 _SHARED_DBLP_COOKIES = httpx.Cookies()
 _DBLP_LOOP_LOCKS: dict[int, tuple[asyncio.Semaphore, asyncio.Lock]] = {}
 _LAST_DBLP_REQ_AT: float = 0.0
+_DBLP_CONSECUTIVE_FAILURES: dict[int, int] = {}
+_DBLP_CIRCUIT_OPEN_UNTIL: dict[int, float] = {}
+_DBLP_CIRCUIT_COOLDOWN_SEC = 45.0
 
 
 def _get_dblp_sync_primitives() -> tuple[asyncio.Semaphore, asyncio.Lock]:
     loop = asyncio.get_running_loop()
     loop_id = id(loop)
     if loop_id not in _DBLP_LOOP_LOCKS:
-        _DBLP_LOOP_LOCKS[loop_id] = (asyncio.Semaphore(1), asyncio.Lock())
+        _DBLP_LOOP_LOCKS[loop_id] = (asyncio.Semaphore(2), asyncio.Lock())
     return _DBLP_LOOP_LOCKS[loop_id]
 
 
@@ -63,7 +68,7 @@ class DBLPClient(BaseScholarClient):
     def __init__(
         self,
         contact_email: str | None = None,
-        timeout: float = 12.0,
+        timeout: float = 6.0,
         max_retries: int | None = None,
     ) -> None:
         super().__init__(timeout=timeout)
@@ -74,7 +79,7 @@ class DBLPClient(BaseScholarClient):
             or settings.contact_email
             or settings.retrieval.contact_email
         )
-        self.max_retries = max_retries or min(settings.retrieval.retry.max_attempts, 3)
+        self.max_retries = max_retries or min(settings.retrieval.retry.max_attempts, 2)
         self._backoff = settings.retrieval.retry.backoff
         self._last_status_code: int | None = None
         self._headers = {
@@ -133,6 +138,7 @@ class DBLPClient(BaseScholarClient):
         cit_doi = normalize_doi(citation.doi) if citation.doi else None
         cit_year = str(citation.year)[:4] if citation.year else None
         cit_first_author = author_key(citation.authors[0]) if citation.authors else None
+        is_short_title = len(title_tokens(query_title)) <= 3
 
         for hit in hits:
             info = hit.get("info") if isinstance(hit, dict) else None
@@ -157,9 +163,11 @@ class DBLPClient(BaseScholarClient):
             if cit_year and cand.year == cit_year:
                 rank_score += 0.03
             if cit_first_author and cand.authors:
-                cand_authors = {author_key(a) for a in cand.authors if a}
-                if cit_first_author in cand_authors:
-                    rank_score += 0.03
+                auth_sc = author_match_score(citation.authors, cand.authors)
+                if auth_sc > 0.0:
+                    rank_score += 0.03 * auth_sc
+                elif is_short_title:
+                    continue
 
             if rank_score > best_rank_score:
                 best_rank_score = rank_score
@@ -306,21 +314,27 @@ class DBLPClient(BaseScholarClient):
         )
 
     async def _fetch_json_with_retry(self, params: dict[str, Any]) -> dict[str, Any] | None:
+        loop_id = id(asyncio.get_running_loop())
+        now = time.monotonic()
+        if now < _DBLP_CIRCUIT_OPEN_UNTIL.get(loop_id, 0.0):
+            self._last_status_code = 503
+            return None
+
         sem, challenge_lock = _get_dblp_sync_primitives()
         retryer = AsyncRetrying(
             stop=stop_after_attempt(self.max_retries),
             wait=wait_exponential(
                 multiplier=self._backoff.multiplier,
-                min=min(self._backoff.initial_seconds, 2.0),
-                max=min(self._backoff.max_seconds, 15.0),
+                min=min(self._backoff.initial_seconds, 1.0),
+                max=min(self._backoff.max_seconds, 4.0),
             ),
             retry=retry_if_exception_type((httpx.RequestError, httpx.HTTPStatusError)),
             reraise=False,
         )
         try:
-            async with sem:
-                async for attempt in retryer:
-                    with attempt:
+            async for attempt in retryer:
+                with attempt:
+                    async with sem:
                         # Serialize initial request when DBLP Anubis cookie has not been acquired yet
                         if len(_SHARED_DBLP_COOKIES) == 0:
                             async with challenge_lock:
@@ -329,6 +343,7 @@ class DBLPClient(BaseScholarClient):
                             resp = await self._execute_dblp_get(params)
                         self._last_status_code = resp.status_code
                         if resp.status_code == 404:
+                            _DBLP_CONSECUTIVE_FAILURES[loop_id] = 0
                             return None
                         if resp.status_code == 429 or resp.status_code >= 500:
                             if getattr(resp, "_request", None) is None:
@@ -336,8 +351,13 @@ class DBLPClient(BaseScholarClient):
                             resp.raise_for_status()
                         if resp.status_code != 200:
                             return None
+                        _DBLP_CONSECUTIVE_FAILURES[loop_id] = 0
                         return resp.json()
         except RetryError as exc:
+            fails = _DBLP_CONSECUTIVE_FAILURES.get(loop_id, 0) + 1
+            _DBLP_CONSECUTIVE_FAILURES[loop_id] = fails
+            if fails >= 2:
+                _DBLP_CIRCUIT_OPEN_UNTIL[loop_id] = time.monotonic() + _DBLP_CIRCUIT_COOLDOWN_SEC
             logger.warning(f"DBLP retry exhausted: {exc}")
             return None
         except Exception as exc:  # noqa: BLE001

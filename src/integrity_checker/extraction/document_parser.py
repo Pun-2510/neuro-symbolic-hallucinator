@@ -564,22 +564,94 @@ class DocumentParser:
         """
         from integrity_checker.extraction.reference_parser import _is_fake_entry
 
-        # Lấy references từ GROBID (primary) và lọc bỏ fake entries TRƯỚC khi
-        # đánh lại order_index / numeric_index (tránh bị lệch index như ở thesis.pdf).
+        # Lấy references từ GROBID (primary) và lọc bỏ fake/appendix entries + gộp các entry
+        # bị GROBID tách đôi TRƯỚC khi đánh lại order_index / numeric_index.
+        bib_text_norm = " ".join(
+            (s.text or "") for s in sections if s.section_type == SectionType.BIBLIOGRAPHY
+        ).lower()
+        appendix_text_norm = " ".join(
+            (s.text or "") for s in sections if s.section_type == SectionType.APPENDIX
+        ).lower()
+
         grobid_refs: list[Citation] = []
         if grobid is not None and grobid.is_available and grobid.bibliography:
             raw_grobid_refs = self._grobid_to_citations(grobid)
             for ref in raw_grobid_refs:
-                if _is_fake_entry(ref.raw_text) or (
-                    ref.year is None
-                    and not ref.doi
-                    and not (ref.authors and ref.title)
-                    and _is_fake_entry(ref.title or "")
+                if (
+                    _is_fake_entry(ref.raw_text)
+                    or (
+                        ref.year is None
+                        and not ref.doi
+                        and not ref.url
+                        and (
+                            _is_fake_entry(ref.title or "")
+                            or _is_fake_entry(ref.venue or "")
+                        )
+                    )
                 ):
                     logger.debug(
                         f"Filtered fake GROBID entry before indexing: {ref.raw_text[:50]}..."
                     )
                     continue
+
+                # Filter out yearless/DOI-less/URL-less GROBID entries extracted from APPENDIX
+                if (
+                    ref.year is None
+                    and not ref.doi
+                    and not ref.url
+                    and appendix_text_norm
+                    and bib_text_norm
+                ):
+                    probe = (ref.title or ref.venue or ref.raw_text or "").strip().lower()
+                    probe_snip = probe[:35] if len(probe) >= 15 else ""
+                    if (
+                        probe_snip
+                        and probe_snip in appendix_text_norm
+                        and probe_snip not in bib_text_norm
+                    ):
+                        logger.debug(
+                            f"Filtered APPENDIX GROBID entry before indexing: {ref.raw_text[:50]}..."
+                        )
+                        continue
+
+                # Coalesce consecutive split GROBID entries where the first half has only
+                # authors + year (no title/venue/doi/url) and the second half has no authors
+                # but carries the title/venue (e.g. when title contains a year like "Europe PMC in 2020").
+                if (
+                    grobid_refs
+                    and grobid_refs[-1].authors
+                    and grobid_refs[-1].title is None
+                    and grobid_refs[-1].venue is None
+                    and not grobid_refs[-1].doi
+                    and not grobid_refs[-1].url
+                    and not ref.authors
+                    and (ref.title or ref.venue)
+                    and (
+                        ref.year is None
+                        or grobid_refs[-1].year is None
+                        or str(ref.year) in (ref.title or "")
+                        or str(ref.year) in (ref.venue or "")
+                    )
+                ):
+                    prev_ref = grobid_refs[-1]
+                    prev_ref.title = ref.title
+                    prev_ref.title_normalized = ref.title_normalized
+                    prev_ref.venue = ref.venue
+                    prev_ref.doi = prev_ref.doi or ref.doi
+                    prev_ref.url = prev_ref.url or ref.url
+                    prev_ref.year = prev_ref.year or ref.year
+                    parts = [
+                        ", ".join(str(a) for a in prev_ref.authors),
+                        f"({prev_ref.year})" if prev_ref.year else "",
+                        prev_ref.title or "",
+                        prev_ref.venue or "",
+                    ]
+                    prev_ref.raw_text = " ".join(p for p in parts if p).strip()
+                    logger.debug(
+                        f"Coalesced split GROBID bibliography fragment into: {prev_ref.raw_text[:70]}..."
+                    )
+                    continue
+
                 grobid_refs.append(ref)
             for idx, ref in enumerate(grobid_refs, start=1):
                 ref.order_index = idx
@@ -694,7 +766,10 @@ class DocumentParser:
                         "institute", "foundation", "association", "organization",
                         "ministry", "department", "committee", "commission",
                         "council", "society", "team", "center", "centre",
-                        "university", "group", "bank", "health",
+                        "university", "group", "bank", "health", "archive",
+                        "library", "corporation", "company", "inc", "ltd",
+                        "project", "consortium", "press", "agency", "bureau",
+                        "office", "board", "authority", "laboratory", "labs",
                     )
                 )
             ):
@@ -734,6 +809,21 @@ class DocumentParser:
                     parts.append(target.venue)
                 target.raw_text = " ".join(parts)
 
+            # Fix GROBID dropping main title before bracketed section tag (e.g. "Docker [IT infrastructure]"
+            # where GROBID sets title="IT infrastructure") or hallucinating Appendix code into title
+            if target.title and donor.title and len(donor.title.strip()) >= 5:
+                t_clean = target.title.strip()
+                d_clean = donor.title.strip()
+                if (
+                    f"[{t_clean.lower()}]" in d_clean.lower()
+                    or re.search(r"',\s*'", t_clean)
+                ):
+                    old_t = target.title
+                    target.title = donor.title
+                    target.title_normalized = donor.title_normalized
+                    if old_t and old_t in (target.raw_text or ""):
+                        target.raw_text = (target.raw_text or "").replace(old_t, donor.title, 1)
+
             # Fix GROBID concatenating "Title. Venue" into target.title when target.venue is None
             # (e.g. Settles (2012): title="Active learning. Synthesis Lectures on...")
             if (
@@ -766,6 +856,10 @@ class DocumentParser:
             if not target.title and donor.title:
                 target.title = donor.title
                 target.title_normalized = donor.title_normalized
+                if donor.title not in (target.raw_text or ""):
+                    target.raw_text = f"{(target.raw_text or '').rstrip('. ')}. {donor.title}"
+                    if target.venue and target.venue not in target.raw_text:
+                        target.raw_text = f"{target.raw_text.rstrip('. ')}. {target.venue}"
             if donor.numeric_index is not None:
                 target.numeric_index = donor.numeric_index
             if donor.style and donor.style.value != "unknown":

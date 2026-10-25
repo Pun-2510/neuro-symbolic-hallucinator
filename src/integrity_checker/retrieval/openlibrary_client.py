@@ -49,13 +49,14 @@ _ISBN_RE = re.compile(
 )
 
 _OPENLIB_LOOP_SEMS: dict[int, asyncio.Semaphore] = {}
+_GOOGLE_BOOKS_RATE_LIMITED_UNTIL: dict[int, float] = {}
 
 
 def _get_openlib_sem() -> asyncio.Semaphore:
     loop = asyncio.get_running_loop()
     loop_id = id(loop)
     if loop_id not in _OPENLIB_LOOP_SEMS:
-        _OPENLIB_LOOP_SEMS[loop_id] = asyncio.Semaphore(2)
+        _OPENLIB_LOOP_SEMS[loop_id] = asyncio.Semaphore(3)
     return _OPENLIB_LOOP_SEMS[loop_id]
 
 
@@ -69,7 +70,7 @@ class OpenLibraryClient(BaseScholarClient):
     def __init__(
         self,
         contact_email: str | None = None,
-        timeout: float = 12.0,
+        timeout: float = 8.0,
         max_retries: int | None = None,
         enable_google_books_fallback: bool = True,
     ) -> None:
@@ -81,7 +82,7 @@ class OpenLibraryClient(BaseScholarClient):
             or settings.contact_email
             or settings.retrieval.contact_email
         )
-        self.max_retries = max_retries or min(settings.retrieval.retry.max_attempts, 3)
+        self.max_retries = max_retries or min(settings.retrieval.retry.max_attempts, 2)
         self._backoff = settings.retrieval.retry.backoff
         self.enable_google_books_fallback = enable_google_books_fallback
         self._last_status_code: int | None = None
@@ -488,22 +489,27 @@ class OpenLibraryClient(BaseScholarClient):
         url: str,
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
+        import time
+
+        loop_id = id(asyncio.get_running_loop())
         sem = _get_openlib_sem()
         is_google_books = url == self.GOOGLE_BOOKS_URL
+        if is_google_books and time.monotonic() < _GOOGLE_BOOKS_RATE_LIMITED_UNTIL.get(loop_id, 0.0):
+            return None
         retryer = AsyncRetrying(
             stop=stop_after_attempt(1 if is_google_books else self.max_retries),
             wait=wait_exponential(
                 multiplier=self._backoff.multiplier,
-                min=min(self._backoff.initial_seconds, 2.0),
-                max=min(self._backoff.max_seconds, 15.0),
+                min=min(self._backoff.initial_seconds, 1.0),
+                max=min(self._backoff.max_seconds, 6.0),
             ),
             retry=retry_if_exception_type((httpx.RequestError, httpx.HTTPStatusError)),
             reraise=False,
         )
         try:
-            async with sem:
-                async for attempt in retryer:
-                    with attempt:
+            async for attempt in retryer:
+                with attempt:
+                    async with sem:
                         async with httpx.AsyncClient(
                             timeout=self.timeout, follow_redirects=True
                         ) as client:
@@ -513,6 +519,7 @@ class OpenLibraryClient(BaseScholarClient):
                         if resp.status_code == 404:
                             return None
                         if is_google_books and resp.status_code == 429:
+                            _GOOGLE_BOOKS_RATE_LIMITED_UNTIL[loop_id] = time.monotonic() + 60.0
                             logger.debug("Google Books fallback rate limited (429); skipping fallback")
                             return None
                         if resp.status_code == 429 or resp.status_code >= 500:

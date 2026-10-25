@@ -323,9 +323,14 @@ class CrossrefClient(BaseScholarClient):
         # DOI
         doi = message.get("DOI")
 
-        # Title
+        # Title (join subtitle if present, e.g. Crossref stores "DBLP: some lessons learned"
+        # as title=["DBLP"] + subtitle=["some lessons learned"])
         titles = message.get("title") or []
-        title = titles[0] if titles else None
+        title = titles[0].strip() if titles and titles[0] else None
+        subtitles = message.get("subtitle") or []
+        subtitle = subtitles[0].strip() if subtitles and subtitles[0] else None
+        if title and subtitle and subtitle.lower() not in title.lower():
+            title = f"{title.rstrip(':')}: {subtitle}"
 
         # Authors
         authors: list[str] = []

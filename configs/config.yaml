@@ -100,9 +100,9 @@ retrieval:
     enabled: true
     max_attempts: 5       # FIX: Increased from 3 to 5
     backoff:
-      initial_seconds: 5.0 # FIX: Increased from 1.0 to 5.0
+      initial_seconds: 1.0 # Tuned for responsive retry without 5s+10s+20s stalls
       max_seconds: 120.0   # FIX: Increased from 10.0 to 120.0
-      multiplier: 2.0
+      multiplier: 1.5
   rate_limits:
     crossref_per_sec: 10.0    # With polite pool
     openalex_per_sec: 50.0    # With polite pool

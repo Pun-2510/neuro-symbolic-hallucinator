@@ -104,8 +104,15 @@ class FeatureCalculator:
             if same_work_dists:
                 year_dist = min(year_dist, min(same_work_dists))
 
-        # DOI exact match (normalized + known arXiv/ACL equivalent DOIs)
-        doi_match = self._doi_matches(citation.doi, best.doi)
+        # DOI exact match (normalized + known arXiv/ACL equivalent DOIs + explicit arXiv ID)
+        cit_doi_effective = citation.doi
+        if not cit_doi_effective:
+            from integrity_checker.retrieval.arxiv_client import ArxivClient
+
+            arxiv_id = ArxivClient.extract_arxiv_id(citation)
+            if arxiv_id:
+                cit_doi_effective = f"10.48550/arxiv.{arxiv_id}"
+        doi_match = self._doi_matches(cit_doi_effective, best.doi)
 
         # Venue similarity
         venue_sim = 0.0
@@ -228,8 +235,8 @@ class FeatureCalculator:
             return 0.0
 
         # Normalize whitespace, ampersands, dashes, and trailing punctuation
-        c_clean = re.sub(r"\s+", " ", citation_title.strip().rstrip(".,;:"))
-        cand_clean = re.sub(r"\s+", " ", candidate_title.strip().rstrip(".,;:"))
+        c_clean = re.sub(r"\s+", " ", citation_title.strip().rstrip(".,;:?!"))
+        cand_clean = re.sub(r"\s+", " ", candidate_title.strip().rstrip(".,;:?!"))
         c_clean = re.sub(r"\s*&\s*", " and ", c_clean).replace("\u2013", "-").replace("\u2014", "-")
         cand_clean = re.sub(r"\s*&\s*", " and ", cand_clean).replace("\u2013", "-").replace("\u2014", "-")
         if not c_clean or not cand_clean:

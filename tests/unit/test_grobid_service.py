@@ -16,7 +16,8 @@ class TestGrobidServiceManager:
         from integrity_checker.config import GrobidConfig
 
         config = GrobidConfig(enabled=True, url="http://localhost:8070")
-        manager = GrobidServiceManager(config=config)
+        with patch("os.path.exists", return_value=False):
+            manager = GrobidServiceManager(config=config)
 
         assert manager.config == config
         assert manager.url == "http://localhost:8070"
@@ -469,7 +470,8 @@ class TestProductionConfig:
         from integrity_checker.config import GrobidConfig
 
         config = GrobidConfig(enabled=True, url="http://localhost:8070")
-        manager = GrobidServiceManager(config=config)
+        with patch("os.path.exists", return_value=False):
+            manager = GrobidServiceManager(config=config)
 
         assert manager.url == "http://localhost:8070"
         # Should NOT auto-switch to Docker URL when outside Docker

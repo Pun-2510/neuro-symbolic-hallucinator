@@ -256,6 +256,30 @@ class NeuroSymbolicChecker:
                 mismatched_fields=[],
             )
 
+        # --- Check 4: Unified RetrievalOrchestrator web/documentation resource check ---
+        has_fake_url_early, _ = _is_fake_url(citation.url)
+        is_dead_url_early = getattr(source, "url_status", None) == "dead_link"
+        if (
+            not has_fake_url_early
+            and not is_dead_url_early
+            and RetrievalOrchestrator.is_web_or_legal_resource(citation)
+        ):
+            http_note = (
+                f" (HTTP {getattr(source, 'url_status_code', None) or 200} OK)"
+                if getattr(source, "url_status", None) in ("alive", "restricted_alive")
+                else ""
+            )
+            return CitationVerdict(
+                citation=citation,
+                label=ValidationLabel.RESOURCE,
+                confidence=0.95,
+                matched_source=source,
+                features=MatchFeatures(),
+                reasoning=f"Web/documentation resource detected{http_note}: {raw_text[:70]}... (non-scholarly URL resource)",
+                triggered_rules=["R-WEB-RESOURCE"],
+                mismatched_fields=[],
+            )
+
         # Debug aid: if raw_text starts with URL scheme but didn't match, log it.
         if re.match(r'^(https?://|www\.)', stripped_text, re.IGNORECASE):
             logger.debug(

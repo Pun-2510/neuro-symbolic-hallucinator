@@ -30,14 +30,20 @@ from integrity_checker.models.source import SourceCandidate
 from integrity_checker.retrieval.base import BaseScholarClient
 from integrity_checker.retrieval.normalization import (
     author_key,
+    author_match_score,
     normalize_doi,
     title_similarity,
+    title_tokens,
 )
 
 logger = get_logger(__name__)
 
 MIN_TITLE_SIMILARITY = 0.55
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
+_LUCENE_STOPWORDS = frozenset({
+    "and", "or", "not", "the", "for", "with", "from", "into",
+    "via", "over", "under", "using", "between", "about", "through",
+})
 
 
 class EuropePMCClient(BaseScholarClient):
@@ -148,12 +154,16 @@ class EuropePMCClient(BaseScholarClient):
 
         # Fallback to unquoted TITLE query if strict phrase returned nothing
         if not results and self._last_status_code not in (429, 500, 502, 503, 504):
-            words = [w for w in re.sub(r"[^\w\s]", " ", clean_title).split() if len(w) >= 3]
+            words = [
+                w
+                for w in re.sub(r"[^\w\s]", " ", clean_title).split()
+                if len(w) >= 3 and w.lower() not in _LUCENE_STOPWORDS
+            ]
             if words:
                 fallback_q = " AND ".join(f"TITLE:{w}" for w in words[:8])
                 if citation.authors:
                     surname = author_key(citation.authors[0])
-                    if surname:
+                    if surname and surname.lower() not in _LUCENE_STOPWORDS:
                         fallback_q = f"({fallback_q}) AND AUTH:{surname}"
                 data = await self._fetch_json_with_retry(
                     {
@@ -186,6 +196,7 @@ class EuropePMCClient(BaseScholarClient):
 
         cit_year = str(citation.year)[:4] if citation.year else None
         cit_first_author = author_key(citation.authors[0]) if citation.authors else None
+        is_short_title = len(title_tokens(citation.title)) <= 3
 
         best_cand: SourceCandidate | None = None
         best_sim = -1.0
@@ -200,9 +211,11 @@ class EuropePMCClient(BaseScholarClient):
             if cit_year and cand.year == cit_year:
                 rank += 0.03
             if cit_first_author and cand.authors:
-                cand_authors = {author_key(a) for a in cand.authors if a}
-                if cit_first_author in cand_authors:
-                    rank += 0.03
+                auth_sc = author_match_score(citation.authors, cand.authors)
+                if auth_sc > 0.0:
+                    rank += 0.03 * auth_sc
+                elif is_short_title:
+                    continue
             if rank > best_rank:
                 best_rank = rank
                 best_sim = sim

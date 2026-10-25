@@ -218,3 +218,57 @@ def test_analysis_report_roundtrip_preserves_url_status_and_domain_exception() -
     assert rehydrated.verdicts[0].matched_source.url_status == "alive"
     assert rehydrated.verdicts[0].matched_source.url_status_code == 200
 
+
+def test_alive_url_no_scholarly_candidate_returns_url_resource() -> None:
+    rules = SymbolicRules()
+    source = SourceResult(
+        citation_raw="[6] CNCF (2023) Microservices. Available at: https://glossary.cncf.io/microservices/",
+        candidates=[],
+        sources_queried=["crossref", "openalex"],
+        sources_succeeded=[],
+        sources_failed={
+            "crossref": "Crossref: no results for 'Microservices'",
+            "openalex": "OpenAlex: no results for 'Microservices'",
+        },
+        url_status="alive",
+        url_status_code=200,
+    )
+    outcome = rules.apply(
+        MatchFeatures(),
+        source,
+        citation_url="https://glossary.cncf.io/microservices/",
+        citation_authors=["CNCF"],
+        citation_year="2023",
+        citation_raw=source.citation_raw,
+    )
+    assert outcome.label == ValidationLabel.RESOURCE
+    assert "R-URL-RESOURCE" in outcome.triggered_rules
+
+
+def test_neuro_symbolic_checker_classifies_official_docs_as_resource() -> None:
+    checker = NeuroSymbolicChecker(
+        feature_calculator=FeatureCalculator(enable_content_alignment=False),
+        enable_content_alignment=False,
+    )
+    cit = Citation(
+        raw_text="[16] Docker Inc. (2024) Docker documentation. Available at: https://docs.docker.com/ (Accessed: 17 October 2024).",
+        title="Docker documentation",
+        authors=["Docker Inc."],
+        year="2024",
+        url="https://docs.docker.com/",
+        citation_type=CitationType.REFERENCE_LIST,
+        style=CitationStyle.IEEE,
+    )
+    source = SourceResult(
+        citation_raw=cit.raw_text,
+        candidates=[],
+        sources_queried=[],
+        sources_succeeded=[],
+        url_status="alive",
+        url_status_code=200,
+    )
+    verdict = checker.check(cit, source)
+    assert verdict.label == ValidationLabel.RESOURCE
+    assert "R-WEB-RESOURCE" in verdict.triggered_rules
+
+

@@ -302,10 +302,26 @@ def _is_fake_entry(entry: str) -> bool:
     # Check for basic citation structure (author + year)
     has_year = bool(re.search(r'\b(19|20)\d{2}\b', text_stripped))
     has_author_pattern = bool(re.search(r'[A-Z][a-z]+,\s*[A-Z]', text_stripped))
+    has_doi_or_url = bool(_DOI_RE.search(text_stripped) or _URL_RE.search(text_stripped))
 
     # If many method indicators but no year or author pattern, it's fake
     if indicator_count >= 2 and not has_year and not has_author_pattern:
         return True
+
+    # Filter out Appendix / codebase / annotation-guideline artifacts when no year/DOI/URL exists
+    if not has_year and not has_doi_or_url:
+        if (
+            re.search(r"\b[a-z]+_[a-z]+\b", text_stripped)
+            or re.search(r"\b[a-z_]{2,}/(?:[a-z0-9_.]*)", text_stripped, re.IGNORECASE)
+            or "\u037e" in text_stripped
+            or "↔" in text_stripped
+            or re.search(
+                r"\b(?:Precision,\s*Recall,\s*F1|JSONL\s+loader|Pairwise\s+Cohen)",
+                text_stripped,
+                re.IGNORECASE,
+            )
+        ):
+            return True
 
     return False
 
@@ -436,7 +452,7 @@ class ReferenceListParser:
                     entries.append(line)
                 else:
                     if entries:
-                        entries[-1] = entries[-1] + " " + line
+                        entries[-1] = self._join_wrapped_line(entries[-1], line)
             result = [e for e in entries if len(e) > 20]
             if len(result) >= 2:
                 # FIX: Check if any entries contain multiple [N] references (inline merge)
@@ -512,6 +528,47 @@ class ReferenceListParser:
                 entries.append(entry)
 
         return entries if len(entries) >= 2 else []
+
+    @staticmethod
+    def _join_wrapped_line(prev: str, nxt: str) -> str:
+        """Join a wrapped bibliography line, repairing hyphenated word breaks and split URLs."""
+        prev_s = prev.rstrip()
+        nxt_s = nxt.lstrip()
+        if not prev_s:
+            return nxt_s
+        if not nxt_s:
+            return prev_s
+
+        # 1. URL wrapped across lines after '/' or '-' (e.g. "https://github.com/kermitt2/\ngrobid")
+        if re.search(r"https?://\S+[/\-]$", prev_s) and re.match(
+            r"^[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+$", nxt_s.split()[0]
+        ):
+            return prev_s + nxt_s
+
+        # 2. Word hyphenated at line end (e.g. "recog-\nnition", "Ide-\nSmith", "Pre-\ntraining")
+        m_hyph = re.search(r"([A-Za-zÀ-ỹ]+)-$", prev_s)
+        if m_hyph and re.match(r"^[A-Za-zÀ-ỹ]", nxt_s):
+            prefix = m_hyph.group(1)
+            nxt_word_m = re.match(r"^([A-Za-zÀ-ỹ]+)", nxt_s)
+            nxt_word = nxt_word_m.group(1).lower() if nxt_word_m else ""
+            # Keep hyphen for capitalized second part (compound surname like Ide-Smith)
+            # or genuine compound prefixes (e.g. Pre-training, fine-tuning, neuro-symbolic)
+            compound_prefixes = {
+                "pre", "self", "multi", "cross", "neuro", "non", "semi",
+                "fine", "zero", "few", "real", "open", "high", "low", "tf",
+            }
+            compound_roots = {
+                "training", "trained", "tuning", "tuned", "supervised", "symbolic",
+                "lingual", "modal", "task", "attention", "shot", "time", "source",
+                "level", "scale", "idf", "based", "centric", "driven",
+            }
+            if nxt_s[0].isupper() or (
+                prefix.lower() in compound_prefixes and nxt_word in compound_roots
+            ):
+                return prev_s + nxt_s
+            return prev_s[:-1] + nxt_s
+
+        return prev_s + " " + nxt_s
 
     @staticmethod
     def _clean_subheader_prefix(entry: str) -> str:
@@ -743,9 +800,13 @@ class ReferenceListParser:
             4. Fallback to legacy patterns (_parse_apa_entry, _parse_ieee_entry, etc.)
             5. Fallback to _parse_fallback_entry if numeric_index available
         """
-        # Normalize: replace newlines with spaces (wrapped lines)
+        # Normalize: replace newlines with spaces (wrapped lines) and repair line-wrapped URLs
         entry = entry.replace("\n", " ").replace("  ", " ")
         entry = entry.replace("\u2018\u2018", "\u201c").replace("\u2019\u2019", "\u201d")
+        entry = re.sub(r"\b(https?)\s*:\s*//\s*", r"\1://", entry, flags=re.IGNORECASE)
+        for _ in range(3):
+            entry = re.sub(r"(https?://\S*[/_\-~])\s+([A-Za-z0-9_\-~])", r"\1\2", entry)
+            entry = re.sub(r"(https?://\S*\.)\s+([a-z0-9_\-~])", r"\1\2", entry)
 
         # FIX: Extract numeric_index first if entry starts with [N] prefix
         numeric_index = None

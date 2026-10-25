@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import os
 import re
+import time
 import xml.etree.ElementTree as ET
 from typing import Any
 
@@ -30,8 +31,10 @@ from integrity_checker.models.source import SourceCandidate
 from integrity_checker.retrieval.base import BaseScholarClient
 from integrity_checker.retrieval.normalization import (
     author_key,
+    author_match_score,
     normalize_doi,
     title_similarity,
+    title_tokens,
 )
 
 logger = get_logger(__name__)
@@ -56,13 +59,16 @@ _STOPWORDS = frozenset({
 })
 
 _ARXIV_LOOP_SEMS: dict[int, asyncio.Semaphore] = {}
+_ARXIV_CONSECUTIVE_TIMEOUTS: dict[int, int] = {}
+_ARXIV_CIRCUIT_OPEN_UNTIL: dict[int, float] = {}
+_ARXIV_CIRCUIT_COOLDOWN_SEC = 45.0
 
 
 def _get_arxiv_sem() -> asyncio.Semaphore:
     loop = asyncio.get_running_loop()
     loop_id = id(loop)
     if loop_id not in _ARXIV_LOOP_SEMS:
-        _ARXIV_LOOP_SEMS[loop_id] = asyncio.Semaphore(2)
+        _ARXIV_LOOP_SEMS[loop_id] = asyncio.Semaphore(3)
     return _ARXIV_LOOP_SEMS[loop_id]
 
 
@@ -75,7 +81,7 @@ class ArxivClient(BaseScholarClient):
     def __init__(
         self,
         contact_email: str | None = None,
-        timeout: float = 15.0,
+        timeout: float = 6.0,
         max_retries: int | None = None,
     ) -> None:
         super().__init__(timeout=timeout)
@@ -86,9 +92,10 @@ class ArxivClient(BaseScholarClient):
             or settings.contact_email
             or settings.retrieval.contact_email
         )
-        self.max_retries = max_retries or min(settings.retrieval.retry.max_attempts, 3)
+        self.max_retries = max_retries or min(settings.retrieval.retry.max_attempts, 2)
         self._backoff = settings.retrieval.retry.backoff
         self._last_status_code: int | None = None
+        self._last_timed_out: bool = False
         self._headers = {
             "User-Agent": (
                 f"EssayIntegrityChecker/0.2 (mailto:{self.contact_email})"
@@ -175,6 +182,7 @@ class ArxivClient(BaseScholarClient):
             )
 
         entries: list[SourceCandidate] = []
+        had_successful_http = False
         for search_query in queries:
             xml_text = await self._fetch_xml_with_retry(
                 {"search_query": search_query, "start": 0, "max_results": 5}
@@ -186,7 +194,10 @@ class ArxivClient(BaseScholarClient):
                         found=False,
                         error=f"arXiv: rate limited (429) for '{citation.title[:50]}'",
                     )
+                if self._last_timed_out:
+                    break
                 continue
+            had_successful_http = True
             parsed = self._parse_atom_entries(xml_text)
             if parsed:
                 entries.extend(parsed)
@@ -199,6 +210,12 @@ class ArxivClient(BaseScholarClient):
                     break
 
         if not entries:
+            if self._last_timed_out and not had_successful_http:
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"arXiv: timeout/unavailable for '{citation.title[:60]}'",
+                )
             return SourceCandidate(
                 source_name=self.name,
                 found=False,
@@ -207,6 +224,7 @@ class ArxivClient(BaseScholarClient):
 
         cit_year = str(citation.year)[:4] if citation.year else None
         cit_first_author = author_key(citation.authors[0]) if citation.authors else None
+        is_short_title = len(title_tokens(citation.title)) <= 3
 
         best_cand: SourceCandidate | None = None
         best_sim = -1.0
@@ -220,9 +238,11 @@ class ArxivClient(BaseScholarClient):
             if cit_year and cand.year == cit_year:
                 rank += 0.02
             if cit_first_author and cand.authors:
-                cand_authors = {author_key(a) for a in cand.authors if a}
-                if cit_first_author in cand_authors:
-                    rank += 0.03
+                auth_sc = author_match_score(citation.authors, cand.authors)
+                if auth_sc > 0.0:
+                    rank += 0.03 * auth_sc
+                elif is_short_title:
+                    continue
             if rank > best_rank:
                 best_rank = rank
                 best_sim = sim
@@ -348,21 +368,29 @@ class ArxivClient(BaseScholarClient):
         return candidates
 
     async def _fetch_xml_with_retry(self, params: dict[str, Any]) -> str | None:
+        self._last_timed_out = False
+        loop_id = id(asyncio.get_running_loop())
+        now = time.monotonic()
+        if _ARXIV_CIRCUIT_OPEN_UNTIL.get(loop_id, 0.0) > now:
+            self._last_timed_out = True
+            logger.debug("arXiv circuit breaker open — skipping request")
+            return None
+
         sem = _get_arxiv_sem()
         retryer = AsyncRetrying(
             stop=stop_after_attempt(self.max_retries),
             wait=wait_exponential(
                 multiplier=self._backoff.multiplier,
-                min=min(self._backoff.initial_seconds, 2.0),
-                max=min(self._backoff.max_seconds, 15.0),
+                min=min(self._backoff.initial_seconds, 1.0),
+                max=min(self._backoff.max_seconds, 4.0),
             ),
             retry=retry_if_exception_type((httpx.RequestError, httpx.HTTPStatusError)),
             reraise=False,
         )
         try:
-            async with sem:
-                async for attempt in retryer:
-                    with attempt:
+            async for attempt in retryer:
+                with attempt:
+                    async with sem:
                         async with httpx.AsyncClient(
                             timeout=self.timeout, follow_redirects=True
                         ) as client:
@@ -371,20 +399,31 @@ class ArxivClient(BaseScholarClient):
                                 params=params,
                                 headers=self._headers,
                             )
-                        self._last_status_code = resp.status_code
-                        if resp.status_code == 404:
-                            return None
-                        if resp.status_code == 429 or resp.status_code >= 500:
-                            if getattr(resp, "_request", None) is None:
-                                resp._request = httpx.Request("GET", self.BASE_URL)
-                            resp.raise_for_status()
-                        if resp.status_code != 200:
-                            return None
-                        return resp.text
+                    self._last_status_code = resp.status_code
+                    _ARXIV_CONSECUTIVE_TIMEOUTS[loop_id] = 0
+                    if resp.status_code == 404:
+                        return None
+                    if resp.status_code == 429 or resp.status_code >= 500:
+                        if getattr(resp, "_request", None) is None:
+                            resp._request = httpx.Request("GET", self.BASE_URL)
+                        resp.raise_for_status()
+                    if resp.status_code != 200:
+                        return None
+                    return resp.text
         except RetryError as exc:
-            logger.warning(f"arXiv retry exhausted: {exc}")
+            self._last_timed_out = True
+            fails = _ARXIV_CONSECUTIVE_TIMEOUTS.get(loop_id, 0) + 1
+            _ARXIV_CONSECUTIVE_TIMEOUTS[loop_id] = fails
+            if fails >= 2:
+                _ARXIV_CIRCUIT_OPEN_UNTIL[loop_id] = time.monotonic() + _ARXIV_CIRCUIT_COOLDOWN_SEC
+                logger.warning(
+                    f"arXiv retry exhausted ({fails} consecutive failures); opening circuit breaker for {_ARXIV_CIRCUIT_COOLDOWN_SEC:.0f}s: {exc}"
+                )
+            else:
+                logger.warning(f"arXiv retry exhausted: {exc}")
             return None
         except Exception as exc:  # noqa: BLE001
+            self._last_timed_out = True
             logger.warning(f"arXiv error: {exc}")
             return None
         return None

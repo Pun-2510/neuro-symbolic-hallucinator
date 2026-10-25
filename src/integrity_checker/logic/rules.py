@@ -351,11 +351,11 @@ class SymbolicRules:
         author_sim = features.author_jaccard
         year_dist = features.year_distance
 
-        # Good match: fuzzy title >= 0.90, title >= 0.95 AND author >= 0.5 AND year match
+        # Good match: fuzzy title >= 0.90, title >= 0.95 AND (author >= 0.5 or exact DOI/arXiv + author >= 0.35) AND year match
         if (
             features.title_sim_fuzzy >= 0.90
             and title_sim >= 0.95
-            and author_sim >= 0.5
+            and (author_sim >= 0.5 or (features.doi_exact_match and author_sim >= 0.35))
             and year_dist <= self.year_tolerance
         ):
             confidence = max(0.0, 0.75 - style_penalty)
@@ -668,6 +668,24 @@ class SymbolicRules:
                     triggered_rules=["R-DEAD-URL", "R-NO-CANDIDATE"],
                     mismatched_fields=["url"],
                     style_penalty=style_penalty,
+                )
+
+            if (
+                citation_url
+                and not (citation_doi and str(citation_doi).strip())
+                and url_status in ("alive", "restricted_alive")
+            ):
+                status_code_str = f"HTTP {url_status_code}" if url_status_code else "HTTP 200 OK"
+                return RuleOutcome(
+                    label=ValidationLabel.RESOURCE,
+                    confidence=0.95,
+                    reasoning=(
+                        f"Citation URL '{citation_url}' is reachable ({status_code_str}) and is an online "
+                        f"documentation/web resource rather than an indexed academic paper."
+                    ),
+                    triggered_rules=["R-URL-RESOURCE"],
+                    mismatched_fields=[],
+                    style_penalty=0.0,
                 )
 
             if source.sources_failed:
@@ -1096,6 +1114,7 @@ class SymbolicRules:
                 and 0.2 <= content_alignment_score < 0.5
                 and author_sim >= 0.3
                 and year_dist <= self.year_tolerance
+                and not (citation_url and not citation_doi and url_status in ("alive", "restricted_alive"))
             ):
                 return RuleOutcome(
                     label=ValidationLabel.UNRESOLVED,
@@ -1227,6 +1246,26 @@ class SymbolicRules:
                 triggered_rules=triggered_rules,
                 mismatched_fields=["url", "title"],
                 style_penalty=style_penalty,
+            )
+
+        # --- Rule 4e: Reachable URL resource (HTTP 200 OK) with no DOI and no scholarly match → RESOURCE ---
+        if (
+            citation_url
+            and not (citation_doi and str(citation_doi).strip())
+            and url_status in ("alive", "restricted_alive")
+            and not is_known_author
+        ):
+            status_code_str = f"HTTP {url_status_code}" if url_status_code else "HTTP 200 OK"
+            return RuleOutcome(
+                label=ValidationLabel.RESOURCE,
+                confidence=0.95,
+                reasoning=(
+                    f"Citation URL '{citation_url}' is reachable ({status_code_str}) and represents an "
+                    f"online documentation/web resource rather than an indexed scholarly paper."
+                ),
+                triggered_rules=["R-URL-RESOURCE"],
+                mismatched_fields=[],
+                style_penalty=0.0,
             )
 
         # --- Rule 5: Border zone -> UNRESOLVED (abstention) ---

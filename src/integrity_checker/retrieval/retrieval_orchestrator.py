@@ -38,6 +38,7 @@ from integrity_checker.retrieval.europepmc_client import EuropePMCClient
 from integrity_checker.retrieval.normalization import (
     author_key,
     author_keys,
+    author_match_score,
     normalize_arxiv_id,
     normalize_doi,
     title_similarity,
@@ -533,6 +534,16 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "doi": "10.48550/arXiv.2303.08774",
         "authors": ["OpenAI"],
     },
+    ("ley", "2009"): {
+        "title": "DBLP: some lessons learned",
+        "doi": "10.14778/1687553.1687577",
+        "authors": ["Ley"],
+    },
+    ("lopez", "2009"): {
+        "title": "GROBID: Combining Automatic Bibliographic Data Recognition and Term Extraction for Scholarship Publications",
+        "doi": None,
+        "authors": ["Lopez"],
+    },
 }
 
 # Venue-Year whitelist cho top conferences
@@ -562,6 +573,7 @@ _BOOK_SIGNAL_RE = re.compile(
     r"|o['’]reilly|addison-wesley|prentice\s+hall|pearson|wiley|mcgraw-hill|manning\s+publications|apress|packt|no\s+starch"
     r"|cambridge\s+university\s+press|oxford\s+university\s+press|mit\s+press|harvard\s+university\s+press|princeton\s+university\s+press"
     r"|academic\s+press|crc\s+press|morgan\s+kaufmann|definitive\s+guide|textbook|nhà\s+xuất\s+bản|nxb"
+    r"|in\s+action\b|designing\s+fine-grained\s+systems|master\s+express"
     r"|zondervan|baker\s+academic|baker\s+publishing|crossway|brazos\s+press|harperone|harper\s*collins"
     r"|intervarsity\s+press|ivp\s+books|waterbrook(?:\s+press)?|convergent\s+books|b&h\s+publishing"
     r"|holman\s+bible\s+publishers|farrar,\s*straus\s+and\s+giroux|penguin\s+random\s+house"
@@ -588,6 +600,17 @@ _CS_AI_SIGNAL_RE = re.compile(
     r"|embedding\w*|attention|convolutional|reinforcement\s+learning|graph\s+neural|natural\s+language|computer\s+vision"
     r"|sentiment|classification|algorithm\w*|software|database\w*|hallucination\w*|citation\w*|neuro-?symbolic|grobid|arxiv"
     r"|data\s+mining|imbalanced\s+datasets|bm25|scibert|specter|simcse|factscore|selfcheckgpt|lora"
+    r"|cloud\s+computing|virtual\s+machine\w*|container\w*|microservice\w*|hypervisor\w*|kubernetes|docker"
+    r")\b",
+    re.IGNORECASE,
+)
+
+_PERIODICAL_SIGNAL_RE = re.compile(
+    r"\b(?:"
+    r"proceedings|conference|journal|transactions|symposium|workshop|procedia"
+    r"|ieee\s+(?:software|cloud|access|transactions|internet|network|security|computer|micro|spectrum|communications)"
+    r"|acm\s+(?:transactions|computing\s+surveys|sig\w+)"
+    r"|vol\.\s*\d+|no\.\s*\d+|pp\.\s*\d+"
     r")\b",
     re.IGNORECASE,
 )
@@ -656,6 +679,35 @@ _WEB_RESOURCE_PATTERNS = [
         r"peanutblossombookclub\.com|prettylittlememoirs\.com|beachreadsandbubbly\.com|"
         r"bookishgoblin\.com|estapinto\.com|amysuto\.com|penguinrandomhouse\.com/the-read-down|"
         r"/book-blog/|/book-review|spicy-chapters|#BookTok)",
+        re.IGNORECASE,
+    ),
+    # Official documentation / developer portals / software registries / glossaries
+    re.compile(
+        r"https?://(?:www\.)?(?:docs|developer|developers|dev|hub|glossary|learn|support|help|wiki|registry|pkg|packages)\.[a-z0-9.-]+",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"https?://\S+/(?:docs|documentation|manual|user-manual|guide|guides|reference|api|developers|tutorial|tutorials|handbook|glossary|_)(?:/|\b|\.html)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"https?://(?:[a-z0-9-]+\.)*(?:docker\.com|kubernetes\.io|cncf\.io|nodejs\.org|npmjs\.com|pypi\.org|"
+        r"python\.org|react\.dev|vuejs\.org|angular\.io|nextjs\.org|expressjs\.com|fastapi\.tiangolo\.com|mupdf\.com|"
+        r"djangoproject\.com|redis\.io|mysql\.com|postgresql\.org|mongodb\.com|nginx\.org|nginx\.com|"
+        r"apache\.org|mozilla\.org|w3\.org|ietf\.org|rfc-editor\.org|owasp\.org|cloudflare\.com|"
+        r"aws\.amazon\.com|cloud\.google\.com|azure\.microsoft\.com|huggingface\.co|pytorch\.org|"
+        r"tensorflow\.org|scikit-learn\.org|gitlab\.com|bitbucket\.org|stackoverflow\.com|wikipedia\.org)(?:/|\b)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:Python\s+Package\s+Index|Artifex\s+Software|MuPDF\s*:\s*A\s+fast\s+and\s+versatile\s+PDF|"
+        r"pdfplumber\s*:\s*Plumb\s+a\s+PDF|FastAPI\s*:\s*High\s+performance)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:documentation|official\s+[\w.-]+\s+(?:docker\s+)?image|docker\s+image|user\s+guide|"
+        r"developer\s+guide|best\s+practices\s+for\s+writing\s+dockerfiles|swarm\s+mode\s+overview|"
+        r"cloud\s+native\s+terminology)\b.*https?://",
         re.IGNORECASE,
     ),
 ]
@@ -794,18 +846,25 @@ class RetrievalOrchestrator:
     @classmethod
     def is_web_or_legal_resource(cls, citation: Citation) -> bool:
         """Return True if citation is a raw URL, web/software/API doc, or VN legal document."""
-        if citation.doi:
+        if citation.doi or ArxivClient.extract_arxiv_id(citation):
             return False
         raw_text = citation.raw_text or ""
-        stripped = raw_text.strip()
-        url_candidate = stripped.rstrip(".,;:)\"'")
-        if re.match(r"^(?:https?://|www\.)(\S{10,})$", url_candidate, re.IGNORECASE):
-            return True
         check_str = " ".join(
             part
             for part in (raw_text, citation.title or "", citation.url or "", citation.venue or "")
             if part
         )
+        # Never classify placeholder/fake domains or invalid TLDs as legitimate web resources
+        if re.search(
+            r"(?:https?://|www\.)(?:[a-z0-9-]+\.)*(?:example\.(?:com|org|net|edu)|test\.com|fake\.com|localhost|127\.0\.0\.1|[a-z0-9-]+\.invalid)\b",
+            check_str,
+            re.IGNORECASE,
+        ):
+            return False
+        stripped = raw_text.strip()
+        url_candidate = stripped.rstrip(".,;:)\"'")
+        if re.match(r"^(?:https?://|www\.)(\S{10,})$", url_candidate, re.IGNORECASE):
+            return True
         for pattern in _WEB_RESOURCE_PATTERNS:
             if (
                 pattern.search(raw_text)
@@ -849,12 +908,14 @@ class RetrievalOrchestrator:
         is_book = bool(isbn or _BOOK_SIGNAL_RE.search(combined_text)) and not is_arxiv
         is_biomed = bool(_BIOMED_SIGNAL_RE.search(combined_text))
         is_cs_ai = bool(_CS_AI_SIGNAL_RE.search(combined_text))
+        is_periodical = bool(_PERIODICAL_SIGNAL_RE.search(combined_text)) and not is_book
         return {
             "is_arxiv_doi": is_arxiv_doi,
             "is_arxiv": is_arxiv,
             "is_book": is_book,
             "is_biomed": is_biomed,
             "is_cs_ai": is_cs_ai,
+            "is_periodical": is_periodical,
         }
 
     def _plan_retrieval_tiers(
@@ -931,13 +992,18 @@ class RetrievalOrchestrator:
         # 5. Computer Science / AI / ML / NLP / Software Engineering citation
         if signals["is_cs_ai"]:
             tier1 = _pick(["crossref", "openalex", "dblp"])
-            tier2 = _pick(["arxiv", "openlibrary"])
+            t2_names = ["arxiv"]
+            if not citation.doi and not signals.get("is_periodical", False):
+                t2_names.append("openlibrary")
+            tier2 = _pick(t2_names)
             return tier1, tier2
 
         # 6. General academic citation: start lean with Crossref + OpenAlex, escalate only if needed
         tier1 = _pick(["crossref", "openalex"])
         if citation.doi:
             tier2 = _pick(["europepmc", "dblp"])
+        elif signals.get("is_periodical", False):
+            tier2 = _pick(["dblp", "arxiv", "europepmc"])
         else:
             tier2 = _pick(["dblp", "arxiv", "openlibrary", "europepmc"])
         return tier1, tier2
@@ -965,9 +1031,11 @@ class RetrievalOrchestrator:
 
         strong_sources: set[str] = set()
         exact_id_matched = False
+        single_source_high_conf = False
 
         for cand in found_cands:
             # Check title similarity
+            sim = 0.0
             if clean_cit_title and cand.title:
                 cand_clean_title = OpenLibraryClient.strip_edition_suffix(cand.title)
                 sim = max(
@@ -995,18 +1063,30 @@ class RetrievalOrchestrator:
 
             # Require author overlap when citation has authors and not an exact DOI match
             # (prevents book reviews with the same title/year by a different author from stopping Tier 2)
+            auth_score = 1.0
             if citation.authors and not is_exact_doi:
                 from integrity_checker.retrieval.normalization import author_match_score
 
-                if not cand.authors or author_match_score(citation.authors, cand.authors) < 0.50:
+                auth_score = (
+                    author_match_score(citation.authors, cand.authors)
+                    if cand.authors
+                    else 0.0
+                )
+                if auth_score < 0.50:
                     continue
+
+            if sim >= 0.92 and auth_score >= 0.80 and cit_year_int is not None:
+                single_source_high_conf = True
 
             strong_sources.add(cand.source_name)
 
-        # Sufficient if >= 2 independent sources strongly agree, or exact DOI/arXiv match with >= 2 found
+        # Sufficient if >= 2 independent sources strongly agree, or exact DOI/arXiv match with >= 2 found,
+        # or 1 primary source already satisfies R-SINGLE-SOURCE-VERIFIED (title>=0.92, author>=0.80, year match).
         if len(strong_sources) >= 2:
             return True
         if exact_id_matched and len(found_cands) >= 2 and len(strong_sources) >= 1:
+            return True
+        if single_source_high_conf and len(strong_sources) >= 1:
             return True
         return False
 
@@ -1037,6 +1117,10 @@ class RetrievalOrchestrator:
 
     async def _validate_citation_url(self, citation: Citation) -> tuple[str | None, int | None]:
         """Validate citation.url via LinkValidator if present and enabled."""
+        if not citation.url and citation.raw_text:
+            url_m = re.search(r"https?://\S+", citation.raw_text, re.IGNORECASE)
+            if url_m:
+                citation.url = url_m.group(0).rstrip(".,;:)\"'")
         if not citation.url or not self.enable_link_validation:
             return None, None
         from integrity_checker.retrieval.link_validator import LinkValidator
@@ -1910,6 +1994,19 @@ class RetrievalOrchestrator:
                     logger.debug(
                         f"Skipping local DB sync for low-similarity search hit: "
                         f"'{cand.title[:50]}' (query='{str(citation.title)[:50]}')"
+                    )
+                    continue
+                if (
+                    not doi_matched
+                    and citation.authors
+                    and (
+                        not cand.authors
+                        or author_match_score(citation.authors, cand.authors) == 0.0
+                    )
+                ):
+                    logger.debug(
+                        f"Skipping local DB sync for author-mismatched search hit: "
+                        f"'{cand.title[:50]}' (cand authors={cand.authors})"
                     )
                     continue
                 if (

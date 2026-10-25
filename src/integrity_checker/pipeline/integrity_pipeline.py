@@ -645,7 +645,7 @@ class IntegrityPipeline:
         )
         # FIX v1.7: Only retrieve for verifiable citations (references, not in-text).
         # Limit concurrent paper retrievals to avoid HTTP 429 bursts on scholarly APIs.
-        retrieval_sem = asyncio.Semaphore(4)
+        retrieval_sem = asyncio.Semaphore(8)
 
         async def _bounded_retrieve(cit: Citation) -> SourceResult:
             async with retrieval_sem:

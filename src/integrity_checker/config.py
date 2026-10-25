@@ -304,9 +304,9 @@ class RetryBackoffConfig(BaseModel):
     - multiplier: 2x per attempt
     """
 
-    initial_seconds: float = 5.0
+    initial_seconds: float = 1.0
     max_seconds: float = 120.0  # FIX: Increased from 60 to 120 for sustained rate limits
-    multiplier: float = 2.0
+    multiplier: float = 1.5
 
 
 class RetryConfig(BaseModel):

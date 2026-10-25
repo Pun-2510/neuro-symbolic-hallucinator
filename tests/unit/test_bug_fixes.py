@@ -447,5 +447,80 @@ class TestIntegrationBugFixes:
         )
 
 
+class TestThesisPdfFixes:
+    """Regression tests for thesis.pdf reference extraction, linking, and retrieval fixes."""
+
+    def test_join_wrapped_line_dehyphenates_words_and_preserves_compounds(self):
+        from integrity_checker.extraction.reference_parser import ReferenceListParser
+
+        assert ReferenceListParser._join_wrapped_line("data recog-", "nition and term") == "data recognition and term"
+        assert ReferenceListParser._join_wrapped_line("Huang, Z., Ide-", "Smith, M.") == "Huang, Z., Ide-Smith, M."
+        assert ReferenceListParser._join_wrapped_line("BERT: Pre-", "training of deep") == "BERT: Pre-training of deep"
+        assert (
+            ReferenceListParser._join_wrapped_line("Retrieved from https://github.com/kermitt2/", "grobid")
+            == "Retrieved from https://github.com/kermitt2/grobid"
+        )
+
+    def test_is_fake_entry_filters_appendix_artifacts(self):
+        from integrity_checker.extraction.reference_parser import _is_fake_entry
+
+        assert _is_fake_entry("Grobid + Regex extraction/ Citation extraction & section segmentation PyMuPDF, pdfplumber")
+        assert _is_fake_entry("linking/ In-text ↔ reference list matching")
+        assert _is_fake_entry(
+            "metadata_error — The cited work exists, but one or more metadata fields disagree. "
+            "suspected_hallucination — No matching work is found across any scholarly index."
+        )
+        assert _is_fake_entry("evaluation/iaa_calculator.py — Pairwise Cohen's κ and Fleiss' κ computation")
+        assert _is_fake_entry("Per-class Precision, Recall, F1, Macro-F1, and confusion matrix generator")
+
+    def test_crossref_message_to_candidate_joins_subtitle(self):
+        from integrity_checker.retrieval.crossref_client import CrossrefClient
+
+        cand = CrossrefClient._message_to_candidate(
+            {
+                "DOI": "10.14778/1687553.1687577",
+                "title": ["DBLP"],
+                "subtitle": ["some lessons learned"],
+                "author": [{"given": "Michael", "family": "Ley"}],
+                "issued": {"date-parts": [[2009]]},
+            }
+        )
+        assert cand.title == "DBLP: some lessons learned"
+        assert cand.year == "2009"
+
+    def test_feature_calculator_question_mark_and_arxiv_id_doi_match(self):
+        from integrity_checker.matching.features import FeatureCalculator
+        from integrity_checker.models.source import SourceCandidate
+
+        fc = FeatureCalculator(enable_content_alignment=False)
+        cit = Citation(
+            raw_text="[18] Sadasivan, S., et al. (2023). Can AI-generated text be reliably detected?. arXiv:2303.11156.",
+            citation_type=CitationType.REFERENCE_LIST,
+            authors=["Sadasivan, S"],
+            year="2023",
+            title="Can AI-generated text be reliably detected",
+            venue="arXiv:2303.11156",
+        )
+        src = SourceResult(
+            citation_raw=cit.raw_text,
+            candidates=[
+                SourceCandidate(
+                    source_name="local_db",
+                    found=True,
+                    doi="10.48550/arXiv.2303.11156",
+                    title="Can AI-Generated Text be Reliably Detected?",
+                    authors=["Vinu Sankar Sadasivan"],
+                    year="2023",
+                    confidence=0.9,
+                )
+            ],
+            sources_queried=["local_db"],
+            sources_succeeded=["local_db"],
+        )
+        feats = fc.compute(cit, src)
+        assert feats.title_sim_fuzzy == 1.0
+        assert feats.doi_exact_match is True
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

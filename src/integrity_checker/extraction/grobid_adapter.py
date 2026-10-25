@@ -562,13 +562,20 @@ def _is_duplicate_reference(cit: Citation, existing: list[Citation]) -> bool:
             if existing_cit.doi and existing_cit.doi.lower() == cit.doi.lower():
                 return True
 
-    # URL exact match
+    # URL exact match (only allow prefix match when titles do not diverge)
     cit_url = _normalize_url_for_dedup(getattr(cit, "url", None))
     if cit_url:
         for existing_cit in existing:
             ex_url = _normalize_url_for_dedup(getattr(existing_cit, "url", None))
-            if ex_url and (cit_url == ex_url or cit_url in ex_url or ex_url in cit_url):
+            if not ex_url:
+                continue
+            if cit_url == ex_url:
                 return True
+            if cit_url in ex_url or ex_url in cit_url:
+                c_title = (cit.title or "").lower().strip()
+                e_title = (existing_cit.title or "").lower().strip()
+                if not c_title or not e_title or c_title == e_title or c_title in e_title or e_title in c_title:
+                    return True
 
     # Title + Author + Year fuzzy match (also handles cases where one source
     # missed authors or year on corporate/book/web entries)

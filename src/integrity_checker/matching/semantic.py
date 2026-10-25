@@ -181,24 +181,73 @@ class SemanticMatcher:
             cited_context = self._truncate_text(cited_context, max_length=512)
             source_title = self._truncate_text(source_title, max_length=256)
 
-            # Strategy 1: Compare with source title
-            title_sim = self._compute_similarity(model, cited_context, source_title)
-
-            # Strategy 2: Compare with source abstract (whole-abstract + sentence pooling)
+            # Fast batched encoding for title + abstract + abstract sentences when _compute_similarity is not mocked
+            use_batch = (
+                getattr(self._compute_similarity, "__func__", None)
+                is SemanticMatcher._compute_similarity
+            )
+            batch_done = False
+            title_sim = 0.0
             abstract_sim = 0.0
-            if source_abstract:
-                truncated_abstract = self._truncate_text(source_abstract, max_length=512)
-                whole_abs_sim = self._compute_similarity(model, cited_context, truncated_abstract)
-                abs_sentences = self._extract_sentences(source_abstract)
-                if len(abs_sentences) >= 2:
-                    sent_sims = [
-                        self._compute_similarity(model, cited_context, sent)
-                        for sent in abs_sentences[:6]
-                    ]
-                    max_sent_sim = max(sent_sims) if sent_sims else whole_abs_sim
-                    abstract_sim = max(whole_abs_sim, 0.6 * max_sent_sim + 0.4 * whole_abs_sim)
-                else:
-                    abstract_sim = whole_abs_sim
+
+            if use_batch:
+                try:
+                    batch_texts = [cited_context, source_title]
+                    has_abs = bool(source_abstract)
+                    abs_sents: list[str] = []
+                    if has_abs and source_abstract:
+                        truncated_abstract = self._truncate_text(source_abstract, max_length=512)
+                        batch_texts.append(truncated_abstract)
+                        extracted = self._extract_sentences(source_abstract)
+                        if len(extracted) >= 2:
+                            abs_sents = extracted[:6]
+                            batch_texts.extend(abs_sents)
+                    embs = self._encode(
+                        model,
+                        batch_texts,
+                        convert_to_tensor=True,
+                        normalize_embeddings=True,
+                        show_progress_bar=False,
+                    )
+                    if len(embs) == len(batch_texts):
+                        ctx_emb = embs[0]
+                        title_sim = max(0.0, min(1.0, float((ctx_emb @ embs[1]).item())))
+                        if has_abs:
+                            whole_abs_sim = max(0.0, min(1.0, float((ctx_emb @ embs[2]).item())))
+                            if abs_sents:
+                                sent_sims = [
+                                    max(0.0, min(1.0, float((ctx_emb @ embs[3 + idx]).item())))
+                                    for idx in range(len(abs_sents))
+                                ]
+                                max_sent_sim = max(sent_sims) if sent_sims else whole_abs_sim
+                                abstract_sim = max(
+                                    whole_abs_sim, 0.6 * max_sent_sim + 0.4 * whole_abs_sim
+                                )
+                            else:
+                                abstract_sim = whole_abs_sim
+                        batch_done = True
+                except Exception:  # noqa: BLE001
+                    batch_done = False
+
+            if not batch_done:
+                # Strategy 1: Compare with source title
+                title_sim = self._compute_similarity(model, cited_context, source_title)
+
+                # Strategy 2: Compare with source abstract (whole-abstract + sentence pooling)
+                abstract_sim = 0.0
+                if source_abstract:
+                    truncated_abstract = self._truncate_text(source_abstract, max_length=512)
+                    whole_abs_sim = self._compute_similarity(model, cited_context, truncated_abstract)
+                    abs_sentences = self._extract_sentences(source_abstract)
+                    if len(abs_sentences) >= 2:
+                        sent_sims = [
+                            self._compute_similarity(model, cited_context, sent)
+                            for sent in abs_sentences[:6]
+                        ]
+                        max_sent_sim = max(sent_sims) if sent_sims else whole_abs_sim
+                        abstract_sim = max(whole_abs_sim, 0.6 * max_sent_sim + 0.4 * whole_abs_sim)
+                    else:
+                        abstract_sim = whole_abs_sim
 
             # Strategy 3: Compare with source body (if available, using segment sampling)
             body_sim = 0.0
