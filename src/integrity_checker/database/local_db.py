@@ -39,7 +39,7 @@ DEFAULT_DB_PATH = Path(__file__).resolve().parents[3] / "data" / "local_papers.d
 _DB_CACHE_LOCK = threading.Lock()
 _INITIALIZED_DB_INODES: dict[str, int] = {}
 _STATS_CACHE: dict[str, tuple[float, int, int, int, dict[str, Any]]] = {}
-_STATS_CACHE_TTL_SECONDS = 30.0
+_STATS_CACHE_TTL_SECONDS = 3600.0
 _MUTATION_VERSION = 0
 
 
@@ -556,12 +556,7 @@ class LocalDatabase:
                     return copy.deepcopy(payload)
 
         with self._get_conn() as conn:
-            # Count papers
-            total_papers = conn.execute(
-                "SELECT COUNT(*) FROM papers"
-            ).fetchone()[0]
-
-            # Count by source
+            # Count by source (uses covering index idx_papers_source, avoiding 245MB table scan)
             source_counts = conn.execute(
                 """
                 SELECT source, COUNT(*) as count
@@ -570,6 +565,7 @@ class LocalDatabase:
                 ORDER BY count DESC
                 """
             ).fetchall()
+            total_papers = sum(int(row[1]) for row in source_counts)
 
             # Count queries + hit rate in a single pass
             q_row = conn.execute(

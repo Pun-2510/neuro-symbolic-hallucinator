@@ -127,6 +127,15 @@ function syncRobotsMeta(pathname: string): void {
     document.head.appendChild(meta);
   }
   meta.content = content;
+
+  let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (!canonical) {
+    canonical = document.createElement('link');
+    canonical.rel = 'canonical';
+    document.head.appendChild(canonical);
+  }
+  const normalizedPath = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
+  canonical.href = `https://citra.io.vn${normalizedPath}`;
 }
 
 function RootLayout() {

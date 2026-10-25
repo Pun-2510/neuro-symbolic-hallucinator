@@ -8,7 +8,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from integrity_checker.api.routes import audit, auth, cache, essays, export, health, report, system, teacher, users, verdicts
-from integrity_checker.config import get_settings
+from integrity_checker.config import get_settings, is_test_runtime
 from integrity_checker.db.session import init_db
 from integrity_checker.logging import configure_logging, get_logger
 
@@ -20,6 +20,11 @@ def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging()
 
+    is_prod = (
+        settings.app.env.strip().lower() in ("production", "prod", "live")
+        and not is_test_runtime()
+    )
+
     app = FastAPI(
         title="Essay Integrity Checker API",
         description=(
@@ -27,6 +32,9 @@ def create_app() -> FastAPI:
             "KHÔNG tự động kết luận gian lận học thuật."
         ),
         version=settings.app.version,
+        docs_url=None if is_prod else "/docs",
+        redoc_url=None if is_prod else "/redoc",
+        openapi_url=None if is_prod else "/openapi.json",
     )
 
     # CORS configuration
@@ -66,6 +74,20 @@ def create_app() -> FastAPI:
     # Init DB (MVP)
     init_db()
     logger.info("Database initialized")
+
+    if not is_test_runtime():
+        import threading
+
+        def _prewarm_local_papers_stats() -> None:
+            try:
+                from integrity_checker.database import LocalDatabase
+
+                LocalDatabase().get_stats()
+                logger.info("Pre-warmed local_papers.db stats cache")
+            except Exception as exc:
+                logger.debug(f"Could not pre-warm local_papers.db stats: {exc}")
+
+        threading.Thread(target=_prewarm_local_papers_stats, daemon=True).start()
 
     # Ensure avatars directory exists before mounting
     from integrity_checker.config import PROJECT_ROOT
