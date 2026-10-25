@@ -171,6 +171,21 @@ def _run_inline_migrations(engine: Engine) -> None:
             "DELETE FROM verdicts WHERE essay_id NOT IN (SELECT id FROM essays)"
         )
 
+        # --- Strategic Composite B-Tree Indexes for existing databases ---
+        for idx_sql in (
+            "CREATE INDEX IF NOT EXISTS idx_users_role_username ON users(role, username)",
+            "CREATE INDEX IF NOT EXISTS idx_essays_user_uploaded ON essays(user_id, uploaded_at)",
+            "CREATE INDEX IF NOT EXISTS idx_essays_class_uploaded ON essays(class_id, uploaded_at)",
+            "CREATE INDEX IF NOT EXISTS idx_essays_user_filename ON essays(user_id, filename)",
+            "CREATE INDEX IF NOT EXISTS idx_essays_uploaded_at ON essays(uploaded_at)",
+            "CREATE INDEX IF NOT EXISTS idx_citations_essay_type ON citations(essay_id, citation_type)",
+            "CREATE INDEX IF NOT EXISTS idx_verdicts_essay_override_label ON verdicts(essay_id, is_overridden, label)",
+            "CREATE INDEX IF NOT EXISTS idx_verdicts_label ON verdicts(label)",
+            "CREATE INDEX IF NOT EXISTS idx_audit_logs_user_logged ON audit_logs(user, logged_at)",
+            "CREATE INDEX IF NOT EXISTS idx_audit_logs_logged_at ON audit_logs(logged_at)",
+        ):
+            conn.exec_driver_sql(idx_sql)
+
 
 def _seed_default_users(engine: Engine) -> None:
     """Ensure default demo accounts (admin, teacher, user) exist in the main DB (dev/test only)."""

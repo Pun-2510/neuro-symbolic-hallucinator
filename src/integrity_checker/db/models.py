@@ -259,3 +259,23 @@ class ClassMembership(Base):
 
     class_: Mapped["Class"] = relationship(back_populates="memberships")
     student: Mapped["User"] = relationship("User", foreign_keys=[student_id], back_populates="memberships")
+
+
+# ---------------------------------------------------------------------------
+# Strategic Composite B-Tree Indexes (Performance Optimization)
+# ---------------------------------------------------------------------------
+Index("idx_users_role_username", User.role, User.username)
+Index("idx_essays_user_uploaded", EssayRecord.user_id, EssayRecord.uploaded_at)
+Index("idx_essays_class_uploaded", EssayRecord.class_id, EssayRecord.uploaded_at)
+Index("idx_essays_user_filename", EssayRecord.user_id, EssayRecord.filename)
+Index("idx_essays_uploaded_at", EssayRecord.uploaded_at)
+Index("idx_citations_essay_type", CitationRecord.essay_id, CitationRecord.citation_type)
+Index(
+    "idx_verdicts_essay_override_label",
+    VerdictRecord.essay_id,
+    VerdictRecord.is_overridden,
+    VerdictRecord.label,
+)
+Index("idx_verdicts_label", VerdictRecord.label)
+Index("idx_audit_logs_user_logged", AuditLog.user, AuditLog.logged_at)
+Index("idx_audit_logs_logged_at", AuditLog.logged_at)

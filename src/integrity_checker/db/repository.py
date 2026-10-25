@@ -53,6 +53,18 @@ class Repository:
     def get_essay(self, essay_id: int) -> EssayRecord | None:
         return self.session.get(EssayRecord, essay_id)
 
+    def get_essays_by_ids(self, essay_ids: list[int] | set[int]) -> dict[int, EssayRecord]:
+        """Batch fetch essays by IDs in a single query to avoid N+1 lookups."""
+        ids = [eid for eid in essay_ids if eid is not None]
+        if not ids:
+            return {}
+        return {
+            e.id: e
+            for e in self.session.query(EssayRecord)
+            .filter(EssayRecord.id.in_(ids))
+            .all()
+        }
+
     # -- Citations --
 
     def add_citations(self, essay_id: int, citations: list[Citation]) -> list[CitationRecord]:
@@ -230,6 +242,22 @@ class Repository:
             .filter(VerdictRecord.essay_id == essay_id)
             .all()
         )
+
+    def get_verdicts_by_essay_ids(
+        self, essay_ids: list[int] | set[int]
+    ) -> dict[int, list[VerdictRecord]]:
+        """Batch fetch verdicts for multiple essays in a single query."""
+        ids = [eid for eid in essay_ids if eid is not None]
+        if not ids:
+            return {}
+        out: dict[int, list[VerdictRecord]] = {eid: [] for eid in ids}
+        for v in (
+            self.session.query(VerdictRecord)
+            .filter(VerdictRecord.essay_id.in_(ids))
+            .all()
+        ):
+            out.setdefault(v.essay_id, []).append(v)
+        return out
 
     def update_verdict(
         self,
@@ -456,6 +484,18 @@ class Repository:
 
     def get_user_by_id(self, user_id: int) -> User | None:
         return self.session.get(User, user_id)
+
+    def get_users_by_ids(self, user_ids: list[int] | set[int]) -> dict[int, User]:
+        """Batch fetch users by IDs in a single query to avoid N+1 lookups."""
+        ids = [uid for uid in user_ids if uid is not None]
+        if not ids:
+            return {}
+        return {
+            u.id: u
+            for u in self.session.query(User)
+            .filter(User.id.in_(ids))
+            .all()
+        }
 
     def create_user(
         self,
@@ -957,6 +997,42 @@ class Repository:
         return (
             self.session.query(ClassMembership)
             .filter(ClassMembership.class_id == class_id)
+            .count()
+        )
+
+    def count_students_by_class_ids(
+        self, class_ids: list[int] | set[int]
+    ) -> dict[int, int]:
+        """Batch count students per class in a single GROUP BY query."""
+        ids = [cid for cid in class_ids if cid is not None]
+        if not ids:
+            return {}
+        out: dict[int, int] = {cid: 0 for cid in ids}
+        for cid, cnt in (
+            self.session.query(
+                ClassMembership.class_id, func.count(ClassMembership.id)
+            )
+            .filter(ClassMembership.class_id.in_(ids))
+            .group_by(ClassMembership.class_id)
+            .all()
+        ):
+            out[int(cid)] = int(cnt or 0)
+        return out
+
+    def count_pending_reviews_by_essay_ids(
+        self, essay_ids: list[int] | set[int]
+    ) -> int:
+        """Count non-overridden flagged verdicts across a pre-computed set of essay IDs."""
+        ids = [eid for eid in essay_ids if eid is not None]
+        if not ids:
+            return 0
+        return (
+            self.session.query(VerdictRecord)
+            .filter(
+                VerdictRecord.essay_id.in_(ids),
+                VerdictRecord.is_overridden == 0,
+                VerdictRecord.label.in_(["metadata_error", "suspected_hallucination"]),
+            )
             .count()
         )
 

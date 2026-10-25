@@ -10,9 +10,12 @@ The database uses SQLite with FTS5 for full-text search.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import sqlite3
+import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +35,18 @@ from .schemas import INIT_STATEMENTS
 
 # Default database path (project root / data / local_papers.db)
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[3] / "data" / "local_papers.db"
+
+_DB_CACHE_LOCK = threading.Lock()
+_INITIALIZED_DB_INODES: dict[str, int] = {}
+_STATS_CACHE: dict[str, tuple[float, int, int, int, dict[str, Any]]] = {}
+_STATS_CACHE_TTL_SECONDS = 30.0
+_MUTATION_VERSION = 0
+
+
+def _bump_mutation_version() -> None:
+    global _MUTATION_VERSION
+    with _DB_CACHE_LOCK:
+        _MUTATION_VERSION += 1
 
 
 def _title_key(title: str | None) -> str:
@@ -81,8 +96,18 @@ class LocalDatabase:
         self._init_db()
 
     def _init_db(self) -> None:
-        """Initialize database schema if not exists."""
+        """Initialize database schema if not exists (cached per file inode)."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        resolved_key = str(self.db_path.resolve())
+        try:
+            if self.db_path.is_file():
+                stat = self.db_path.stat()
+                if stat.st_size > 0:
+                    with _DB_CACHE_LOCK:
+                        if _INITIALIZED_DB_INODES.get(resolved_key) == stat.st_ino:
+                            return
+        except OSError:
+            pass
 
         with self._get_conn() as conn:
             for stmt in INIT_STATEMENTS:
@@ -94,12 +119,22 @@ class LocalDatabase:
             conn.execute("PRAGMA busy_timeout=30000")
             conn.commit()
 
+        try:
+            stat = self.db_path.stat()
+            if stat.st_size > 0:
+                with _DB_CACHE_LOCK:
+                    _INITIALIZED_DB_INODES[resolved_key] = stat.st_ino
+        except OSError:
+            pass
+
     @contextmanager
     def _get_conn(self) -> Generator[sqlite3.Connection, None, None]:
-        """Get database connection with row factory."""
+        """Get database connection with row factory and in-memory FTS5 cache."""
         conn = sqlite3.connect(str(self.db_path), timeout=30.0)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA busy_timeout=30000")
+        conn.execute("PRAGMA cache_size=-16000")
+        conn.execute("PRAGMA temp_store=MEMORY")
         try:
             yield conn
         finally:
@@ -188,6 +223,7 @@ class LocalDatabase:
                 ),
             )
             conn.commit()
+            _bump_mutation_version()
 
             # Resolve the actual row id for query provenance.  A conflict
             # update keeps the original row id, so re-read it rather than
@@ -486,14 +522,39 @@ class LocalDatabase:
                 ),
             )
             conn.commit()
+            _bump_mutation_version()
             return cursor.lastrowid or 0
 
     def get_stats(self) -> dict[str, Any]:
-        """Get database statistics.
+        """Get database statistics with Read-Through RAM Cache + Event Invalidation.
 
         Returns:
             Dictionary with stats
         """
+        resolved_key = str(self.db_path.resolve())
+        now_mono = time.monotonic()
+        mtime_ns = 0
+        file_size = 0
+        try:
+            if self.db_path.is_file():
+                stat = self.db_path.stat()
+                mtime_ns = stat.st_mtime_ns
+                file_size = stat.st_size
+        except OSError:
+            pass
+
+        with _DB_CACHE_LOCK:
+            cached = _STATS_CACHE.get(resolved_key)
+            if cached is not None:
+                cached_at, c_mtime, c_size, c_ver, payload = cached
+                if (
+                    now_mono - cached_at < _STATS_CACHE_TTL_SECONDS
+                    and c_mtime == mtime_ns
+                    and c_size == file_size
+                    and c_ver == _MUTATION_VERSION
+                ):
+                    return copy.deepcopy(payload)
+
         with self._get_conn() as conn:
             # Count papers
             total_papers = conn.execute(
@@ -510,18 +571,17 @@ class LocalDatabase:
                 """
             ).fetchall()
 
-            # Count queries
-            total_queries = conn.execute(
-                "SELECT COUNT(*) FROM query_log"
-            ).fetchone()[0]
-
-            hit_rate = conn.execute(
+            # Count queries + hit rate in a single pass
+            q_row = conn.execute(
                 """
                 SELECT
+                    COUNT(*),
                     CAST(SUM(found) AS FLOAT) / COUNT(*) * 100
                 FROM query_log
                 """
-            ).fetchone()[0] or 0
+            ).fetchone()
+            total_queries = q_row[0] if q_row else 0
+            hit_rate = (q_row[1] if q_row and q_row[1] is not None else 0) or 0
 
             # Recent queries
             recent_queries = conn.execute(
@@ -534,13 +594,23 @@ class LocalDatabase:
                 """
             ).fetchall()
 
-            return {
+            result = {
                 "total_papers": total_papers,
                 "source_counts": {row[0]: row[1] for row in source_counts},
                 "total_queries": total_queries,
                 "hit_rate_percent": round(hit_rate, 2),
                 "recent_queries": [dict(row) for row in recent_queries],
             }
+
+        with _DB_CACHE_LOCK:
+            _STATS_CACHE[resolved_key] = (
+                now_mono,
+                mtime_ns,
+                file_size,
+                _MUTATION_VERSION,
+                copy.deepcopy(result),
+            )
+        return result
 
     # ==================== Bulk Operations ====================
 
@@ -587,6 +657,7 @@ class LocalDatabase:
             conn.execute("DELETE FROM papers")
             conn.execute("DELETE FROM query_log")
             conn.commit()
+            _bump_mutation_version()
             return count
 
     # ==================== Maintenance ====================
@@ -759,6 +830,7 @@ class LocalDatabase:
             # 5. Rebuild FTS to match the deduped table.
             conn.execute("INSERT INTO papers_fts(papers_fts) VALUES('rebuild')")
             conn.commit()
+            _bump_mutation_version()
 
         return {
             "removed_empty_title": removed_empty,

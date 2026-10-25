@@ -95,18 +95,28 @@ class PendingVerdictItem(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _class_to_response(cls: Class, repo: Repository, *, essay_count: int | None = None) -> ClassResponse:
-    student_count = repo.count_students_in_class(cls.id)
+def _class_to_response(
+    cls: Class,
+    repo: Repository,
+    *,
+    essay_count: int | None = None,
+    student_count: int | None = None,
+    teacher_username: str | None = None,
+) -> ClassResponse:
+    if student_count is None:
+        student_count = repo.count_students_in_class(cls.id)
     # If caller already computed essay_count (to avoid duplicate query), reuse it.
     if essay_count is None:
         essay_count = len(repo.get_class_essays(cls.id))
-    teacher = repo.get_user_by_id(cls.teacher_id)
+    if teacher_username is None:
+        teacher = repo.get_user_by_id(cls.teacher_id)
+        teacher_username = teacher.username if teacher else "unknown"
     return ClassResponse(
         id=cls.id,
         name=cls.name,
         description=cls.description,
         teacher_id=cls.teacher_id,
-        teacher_username=teacher.username if teacher else "unknown",
+        teacher_username=teacher_username,
         created_at=cls.created_at.isoformat() if cls.created_at else "",
         student_count=student_count,
         essay_count=essay_count,
@@ -147,12 +157,21 @@ def list_my_classes(
         classes = repo.list_all_classes()
     else:
         classes = repo.list_classes_for_teacher(teacher.id)
-    # Compute essay lists ONCE per class (avoids N+1 — without caching,
-    # _class_to_response would re-query get_class_essays for each class,
-    # making the endpoint O(N²) in queries).
+    # Batch-fetch student counts and teacher usernames to eliminate N+1 queries
+    class_ids = [c.id for c in classes]
+    student_counts = repo.count_students_by_class_ids(class_ids)
+    teachers_by_id = repo.get_users_by_ids({c.teacher_id for c in classes})
     return [
         _class_to_response(
-            c, repo, essay_count=len(repo.get_class_essays(c.id))
+            c,
+            repo,
+            essay_count=len(repo.get_class_essays(c.id)),
+            student_count=student_counts.get(c.id, 0),
+            teacher_username=(
+                teachers_by_id[c.teacher_id].username
+                if c.teacher_id in teachers_by_id
+                else "unknown"
+            ),
         )
         for c in classes
     ]
@@ -264,9 +283,12 @@ def list_class_essays(
         raise HTTPException(status_code=404, detail="Class not found")
     _ensure_teacher_owns_class(teacher, cls)
     essays = repo.get_class_essays(class_id)
+    students_by_id = repo.get_users_by_ids(
+        {essay.user_id for essay in essays if essay.user_id is not None}
+    )
     out: list[ClassEssaySummary] = []
     for essay in essays:
-        student = repo.get_user_by_id(essay.user_id) if essay.user_id else None
+        student = students_by_id.get(essay.user_id) if essay.user_id else None
         out.append(
             ClassEssaySummary(
                 id=essay.id,
@@ -292,25 +314,36 @@ def teacher_dashboard(
         classes = repo.list_all_classes()
     else:
         classes = repo.list_classes_for_teacher(teacher.id)
-    # Compute essay lists ONCE per class to avoid duplicate query in
-    # _class_to_response (otherwise total_essays is inflated by 2x or 3x).
+    # Compute essay lists, student counts, and teachers ONCE in batch
+    class_ids = [c.id for c in classes]
     essays_per_class: dict[int, list] = {
         c.id: repo.get_class_essays(c.id) for c in classes
     }
-    total_students = sum(repo.count_students_in_class(c.id) for c in classes)
+    student_counts = repo.count_students_by_class_ids(class_ids)
+    teachers_by_id = repo.get_users_by_ids({c.teacher_id for c in classes})
+    total_students = sum(student_counts.get(c.id, 0) for c in classes)
     total_essays = sum(len(essays_per_class[c.id]) for c in classes)
-    pending_reviews = (
-        repo.count_pending_reviews_for_teacher(teacher.id)
-        if teacher.role == "teacher"
-        else repo.count_all_pending_reviews()
-    )
+    all_class_essay_ids = {
+        e.id for c in classes for e in essays_per_class[c.id]
+    }
+    pending_reviews = repo.count_pending_reviews_by_essay_ids(all_class_essay_ids)
     return TeacherDashboardResponse(
         total_classes=len(classes),
         total_students=total_students,
         total_essays=total_essays,
         pending_reviews=pending_reviews,
         classes=[
-            _class_to_response(c, repo, essay_count=len(essays_per_class[c.id]))
+            _class_to_response(
+                c,
+                repo,
+                essay_count=len(essays_per_class[c.id]),
+                student_count=student_counts.get(c.id, 0),
+                teacher_username=(
+                    teachers_by_id[c.teacher_id].username
+                    if c.teacher_id in teachers_by_id
+                    else "unknown"
+                ),
+            )
             for c in classes
         ],
     )
@@ -332,10 +365,22 @@ def list_pending_reviews(
         raise HTTPException(status_code=404, detail="Class not found")
     _ensure_teacher_owns_class(teacher, cls)
     verdicts = repo.list_pending_reviews_for_class(class_id)
+    essays_by_id = repo.get_essays_by_ids({v.essay_id for v in verdicts})
+    students_by_id = repo.get_users_by_ids(
+        {
+            e.user_id
+            for e in essays_by_id.values()
+            if e.user_id is not None
+        }
+    )
     out: list[PendingVerdictItem] = []
     for v in verdicts:
-        essay = repo.get_essay(v.essay_id)
-        student = repo.get_user_by_id(essay.user_id) if essay and essay.user_id else None
+        essay = essays_by_id.get(v.essay_id)
+        student = (
+            students_by_id.get(essay.user_id)
+            if essay and essay.user_id
+            else None
+        )
         out.append(
             PendingVerdictItem(
                 verdict_id=v.id,
@@ -382,6 +427,10 @@ def export_class_csv(
         raise HTTPException(status_code=404, detail="Class not found")
     _ensure_teacher_owns_class(teacher, cls)
     essays = repo.get_class_essays(class_id)
+    students_by_id = repo.get_users_by_ids(
+        {essay.user_id for essay in essays if essay.user_id is not None}
+    )
+    verdicts_by_essay = repo.get_verdicts_by_essay_ids([e.id for e in essays])
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(
@@ -396,9 +445,9 @@ def export_class_csv(
         ]
     )
     for essay in essays:
-        student = repo.get_user_by_id(essay.user_id) if essay.user_id else None
+        student = students_by_id.get(essay.user_id) if essay.user_id else None
         student_name = student.username if student else ""
-        verdicts = repo.get_verdicts(essay.id)
+        verdicts = verdicts_by_essay.get(essay.id, [])
         if not verdicts:
             # Essay with no verdicts still gets a row so the teacher sees
             # every uploaded file in the export.
