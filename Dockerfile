@@ -70,7 +70,17 @@ COPY --from=deps /usr/local/bin /usr/local/bin
 COPY --from=deps /opt/mupdf-libs/ /usr/local/lib/
 RUN ldconfig
 
-# Copy source
+# Tạo data dirs + HuggingFace cache dirs với quyền appuser
+RUN mkdir -p data/essays data/essays/uploads data/avatars data/ground_truth data/cache data/cache/grobid \
+             /home/appuser/.cache/huggingface /home/appuser/.cache/transformers && \
+    chown -R appuser:appgroup /app data/ /home/appuser/.cache
+
+# Pre-download Sentence-BERT model (all-MiniLM-L6-v2) trước khi copy source để giữ Docker layer cache
+USER appuser
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+
+# Copy source (chỉ invalidate layer nhẹ cuối cùng khi code thay đổi)
+USER root
 COPY --chown=appuser:appgroup pyproject.toml README.md ./
 COPY --chown=appuser:appgroup src/ ./src/
 COPY --chown=appuser:appgroup scripts/ ./scripts/
@@ -79,16 +89,8 @@ COPY --chown=appuser:appgroup configs/ ./configs/
 # Install package in editable mode (để import integrity_checker hoạt động)
 RUN pip install --no-cache-dir --no-build-isolation --no-deps -e .
 
-# Tạo data dirs + HuggingFace cache dirs với quyền appuser
-RUN mkdir -p data/essays data/essays/uploads data/avatars data/ground_truth data/cache data/cache/grobid \
-             /home/appuser/.cache/huggingface /home/appuser/.cache/transformers && \
-    chown -R appuser:appgroup data/ /home/appuser/.cache
-
 # Switch to non-root user
 USER appuser
-
-# Pre-download Sentence-BERT model (all-MiniLM-L6-v2) vào image để tránh cold-start delay
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
 
 EXPOSE 8000
 

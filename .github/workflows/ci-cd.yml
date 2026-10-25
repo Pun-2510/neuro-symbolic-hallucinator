@@ -161,7 +161,9 @@ jobs:
             sudo chmod -R ug+rwX /opt/citra/data
 
             echo ">>> [3/4] Building and rolling out updated containers (api & web)..."
-            sudo docker compose -f docker-compose.prod.yml up -d --build --remove-orphans api web
+            sudo docker compose -f docker-compose.prod.yml build api web
+            sudo docker rm -f $(sudo docker ps -aq --filter "name=integrity-api" --filter "name=integrity-web") 2>/dev/null || true
+            sudo docker compose -f docker-compose.prod.yml up -d --no-build --remove-orphans api web
             sudo docker image prune -f >/dev/null 2>&1 || true
 
             echo ">>> [4/4] Verifying container health on 127.0.0.1:8000 and https://citra.io.vn..."
