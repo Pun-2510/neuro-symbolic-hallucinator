@@ -167,6 +167,14 @@ class LocalDatabase:
         if not paper.doi:
             existing = self._find_existing_metadata_paper(paper)
             if existing is not None:
+                if paper.abstract and paper.abstract.strip() and not (existing.abstract and existing.abstract.strip()):
+                    with self._get_conn() as conn:
+                        conn.execute(
+                            "UPDATE papers SET abstract = ? WHERE id = ?",
+                            (paper.abstract.strip(), existing.id),
+                        )
+                        conn.commit()
+                    _bump_mutation_version()
                 return existing.id
 
         # Guard against UNIQUE(arxiv_id) IntegrityError when a paper with the
@@ -175,6 +183,14 @@ class LocalDatabase:
             existing_arxiv = self.find_by_arxiv_id(paper.arxiv_id)
             if existing_arxiv is not None:
                 if not paper.doi or normalize_doi(existing_arxiv.doi) != paper.doi:
+                    if paper.abstract and paper.abstract.strip() and not (existing_arxiv.abstract and existing_arxiv.abstract.strip()):
+                        with self._get_conn() as conn:
+                            conn.execute(
+                                "UPDATE papers SET abstract = ? WHERE id = ?",
+                                (paper.abstract.strip(), existing_arxiv.id),
+                            )
+                            conn.commit()
+                        _bump_mutation_version()
                     return existing_arxiv.id
 
         with self._get_conn() as conn:

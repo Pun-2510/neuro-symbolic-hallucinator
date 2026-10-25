@@ -1188,15 +1188,103 @@ class RetrievalOrchestrator:
         link_res = await validator.validate_url(citation.url)
         return link_res.status.value, link_res.status_code
 
+    async def _enrich_missing_abstract(
+        self,
+        citation: Citation,
+        candidates: list[SourceCandidate],
+        extra_clients: list[BaseScholarClient] | None = None,
+    ) -> str | None:
+        """Best-effort abstract enrichment across abstract-capable APIs when a matched
+        candidate (from local_db, Crossref, or DBLP) has no abstract yet.
+        """
+        if self._legacy_explicit_mode:
+            return None
+        found_cands = [c for c in candidates if c.found]
+        if not found_cands or any(c.abstract and c.abstract.strip() for c in found_cands):
+            return None
+
+        best_ref = found_cands[0]
+        ref_title = citation.title or best_ref.title or ""
+        ref_doi = normalize_doi(citation.doi or best_ref.doi) if (citation.doi or best_ref.doi) else None
+
+        def _matches_target(alt: SourceCandidate) -> bool:
+            if not alt or not alt.found or not (alt.abstract and alt.abstract.strip()):
+                return False
+            if ref_doi and alt.doi and normalize_doi(alt.doi) == ref_doi:
+                return True
+            if ref_title and alt.title:
+                sim = max(
+                    title_similarity(ref_title, alt.title),
+                    title_similarity(
+                        OpenLibraryClient.strip_edition_suffix(ref_title),
+                        OpenLibraryClient.strip_edition_suffix(alt.title),
+                    ),
+                )
+                return sim >= 0.82
+            return False
+
+        # Build enrichment client pool (abstract-bearing sources not yet queried)
+        pool: list[BaseScholarClient] = []
+        if extra_clients:
+            pool.extend([c for c in extra_clients if c.name != "dblp"])
+        else:
+            signals = self.classify_citation_domain(citation)
+            for c in [self.openalex, self.arxiv, self.europepmc, self.openlibrary, self.semantic_scholar, self.coreapi]:
+                if c is None:
+                    continue
+                if c.name == "openlibrary" and not signals.get("is_book"):
+                    continue
+                if c.name == "europepmc" and not (signals.get("is_biomed") or citation.doi):
+                    continue
+                pool.append(c)
+
+        try:
+            if pool:
+                batch_res = await self._execute_client_batch(pool[:3], citation)
+                for res in batch_res:
+                    if isinstance(res, SourceCandidate) and _matches_target(res):
+                        abs_text = res.abstract.strip()  # type: ignore[union-attr]
+                        for fc in found_cands:
+                            if not fc.abstract:
+                                fc.abstract = abs_text
+                        return abs_text
+
+            # Fallback: if OpenAlex was queried by DOI and the publisher DOI record had no abstract,
+            # try OpenAlex title search to pick up an arXiv/repository mirror with an abstract.
+            if (
+                self.openalex is not None
+                and ref_doi
+                and ref_title
+                and hasattr(self.openalex, "_lookup_by_search")
+            ):
+                title_only_cit = Citation(
+                    raw_text=citation.raw_text,
+                    title=ref_title,
+                    authors=citation.authors or best_ref.authors,
+                    year=citation.year or best_ref.year,
+                    doi=None,
+                )
+                oa_search_cand = await self.openalex._lookup_by_search(title_only_cit)
+                if isinstance(oa_search_cand, SourceCandidate) and _matches_target(oa_search_cand):
+                    abs_text = oa_search_cand.abstract.strip()  # type: ignore[union-attr]
+                    for fc in found_cands:
+                        if not fc.abstract:
+                            fc.abstract = abs_text
+                    return abs_text
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"Abstract enrichment skipped: {exc}")
+
+        return None
+
     async def retrieve(self, citation: Citation) -> SourceResult:
         """Main retrieval entry point with smart domain-aware staged execution.
 
         Flow:
-            1. Check local database first (Tier 0)
+            1. Check local database first (Tier 0) + enrich abstract if missing
             2. Check known seminal papers whitelist (Tier 0)
             3. Stage 1 (Tier 1): Query primary + domain-matched APIs (2–3 sources)
             4. Stage 2 (Tier 2): Escalate to specialist APIs (arXiv, OpenLibrary, EuropePMC, DBLP)
-               ONLY if Tier 1 did not achieve strong year-consistent consensus
+               ONLY if Tier 1 did not achieve strong year-consistent consensus (or enrich missing abstract)
             5. Stage 3 (Tier 3): SerpApi Google Scholar fallback if 0 candidates found
             6. Deduplicate, filter low-quality noise, and sync verified papers to local DB
         """
@@ -1206,6 +1294,18 @@ class RetrievalOrchestrator:
             if local_result is not None:
                 logger.debug(f"Local DB HIT: {citation.raw_text[:50]}")
                 local_candidate = local_result.best_candidate()
+                if local_candidate and not (local_candidate.abstract and local_candidate.abstract.strip()):
+                    enriched_abs = await self._enrich_missing_abstract(citation, local_result.candidates)
+                    if enriched_abs and local_candidate.paper_id:
+                        try:
+                            with self._local_db._get_conn() as conn:
+                                conn.execute(
+                                    "UPDATE papers SET abstract = ? WHERE id = ?",
+                                    (enriched_abs, local_candidate.paper_id),
+                                )
+                                conn.commit()
+                        except Exception as exc:  # noqa: BLE001
+                            logger.debug(f"Failed to persist enriched abstract to local_db: {exc}")
                 self._local_db.log_query(
                     {"doi": citation.doi, "title": citation.title},
                     found=True,
@@ -1278,13 +1378,22 @@ class RetrievalOrchestrator:
         _collect_batch(tier1_clients, tier1_results)
 
         # Escalate to Tier 2 ONLY when Tier 1 did not already achieve strong consensus
-        if tier2_clients and not self._is_tier1_sufficient(valid, citation):
+        tier1_sufficient = self._is_tier1_sufficient(valid, citation)
+        if tier2_clients and not tier1_sufficient:
             logger.debug(
                 f"Tier 1 insufficient for '{(citation.title or citation.raw_text)[:45]}' "
                 f"(succeeded={succeeded}) -> escalating to Tier 2 {[c.name for c in tier2_clients]}"
             )
             tier2_results = await self._execute_client_batch(tier2_clients, citation)
             _collect_batch(tier2_clients, tier2_results)
+
+        # Enrich missing abstract across remaining abstract-capable APIs when metadata matched without abstract
+        if any(c.found for c in valid) and not any(c.found and c.abstract and c.abstract.strip() for c in valid):
+            await self._enrich_missing_abstract(
+                citation,
+                valid,
+                extra_clients=tier2_clients if tier1_sufficient else None,
+            )
 
         deduped = self._dedupe_candidates(valid, citation=citation)
 

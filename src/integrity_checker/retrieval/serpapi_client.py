@@ -367,6 +367,14 @@ class SerpApiClient(BaseScholarClient):
         # SerpApi cite link
         serpapi_cite_link = result.get("serpapi_cite_link", "")
 
+        # Extract Google Scholar snippet as fallback abstract
+        raw_snippet = result.get("snippet")
+        snippet_abstract = (
+            re.sub(r"\s+", " ", str(raw_snippet)).strip()
+            if raw_snippet and len(str(raw_snippet).strip()) >= 25
+            else None
+        )
+
         return SourceCandidate(
             source_name="serpapi",
             found=True,
@@ -374,6 +382,7 @@ class SerpApiClient(BaseScholarClient):
             authors=authors,
             year=year,
             url=link,
+            abstract=snippet_abstract,
             external_ids={
                 "serpapi_result_id": result_id or "",
                 "serpapi_cite_link": serpapi_cite_link or "",

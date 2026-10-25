@@ -164,6 +164,12 @@ class OpenAlexClient(BaseScholarClient):
                 best_sim = sim
                 best_cand = cand
                 best_raw = item
+        if best_cand is not None and not best_cand.abstract and best_sim >= 0.85:
+            for item in results:
+                alt = self._work_to_candidate(item)
+                if alt.abstract and alt.title and title_similarity(query_title, alt.title) >= 0.90:
+                    best_cand.abstract = alt.abstract
+                    break
         return best_cand, best_raw, best_sim
 
     async def _lookup_by_search(self, citation: Citation) -> SourceCandidate:

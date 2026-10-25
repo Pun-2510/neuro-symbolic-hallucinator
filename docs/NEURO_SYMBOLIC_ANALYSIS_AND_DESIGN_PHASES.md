@@ -302,6 +302,7 @@ flowchart TD
 | **3** | **Phase 3:** Kiểm tra HTTP Link sống/chết (`Link Validation`) | ✅ **Done (`a20b8f6`)** | Xây dựng `LinkValidator` (`HEAD` + `GET` fallback, phân biệt Paywall 401/403 vs Dead Link 404/410/DNS); bổ sung `R-DEAD-URL`, `R-BROKEN-LINK` và cập nhật thành phần `identifier_validity` trong điểm `CIS`. |
 | **4** | **Phase 4:** Hybrid ML Scorer & Platt Confidence Calibration | ✅ **Done (`d9569fb`)** | Xây dựng `PlattCalibrator` + `HybridMLScorer` (16 đặc trưng Neuro-Symbolic); huấn luyện trên **2.500 mẫu** kết hợp dữ liệu thật từ `local_papers.db` và Sentence-BERT embeddings; lưu trọng số tại `data/models/neuro_symbolic_weights.json`. |
 | **5** | **Phase 5:** Đồng bộ `RuleInspector` UI & Benchmark Thực nghiệm | ✅ **Done** | Đồng bộ toàn bộ 38 mã quy tắc trên `EssayPage.tsx` và `RuleInspector.tsx` (ưu tiên Tiếng Anh trước, Tiếng Việt thứ hai); xuất báo cáo thực nghiệm đối sánh `B0`–`B5` và `Proposed`. |
+| **6** | **Phase 6:** Nâng cấp Tầng Neural Toàn diện (Deep Neural Evidence, Intent, Stance, Cross-Lingual & Implicit Body Discovery) | ✅ **Done (`d123f57`)** | Mở rộng `SemanticMatcher` & `MatchFeatures` với 5 năng lực Neural sâu: Sentence-Level Evidence Extraction (`best_evidence_sentence`), Citation Intent Classification (`background`/`methodology`/`result_comparison`), Claim Stance Verification (`supported`/`contradiction_risk`), Cross-Lingual Bridging (`VI ↔ EN`), Multi-Occurrence & Implicit Body Discovery; đồng bộ lên UI (`LogicTracePage.tsx`, `DocumentInspectorPage.tsx`). |
 
 ---
 
@@ -317,4 +318,55 @@ flowchart TD
 | **B5 (`ml_hybrid` — Multinomial LR + Platt)** | **99.73%** | **99.46%** | **99.78%** | **99.61%** | — | — |
 | **Proposed (`Neuro-Symbolic` — Uncalibrated)** | 89.87% | 89.70% | 92.65% | 90.76% | 0.2307 | 0.1232 |
 | **Proposed (`Neuro-Symbolic` + Platt Calibrated)** | **96.53%** | **94.95%** | **97.33%** | **95.95%** | **0.0554** (-76%) | **0.0502** (-59%) |
+
+---
+
+### PHASE 6: Nâng cấp Tầng Neural Toàn diện (Deep Neural Evidence, Intent, Stance, Cross-Lingual & Implicit Discovery)
+
+> **Mục tiêu học thuật:** Làm sáng rõ trụ cột **"Neural"** trong kiến trúc **Neuro-Symbolic**, vượt xa việc chỉ tính độ tương đồng giữa văn bản xung quanh với tiêu đề bài báo (`title`). Tầng Neural đóng vai trò là **Semantic & Evidence Understanding Engine**, trong khi tầng Symbolic đóng vai trò **Deterministic Metadata & Logical Guardrail**.
+
+#### 6.1. Năm năng lực cốt lõi của Tầng Neural (`src/integrity_checker/matching/semantic.py`)
+
+1. **Sentence-Level Evidence Extraction (Trích xuất Câu Bằng chứng từ Abstract nguồn):**
+   - **Làm sạch & Tách câu trọng tâm (`clean_and_dehyphenate_context`, `extract_focal_sentence`):** Khử các từ bị gạch nối ngắt dòng do PDF (`"atten-\ntion"` → `"attention"`), mở rộng cửa sổ ngữ cảnh theo ranh giới từ (`isalnum()`) để không cắt cụt từ ở biên, và cô lập chính xác câu văn chứa ký hiệu trích dẫn (`best_cited_sentence`).
+   - **Max+Mean Sentence Pooling trên Abstract:** Thay vì nén toàn bộ Abstract 250 từ thành 1 vector duy nhất (làm loãng ngữ nghĩa khi sinh viên chỉ trích dẫn 1 ý cụ thể), hệ thống tách `source_abstract` thành từng câu đơn $s_1, s_2, \dots, s_m$, mã hóa bằng `Sentence-BERT (all-MiniLM-L6-v2)` và tính:
+     $$S_{\text{evidence}} = \max_{j \in \{1..m\}} \cos\left(\mathbf{e}(\text{focal\_sentence}), \mathbf{e}(s_j)\right)$$
+     $$S_{\text{abstract}} = \max\left(S_{\text{full\_abs}},\; 0.6 \cdot S_{\text{evidence}} + 0.4 \cdot S_{\text{full\_abs}}\right)$$
+   - Lưu lại nguyên văn câu bằng chứng đạt điểm cao nhất (`best_evidence_sentence`, `best_evidence_score`) cùng hai điểm thành phần (`title_context_sim`, `abstract_context_sim`) để hiển thị đối chiếu trực tiếp (Side-by-Side) trên giao diện.
+
+2. **Neural Citation Intent Classification (Phân loại Mục đích Trích dẫn theo chuẩn SciCite / ACL-ARC):**
+   - Kết hợp độ tương đồng ngữ nghĩa với các vector nguyên mẫu (Prototype Embeddings) của Sentence-BERT và tín hiệu cú pháp học thuật để phân loại mục đích trích dẫn thành 3 nhãn:
+     - `background`: Trích dẫn cơ sở lý thuyết, định nghĩa bài toán, thống kê tổng quan.
+     - `methodology`: Trích dẫn mô hình, thuật toán, bộ dữ liệu, công cụ sử dụng trong bài.
+     - `result_comparison`: Trích dẫn để đối chiếu kết quả thực nghiệm, so sánh hiệu năng.
+
+3. **Neural Claim Stance & Polarity Verification (Kiểm chứng Lập trường & Cảnh báo Mâu thuẫn):**
+   - Phân tích chiều khẳng định/phủ định giữa câu trong bài viết của sinh viên (`best_cited_sentence`) và câu bằng chứng trong Abstract gốc (`best_evidence_sentence`), trả về `stance_label`:
+     - `supported`: Khớp ngữ nghĩa cao và đồng nhất lập trường.
+     - `partially_supported`: Liên quan cùng chủ đề học thuật ở mức trung bình.
+     - `neutral`: Chưa đủ thông tin tóm tắt để kết luận lập trường.
+     - `contradiction_risk`: Cảnh báo nguy cơ trích dẫn sai lệch/ngược kết luận của tác giả gốc (ví dụ câu trong bài viết khẳng định phương pháp *"surprisingly effective / outperforms"* nhưng câu bằng chứng trong Abstract gốc kết luận *"ineffective / fails to capture"*).
+
+4. **Cross-Lingual Semantic Bridging (`VI ↔ EN` Cầu nối Ngữ nghĩa Việt – Anh):**
+   - Tự động phát hiện ngữ cảnh khóa luận viết bằng tiếng Việt trích dẫn bài báo tiếng Anh (`cross_lingual_detected = True`) và ánh xạ hệ thống thuật ngữ chuyên ngành CNTT/AI tiếng Việt sang không gian biểu diễn chung của Sentence-BERT trước khi tính độ tương đồng.
+
+5. **Multi-Occurrence Aggregation & Implicit Body Passage Discovery:**
+   - **Multi-Occurrence (`check_multi_context_alignment`):** Đánh giá điểm Neural Alignment, Intent và Stance trên **tất cả** các vị trí xuất hiện của cùng một tài liệu tham khảo xuyên suốt bài viết (`occurrence_alignments`).
+   - **Implicit Body Discovery (`discover_implicit_body_context`):** Khi một tài liệu nằm trong danh mục `References` nhưng sinh viên quên đặt ký hiệu `[N]` trong phần thân bài (`UNCITED_REFERENCE`), hệ thống tự động loại bỏ các trang Mục lục / Tài liệu tham khảo và quét toàn bộ các trang thân bài (kết hợp lọc từ khóa tác giả/tiêu đề + xếp hạng bằng Sentence-BERT với `title + abstract`) để tìm ra đoạn văn mà sinh viên thực sự đã tham khảo tài liệu đó (`context_source = "implicit_body_discovery"`).
+
+---
+
+### PHỤ LỤC BẢO VỆ ĐỒ ÁN: TẠI SAO HỆ THỐNG DÙNG KIẾN TRÚC NEURO-SYMBOLIC THAY VÌ GENERATIVE RAG?
+
+> **Câu hỏi thường gặp từ Hội đồng:** *"Hệ thống của em có truy xuất dữ liệu và dùng mô hình ngôn ngữ, vậy tại sao không dùng RAG (Retrieval-Augmented Generation) thuần túy với LLM mà lại thiết kế kiến trúc Neuro-Symbolic?"*
+
+1. **Bản chất hệ thống là Retrieval-Augmented Verification (RAV), không phải Generative Text Synthesis:**
+   - Trong mô hình RAG truyền thống ($\text{Retrieval} \rightarrow \text{Augmentation} \rightarrow \text{LLM Generation}$), mục tiêu cuối cùng là dùng LLM **sinh câu trả lời tự do**.
+   - Trong bài toán **Kiểm định tính toàn vẹn trích dẫn học thuật (Citation Integrity Verification)**, hệ thống **đã sở hữu trọn vẹn tầng Retrieval đa nguồn** (8 cơ sở dữ liệu học thuật + SQLite FTS5 `128.626` bài báo) và **tầng Dense Neural Representation** (`Sentence-BERT` trích xuất câu bằng chứng từ Abstract). Tuy nhiên, ở bước ra quyết định cuối cùng, hệ thống thay thế khâu *LLM Generation* bằng **Tầng Suy diễn Logic Hình thức (23 Symbolic Rules) + Hiệu chỉnh Xác suất Platt Scaling**.
+
+2. **Ba lý do cốt lõi khiến Neuro-Symbolic vượt trội hơn Generative RAG trong kiểm định học thuật:**
+   - **Loại bỏ triệt để hiện tượng "Ảo giác chồng lên Ảo giác" (Zero Meta-Hallucination):** Nếu dùng LLM trong RAG để phán xét một trích dẫn do LLM sinh ra, bản thân LLM thẩm định rất dễ bị đánh lừa bởi các tiêu đề bài báo nghe có vẻ quen thuộc (*chimeric hallucination*) hoặc bỏ qua lỗi sai năm xuất bản (`2002` thành `2008`), sai số DOI một chữ số. Ngược lại, tầng **Symbolic Rules** kiểm tra định danh DOI, năm xuất bản, họ tên tác giả và trạng thái HTTP bằng biểu thức logic tất định với độ chính xác tuyệt đối 100%.
+   - **Tính giải thích minh bạch & kiểm toán được (Explainable & Auditable Trace):** Thay vì một đoạn văn giải thích cảm tính từ LLM, hệ thống xuất ra vector 16 đặc trưng toán học, câu bằng chứng cụ thể trích từ Abstract nguồn (`best_evidence_sentence`), nhãn mục đích trích dẫn (`citation_intent`), chuỗi quy tắc logic đã kích hoạt (`triggered_rules`), và xác suất đã hiệu chỉnh (`ECE = 0.0408`).
+   - **Tốc độ xử lý thời gian thực, chi phí bằng 0 và bảo mật dữ liệu khóa luận:** Xử lý một cuốn khóa luận 100 trang (35–50 trích dẫn) bằng Generative RAG đòi hỏi hàng chục lệnh gọi LLM API tốn kém, độ trễ cao và phải gửi nội dung khóa luận ra máy chủ bên thứ ba. Kiến trúc Neuro-Symbolic với `Sentence-BERT` cục bộ chạy hoàn toàn trên máy chủ nội bộ trong vài giây mà không tốn phí token.
+
 

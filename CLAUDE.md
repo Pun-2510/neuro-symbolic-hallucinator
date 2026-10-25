@@ -8,8 +8,8 @@ Engineering reference and architectural guide for AI coding assistants and contr
 
 **CITRA (`SourceLogic`)** is an explainable **Neuro-Symbolic Citation & Source Integrity Verification Platform** for academic manuscripts, theses, and research papers.
 
-- **Version:** v2.0 (Phase 5 Complete — 2026-10-24)
-- **Unit & Integration Tests:** `1,251 passed, 0 failed`
+- **Version:** v2.1 (Phase 6 Deep Neural Layer Complete — 2026-10-25)
+- **Unit & Integration Tests:** `1,268 backend passed · 43 frontend passed, 0 failed`
 - **Role-Based Web Workspace:** Student / Researcher (`Workspace`), Teacher (`Classroom`), Administrator (`Control`)
 - **Decision-Support Principle:** All outputs are strictly decision-support signals for academic reviewers; the system never automatically concludes academic misconduct.
 
@@ -68,8 +68,17 @@ essay-integrity-checker/
    - **arXiv Atom API** — Direct arXiv ID & preprint verification
    - **OpenLibrary + Google Books API** — Textbooks, monographs & multi-edition books
    - **Europe PMC REST API** — PubMed/MEDLINE, biomedical, clinical, psychology & life sciences
-3. **Tier 2 (Fallback):** **SerpAPI (Google Scholar)** when primary tiers return no high-confidence match
-4. **Active Link & DOI Validator (`LinkValidator`):** Asynchronous `HEAD`/`GET` reachability checks for URLs and DOIs (`R-DEAD-LINK`, `R-URL-UNREACHABLE`).
+3. **Tier 2 (Fallback):** **SerpAPI (Google Scholar)** when primary tiers return no high-confidence match (with snippet abstract extraction)
+4. **Cross-Source Abstract Enrichment (`_enrich_missing_abstract`):** Automatically enriches missing abstracts across `OpenAlex` (DOI + title-mirror fallback), `Europe PMC`, `arXiv`, `Semantic Scholar`, `CORE`, and `OpenLibrary/Google Books`, persisting enriched abstracts back to `data/local_papers.db`.
+5. **Active Link & DOI Validator (`LinkValidator`):** Asynchronous `HEAD`/`GET` reachability checks for URLs and DOIs (`R-DEAD-LINK`, `R-URL-UNREACHABLE`).
+
+## Deep Neural Semantic & Evidence Layer (`SemanticMatcher` & `MatchFeatures`)
+
+1. **Sentence-Level Evidence Extraction:** De-hyphenates PDF context, isolates the focal cited sentence (`best_cited_sentence`), encodes each sentence of `source_abstract` with `Sentence-BERT (all-MiniLM-L6-v2)`, and applies max+mean pooling (`best_evidence_sentence`, `best_evidence_score`, `title_context_sim`, `abstract_context_sim`).
+2. **Citation Intent Classification:** Classifies citation context into `background`, `methodology`, or `result_comparison` (SciCite / ACL-ARC taxonomy).
+3. **Claim Stance & Polarity Verification:** Detects `supported`, `partially_supported`, `neutral`, or `contradiction_risk` between manuscript claims and source abstract evidence.
+4. **Cross-Lingual Semantic Bridging (`VI ↔ EN`):** Detects Vietnamese academic contexts citing English literature (`cross_lingual_detected`) and bridges domain terminology.
+5. **Multi-Occurrence & Implicit Body Passage Discovery:** Aggregates alignment across all in-text occurrences (`occurrence_alignments`) and discovers implicit body passages for uncited bibliography entries (`context_source = "implicit_body_discovery"`).
 
 ## Common Commands
 

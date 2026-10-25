@@ -128,9 +128,10 @@ Real-time health checks across GROBID, SQLite FTS5, and external scholarly APIs 
 | **Document Parsing** | **Multi-Modal PDF & DOCX Extraction** | **GROBID 0.8.0 TEI-XML** deep structural parsing with automatic **PyMuPDF (`fitz`)** + `python-docx` fallback; supports Vietnamese & English section headers (`Tài liệu tham khảo`, `References`, `Bibliography`). |
 | **Citation Formats** | **11 Citation Styles + Vietnamese Legal Docs** | Auto-detects **IEEE** (`[1]`, `[1]-[3]`), **APA** (`(Smith et al., 2020)`), **Vancouver**, **Harvard**, **MLA**, **Chicago**, **ACM**, **Nature**, **Springer**, **Footnotes**, and **Vietnamese Legal Documents** (`Luật số`, `Nghị định`, `Thông tư` per TDTU standards). |
 | **Smart Retrieval** | **Domain-Aware Federated Search & Active Link Validation** | Local **ACL Anthology SQLite FTS5** (`128,626` papers with `81,973` abstracts) + **Crossref**, **OpenAlex**, **DBLP**, **arXiv**, **OpenLibrary**, **Europe PMC**, and **SerpApi Google Scholar** fallback, paired with active **HTTP Link Validation** (`HTTP 200 OK`, `403 Restricted/Paywall`, `404 Dead Link`, `Fake Domain`). |
-| **Neuro-Symbolic Verification** | **16D Feature Vector + 23 Symbolic Rules + Platt Calibration** | Combines **Sentence-BERT (`all-MiniLM-L6-v2`)** title & multi-sentence abstract content alignment, **RapidFuzz**, **AuthorMatcher**, and **VenueNormalizer** with **23 deterministic Symbolic Rules** and a **Multinomial Logistic Regression + Logit-Space Platt Scaling** scorer trained on **80,000 paper-disjoint samples** (`Macro-F1 = 0.9777`, `ECE = 0.0408`). |
+| **Deep Neural Layer** | **Sentence-Level Evidence, Intent, Stance & Cross-Lingual Bridge** | **Sentence-BERT (`all-MiniLM-L6-v2`)** focal-sentence vs. abstract sentence-level max-pooling (`best_evidence_sentence`), **Citation Intent Classification** (`background`, `methodology`, `result_comparison`), **Claim Stance & Polarity Verification** (`supported`, `partially_supported`, `contradiction_risk`), **Vietnamese ↔ English Semantic Bridging**, **Multi-Occurrence Aggregation**, and **Implicit Body Passage Discovery** for uncited references. |
+| **Neuro-Symbolic Verification** | **16D Feature Vector + 23 Symbolic Rules + Platt Calibration** | Combines **Sentence-BERT** neural evidence & title alignment, **RapidFuzz**, **AuthorMatcher**, and **VenueNormalizer** with **23 deterministic Symbolic Rules** and a **Multinomial Logistic Regression + Logit-Space Platt Scaling** scorer trained on **80,000 paper-disjoint samples** (`Macro-F1 = 0.9777`, `ECE = 0.0408`). |
 | **Scoring Engine** | **5-Component Citation Integrity Score (`CIS`)** | Weighted composite score (`0–100`) combining Reference Validity (`35%`), Citation Mapping (`25%`), Metadata Accuracy (`15%`), Format Compliance (`15%`), and Bibliography Hygiene (`10%`) with critical failure caps. |
-| **Interactive IDE** | **4 Specialized Inspection Views** | **Bibliography Table** (side-by-side diff), **Logic Trace** (5-stage Neuro-Symbolic pipeline), **Consistency Matrix** (dangling & orphan detection), and **Document Context** (inline sentence highlights + SBERT semantic relevance). |
+| **Interactive IDE** | **4 Specialized Inspection Views** | **Bibliography Table** (side-by-side diff), **Logic Trace** (5-stage Neuro-Symbolic pipeline + Deep Neural Evidence Panel), **Consistency Matrix** (dangling & orphan detection), and **Document Context** (inline sentence highlights + SBERT evidence match popup). |
 | **Role-Based Portals** | **User, Teacher, and Admin Workflows** | JWT authentication, **Batch SSE Upload**, **Classroom Management** (`join_code`, cohort analytics), **Teacher Verdict Overrides**, and **Admin System Telemetry & Audit Logs**. |
 | **Export & Reporting** | **Multi-Format Compliance Exports** | One-click export of full verification reports to **JSON**, **CSV**, **PDF**, and **DOCX** (`src/integrity_checker/reporting/exporter.py`). |
 
@@ -145,29 +146,59 @@ Manuscript (PDF / DOCX)
    │
    ├─► 1. Structural Extraction (GROBID TEI-XML + PyMuPDF / DOCX Fallback)
    │      ├── Extract raw_references[] (Deduped & Normalized Bibliography)
-   │      ├── Extract raw_citations[] (In-Text Markers + Surrounding Context Paragraphs)
+   │      ├── Extract raw_citations[] (In-Text Markers + Word-Boundary De-Hyphenated Contexts)
    │      └── Detect Citation Style Profile (IEEE / APA / Vancouver / TDTU Legal)
    │
    ├─► 2. Layer 1 — In-Text Citation ↔ Bibliography Linker (CitationLinker)
    │      ├── Maps every in-text marker [k] or (Author, Year) to ReferenceEntry
    │      ├── Assigns CitationMappingStatus: MATCHED | AMBIGUOUS | MISSING_IN_BIBLIOGRAPHY
-   │      └── Computes Uncited / Orphan Reference Set (uncited_references[])
+   │      └── Computes Multi-Occurrence Context Map & Uncited Reference Set (uncited_references[])
    │
-   ├─► 3. Layer 2 — Smart Multi-Source Candidate Retrieval (ReferenceVerifier)
+   ├─► 3. Layer 2 — Smart Multi-Source Candidate Retrieval (RetrievalOrchestrator)
    │      ├── Pre-Screening: Web/URL Resource ([Online], GitHub, Docs) & VN Legal Classifier
-   │      ├── Tier 0: Exact Identifier Lookup (DOI via Crossref/OpenAlex, ArXiv ID via ArXiv API)
-   │      ├── Tier 1: Domain-Prioritized Primary Search (ACL FTS5 + Crossref + OpenAlex / PubMed / DBLP)
-   │      └── Tier 2: Fallback Deep Search (Semantic Scholar, ArXiv, Docear) with Early-Exit Threshold (≥0.90)
+   │      ├── Tier 0: Exact Identifier & Local FTS5 Lookup (128K+ Papers & Canonical Abstracts)
+   │      ├── Tier 1: Domain-Prioritized Primary Search (Crossref + OpenAlex + DBLP + OpenLibrary + Europe PMC)
+   │      └── Tier 2: Fallback Deep Search (arXiv + SerpApi Google Scholar) + Active HTTP LinkValidator
    │
-   ├─► 4. Neuro-Symbolic Candidate Matching & Calibration (CandidateMatcher)
-   │      ├── Neural / Fuzzy 8D Features: SBERT Cosine + Token RapidFuzz + shingle_sim + number_jaccard
-   │      ├── HybridMLScorer: Random Forest Probability + Platt Scaling Calibration
-   │      └── Symbolic Guardrails: Preprint-to-Published Year Relaxation, Cross-Work Collision Veto
+   ├─► 4. Deep Neural Semantic & Symbolic Candidate Matching (SemanticMatcher + NeuroSymbolicChecker)
+   │      ├── Deep Neural Layer (Sentence-BERT):
+   │      │    ├── Focal Sentence Extraction & Cross-Lingual (VI ↔ EN) Academic Terminology Bridging
+   │      │    ├── Sentence-Level Abstract Evidence Max-Pooling (best_evidence_sentence, best_evidence_score)
+   │      │    ├── Citation Intent Classification (background | methodology | result_comparison)
+   │      │    ├── Claim Stance & Polarity Verification (supported | partially_supported | contradiction_risk)
+   │      │    └── Multi-Occurrence Aggregation & Implicit Body Passage Discovery for Uncited References
+   │      ├── HybridMLScorer: 16D Feature Vector + Multinomial Logistic Regression + Platt Calibration
+   │      └── Symbolic Guardrails: 23 Deterministic Rules (DOI/URL Liveness, Year/Author/Venue Veto)
    │
    └─► 5. Validation Verdict & Composite CIS Calculation (CISCalculator)
-          ├── Assigns ValidationLabel: VERIFIED | METADATA_ERROR | UNVERIFIED_EXTERNAL | HALLUCINATION
+          ├── Assigns ValidationLabel: VERIFIED | METADATA_ERROR | RESOURCE | SUSPECTED_HALLUCINATION | UNRESOLVED
           └── Generates 5-Component Citation Integrity Score (0–100) + Actionable Recommendations
 ```
+
+### Deep Neural Semantic & Evidence Layer (5-Pillar Neural Engine)
+
+Unlike traditional bibliographic checkers that only compare title strings—or basic semantic matchers that compare raw context windows against paper titles—CITRA's **Neural Pillar** (`src/integrity_checker/matching/semantic.py`) performs five specialized deep semantic tasks:
+
+| Neural Capability | Technical Mechanism | Exposed Fields in `MatchFeatures` & UI |
+| :--- | :--- | :--- |
+| **1. Sentence-Level Evidence Extraction** | Cleans PDF line-wrap hyphenations, isolates the exact manuscript sentence containing the citation marker, encodes all sentences of the retrieved source paper's abstract with **Sentence-BERT (`all-MiniLM-L6-v2`)**, and applies **Max+Mean Sentence Pooling** (`max(full_sim, 0.6 * max_sent_sim + 0.4 * full_sim)`). | `best_cited_sentence`, `best_evidence_sentence`, `best_evidence_score`, `title_context_sim`, `abstract_context_sim` |
+| **2. Citation Intent Classification** | Combines Sentence-BERT prototype centroid similarity with syntactic cue weighting (following the **SciCite / ACL-ARC** taxonomy) to classify *why* the student cited the source. | `citation_intent`: `background`, `methodology`, or `result_comparison` |
+| **3. Claim Stance & Polarity Verification** | Verifies whether the student's claim aligns with or inverts the polarity of the matched evidence sentence in the source abstract (e.g., claiming a method is *"surprisingly effective"* when the source abstract concludes it *"fails / is ineffective"*). | `stance_label`: `supported`, `partially_supported`, `neutral`, or `contradiction_risk` |
+| **4. Cross-Lingual Semantic Bridging (`VI ↔ EN`)** | Detects Vietnamese thesis prose citing English scholarly literature and projects Vietnamese computer science / AI terminology into the shared English Sentence-BERT embedding space prior to alignment scoring. | `cross_lingual_detected` (`VI ↔ EN Semantic Bridge` badge) |
+| **5. Multi-Occurrence & Implicit Body Discovery** | Evaluates semantic alignment across **all** in-text occurrences of a reference (`occurrence_alignments`), and when a bibliography entry lacks an explicit `[k]` marker in the body, scans non-bibliography body pages via keyword pre-filtering + Sentence-BERT ranking to discover where the work was implicitly discussed. | `context_source` (`in_text_citation`, `multi_occurrence`, `implicit_body_discovery`), `occurrence_alignments[]` |
+
+### Why Neuro-Symbolic Verification Instead of Generative RAG?
+
+A common architectural question during thesis evaluation is: ***"Why does CITRA use a Neuro-Symbolic Retrieval + Verification architecture instead of standard Generative RAG (Retrieval-Augmented Generation with an LLM)?"***
+
+1. **Retrieval-Augmented Verification (RAV) vs. Generative RAG**:
+   - CITRA **does** implement the **Retrieval** and **Dense Neural Representation** pillars of RAG (federated multi-source retrieval across 8 scholarly registries + local SQLite FTS5 over `128,626` papers + dense `Sentence-BERT` sentence-level evidence extraction).
+   - However, instead of feeding retrieved records into a generative LLM (`Generation`) to produce free-text judgements, CITRA replaces the generative step with **Symbolic Formal Logic (23 deterministic rules) + Platt-Calibrated Probabilistic Scoring**.
+2. **Eliminating Meta-Hallucination (Zero Hallucination-on-Hallucination)**:
+   - Using an LLM generator to audit LLM-generated citations introduces **meta-hallucination** (the LLM judge may hallucinate that a fabricated paper exists, or forgive a `2002` vs. `2008` publication year discrepancy because the title sounds familiar).
+   - Symbolic rules (`R-NONEXISTENT-DOI`, `R-DEAD-URL`, `R-YEAR-MISMATCH`, `R-AUTHOR-MISMATCH`) guarantee **100% deterministic reproducibility** on exact bibliographic constraints.
+3. **Sub-Second Latency, Zero Token Cost & Full Audit Explainability**:
+   - Verifying a 100-page thesis with 35–50 citations runs locally in seconds on CPU/MPS without external LLM API fees or privacy leakage, while outputting an auditable mathematical trace (`MatchFeatures`, `triggered_rules`, and side-by-side `Manuscript Focal Sentence` vs. `Matched Source Abstract Evidence`).
 
 ### Two-Layer Output Taxonomy
 
@@ -244,20 +275,25 @@ Fitted Platt parameters on the `12,000`-sample Validation split: $a = 1.9526$, $
 
 ### 2. Live End-to-End Verification Results Across Real PDF Manuscripts (`reports/*.json`)
 
-All 5 benchmark PDFs in the repository root were verified end-to-end with live multi-source scholarly retrieval (`use_report_cache=False`):
+All 5 benchmark PDFs in the repository root were verified end-to-end with live multi-source scholarly retrieval (`use_report_cache=False`) and the **Deep Neural Semantic & Evidence Layer**:
 
-| Manuscript | Citation Style | In-Text Citations | Bibliography Entries | Verified | Metadata Error | Unverified External | Hallucination | **CIS Score** |
+| Manuscript | Citation Style | Bibliography Entries | Verified | Metadata Error | Resource / URL | Hallucination | Avg / Max Neural Sim | **CIS Score** |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **`523H0054_NguyenBaoMinh_523H0157_DinhDucMinh.pdf`** | IEEE | 10 (`100%` matched) | 10 | **10** | 0 | 0 | 0 | **100.00 / 100** (`EXCELLENT`) |
-| **`TranThanhPhuoc_523H0002_523H0054.pdf`** | IEEE | 14 (`100%` matched) | 15 (1 uncited) | **14** | 0 | 1 (`URL`) | 0 | **99.30 / 100** (`EXCELLENT`) |
-| **`VietDepression_Research_Article.pdf`** | IEEE | 28 (`100%` matched) | 28 | **28** | 0 | 0 | 0 | **98.93 / 100** (`EXCELLENT`) |
-| **`VietDepression_for_Detecting_Depression...pdf`** | APA | 66 (`97%` matched) | 28 | **28** | 0 | 0 | 0 | **96.21 / 100** (`EXCELLENT`) |
-| **`thesis.pdf`** *(Full Graduation Thesis)* | IEEE | 33 (`100%` matched) | 25 | **18** | **1** (`[24]`) | **5** (`Web/Docs`) | **1** (`[3]`) | **87.05 / 100** (`GOOD`) |
+| **`VietDepression_Research_Article.pdf`** | IEEE | 20 | **18** | 0 | 2 (`URL`) | 0 | `0.69` / **`0.86`** | **100.00 / 100** (`EXCELLENT`) |
+| **`VietDepression_for_Detecting_Depression...pdf`** | IEEE | 20 | **18** | 0 | 2 (`URL`) | 0 | `0.69` / **`0.86`** | **100.00 / 100** (`EXCELLENT`) |
+| **`TranThanhPhuoc_523H0002_523H0054.pdf`** | IEEE | 27 | **24** | 0 | 3 (`URL`) | 0 | `0.69` / **`0.86`** | **99.30 / 100** (`EXCELLENT`) |
+| **`thesis.pdf`** *(Full Graduation Thesis)* | IEEE | 32 | **23** | **1** (`[29]`) | **6** (`Web/Docs`) | **2** (`[3],[6]`) | `0.53` / **`0.83`** | **92.80 / 100** (`EXCELLENT`) |
+| **`523H0054_NguyenBaoMinh_523H0157_DinhDucMinh.pdf`** | IEEE | 5 | **5** | 0 | 0 | 0 | `0.56` / **`0.61`** | **77.50 / 100** (`GOOD`) |
 
-> **Deep-Dive Case Study on `thesis.pdf`**:
-> - **`[24] Chawla, N. V. et al. (2008). SMOTE...` → `METADATA_ERROR`**: Canonical paper was published in **2002** in *Journal of Artificial Intelligence Research (JAIR)*, whereas the manuscript cited year **2008**.
-> - **`[3] Stanley, K. O. et al. (2024). Real-Time Strategy Game AI...` → `HALLUCINATION`**: No paper with this title/author/year combination exists in any scholarly database.
-> - **`[9], [10], [12], [17], [18]` → `UNVERIFIED_EXTERNAL`**: Documentation and software web resources (`OpenRA Wiki`, `ZeroTier Docs`, `Setupad Blog`) accurately separated from scholarly hallucinations.
+> **Deep-Dive Neural & Symbolic Case Studies Across the 5 Root PDFs**:
+> - **Sentence-Level Abstract Evidence Match (`TranThanhPhuoc_523H0002_523H0054.pdf`)**: All 24 academic citations match specific abstract evidence sentences (e.g., `[16] PhoBERT` achieves **`86%` neural alignment** (`99%` title, `90%` abstract, `92%` best evidence sentence) with `intent = methodology` and `stance = supported`).
+> - **Implicit Body Passage Discovery (`523H0054_NguyenBaoMinh_523H0157_DinhDucMinh.pdf` & `TranThanhPhuoc...pdf`)**:
+>   - In `523H0054_NguyenBaoMinh...pdf`, all 5 bibliography monographs lack explicit `[N]` markers in the body; the Neural Layer automatically discovers their corresponding body passages (`[1] Flanagan JavaScript` on p. 34 at `0.59`, `[3] Chacon Pro Git` on p. 41 at `0.61`).
+>   - In `TranThanhPhuoc...pdf`, uncited reference `[8] Gururangan et al. (2020) — Don't stop pretraining` is automatically linked to the manuscript's discussion of **Domain-Adaptive Pretraining (DAPT)** on **page 89** (`score = 0.60`, `context_source = implicit_body_discovery`).
+> - **Multi-Occurrence & Symbolic Veto (`thesis.pdf`)**:
+>   - Evaluates up to **6 in-text occurrences per reference** (`multi_occurrence`), verifying whether every citation site in the 100-page thesis aligns with the source abstract.
+>   - **`[29] Chawla, N. V. (2008). Data mining for imbalanced datasets...` → `METADATA_ERROR`**: Canonical paper publication year/author discrepancy flagged deterministically alongside `39%` neural alignment (`partially_supported`).
+>   - **`[3] Stanley, K. O. (2024)` & `[6] Laird, J. E. (2022)` → `SUSPECTED_HALLUCINATION`**: Fabricated/non-existent combinations flagged by symbolic guardrails.
 
 ---
 
