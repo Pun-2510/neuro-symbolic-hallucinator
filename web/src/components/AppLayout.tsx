@@ -176,6 +176,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <img
                 src="/citra-logo.png"
                 alt="CITRA"
+                width={20}
+                height={20}
+                decoding="async"
                 className="w-full h-full object-contain select-none"
               />
             </div>
@@ -235,6 +238,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <img
                     src="/citra-logo.png"
                     alt="CITRA Logo"
+                    width={28}
+                    height={28}
+                    loading="eager"
+                    decoding="async"
                     className="w-full h-full object-contain select-none"
                   />
                 </div>

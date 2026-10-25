@@ -1,5 +1,25 @@
 import { useEffect, useState, useRef } from 'react';
 import { api, type AnalysisReport } from '@/api/client';
+import { queryClient } from '@/lib/queryClient';
+
+function getValidCachedReport(essayId: number | null): AnalysisReport | null {
+  if (essayId == null || Number.isNaN(essayId) || essayId <= 0) {
+    return null;
+  }
+  const queryKey = ['essay-report', essayId] as const;
+  const queryState = queryClient.getQueryState<AnalysisReport | null>(queryKey);
+  const cached = queryState?.data;
+  if (cached && Array.isArray(cached.verdicts) && !queryState?.isInvalidated) {
+    return cached;
+  }
+  return null;
+}
+
+function cacheValidReport(essayId: number, data: AnalysisReport): void {
+  if (Array.isArray(data.verdicts)) {
+    queryClient.setQueryData(['essay-report', essayId], data);
+  }
+}
 
 /**
  * Hook poll analysis report cho async upload pages.
@@ -38,14 +58,21 @@ export function useEssayPolling(
   options: UseEssayPollingOptions = {},
 ): UseEssayPollingResult {
   const { intervalMs = 2000, errorMessage = 'Failed to load report. Please try again.' } = options;
-  const [report, setReport] = useState<AnalysisReport | null>(null);
+  const [report, setReport] = useState<AnalysisReport | null>(() => getValidCachedReport(essayId));
   const [error, setError] = useState<string | null>(null);
   // Ref giữ cancelled flag — tránh re-create closure mỗi lần effect re-run
   const cancelledRef = useRef(false);
 
   useEffect(() => {
-    // Reset state khi essayId đổi
+    // Reset state khi essayId đổi (hoặc dùng ngay dữ liệu đã có trong queryClient cache)
     cancelledRef.current = false;
+    const cached = getValidCachedReport(essayId);
+    if (cached) {
+      setReport(cached);
+      setError(null);
+      return;
+    }
+
     setReport(null);
     setError(null);
 
@@ -64,7 +91,8 @@ export function useEssayPolling(
         if (cancelledRef.current) return;
 
         if (data) {
-          // Report sẵn sàng
+          // Report sẵn sàng — đồng bộ vào TanStack Query cache để chuyển tab tức thì
+          cacheValidReport(essayId, data);
           setReport(data);
           setError(null);
           if (pollTimer) {
@@ -92,6 +120,7 @@ export function useEssayPolling(
           const retry = await api.getEssay(essayId, { signal: controller.signal });
           if (cancelledRef.current) return;
           if (retry) {
+            cacheValidReport(essayId, retry);
             setReport(retry);
             setError(null);
             if (pollTimer) {

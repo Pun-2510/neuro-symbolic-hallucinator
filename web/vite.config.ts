@@ -17,7 +17,15 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-progress', 'lucide-react'],
+          query: ['@tanstack/react-query'],
+          i18n: ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
+          ui: [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-progress',
+            '@radix-ui/react-slot',
+            'lucide-react',
+          ],
         },
       },
     },

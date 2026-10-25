@@ -365,6 +365,8 @@ function SourceLogicLogo({ size = 26 }: { size?: number }) {
       alt="CITRA Logo"
       width={size}
       height={size}
+      loading="eager"
+      decoding="async"
       className="object-contain select-none"
     />
   );

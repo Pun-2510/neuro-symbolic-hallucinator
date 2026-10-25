@@ -12,11 +12,13 @@ vi.mock('@/api/client', () => ({
 }));
 
 import { useEssayPolling } from './useEssayPolling';
+import { queryClient } from '@/lib/queryClient';
 
 beforeEach(() => {
   vi.useFakeTimers();
   mockGetEssay.mockReset();
   mockGetEssayStatus.mockReset();
+  queryClient.clear();
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -110,5 +112,55 @@ describe('useEssayPolling', () => {
     });
     expect(result.current.error).toBe('Pipeline crashed');
     expect(result.current.isPolling).toBe(false);
+  });
+
+  it('reuses valid cached report from queryClient with zero network calls when switching tabs', async () => {
+    const fullCachedReport = {
+      essay_id: 77,
+      filename: 'cached_thesis.pdf',
+      num_pages: 12,
+      num_citations: 5,
+      verdicts: [{ citation_id: 'v1', citation_raw: '[1]', label: 'verified' }],
+    };
+    queryClient.setQueryData(['essay-report', 77], fullCachedReport);
+
+    const { result } = renderHook(() => useEssayPolling(77));
+    expect(result.current.report?.filename).toBe('cached_thesis.pdf');
+    expect(result.current.isPolling).toBe(false);
+    expect(mockGetEssay).toHaveBeenCalledTimes(0);
+    expect(mockGetEssayStatus).toHaveBeenCalledTimes(0);
+  });
+
+  it('populates queryClient cache when full report with verdicts is fetched and refetches after invalidation', async () => {
+    const networkReport = {
+      essay_id: 88,
+      filename: 'fresh_report.pdf',
+      num_pages: 10,
+      num_citations: 3,
+      verdicts: [{ citation_id: 'v2', citation_raw: '[2]', label: 'metadata_error' }],
+    };
+    mockGetEssay.mockResolvedValueOnce(networkReport);
+
+    const { result } = renderHook(() => useEssayPolling(88));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.report?.filename).toBe('fresh_report.pdf');
+    expect(queryClient.getQueryData(['essay-report', 88])).toEqual(networkReport);
+
+    // After verdict override invalidates ['essay-report'], next mount should refetch
+    await queryClient.invalidateQueries({ queryKey: ['essay-report'] });
+    const updatedReport = {
+      ...networkReport,
+      verdicts: [{ citation_id: 'v2', citation_raw: '[2]', label: 'verified', is_overridden: true }],
+    };
+    mockGetEssay.mockResolvedValueOnce(updatedReport);
+
+    const { result: resultAfterInvalidate } = renderHook(() => useEssayPolling(88));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(mockGetEssay).toHaveBeenCalledTimes(2);
+    expect(resultAfterInvalidate.current.report?.verdicts[0].label).toBe('verified');
   });
 });
