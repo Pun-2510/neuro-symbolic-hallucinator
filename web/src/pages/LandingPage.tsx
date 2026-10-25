@@ -2601,7 +2601,7 @@ function LandingFooter({ lang }: { lang: Lang }) {
               : 'Decision-Support System for academic citation integrity — assists human review, never replaces scholarly judgment.'}
           </p>
           <p className="font-mono text-[11px]">
-            Built with shadcn/ui · Radix UI · Tailwind CSS · Neuro-Symbolic AI
+            2026 CITRA. All rights reserved.
           </p>
         </div>
       </div>
