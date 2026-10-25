@@ -217,15 +217,15 @@ export function UploadPage() {
 
             {file ? (
               /* File selected state */
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 max-w-xl mx-auto bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/80 shadow-xs">
-                <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 max-w-xl w-full mx-auto bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/80 shadow-xs overflow-hidden">
+                <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto sm:flex-1">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center shrink-0">
                     <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div className="text-left min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 min-w-0">
                       <p
-                        className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate max-w-[180px] sm:max-w-xs"
+                        className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate min-w-0 flex-1"
                         title={file.name}
                       >
                         {file.name}

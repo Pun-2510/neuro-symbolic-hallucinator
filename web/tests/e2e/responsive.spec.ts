@@ -248,11 +248,21 @@ async function assertNoHorizontalOverflow(page: Page, routeName: string) {
   const overflow = await page.evaluate(() => {
     const docWidth = document.documentElement.scrollWidth;
     const winWidth = window.innerWidth;
-    return { docWidth, winWidth, hasOverflow: docWidth > winWidth };
+    const main = document.getElementById('main-content');
+    const mainScrollWidth = main ? main.scrollWidth : 0;
+    const mainClientWidth = main ? main.clientWidth : 0;
+    const mainOverflow = main ? mainScrollWidth > mainClientWidth : false;
+    return {
+      docWidth,
+      winWidth,
+      mainScrollWidth,
+      mainClientWidth,
+      hasOverflow: docWidth > winWidth || mainOverflow,
+    };
   });
   expect(
     overflow.hasOverflow,
-    `Expected no horizontal overflow on ${routeName} (scrollWidth=${overflow.docWidth}, innerWidth=${overflow.winWidth})`
+    `Expected no horizontal overflow on ${routeName} (doc=${overflow.docWidth}/${overflow.winWidth}, main=${overflow.mainScrollWidth}/${overflow.mainClientWidth})`
   ).toBe(false);
 }
 
@@ -430,5 +440,85 @@ test.describe('Responsive Layout — Authenticated Workspaces (Student, Teacher,
     expect(classDialogBox).not.toBeNull();
     expect(classDialogBox!.width).toBeLessThanOrEqual(375);
     await assertNoHorizontalOverflow(page, 'CreateClassDialog @ 375x812');
+  });
+
+  test('Long underscore-connected filename does not overflow on Mobile (375x812)', async ({
+    page,
+  }) => {
+    setupAllResponsiveMocks(page);
+    const longFilename =
+      'VietDepression_for_Detecting_Depression_Related_Language_in_Vietnamese_YouTube_Comments.pdf';
+
+    await page.route(/\/api\/essays$/, (route) => {
+      if (route.request().method() === 'GET') {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([
+            {
+              id: 1,
+              filename: longFilename,
+              num_pages: 18,
+              uploaded_at: '2026-10-25T10:00:00Z',
+              cis_score: 88.5,
+              status: 'completed',
+            },
+          ]),
+        });
+      } else {
+        route.continue();
+      }
+    });
+
+    await page.route(/\/api\/essays\/1$/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          essay_id: 1,
+          filename: longFilename,
+          num_pages: 18,
+          num_citations: 2,
+          extracted_citations: [],
+          references: [],
+          verdicts: [
+            {
+              citation_id: 'cit_1',
+              citation_raw: 'Nguyen et al. (2024)',
+              label: 'verified',
+              confidence: 0.95,
+              mapping_status: 'matched',
+              matched_sources: [],
+              mismatched_fields: [],
+              triggered_rules: ['R-WELL-LINKED'],
+              reasoning: 'Verified match.',
+            },
+          ],
+          cis: {
+            score: 88.5,
+            verified_count: 1,
+            metadata_error_count: 0,
+            suspected_hallucination_count: 0,
+            unresolved_count: 0,
+            resource_count: 0,
+            total_count: 1,
+          },
+        }),
+      })
+    );
+
+    await page.setViewportSize({ width: 375, height: 812 });
+
+    for (const route of ['/dashboard', '/history', '/verification/report/1']) {
+      await page.goto(route);
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(400);
+      await assertNoHorizontalOverflow(page, `${route} (long filename) @ 375x812`);
+    }
+
+    // Verify EssayHeader h1 boundingBox stays within the 375px viewport
+    const h1Box = await page.locator('h1').first().boundingBox();
+    expect(h1Box).not.toBeNull();
+    expect(h1Box!.x + h1Box!.width).toBeLessThanOrEqual(375);
   });
 });

@@ -177,10 +177,10 @@ function IssueCard({
               </span>
             )}
           </div>
-          <p className="text-sm text-slate-900 dark:text-slate-100 mb-1.5 font-serif break-words">
+          <p className="text-sm text-slate-900 dark:text-slate-100 mb-1.5 font-serif break-words [overflow-wrap:anywhere]">
             {displayCitationRaw}
           </p>
-          <p className={`text-xs font-medium ${config.textColor}`}>
+          <p className={`text-xs font-medium break-words [overflow-wrap:anywhere] ${config.textColor}`}>
             {getIssueDescription(verdict)}
           </p>
         </div>

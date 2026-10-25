@@ -112,7 +112,7 @@ function OrphanCitationCard({
               No Reference
             </Badge>
           </div>
-          <p className="text-sm font-serif text-slate-800 dark:text-slate-200 line-clamp-2 leading-relaxed">
+          <p className="text-sm font-serif text-slate-800 dark:text-slate-200 line-clamp-2 leading-relaxed break-words [overflow-wrap:anywhere]">
             {citation.citation_raw}
           </p>
           <div className="flex items-center gap-2 mt-2.5 flex-wrap">
@@ -154,7 +154,7 @@ function UncitedReferenceCard({
               Uncited
             </Badge>
           </div>
-          <p className="text-sm font-serif text-slate-800 dark:text-slate-200 line-clamp-2 leading-relaxed">
+          <p className="text-sm font-serif text-slate-800 dark:text-slate-200 line-clamp-2 leading-relaxed break-words [overflow-wrap:anywhere]">
             {reference.raw_text}
           </p>
         </div>

@@ -613,7 +613,7 @@ export function BatchUploadPage() {
                 {files.map((fileItem, idx) => (
                   <div
                     key={fileItem.id}
-                    className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 sm:gap-3.5 px-3.5 sm:px-4 py-3 rounded-xl bg-slate-50/70 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                    className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 sm:gap-3.5 px-3.5 sm:px-4 py-3 rounded-xl bg-slate-50/70 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors overflow-hidden"
                   >
                     <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
                       #{idx + 1}
@@ -623,7 +623,7 @@ export function BatchUploadPage() {
                       <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                     </div>
 
-                    <div className="flex-1 min-w-[140px]">
+                    <div className="flex-1 min-w-0">
                       <p
                         className="text-sm font-semibold text-slate-900 dark:text-white truncate"
                         title={fileItem.file.name}
@@ -691,7 +691,7 @@ export function BatchUploadPage() {
                 .map((f) => (
                   <div
                     key={f.id}
-                    className="text-xs font-mono text-red-600 dark:text-red-400 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60"
+                    className="text-xs font-mono text-red-600 dark:text-red-400 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 break-words [overflow-wrap:anywhere]"
                   >
                     {f.file.name}: {f.error}
                   </div>

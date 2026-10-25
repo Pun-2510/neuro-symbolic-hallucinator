@@ -407,9 +407,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="relative z-10 flex-1 overflow-y-auto px-3.5 sm:px-6 lg:px-10 pb-6 lg:pb-10 pt-[4.5rem] sm:pt-20 lg:pt-8 focus:outline-none"
+          className="relative z-10 flex-1 overflow-y-auto overflow-x-hidden px-3.5 sm:px-6 lg:px-10 pb-6 lg:pb-10 pt-[4.5rem] sm:pt-20 lg:pt-8 focus:outline-none"
         >
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-6xl mx-auto w-full min-w-0">
             {children}
           </div>
         </main>

@@ -373,14 +373,15 @@ export function DashboardPage() {
                   key={essay.id}
                   className="flex flex-col sm:table-row p-3.5 sm:p-0 gap-2 sm:gap-0 group hover:bg-slate-50/80 dark:hover:bg-slate-900/60 transition-colors"
                 >
-                  <TableCell className="py-0 sm:py-3.5 px-0 sm:px-5">
-                    <div className="flex items-center gap-3">
+                  <TableCell className="py-0 sm:py-3.5 px-0 sm:px-5 min-w-0 w-full sm:w-auto">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:border-indigo-600 transition-colors">
                         <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-colors" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <Link
                           to={`/verification/report/${essay.id}`}
+                          title={essay.filename}
                           className="text-sm font-semibold text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 truncate max-w-full sm:max-w-xs md:max-w-md block transition-colors"
                         >
                           {essay.filename}

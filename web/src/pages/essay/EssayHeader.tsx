@@ -39,9 +39,9 @@ export function EssayHeader({
   };
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-6 shadow-xs">
-      <div className="flex flex-col sm:flex-row items-start justify-between flex-wrap gap-4">
-        <div className="min-w-0 flex-1">
+    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-6 shadow-xs overflow-hidden">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-4 w-full min-w-0">
+        <div className="w-full min-w-0 flex-1">
           <div className="flex items-center gap-3 flex-wrap mb-2.5">
             <Link
               to="/history"
@@ -59,7 +59,7 @@ export function EssayHeader({
           </div>
 
           <h1
-            className="font-display text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate tracking-tight"
+            className="font-display text-xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate tracking-tight max-w-full"
             title={filename}
           >
             {filename}

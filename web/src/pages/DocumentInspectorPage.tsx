@@ -641,7 +641,7 @@ export function DocumentInspectorPage() {
         {/* Dual-Pane Document & Citation List View */}
         <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-200/80 dark:divide-slate-800">
           {/* Document panel */}
-          <div className="lg:col-span-7 p-4 sm:p-6">
+          <div className="lg:col-span-7 min-w-0 p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/80">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
@@ -674,7 +674,7 @@ export function DocumentInspectorPage() {
                         <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 shrink-0 pt-0.5 select-none">
                           p{citation.page}:{String(idx + 1).padStart(2, '0')}
                         </span>
-                        <p className="flex-1 text-slate-700 dark:text-slate-300 font-serif leading-relaxed">
+                        <p className="flex-1 min-w-0 text-slate-700 dark:text-slate-300 font-serif leading-relaxed break-words [overflow-wrap:anywhere]">
                           {citation.context ? (
                             <>
                               <ContextWithHighlight
@@ -707,7 +707,7 @@ export function DocumentInspectorPage() {
           </div>
 
           {/* Citation list panel */}
-          <div className="lg:col-span-5 p-4 sm:p-6 bg-slate-50/30 dark:bg-slate-900/40">
+          <div className="lg:col-span-5 min-w-0 p-4 sm:p-6 bg-slate-50/30 dark:bg-slate-900/40">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/80">
               <div className="flex items-center gap-2">
                 <Quote className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
@@ -738,7 +738,7 @@ export function DocumentInspectorPage() {
                         [{String(index + 1).padStart(2, '0')}]
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-serif text-slate-800 dark:text-slate-200 line-clamp-2">
+                        <p className="text-sm font-serif text-slate-800 dark:text-slate-200 line-clamp-2 break-words [overflow-wrap:anywhere]">
                           {citation.raw.replace(/^\[\d+\]\s*/, '')}
                         </p>
                         <div className="flex items-center gap-2 mt-2 flex-wrap">

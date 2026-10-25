@@ -1525,14 +1525,14 @@ export function EssayPage() {
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950 shadow-xl overflow-hidden">
           {/* Top Window Chrome Bar */}
           <div className="px-4 sm:px-6 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="w-3 h-3 rounded-full bg-red-400/80 inline-block" />
                 <span className="w-3 h-3 rounded-full bg-amber-400/80 inline-block" />
                 <span className="w-3 h-3 rounded-full bg-emerald-400/80 inline-block" />
               </div>
-              <Separator orientation="vertical" className="h-4" />
-              <div className="flex items-center gap-2 font-mono text-xs text-slate-700 dark:text-slate-300 truncate">
+              <Separator orientation="vertical" className="h-4 shrink-0" />
+              <div className="flex items-center gap-2 font-mono text-xs text-slate-700 dark:text-slate-300 min-w-0 flex-1">
                 <FileText className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span className="font-semibold truncate" title={report.filename}>
                   {report.filename}
@@ -1576,8 +1576,8 @@ export function EssayPage() {
             /* Split-Pane Debugger Body */
             <div className="grid lg:grid-cols-12">
               {/* Left Pane: Extracted Citations Queue (5 cols) */}
-              <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/50 p-4 sm:p-5 flex flex-col justify-between">
-                <div>
+              <div className="lg:col-span-5 min-w-0 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/50 p-4 sm:p-5 flex flex-col justify-between">
+                <div className="min-w-0">
                   {/* Search & Verdict Filter Chips */}
                   <div className="space-y-2 mb-3.5">
                     <div className="flex items-center gap-2">
@@ -1667,7 +1667,7 @@ export function EssayPage() {
                             </span>
                           </div>
 
-                          <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-1 mb-2.5 font-serif italic">
+                          <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-1 mb-2.5 font-serif italic break-words [overflow-wrap:anywhere]">
                             &ldquo;{cit.citedMeta.title}&rdquo;
                           </p>
 
@@ -1722,7 +1722,7 @@ export function EssayPage() {
                       </span>
                       {!isUser && <span>GROBID TEI-XML</span>}
                     </div>
-                    <p className="document-content text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-4">
+                    <p className="document-content text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-4 break-words [overflow-wrap:anywhere]">
                       {activeItem.contextBefore}
                       <mark className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 font-semibold border-b-2 border-indigo-500">
                         {activeItem.contextHighlight}
@@ -1736,7 +1736,7 @@ export function EssayPage() {
               {/* Right Pane: Reference Inspector & Symbolic Trace (7 cols) */}
               {activeItem && (
                 <div className="lg:col-span-7 min-w-0 p-4 sm:p-6 bg-white dark:bg-slate-950 flex flex-col justify-between">
-                  <div>
+                  <div className="min-w-0">
                     {/* Inspector Header */}
                     <div className="flex flex-wrap items-start justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
                       <div className="min-w-0 flex-1">
@@ -1763,7 +1763,7 @@ export function EssayPage() {
                             </span>
                           )}
                         </div>
-                        <h3 className="font-display text-lg sm:text-xl font-bold text-slate-900 dark:text-white leading-snug">
+                        <h3 className="font-display text-lg sm:text-xl font-bold text-slate-900 dark:text-white leading-snug break-words [overflow-wrap:anywhere]">
                           {activeItem.citedMeta.title}
                         </h3>
                       </div>
