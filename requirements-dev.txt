@@ -17,7 +17,6 @@ mypy>=1.8,<2.0
 
 # --- Type stubs ---
 types-PyYAML
-types-python-dotenv
 
 # --- Jupyter (cho notebooks EDA) ---
 ipykernel>=6.29,<7.0
