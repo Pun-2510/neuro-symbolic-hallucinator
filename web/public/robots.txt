@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /upload
+Disallow: /batch-upload
+Disallow: /verification/
+Disallow: /essay/
+Disallow: /history
+Disallow: /profile
+Disallow: /settings
+Disallow: /admin/
+Disallow: /teacher/
+Disallow: /activate-account
+Disallow: /reset-password
+Disallow: /api/
+
+Sitemap: /sitemap.xml

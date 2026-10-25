@@ -116,11 +116,25 @@ export function getDocumentTitle(pathname: string): string {
   return 'CITRA';
 }
 
+function syncRobotsMeta(pathname: string): void {
+  if (typeof document === 'undefined') return;
+  const isPublicIndexable = pathname === '/';
+  const content = isPublicIndexable ? 'index, follow' : 'noindex, nofollow';
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.name = 'robots';
+    document.head.appendChild(meta);
+  }
+  meta.content = content;
+}
+
 function RootLayout() {
   const { pathname } = useLocation();
 
   useEffect(() => {
     document.title = getDocumentTitle(pathname);
+    syncRobotsMeta(pathname);
   }, [pathname]);
 
   return <Outlet />;
