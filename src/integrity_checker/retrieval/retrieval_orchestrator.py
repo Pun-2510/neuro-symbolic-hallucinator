@@ -64,36 +64,90 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "title": "Neural Machine Translation of Rare Words with Subword Units",
         "doi": "10.18653/v1/P16-1162",
         "authors": ["Sennrich", "Haddow", "Birch"],
+        "abstract": (
+            "Neural machine translation (NMT) models typically operate with a fixed vocabulary, "
+            "but translation is an open-vocabulary problem. We introduce a simpler and more effective "
+            "approach, making the NMT model capable of open-vocabulary translation by encoding rare "
+            "and unknown words as sequences of subword units based on Byte Pair Encoding (BPE)."
+        ),
     },
     ("vaswani", "2017"): {
         "title": "Attention Is All You Need",
         "doi": "10.48550/arXiv.1706.03762",
         "authors": ["Vaswani", "Shazeer", "Parmar"],
+        "abstract": (
+            "The dominant sequence transduction models are based on complex recurrent or convolutional "
+            "neural networks that include an encoder and a decoder. We propose a new simple network "
+            "architecture, the Transformer, based solely on attention mechanisms, dispensing with "
+            "recurrence and convolutions entirely. Experiments on machine translation tasks show these "
+            "models to be superior in quality while being more parallelizable and requiring significantly "
+            "less time to train."
+        ),
     },
     ("devlin", "2019"): {
         "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
         "doi": "10.48550/arXiv.1810.04805",
         "authors": ["Devlin", "Chang", "Lee", "Toutanova"],
+        "abstract": (
+            "We introduce a new language representation model called BERT, which stands for "
+            "Bidirectional Encoder Representations from Transformers. BERT is designed to pre-train "
+            "deep bidirectional representations from unlabeled text by jointly conditioning on both "
+            "left and right context in all layers. As a result, the pre-trained BERT model can be "
+            "fine-tuned with just one additional output layer to create state-of-the-art models for "
+            "a wide range of natural language processing tasks."
+        ),
     },
     ("goodfellow", "2014"): {
         "title": "Generative Adversarial Networks",
         "doi": "10.48550/arXiv.1406.2661",
         "authors": ["Goodfellow", "Pouget-Abadie", "Mirza"],
+        "abstract": (
+            "We propose a new framework for estimating generative models via an adversarial process, "
+            "in which we simultaneously train two models: a generative model G that captures the data "
+            "distribution, and a discriminative model D that estimates the probability that a sample "
+            "came from the training data rather than G."
+        ),
+    },
+    ("goodfellow", "2016"): {
+        "title": "Deep Learning",
+        "doi": None,
+        "authors": ["Goodfellow", "Bengio", "Courville"],
+        "abstract": (
+            "The Deep Learning textbook introduces mathematical and conceptual foundations of deep "
+            "neural networks, including feedforward networks, regularization, optimization, "
+            "convolutional networks, sequence modeling, recurrent networks, and representation learning."
+        ),
     },
     ("lecun", "1998"): {
         "title": "Gradient-Based Learning Applied to Document Recognition",
         "doi": "10.1109/5.726791",
         "authors": ["LeCun", "Bottou", "Bengio"],
+        "abstract": (
+            "Multilayer neural networks trained with gradient-based backpropagation and convolutional "
+            "neural networks (CNNs) are demonstrated for handwritten character and document recognition."
+        ),
     },
     ("lecun", "2015"): {
         "title": "Deep learning",
         "doi": "10.1038/nature14539",
         "authors": ["LeCun", "Bengio", "Hinton"],
+        "abstract": (
+            "Deep learning allows computational models that are composed of multiple processing layers "
+            "to learn representations of data with multiple levels of abstraction. These methods have "
+            "dramatically improved the state-of-the-art in speech recognition, visual object recognition, "
+            "natural language processing and many other domains."
+        ),
     },
     ("hochreiter", "1997"): {
         "title": "Long Short-Term Memory",
         "doi": "10.1162/neco.1997.9.8.1735",
         "authors": ["Hochreiter", "Schmidhuber"],
+        "abstract": (
+            "Learning to store information over extended time intervals by recurrent backpropagation "
+            "takes a very long time, mostly because of insufficient, decaying error backflow. We "
+            "introduce Long Short-Term Memory (LSTM), a novel recurrent network architecture with "
+            "memory cells and gate units that bridges long time lags."
+        ),
     },
     ("radford", "2018"): {
         "title": "Improving Language Understanding by Generative Pre-Training",
@@ -543,6 +597,11 @@ _KNOWN_PAPERS: dict[tuple[str, str], dict] = {
         "title": "GROBID: Combining Automatic Bibliographic Data Recognition and Term Extraction for Scholarship Publications",
         "doi": None,
         "authors": ["Lopez"],
+        "abstract": (
+            "GROBID (GeneRation Of BIbliographic Data) is a machine learning library based on "
+            "Conditional Random Fields (CRF) for extracting, parsing, and restructuring raw PDF "
+            "scholarly documents into structured TEI XML header metadata and bibliographic references."
+        ),
     },
 }
 
@@ -1326,6 +1385,14 @@ class RetrievalOrchestrator:
             url_status_code=url_status_code,
         )
 
+    def _resolve_known_abstract(self, citation: Citation, paper_abstract: str | None) -> str | None:
+        if paper_abstract and paper_abstract.strip():
+            return paper_abstract
+        is_known, paper_info = self.is_known_paper(citation)
+        if is_known and paper_info and paper_info.get("abstract"):
+            return str(paper_info["abstract"])
+        return paper_abstract
+
     def _lookup_local_db(self, citation: Citation) -> SourceResult | None:
         """Lookup paper in local database.
 
@@ -1348,7 +1415,7 @@ class RetrievalOrchestrator:
                     year=str(paper.year) if paper.year else None,
                     venue=paper.venue,
                     url=paper.external_ids.get("url") if paper.external_ids else None,
-                    abstract=paper.abstract,
+                    abstract=self._resolve_known_abstract(citation, paper.abstract),
                     external_ids=paper.external_ids or {},
                     confidence=0.95,  # High confidence for local DB
                     cached=True,
@@ -1376,7 +1443,7 @@ class RetrievalOrchestrator:
                     year=str(paper.year) if paper.year else None,
                     venue=paper.venue,
                     url=paper.external_ids.get("url") if paper.external_ids else None,
-                    abstract=paper.abstract,
+                    abstract=self._resolve_known_abstract(citation, paper.abstract),
                     external_ids=paper.external_ids or {},
                     confidence=0.95,
                     cached=True,
@@ -1454,7 +1521,7 @@ class RetrievalOrchestrator:
                         year=str(paper.year) if paper.year else None,
                         venue=paper.venue,
                         url=paper.external_ids.get("url") if paper.external_ids else None,
-                        abstract=paper.abstract,
+                        abstract=self._resolve_known_abstract(citation, paper.abstract),
                         external_ids=paper.external_ids or {},
                         confidence=min(0.92, 0.70 + match_score * 0.20),
                         cached=True,
@@ -1677,6 +1744,7 @@ class RetrievalOrchestrator:
             year=year_key,
             venue=None,
             url=None,
+            abstract=paper_info.get("abstract"),
             external_ids={},
             confidence=0.95,
             cached=True,

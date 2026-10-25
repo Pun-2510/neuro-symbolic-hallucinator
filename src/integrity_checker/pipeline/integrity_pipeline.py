@@ -66,7 +66,7 @@ logger = get_logger(__name__)
 
 # Bump whenever extraction/linking output shape changes so previously cached
 # (and possibly wrong) reports are recomputed instead of served from disk.
-_REPORT_CACHE_VERSION = "report-v8"
+_REPORT_CACHE_VERSION = "report-v9"
 
 # NEW v1.7: Only retrieve + verify REFERENCE_LIST citations (and DOI/URL inline
 # with enough metadata). In-text citations are verified via linking only.
@@ -169,6 +169,16 @@ class AnalysisReport:
                         "content_alignment_score": v.features.content_alignment_score if v.features else None,
                         "content_alignment_confidence": v.features.content_alignment_confidence if v.features else None,
                         "content_is_aligned": v.features.content_is_aligned if v.features else None,
+                        "title_context_sim": getattr(v.features, "title_context_sim", 0.0) if v.features else None,
+                        "abstract_context_sim": getattr(v.features, "abstract_context_sim", None) if v.features else None,
+                        "best_evidence_sentence": getattr(v.features, "best_evidence_sentence", None) if v.features else None,
+                        "best_evidence_score": getattr(v.features, "best_evidence_score", None) if v.features else None,
+                        "best_cited_sentence": getattr(v.features, "best_cited_sentence", None) if v.features else None,
+                        "citation_intent": getattr(v.features, "citation_intent", "") if v.features else None,
+                        "stance_label": getattr(v.features, "stance_label", "") if v.features else None,
+                        "cross_lingual_detected": getattr(v.features, "cross_lingual_detected", False) if v.features else False,
+                        "context_source": getattr(v.features, "context_source", "") if v.features else None,
+                        "occurrence_alignments": getattr(v.features, "occurrence_alignments", []) if v.features else [],
                         "url_status": getattr(v.matched_source, "url_status", None) if v.matched_source else None,
                         "url_status_code": getattr(v.matched_source, "url_status_code", None) if v.matched_source else None,
                         "checked_url": getattr(v.citation, "url", None) if v.citation else None,
@@ -588,6 +598,13 @@ class IntegrityPipeline:
             document_pages,
             links_by_key_multi,
         )
+        occurrences_by_reference_id = self._extract_all_occurrence_contexts(
+            in_text_citations,
+            links_by_key_multi,
+        )
+        body_pages_for_discovery = self._filter_body_pages_for_discovery(
+            document_pages, ref_citations
+        )
 
         # 1e. Merge citations theo priority (cho retrieval/checker).
         # Appendix chỉ dùng cho linking thống kê, không retrieval.
@@ -802,22 +819,64 @@ class IntegrityPipeline:
             # Extract citation context from page text (v1.3 - Neural content alignment)
             #
             # A reference-list entry has no sentence of its own — the useful
-            # context is where the paper is cited in the body. Fall back to the
-            # entry's own page only when no linked occurrence provides one.
+            # context is where the paper is cited in the body. Fall back to
+            # implicit body discovery (or own page for inline citations) when no
+            # linked occurrence provides one.
             citation_context = IntegrityPipeline._extract_reference_context(
                 citation,
                 document_pages,
                 occurrence_by_reference_id,
             )
-            if not citation_context:
-                page = IntegrityPipeline._find_context_page(citation, document_pages)
-                if page is not None:
-                    citation_context = IntegrityPipeline._extract_citation_context(
-                        citation.raw_text,
-                        page.text,
-                        window_chars=200,
-                        fallback_needle=citation.title,
+            if citation_context:
+                all_occs = (
+                    occurrences_by_reference_id.get(citation.reference_id, [])
+                    if citation.reference_id
+                    else []
+                )
+                citation._occurrence_contexts = [  # type: ignore[attr-defined]
+                    {
+                        "page": occ.page_num,
+                        "context": occ.context,
+                        "raw": occ.raw_text,
+                    }
+                    for occ in all_occs
+                    if occ.context
+                ]
+                citation._context_source = (  # type: ignore[attr-defined]
+                    "multi_occurrence"
+                    if len(citation._occurrence_contexts) > 1
+                    else "in_text_citation"
+                )
+            else:
+                if citation.citation_type == CitationType.REFERENCE_LIST and body_pages_for_discovery:
+                    discovered = self._discover_implicit_body_context_for_reference(
+                        citation, source, body_pages_for_discovery
                     )
+                    if discovered is not None:
+                        disc_page, disc_ctx, _disc_score = discovered
+                        citation_context = disc_ctx
+                        citation._context_source = "implicit_body_discovery"  # type: ignore[attr-defined]
+                        citation._occurrence_contexts = [  # type: ignore[attr-defined]
+                            {
+                                "page": disc_page,
+                                "context": disc_ctx,
+                                "raw": f"[Implicit Body Match p.{disc_page}]",
+                            }
+                        ]
+                if not citation_context and (
+                    citation.citation_type != CitationType.REFERENCE_LIST
+                    or len(document_pages) <= 2
+                ):
+                    page = IntegrityPipeline._find_context_page(citation, document_pages)
+                    if page is not None:
+                        citation_context = IntegrityPipeline._extract_citation_context(
+                            citation.raw_text,
+                            page.text,
+                            window_chars=200,
+                            fallback_needle=citation.title,
+                        )
+                        if citation_context:
+                            citation._context_source = "in_text_citation"  # type: ignore[attr-defined]
 
             # NEW v1.5: Persist context onto Citation object so it serializes to
             # the report JSON and reaches the frontend Document View.
@@ -1036,9 +1095,31 @@ class IntegrityPipeline:
         start = max(0, pos - window_chars)
         end = min(len(page_text), pos + length + window_chars)
 
+        # Expand slightly to avoid chopping boundary words in half (e.g. "ormalising")
+        expand_left = 0
+        while (
+            start > 0
+            and expand_left < 20
+            and page_text[start - 1].isalnum()
+            and page_text[start].isalnum()
+        ):
+            start -= 1
+            expand_left += 1
+
+        expand_right = 0
+        while (
+            end < len(page_text)
+            and expand_right < 20
+            and page_text[end - 1].isalnum()
+            and page_text[end].isalnum()
+        ):
+            end += 1
+            expand_right += 1
+
         context = page_text[start:end].strip()
 
-        # Clean up: remove newlines in the middle and limit length
+        # Clean up: repair PDF line-wrap hyphenations and normalize whitespace
+        context = re.sub(r"([a-z]{2,})-\s*\n\s*([a-z]{2,})", r"\1\2", context)
         context = " ".join(context.split())  # Normalize whitespace
 
         return context if len(context) > 20 else None
@@ -1307,6 +1388,93 @@ class IntegrityPipeline:
                 if reference_id and reference_id not in occurrence_by_reference_id:
                     occurrence_by_reference_id[reference_id] = citation
         return occurrence_by_reference_id
+
+    @staticmethod
+    def _extract_all_occurrence_contexts(
+        in_text: list[Citation],
+        links_by_key_multi: dict[str, list[CitationLink]],
+    ) -> dict[str, list[Citation]]:
+        """Return a map from ``reference_id`` to ALL in-text occurrences citing it."""
+        occurrences_by_ref: dict[str, list[Citation]] = {}
+        for citation in in_text:
+            if not citation.context:
+                continue
+            for link in IntegrityPipeline._links_for_occurrence(
+                citation, links_by_key_multi
+            ):
+                reference_id = getattr(link, "reference_id", None)
+                if reference_id:
+                    occurrences_by_ref.setdefault(reference_id, []).append(citation)
+        return occurrences_by_ref
+
+    @staticmethod
+    def _filter_body_pages_for_discovery(
+        document_pages: list[Page],
+        ref_citations: list[Citation],
+    ) -> list[Page]:
+        """Return body pages (excluding the bibliography/references pages at the end)."""
+        if not document_pages:
+            return []
+        ref_page_nums = {
+            c.page_num
+            for c in ref_citations
+            if c.page_num and 1 <= c.page_num <= len(document_pages)
+        }
+        ref_heading_re = re.compile(
+            r"^\s*(?:\d+\.?\s*)?(?:references|bibliography|tài\s+liệu\s+tham\s+khảo)\s*$",
+            re.IGNORECASE | re.MULTILINE,
+        )
+        bib_entry_re = re.compile(r"^\s*\[\d+\]\s+[A-Z]", re.MULTILINE)
+        body_pages: list[Page] = []
+        in_references_section = False
+        for p in document_pages:
+            if not p or not p.text:
+                continue
+            if p.page_num in ref_page_nums:
+                in_references_section = True
+                continue
+            if p.page_num >= max(2, len(document_pages) // 2) and ref_heading_re.search(p.text[:600]):
+                in_references_section = True
+                continue
+            if in_references_section:
+                continue
+            if len(bib_entry_re.findall(p.text)) >= 3:
+                continue
+            body_pages.append(p)
+        return body_pages
+
+    def _discover_implicit_body_context_for_reference(
+        self,
+        citation: Citation,
+        source: SourceResult | None,
+        body_pages: list[Page],
+    ) -> tuple[int, str, float] | None:
+        """Discover the most semantically aligned body passage for an uncited bibliography entry."""
+        try:
+            fc = getattr(self.checker, "feature_calculator", None)
+            sem = getattr(fc, "semantic", None) if fc is not None else None
+            if sem is None or not hasattr(sem, "discover_implicit_body_context"):
+                return None
+            best = source.best_candidate() if source is not None else None
+            title = (best.title if best and best.title else citation.title) or ""
+            abstract = best.abstract if best and best.abstract else None
+            if not abstract and source is not None and source.candidates:
+                for cand in source.candidates:
+                    if cand.found and cand.abstract and cand.abstract.strip():
+                        abstract = cand.abstract
+                        break
+            authors = citation.authors or (best.authors if best else None)
+            author_strs = [str(a) for a in (authors or [])]
+            page_tuples = [(p.page_num, p.text) for p in body_pages if p and p.text]
+            return sem.discover_implicit_body_context(
+                body_pages=page_tuples,
+                source_title=title,
+                source_abstract=abstract,
+                source_authors=author_strs,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"Implicit body context discovery skipped: {exc}")
+            return None
 
     @staticmethod
     def _links_for_occurrence(
@@ -1603,6 +1771,24 @@ def _match_features_from_dict(data: dict[str, Any]) -> MatchFeatures:
         content_alignment_score=float(data.get("content_alignment_score") or 0.0),
         content_alignment_confidence=data.get("content_alignment_confidence") or "",
         content_is_aligned=bool(data.get("content_is_aligned") or False),
+        title_context_sim=float(data.get("title_context_sim") or 0.0),
+        abstract_context_sim=(
+            float(data["abstract_context_sim"])
+            if data.get("abstract_context_sim") is not None
+            else None
+        ),
+        best_evidence_sentence=data.get("best_evidence_sentence"),
+        best_evidence_score=(
+            float(data["best_evidence_score"])
+            if data.get("best_evidence_score") is not None
+            else None
+        ),
+        best_cited_sentence=data.get("best_cited_sentence"),
+        citation_intent=data.get("citation_intent") or "",
+        stance_label=data.get("stance_label") or "",
+        cross_lingual_detected=bool(data.get("cross_lingual_detected") or False),
+        context_source=data.get("context_source") or "",
+        occurrence_alignments=list(data.get("occurrence_alignments") or []),
     )
 
 
@@ -1652,6 +1838,16 @@ def _serialize_verdict_for_json(v: CitationVerdict) -> dict[str, Any]:
             "content_alignment_score": v.features.content_alignment_score if v.features else 0.0,
             "content_alignment_confidence": v.features.content_alignment_confidence if v.features else "",
             "content_is_aligned": v.features.content_is_aligned if v.features else False,
+            "title_context_sim": getattr(v.features, "title_context_sim", 0.0) if v.features else 0.0,
+            "abstract_context_sim": getattr(v.features, "abstract_context_sim", None) if v.features else None,
+            "best_evidence_sentence": getattr(v.features, "best_evidence_sentence", None) if v.features else None,
+            "best_evidence_score": getattr(v.features, "best_evidence_score", None) if v.features else None,
+            "best_cited_sentence": getattr(v.features, "best_cited_sentence", None) if v.features else None,
+            "citation_intent": getattr(v.features, "citation_intent", "") if v.features else "",
+            "stance_label": getattr(v.features, "stance_label", "") if v.features else "",
+            "cross_lingual_detected": getattr(v.features, "cross_lingual_detected", False) if v.features else False,
+            "context_source": getattr(v.features, "context_source", "") if v.features else "",
+            "occurrence_alignments": getattr(v.features, "occurrence_alignments", []) if v.features else [],
             "url_status": getattr(v.matched_source, "url_status", None) if v.matched_source else None,
             "url_status_code": getattr(v.matched_source, "url_status_code", None) if v.matched_source else None,
             "checked_url": getattr(v.citation, "url", None) if v.citation else None,

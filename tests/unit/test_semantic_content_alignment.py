@@ -317,3 +317,113 @@ class TestSemanticMatcherSegments:
         assert res.is_aligned is True
         assert res.similarity >= 0.65
 
+
+class TestDeepNeuralLayerUpgrade:
+    """Tests for Deep Neural Layer v2.0 (de-hyphenation, focal sentence, intent, stance, cross-lingual, implicit body discovery)."""
+
+    def test_clean_and_dehyphenate_context_repairs_pdf_line_wraps(self):
+        from integrity_checker.matching.semantic import SemanticMatcher
+
+        raw = "modern neural networks are poorly cal- ibration and HDB- SCAN clustering with TF- IDF."
+        cleaned = SemanticMatcher.clean_and_dehyphenate_context(raw)
+        assert "calibration" in cleaned
+        assert "HDBSCAN" in cleaned
+        assert "TF-IDF" in cleaned
+
+    def test_extract_focal_sentence_isolates_marker_sentence(self):
+        from integrity_checker.matching.semantic import SemanticMatcher
+
+        noisy_window = (
+            "1. Sentence Embeddings: Sentence-BERT [20] converts text into vectors. "
+            "2. Dimensionality Reduction: UMAP [15] projects high-dimensional embeddings. "
+            "3. Clustering: HDBSCAN [2] identifies dense topic clusters and marks outliers as noise."
+        )
+        focal = SemanticMatcher.extract_focal_sentence(
+            noisy_window,
+            citation_marker="[2]",
+            source_title="Density-Based Clustering Based on Hierarchical Density Estimates",
+        )
+        assert "HDBSCAN" in focal
+        assert "Sentence-BERT" not in focal
+
+    def test_detect_and_bridge_cross_lingual_vietnamese_to_english(self):
+        from integrity_checker.matching.semantic import SemanticMatcher
+
+        vi_ctx = "Chúng tôi sử dụng mô hình học sâu và cơ chế chú ý để phân loại văn bản cảm xúc."
+        en_title = "Attention Is All You Need"
+        is_xling, bridge = SemanticMatcher.detect_and_bridge_cross_lingual(vi_ctx, en_title)
+        assert is_xling is True
+        assert "deep learning" in bridge.lower()
+        assert "attention mechanism" in bridge.lower()
+
+    def test_classify_citation_intent_categories(self):
+        from integrity_checker.matching.semantic import SemanticMatcher
+
+        with patch.object(SemanticMatcher, "_get_model", return_value=None):
+            matcher = SemanticMatcher()
+            assert (
+                matcher.classify_citation_intent(
+                    "We adopt and fine-tune the Sentence-BERT architecture [12] as our embedding backbone."
+                )
+                == "methodology"
+            )
+            assert (
+                matcher.classify_citation_intent(
+                    "Our model outperforms the baseline accuracy reported by Smith et al. [4] by 3.5% F1."
+                )
+                == "result_comparison"
+            )
+            assert (
+                matcher.classify_citation_intent(
+                    "Prior studies have broadly surveyed mental health trends in social media [1]."
+                )
+                == "background"
+            )
+
+    def test_check_claim_stance_detects_support_and_contradiction_risk(self):
+        from integrity_checker.matching.semantic import SemanticMatcher
+
+        matcher = SemanticMatcher()
+        assert (
+            matcher.check_claim_stance(
+                "BERT pre-trains deep bidirectional representations from unlabeled text.",
+                "BERT is designed to pre-train deep bidirectional representations from unlabeled text.",
+                similarity=0.82,
+                has_abstract=True,
+            )
+            == "supported"
+        )
+        assert (
+            matcher.check_claim_stance(
+                "Temperature scaling fails to improve calibration and is ineffective for neural networks.",
+                "We show that temperature scaling is surprisingly effective at calibrating predictions.",
+                similarity=0.42,
+                has_abstract=True,
+            )
+            == "contradiction_risk"
+        )
+
+    def test_discover_implicit_body_context_finds_relevant_body_passage(self):
+        from integrity_checker.matching.semantic import SemanticMatcher
+
+        body_pages = [
+            (1, "Introduction to our e-commerce bookstore project and team members."),
+            (
+                2,
+                "In our backend architecture, PHP server-side scripting and MySQL relational databases "
+                "handle user authentication, session management, and SQL queries.",
+            ),
+        ]
+        result = SemanticMatcher.get_instance().discover_implicit_body_context(
+            body_pages=body_pages,
+            source_title="PHP and MySQL Web Development",
+            source_abstract="Practical guide to developing database-driven web applications using PHP and MySQL.",
+            source_authors=["Welling", "Thomson"],
+        )
+        assert result is not None
+        page_num, passage, score = result
+        assert page_num == 2
+        assert "PHP" in passage and "MySQL" in passage
+        assert score >= 0.30
+
+

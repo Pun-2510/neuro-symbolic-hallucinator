@@ -66,6 +66,18 @@ class MatchFeatures:
     content_alignment_confidence: str = ""  # 'high', 'medium', 'low'
     content_is_aligned: bool = False   # True nếu content có semantic alignment
 
+    # NEW v2.1: Deep Neural Semantic & Evidence Telemetry
+    title_context_sim: float = 0.0          # Neural cosine similarity: cited context ↔ source title
+    abstract_context_sim: float = 0.0       # Neural cosine similarity: cited context ↔ source abstract
+    best_evidence_sentence: str = ""        # Top-matching sentence extracted from source abstract
+    best_evidence_score: float = 0.0        # Neural similarity of best_evidence_sentence (0.0–1.0)
+    best_cited_sentence: str = ""           # De-hyphenated focal sentence from student manuscript
+    citation_intent: str = ""               # 'background' | 'methodology' | 'result_comparison'
+    stance_label: str = ""                  # 'supported' | 'partially_supported' | 'neutral' | 'contradiction_risk'
+    cross_lingual_detected: bool = False    # True when Vietnamese-to-English semantic bridging applied
+    context_source: str = ""                # 'in_text_citation' | 'multi_occurrence' | 'implicit_body_discovery'
+    occurrence_alignments: list[dict] = field(default_factory=list)  # Per-occurrence neural scores
+
     @property
     def title_sim_max(self) -> float:
         """Lấy max(fuzzy, semantic) -- dùng cho rules."""

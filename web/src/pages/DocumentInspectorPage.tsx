@@ -21,6 +21,8 @@ import {
   Link2,
   Terminal,
   Filter,
+  Brain,
+  Sparkles,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +50,11 @@ interface InlineCitation {
   page: number;
   line: string;
   context?: string;
+  alignmentScore?: number;
+  citationIntent?: string;
+  stanceLabel?: string;
+  evidenceSentence?: string;
+  contextSource?: string;
 }
 
 function ContextWithHighlight({
@@ -92,7 +99,7 @@ function buildInlineCitations(
   const refs = references ?? [];
   const inTextList = extractedCitations ?? [];
 
-  return verdicts.map((v) => {
+  const items = verdicts.map((v) => {
     const refId =
       v.citation_link?.reference_id ?? v.citation_links?.[0]?.reference_id;
     let matchedRef: Citation | undefined;
@@ -128,6 +135,7 @@ function buildInlineCitations(
       pageByRaw.get(v.citation_raw.trim()) ||
       matchedInText?.page_num ||
       matchedRef?.cited_on_pages?.[0] ||
+      v.features?.occurrence_alignments?.[0]?.page ||
       matchedRef?.page_num ||
       1;
 
@@ -138,8 +146,27 @@ function buildInlineCitations(
       mapping_status: v.mapping_status,
       page: resolvedPage,
       line: v.citation_raw,
-      context: v.context || matchedInText?.context || undefined,
+      context:
+        v.features?.best_cited_sentence ||
+        v.context ||
+        matchedInText?.context ||
+        undefined,
+      alignmentScore: v.features?.content_alignment_score,
+      citationIntent: v.features?.citation_intent || undefined,
+      stanceLabel: v.features?.stance_label || undefined,
+      evidenceSentence: v.features?.best_evidence_sentence || undefined,
+      contextSource: v.features?.context_source || undefined,
     };
+  });
+
+  return items.sort((a, b) => {
+    const aIsResource = a.label === 'resource' ? 1 : 0;
+    const bIsResource = b.label === 'resource' ? 1 : 0;
+    if (aIsResource !== bIsResource) return aIsResource - bIsResource;
+    const aHasAlign = (a.alignmentScore ?? 0) > 0 ? 0 : 1;
+    const bHasAlign = (b.alignmentScore ?? 0) > 0 ? 0 : 1;
+    if (aHasAlign !== bHasAlign) return aHasAlign - bHasAlign;
+    return a.page - b.page;
   });
 }
 
@@ -364,6 +391,48 @@ function CitationPopup({
                 </div>
               </div>
 
+              {verdict.features &&
+                ((verdict.features.content_alignment_score ?? 0) > 0 ||
+                  Boolean(verdict.features.best_evidence_sentence)) && (
+                  <div className="rounded-xl border border-indigo-200/80 dark:border-indigo-900/70 bg-indigo-50/40 dark:bg-indigo-950/25 p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold text-indigo-900 dark:text-indigo-200 uppercase tracking-wider">
+                        <Brain className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                        Neural Semantic & Evidence Match
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {verdict.features.citation_intent && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-indigo-100/90 text-indigo-700 dark:bg-indigo-900/80 dark:text-indigo-300">
+                            <Sparkles className="h-2.5 w-2.5" />
+                            {verdict.features.citation_intent}
+                          </span>
+                        )}
+                        {verdict.features.stance_label && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/70 dark:text-emerald-300">
+                            {verdict.features.stance_label}
+                          </span>
+                        )}
+                        {(verdict.features.content_alignment_score ?? 0) > 0 && (
+                          <span className="text-[11px] font-mono font-bold text-indigo-700 dark:text-indigo-300">
+                            {Math.round((verdict.features.content_alignment_score ?? 0) * 100)}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {verdict.features.best_evidence_sentence && (
+                      <div className="rounded-lg bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-2.5">
+                        <span className="block text-[10px] font-mono font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-1">
+                          Matched Source Abstract Evidence
+                        </span>
+                        <p className="text-xs font-serif text-slate-700 dark:text-slate-300 leading-relaxed">
+                          “{verdict.features.best_evidence_sentence}”
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
               {verdict.mismatched_fields.length > 0 && (
                 <div>
                   <label className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -450,8 +519,8 @@ export function DocumentInspectorPage() {
     filterLabel === 'all'
       ? inlineCitations
       : inlineCitations.filter((c) =>
-          filterLabel === 'unresolved'
-            ? c.label === 'unresolved' || c.label === 'resource'
+          filterLabel === 'verified'
+            ? c.label === 'verified' || c.label === 'resource'
             : c.label === filterLabel
         );
 
@@ -465,10 +534,10 @@ export function DocumentInspectorPage() {
   }, [selectedCitation, report]);
 
   const statusCounts = {
-    verified: inlineCitations.filter((c) => c.label === 'verified').length,
+    verified: inlineCitations.filter((c) => c.label === 'verified' || c.label === 'resource').length,
     metadata_error: inlineCitations.filter((c) => c.label === 'metadata_error').length,
     suspected_hallucination: inlineCitations.filter((c) => c.label === 'suspected_hallucination').length,
-    unresolved: inlineCitations.filter((c) => c.label === 'unresolved' || c.label === 'resource').length,
+    unresolved: inlineCitations.filter((c) => c.label === 'unresolved').length,
   };
 
   if (error) {
@@ -752,6 +821,16 @@ export function DocumentInspectorPage() {
                             status={citation.mapping_status as any}
                             size="sm"
                           />
+                          {citation.alignmentScore !== undefined &&
+                            citation.alignmentScore > 0 && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
+                                <Brain className="h-2.5 w-2.5" />
+                                {Math.round(citation.alignmentScore * 100)}%
+                                {citation.citationIntent
+                                  ? ` · ${citation.citationIntent}`
+                                  : ''}
+                              </span>
+                            )}
                         </div>
                       </div>
                     </div>

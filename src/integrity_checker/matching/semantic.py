@@ -1,62 +1,171 @@
-"""Semantic similarity với sentence-transformers.
+"""Semantic similarity & Deep Neural Verification Layer with sentence-transformers.
 
-Module này cung cấp Neural layer cho Neuro-Symbolic system:
-- Title similarity: So sánh tiêu đề citation với paper nguồn
-- Content alignment: So sánh đoạn văn được trích dẫn với abstract/paper
-- Multi-text comparison: So sánh citation context với multiple sources
-
-References:
-    - Sentence-BERT: Reimers & Gurevych (2019)
-    - Semantic Schemas:用于自然语言理解的句子嵌入
+Module này cung cấp Neural layer toàn diện cho hệ thống Neuro-Symbolic (CITRA v2.1):
+1. Title Semantic Similarity: Bi-Encoder dense vector cosine similarity cho tiêu đề.
+2. Focal Sentence & Multi-Granular Abstract Alignment: Tách câu trọng tâm (focal sentence)
+   khỏi nhiễu cửa sổ văn bản PDF, khử gạch nối xuống dòng (de-hyphenation), và đối sánh
+   cấp độ câu (sentence-level pooling) với toàn bộ Abstract của bài báo nguồn.
+3. Neural Evidence Sentence Extraction: Trích xuất chính xác câu bằng chứng (Evidence Sentence)
+   trong Abstract của bài báo gốc khớp ngữ nghĩa nhất với câu trích dẫn của sinh viên.
+4. Neural Citation Intent Classification: Phân loại mục đích trích dẫn theo chuẩn SciCite/ACL-ARC
+   ('background', 'methodology', 'result_comparison') bằng Zero-Shot Neural Prototypes + tín hiệu cú pháp.
+5. Neural Claim Stance & Polarity Verification: Kiểm tra tính nhất quán khẳng định/phủ định
+   ('supported', 'partially_supported', 'neutral', 'contradiction_risk').
+6. Cross-Lingual Semantic Bridging (Việt ↔ Anh): Tự động phát hiện ngữ cảnh khóa luận tiếng Việt
+   trích dẫn ấn phẩm tiếng Anh và ánh xạ khái niệm học thuật song ngữ vào không gian vector.
+7. Multi-Occurrence & Implicit Passage Discovery: Kiểm tra đồng thời mọi vị trí trích dẫn trong bài
+   và tự động dò tìm đoạn văn nội dung (body passage) liên quan nhất khi thiếu marker trực tiếp.
 """
 
 from __future__ import annotations
 
+import re
 import threading
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Any, Optional
 
 from integrity_checker.config import get_settings
 from integrity_checker.logging import get_logger
 
 logger = get_logger(__name__)
 
+# Vietnamese diacritic detector
+_VN_DIACRITIC_RE = re.compile(
+    r"[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]",
+    re.IGNORECASE,
+)
+
+# Academic Vietnamese -> English concept dictionary for cross-lingual semantic bridging
+_VN_EN_ACADEMIC_BRIDGE: tuple[tuple[str, str], ...] = (
+    ("xử lý ngôn ngữ tự nhiên", "natural language processing NLP"),
+    ("mô hình ngôn ngữ lớn", "large language model LLM"),
+    ("mô hình ngôn ngữ", "language model"),
+    ("mạng nơ-ron tích chập", "convolutional neural network CNN"),
+    ("mạng nơ-ron hồi quy", "recurrent neural network RNN LSTM"),
+    ("mạng nơ-ron", "neural network deep learning"),
+    ("học sâu", "deep learning neural network"),
+    ("học máy", "machine learning classification"),
+    ("học tăng cường", "reinforcement learning"),
+    ("học bán giám sát", "semi-supervised learning"),
+    ("học không giám sát", "unsupervised learning clustering"),
+    ("học có giám sát", "supervised learning classification"),
+    ("cơ chế chú ý", "attention mechanism transformer"),
+    ("biểu diễn từ", "word embeddings vector representations"),
+    ("nhúng câu", "sentence embeddings dense vectors"),
+    ("độ tương đồng ngữ nghĩa", "semantic similarity cosine"),
+    ("trích xuất đặc trưng", "feature extraction representation"),
+    ("phân loại văn bản", "text classification sentiment analysis"),
+    ("phân tích cảm xúc", "sentiment analysis emotion detection"),
+    ("phát hiện trầm cảm", "depression detection mental health social media"),
+    ("trầm cảm", "depression mental health disorder"),
+    ("sức khỏe tâm thần", "mental health psychological"),
+    ("mạng xã hội", "social media online comments"),
+    ("bình luận", "comments user posts"),
+    ("mất cân bằng dữ liệu", "imbalanced data oversampling SMOTE minority class"),
+    ("dữ liệu mất cân bằng", "imbalanced dataset SMOTE"),
+    ("phân cụm mật độ", "density-based clustering HDBSCAN DBSCAN"),
+    ("phân cụm", "clustering topic modeling"),
+    ("giảm chiều dữ liệu", "dimensionality reduction UMAP PCA"),
+    ("ảo giác", "hallucination fabricated reference"),
+    ("kiểm tra trích dẫn", "citation verification bibliographic integrity"),
+    ("tài liệu tham khảo", "bibliographic references citations"),
+    ("liên kết bản ghi", "record linkage entity resolution"),
+    ("hiệu chỉnh xác suất", "probability calibration Platt scaling ECE Brier score"),
+    ("độ tin cậy", "confidence calibration reliability"),
+    ("cơ sở dữ liệu", "database SQLite MySQL relational schema"),
+    ("ứng dụng web", "web application frontend backend HTTP"),
+    ("bất đồng bộ", "asynchronous AJAX Fetch API without page refresh"),
+    ("giao diện người dùng", "user interface DOM responsive frontend"),
+    ("xác thực người dùng", "user authentication login session security"),
+    ("mã hóa mật khẩu", "password hashing security authentication"),
+)
+
+# Canonical Zero-Shot Neural Intent Prototypes (SciCite / ACL-ARC taxonomy)
+_INTENT_PROTOTYPES: dict[str, str] = {
+    "methodology": (
+        "We use, implement, adopt, or build upon this tool, software library, algorithm, "
+        "neural network architecture, parser, API, or mathematical method in our system pipeline."
+    ),
+    "result_comparison": (
+        "Experimental evaluation, quantitative metric, benchmark accuracy, F1 score, calibration error, "
+        "performance comparison, empirical baseline, or statistical validation of results."
+    ),
+    "background": (
+        "Prior literature, historical background, general domain overview, related work survey, "
+        "theoretical definition, and foundational concepts established in earlier studies."
+    ),
+}
+
+_METHODOLOGY_CUES_RE = re.compile(
+    r"\b(?:used\s+by|we\s+use|implemented\s+in|built\s+on|based\s+on|adopted|employs|"
+    r"extractor|parser|library|framework|pipeline|module|architecture|algorithm|"
+    r"following\s+[A-Z]|sử\s+dụng|áp\s+dụng|triển\s+khai|xây\s+dựng\s+trên)\b",
+    re.IGNORECASE,
+)
+_RESULT_CUES_RE = re.compile(
+    r"\b(?:accuracy|precision|recall|f1|brier\s+score|calibration\s+error|ece|outperforms|"
+    r"compared\s+with|benchmark|evaluation|measured\s+by|agreement|kappa|alpha|"
+    r"achieved|9\d%|8\d%|0\.\d+|kết\s+quả|độ\s+chính\s+xác|so\s+sánh|thực\s+nghiệm)\b",
+    re.IGNORECASE,
+)
+
+_NEGATION_CUES_RE = re.compile(
+    r"\b(?:not|never|no\s+longer|fails?\s+to|cannot|ineffective|insufficient|weak|"
+    r"worse\s+than|unreliable|impossible|evaded\s+by|lack\s+of|"
+    r"không\s+thể|không\s+hiệu\s+quả|thất\s+bại|kém\s+hơn)\b",
+    re.IGNORECASE,
+)
+_STRONG_POSITIVE_CLAIM_RE = re.compile(
+    r"\b(?:always\s+correct|completely\s+solves|100%\s+accurate|guarantees|perfectly|"
+    r"never\s+fails|eliminates\s+all|surprisingly\s+effective|highly\s+effective|"
+    r"superior\s+in\s+quality|significantly\s+outperforms|"
+    r"hoàn\s+toàn\s+chính\s+xác|luôn\s+đúng|rất\s+hiệu\s+quả)\b",
+    re.IGNORECASE,
+)
+
 
 @dataclass
 class SemanticAlignmentResult:
-    """Kết quả semantic alignment check.
+    """Kết quả semantic alignment check (Neural Layer v2.1).
 
     Attributes:
-        similarity: Cosine similarity score (0.0-1.0)
+        similarity: Cosine similarity score tổng hợp (0.0-1.0)
         confidence: Confidence level ('high', 'medium', 'low')
         is_aligned: True nếu content có semantic alignment
         compared_texts: Dict chứa các text đã so sánh (để debug)
+        title_context_sim: Cosine similarity giữa cited context và source title
+        abstract_context_sim: Cosine similarity giữa cited context và source abstract
+        best_evidence_sentence: Câu bằng chứng khớp nhất trích từ source abstract
+        best_evidence_score: Điểm similarity của câu bằng chứng tốt nhất
+        best_cited_sentence: Câu trọng tâm (focal sentence) đã làm sạch trong bài viết
+        citation_intent: Mục đích trích dẫn ('background', 'methodology', 'result_comparison')
+        stance_label: Trạng thái đồng thuận ('supported', 'partially_supported', 'neutral', 'contradiction_risk')
+        cross_lingual_detected: True nếu phát hiện và bắc cầu ngữ nghĩa Việt ↔ Anh
+        occurrence_alignments: Danh sách kết quả neural cho từng vị trí trích dẫn trong bài
     """
+
     similarity: float
     confidence: str
     is_aligned: bool
-    compared_texts: dict[str, str]
+    compared_texts: dict[str, Any]
+    title_context_sim: float = 0.0
+    abstract_context_sim: float = 0.0
+    best_evidence_sentence: str = ""
+    best_evidence_score: float = 0.0
+    best_cited_sentence: str = ""
+    citation_intent: str = ""
+    stance_label: str = "supported"
+    cross_lingual_detected: bool = False
+    occurrence_alignments: list[dict[str, Any]] = field(default_factory=list)
 
 
 class SemanticMatcher:
-    """Cosine similarity giữa 2 đoạn text dùng sentence-transformers.
-
-    Uses singleton pattern (2026-09-15) -- model instance is cached globally
-    so it only loads once per process, avoiding ~5s reload overhead on each
-    SemanticMatcher() instantiation.
-
-    v1.3: Bổ sung content-context alignment để kiểm tra semantic
-    alignment giữa đoạn văn được trích dẫn và paper nguồn.
-
-    # TODO(user): tuần 10 -- benchmark các model sau:
-        - all-MiniLM-L6-v2 (default, CPU-friendly, ~80MB)
-        - mxbai-embed-large-v1 (tốt hơn nhưng nặng hơn)
-        - multilingual-e5-base (nếu cần tiếng Việt)
-    """
+    """Deep Neural Semantic & Evidence Matcher dùng sentence-transformers."""
 
     _instance_lock = threading.Lock()
     _encode_lock = threading.Lock()
     _model_cache: dict[str, "object"] = {}
+    _intent_emb_cache: dict[str, Any] = {}
     _singleton: "SemanticMatcher | None" = None
 
     # Thresholds cho content alignment
@@ -71,16 +180,7 @@ class SemanticMatcher:
 
     @classmethod
     def get_instance(cls, model_name: str | None = None) -> "SemanticMatcher":
-        """Get singleton instance -- model loads only once per process.
-
-        Args:
-            model_name: Override default model. If singleton already exists
-                       with different model, returns existing singleton (first
-                       model wins to avoid redundant loads).
-
-        Returns:
-            Shared SemanticMatcher instance with cached model.
-        """
+        """Get singleton instance -- model loads only once per process."""
         if cls._singleton is None:
             with cls._instance_lock:
                 if cls._singleton is None:
@@ -128,13 +228,228 @@ class SemanticMatcher:
         try:
             embs = self._encode(model, [text1, text2], convert_to_tensor=True, normalize_embeddings=True)
             cos = (embs[0] @ embs[1]).item()
-            # clamp về 0–1 (không dùng (cos+1)/2 vì làm phồng cos=0 lên 0.5)
             return max(0.0, min(1.0, float(cos)))
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Semantic similarity error: {e}")
             return 0.0
 
-    # === NEURAL LAYER: Content-Context Alignment (v1.3) ===
+    # === TEXT CLEANING, DE-HYPHENATION & FOCAL SENTENCE EXTRACTION ===
+
+    @staticmethod
+    def clean_and_dehyphenate_context(text: str) -> str:
+        """Khử gạch nối ngắt dòng PDF (ví dụ 'cal- ibration' -> 'calibration', 'HDB- SCAN' -> 'HDBSCAN')
+        và dọn dẹp mảnh từ bị cắt cụt ở 2 đầu cửa sổ ký tự.
+        """
+        if not text:
+            return ""
+        cleaned = " ".join(text.split())
+        # Normalize special Greek question mark / PDF punctuation artefacts (e.g. ';' -> ';')
+        cleaned = cleaned.replace("\u037e", ";").replace("\xad", "")
+        # Rejoin known split uppercase acronyms like "HDB- SCAN" -> "HDBSCAN", "TF- IDF" -> "TF-IDF"
+        cleaned = re.sub(r"\bHDB-\s+SCAN\b", "HDBSCAN", cleaned)
+        cleaned = re.sub(r"\bTF-\s+IDF\b", "TF-IDF", cleaned)
+        # Rejoin lowercase line-wrap hyphenations: "cal- ibration" -> "calibration", "pro- gram" -> "program"
+        # Preserve legitimate compound prefixes like "pre-trained", "self-attention", "co-occurrence", "non-linear"
+        _keep_hyphen_prefixes = {
+            "pre", "post", "self", "non", "co", "multi", "cross", "sub", "inter", "intra",
+            "semi", "quasi", "meta", "micro", "macro", "high", "low", "well", "real", "open",
+            "two", "three", "four", "five", "one", "single", "double", "full", "end", "fine",
+            "class", "word", "page", "line", "user", "data", "time", "zero", "few", "over", "under",
+        }
+
+        def _rejoin_hyphen(m: re.Match[str]) -> str:
+            left = m.group(1)
+            right = m.group(2)
+            if left.lower() in _keep_hyphen_prefixes:
+                return f"{left}-{right}"
+            return f"{left}{right}"
+
+        cleaned = re.sub(r"\b([A-Za-zÀ-ỹ]{2,})-\s+([a-zà-ỹ]{2,})\b", _rejoin_hyphen, cleaned)
+        return cleaned.strip()
+
+    @classmethod
+    def extract_focal_sentence(
+        cls,
+        cited_context: str,
+        citation_marker: str | None = None,
+        source_title: str | None = None,
+    ) -> str:
+        """Tách câu trọng tâm (focal sentence) chứa trích dẫn từ đoạn context 200-400 ký tự.
+
+        Khi cửa sổ ký tự cắt ngang qua nhiều câu khác chủ đề (ví dụ câu trước nói về Chương 5,
+        câu sau mới nói về PyMuPDF [2]), hàm này cô lập đúng câu chứa marker hoặc câu có
+        mức độ liên quan cao nhất tới tài liệu được trích dẫn.
+        """
+        cleaned = cls.clean_and_dehyphenate_context(cited_context)
+        if not cleaned:
+            return ""
+
+        # Trim leading/trailing half-cut lowercase fragments from fixed character slicing
+        # e.g., "ormalising them into fields..." or "guous to a human reader..."
+        trimmed = re.sub(r"^[a-z]{1,8}\s+(?=[a-z])", "", cleaned)
+        if len(trimmed) >= 40:
+            cleaned = trimmed
+
+        # Protect common scholarly abbreviations before splitting into sentences
+        protected = cleaned
+        protected = re.sub(r"\bet\s+al\.", "et al<DOT>", protected, flags=re.IGNORECASE)
+        protected = re.sub(r"\b(Fig|Table|Eq|Sec|Ch|Vol|No|pp|dr|prof|vs|e\.g|i\.e)\.", r"\1<DOT>", protected, flags=re.IGNORECASE)
+        protected = re.sub(r"(\d)\.(\d)", r"\1<DOT>\2", protected)
+
+        raw_parts = re.split(r"(?<=[.!?;;])\s+(?=[A-ZÀ-Ỹ0-9\[\(])", protected)
+        sentences = [
+            p.replace("<DOT>", ".").strip()
+            for p in raw_parts
+            if len(p.replace("<DOT>", ".").strip()) >= 20
+        ]
+        if not sentences:
+            return cleaned
+
+        # 1. If explicit citation marker (e.g. "[2]", "(Vaswani et al., 2017)") is present, find its sentence
+        marker_clean = (citation_marker or "").strip()
+        if marker_clean and len(marker_clean) <= 40:
+            for idx, sent in enumerate(sentences):
+                if marker_clean.lower() in sent.lower():
+                    if len(sent) < 55 and len(sentences) > 1:
+                        neighbor = sentences[idx + 1] if idx + 1 < len(sentences) else sentences[idx - 1]
+                        return f"{sent} {neighbor}".strip()
+                    return sent
+
+        # 2. Check for bracketed numeric markers like [12] or (Author, YYYY) inside sentences
+        # and score sentences by keyword overlap with source_title + presence of citation markers
+        title_words = {
+            w.lower()
+            for w in re.findall(r"[A-Za-zÀ-ỹ0-9]{3,}", source_title or "")
+            if w.lower() not in {"the", "and", "for", "with", "from", "using", "based", "study", "analysis"}
+        }
+
+        best_sent = sentences[0]
+        best_score = -1.0
+        for idx, sent in enumerate(sentences):
+            sent_words = {w.lower() for w in re.findall(r"[A-Za-zÀ-ỹ0-9]{3,}", sent)}
+            overlap = len(title_words & sent_words)
+            has_marker = bool(re.search(r"\[\d+(?:\s*[,–-]\s*\d+)*\]|\([A-Za-zÀ-ỹ][^)]*(?:19|20)\d{2}[a-z]?\)", sent))
+            # Prefer middle complete sentences over chopped boundary fragments
+            is_boundary_fragment = (idx == 0 and sent[0].islower()) or (idx == len(sentences) - 1 and not sent.endswith((".", "!", "?", ")")))
+            score = overlap * 2.5 + (2.0 if has_marker else 0.0) + (0.5 if not is_boundary_fragment else -0.5) + min(len(sent), 180) / 300.0
+            if score > best_score:
+                best_score = score
+                best_sent = sent
+
+        return best_sent
+
+    @staticmethod
+    def detect_and_bridge_cross_lingual(
+        cited_context: str,
+        source_title: str,
+        source_abstract: Optional[str] = None,
+    ) -> tuple[bool, str]:
+        """Phát hiện khi khóa luận viết bằng tiếng Việt nhưng trích dẫn tài liệu tiếng Anh,
+        và tạo chuỗi ngữ nghĩa bắc cầu (Cross-Lingual Concept Bridge).
+        """
+        if not cited_context:
+            return False, ""
+        vn_chars = len(_VN_DIACRITIC_RE.findall(cited_context))
+        if vn_chars < 3:
+            return False, ""
+
+        src_text = f"{source_title or ''} {source_abstract or ''}"
+        src_vn_chars = len(_VN_DIACRITIC_RE.findall(src_text))
+        # Cross-lingual when context is Vietnamese and source is predominantly English
+        if src_vn_chars > 5:
+            return False, ""
+
+        ctx_lower = cited_context.lower()
+        bridged_terms: list[str] = []
+        for vn_phrase, en_equiv in _VN_EN_ACADEMIC_BRIDGE:
+            if vn_phrase in ctx_lower:
+                bridged_terms.append(en_equiv)
+
+        # Also preserve all technical English tokens/acronyms already present in the Vietnamese sentence
+        en_tokens = re.findall(r"\b[A-Za-z][A-Za-z0-9_+.-]{2,}\b", cited_context)
+        non_vn_tokens = [t for t in en_tokens if not _VN_DIACRITIC_RE.search(t)]
+
+        if not bridged_terms and not non_vn_tokens:
+            return True, cited_context
+
+        bridge_str = " ".join(non_vn_tokens + bridged_terms)
+        return True, f"{cited_context} ({bridge_str})"
+
+    @classmethod
+    def classify_citation_intent(
+        cls,
+        focal_sentence: str,
+        ctx_emb: Any = None,
+        intent_embs: Any = None,
+    ) -> str:
+        """Phân loại mục đích trích dẫn (Citation Intent) theo chuẩn học thuật SciCite:
+        - 'methodology': Sử dụng công cụ, thuật toán, mô hình, bộ dữ liệu
+        - 'result_comparison': So sánh kết quả thực nghiệm, độ đo, hiệu năng
+        - 'background': Giới thiệu bối cảnh, lý thuyết nền tảng, tổng quan tài liệu
+        """
+        if not focal_sentence:
+            return "background"
+
+        scores = {
+            "methodology": 0.0,
+            "result_comparison": 0.0,
+            "background": 0.05,  # slight prior for general background citations
+        }
+
+        # Neural prototype similarity when embeddings are available
+        if ctx_emb is not None and intent_embs is not None:
+            try:
+                intent_keys = list(_INTENT_PROTOTYPES.keys())
+                for idx, key in enumerate(intent_keys):
+                    sim = float((ctx_emb @ intent_embs[idx]).item())
+                    scores[key] += max(0.0, sim)
+            except Exception:  # noqa: BLE001
+                pass
+
+        # Syntactic / lexical scholarly cues
+        if _METHODOLOGY_CUES_RE.search(focal_sentence):
+            scores["methodology"] += 0.22
+        if _RESULT_CUES_RE.search(focal_sentence):
+            scores["result_comparison"] += 0.24
+
+        return max(scores, key=lambda k: scores[k])
+
+    @staticmethod
+    def check_claim_stance(
+        focal_sentence: str,
+        best_evidence_sentence: str,
+        similarity: float,
+        has_abstract: bool,
+    ) -> str:
+        """Kiểm tra tính đồng thuận / mâu thuẫn ngữ nghĩa (Stance & Polarity Verification).
+
+        Trả về:
+            - 'supported': Nội dung trích dẫn khớp và nhất quán với bài báo gốc
+            - 'partially_supported': Có liên quan chủ đề ở mức trung bình
+            - 'neutral': Trích dẫn đề cập chung, không đủ bằng chứng sâu
+            - 'contradiction_risk': Cảnh báo nguy cơ trích dẫn sai lệch kết luận hoặc lạc đề nghiêm trọng
+        """
+        if not focal_sentence:
+            return "neutral"
+
+        # Check for severe polarity inversion when discussing the same technical concept
+        if best_evidence_sentence and similarity >= 0.35:
+            ctx_neg = bool(_NEGATION_CUES_RE.search(focal_sentence))
+            ev_neg = bool(_NEGATION_CUES_RE.search(best_evidence_sentence))
+            ctx_abs_pos = bool(_STRONG_POSITIVE_CLAIM_RE.search(focal_sentence))
+            ev_abs_pos = bool(_STRONG_POSITIVE_CLAIM_RE.search(best_evidence_sentence))
+            if (ctx_abs_pos and ev_neg and not ctx_neg) or (ctx_neg and ev_abs_pos and not ev_neg):
+                return "contradiction_risk"
+
+        if similarity >= 0.50:
+            return "supported"
+        if similarity >= 0.35:
+            return "partially_supported"
+        if has_abstract and similarity < 0.22:
+            return "contradiction_risk"
+        return "neutral"
+
+    # === NEURAL LAYER: Content-Context Alignment (v2.1) ===
 
     def check_content_alignment(
         self,
@@ -142,30 +457,16 @@ class SemanticMatcher:
         source_title: str,
         source_abstract: Optional[str] = None,
         source_body: Optional[str] = None,
+        citation_marker: Optional[str] = None,
     ) -> SemanticAlignmentResult:
-        """Kiểm tra semantic alignment giữa đoạn văn được trích dẫn và paper nguồn.
+        """Kiểm tra semantic alignment đa tầng giữa đoạn văn trích dẫn và bài báo nguồn.
 
-        Đây là Neural layer chính của hệ thống -- so sánh ý nghĩa ngữ nghĩa
-        chứ không chỉ so khớp từ.
-
-        Args:
-            cited_context: Đoạn văn/nội dung được trích dẫn trong essay
-            source_title: Tiêu đề paper nguồn từ API
-            source_abstract: Abstract của paper (nếu có)
-            source_body: Body text của paper (nếu có, dùng cho deep check)
-
-        Returns:
-            SemanticAlignmentResult với similarity score và confidence level
-
-        Example:
-            >>> matcher = SemanticMatcher.get_instance()
-            >>> result = matcher.check_content_alignment(
-            ...     cited_context="Attention mechanisms have revolutionized NLP",
-            ...     source_title="Attention Is All You Need",
-            ...     source_abstract="The dominant sequence transduction models..."
-            ... )
-            >>> result.is_aligned  # True
-            >>> result.similarity  # 0.82
+        Kết hợp:
+        - Cả đoạn văn (window context) VÀ câu trọng tâm (focal sentence) đã khử gạch nối PDF.
+        - Bắc cầu ngữ nghĩa Việt ↔ Anh (nếu văn bản trích dẫn là tiếng Việt).
+        - So khớp đa cấp độ: Title + Toàn bộ Abstract + Từng câu trong Abstract (Sentence-level Max Pooling).
+        - Trích xuất câu bằng chứng cụ thể (`best_evidence_sentence`) từ Abstract.
+        - Phân loại mục đích trích dẫn (`citation_intent`) và kiểm tra Stance (`stance_label`).
         """
         model = self._get_model()
         if model is None:
@@ -177,11 +478,22 @@ class SemanticMatcher:
             )
 
         try:
-            # Truncate texts để tránh memory issues
-            cited_context = self._truncate_text(cited_context, max_length=512)
-            source_title = self._truncate_text(source_title, max_length=256)
+            raw_context_clean = self.clean_and_dehyphenate_context(cited_context)
+            focal_sentence = self.extract_focal_sentence(
+                raw_context_clean,
+                citation_marker=citation_marker,
+                source_title=source_title,
+            )
+            is_cross_lingual, bridged_context = self.detect_and_bridge_cross_lingual(
+                focal_sentence or raw_context_clean,
+                source_title,
+                source_abstract,
+            )
 
-            # Fast batched encoding for title + abstract + abstract sentences when _compute_similarity is not mocked
+            cited_context_trunc = self._truncate_text(raw_context_clean or cited_context, max_length=512)
+            source_title_trunc = self._truncate_text(source_title, max_length=256)
+
+            # Fast batched encoding when _compute_similarity is not mocked by unit tests
             use_batch = (
                 getattr(self._compute_similarity, "__func__", None)
                 is SemanticMatcher._compute_similarity
@@ -189,19 +501,34 @@ class SemanticMatcher:
             batch_done = False
             title_sim = 0.0
             abstract_sim = 0.0
+            best_evidence_sentence = ""
+            best_evidence_score = 0.0
+            citation_intent = "background"
 
             if use_batch:
                 try:
-                    batch_texts = [cited_context, source_title]
-                    has_abs = bool(source_abstract)
+                    batch_texts = [cited_context_trunc, source_title_trunc]
+                    has_abs = bool(source_abstract and source_abstract.strip())
                     abs_sents: list[str] = []
                     if has_abs and source_abstract:
                         truncated_abstract = self._truncate_text(source_abstract, max_length=512)
                         batch_texts.append(truncated_abstract)
                         extracted = self._extract_sentences(source_abstract)
-                        if len(extracted) >= 2:
-                            abs_sents = extracted[:6]
+                        if len(extracted) >= 1:
+                            abs_sents = extracted[:10]
                             batch_texts.extend(abs_sents)
+
+                    # Append focal_sentence and optional cross-lingual bridged context
+                    focal_idx: int | None = None
+                    if focal_sentence and focal_sentence != cited_context_trunc:
+                        focal_idx = len(batch_texts)
+                        batch_texts.append(self._truncate_text(focal_sentence, max_length=384))
+
+                    bridged_idx: int | None = None
+                    if is_cross_lingual and bridged_context:
+                        bridged_idx = len(batch_texts)
+                        batch_texts.append(self._truncate_text(bridged_context, max_length=512))
+
                     embs = self._encode(
                         model,
                         batch_texts,
@@ -210,50 +537,91 @@ class SemanticMatcher:
                         show_progress_bar=False,
                     )
                     if len(embs) == len(batch_texts):
-                        ctx_emb = embs[0]
-                        title_sim = max(0.0, min(1.0, float((ctx_emb @ embs[1]).item())))
+                        # Collect candidate query embeddings for the student's citation context
+                        query_embs = [embs[0]]
+                        if focal_idx is not None:
+                            query_embs.append(embs[focal_idx])
+                        if bridged_idx is not None:
+                            query_embs.append(embs[bridged_idx])
+
+                        def _max_query_cos(target_emb: Any) -> float:
+                            return max(
+                                max(0.0, min(1.0, float((q_emb @ target_emb).item())))
+                                for q_emb in query_embs
+                            )
+
+                        title_sim = _max_query_cos(embs[1])
+                        best_evidence_sentence = source_title_trunc
+                        best_evidence_score = title_sim
+
                         if has_abs:
-                            whole_abs_sim = max(0.0, min(1.0, float((ctx_emb @ embs[2]).item())))
+                            whole_abs_sim = _max_query_cos(embs[2])
+                            best_evidence_score = max(title_sim, whole_abs_sim)
                             if abs_sents:
                                 sent_sims = [
-                                    max(0.0, min(1.0, float((ctx_emb @ embs[3 + idx]).item())))
+                                    _max_query_cos(embs[3 + idx])
                                     for idx in range(len(abs_sents))
                                 ]
-                                max_sent_sim = max(sent_sims) if sent_sims else whole_abs_sim
+                                best_sent_idx = max(range(len(sent_sims)), key=lambda i: sent_sims[i])
+                                max_sent_sim = sent_sims[best_sent_idx]
+                                best_evidence_sentence = abs_sents[best_sent_idx]
+                                best_evidence_score = max_sent_sim
                                 abstract_sim = max(
-                                    whole_abs_sim, 0.6 * max_sent_sim + 0.4 * whole_abs_sim
+                                    whole_abs_sim,
+                                    0.65 * max_sent_sim + 0.35 * whole_abs_sim,
                                 )
                             else:
                                 abstract_sim = whole_abs_sim
+                                best_evidence_sentence = self._truncate_text(source_abstract or "", max_length=280)
+
+                        # Classify citation intent using cached prototype embeddings
+                        intent_embs = self._get_intent_embeddings(model)
+                        primary_q_emb = embs[focal_idx] if focal_idx is not None else embs[0]
+                        citation_intent = self.classify_citation_intent(
+                            focal_sentence or cited_context_trunc,
+                            ctx_emb=primary_q_emb,
+                            intent_embs=intent_embs,
+                        )
                         batch_done = True
                 except Exception:  # noqa: BLE001
                     batch_done = False
 
             if not batch_done:
-                # Strategy 1: Compare with source title
-                title_sim = self._compute_similarity(model, cited_context, source_title)
+                # Fallback path (also used by unit tests mocking _compute_similarity or MagicMock encode)
+                title_sim = self._compute_similarity(model, cited_context_trunc, source_title_trunc)
+                best_evidence_sentence = source_title_trunc
+                best_evidence_score = title_sim
 
-                # Strategy 2: Compare with source abstract (whole-abstract + sentence pooling)
                 abstract_sim = 0.0
                 if source_abstract:
                     truncated_abstract = self._truncate_text(source_abstract, max_length=512)
-                    whole_abs_sim = self._compute_similarity(model, cited_context, truncated_abstract)
+                    whole_abs_sim = self._compute_similarity(model, cited_context_trunc, truncated_abstract)
                     abs_sentences = self._extract_sentences(source_abstract)
                     if len(abs_sentences) >= 2:
                         sent_sims = [
-                            self._compute_similarity(model, cited_context, sent)
+                            self._compute_similarity(model, cited_context_trunc, sent)
                             for sent in abs_sentences[:6]
                         ]
-                        max_sent_sim = max(sent_sims) if sent_sims else whole_abs_sim
+                        if sent_sims:
+                            best_idx = max(range(len(sent_sims)), key=lambda i: sent_sims[i])
+                            max_sent_sim = sent_sims[best_idx]
+                            best_evidence_sentence = abs_sentences[best_idx]
+                            best_evidence_score = max_sent_sim
+                        else:
+                            max_sent_sim = whole_abs_sim
                         abstract_sim = max(whole_abs_sim, 0.6 * max_sent_sim + 0.4 * whole_abs_sim)
                     else:
                         abstract_sim = whole_abs_sim
+                        best_evidence_sentence = truncated_abstract
+                        best_evidence_score = whole_abs_sim
+
+                citation_intent = self.classify_citation_intent(focal_sentence or cited_context_trunc)
 
             # Strategy 3: Compare with source body (if available, using segment sampling)
             body_sim = 0.0
             if source_body:
                 body_sim = self._compute_similarity_with_long_text(
-                    model, cited_context, source_body, max_sample_length=512
+                    model, cited_context_trunc, source_body, max_sample_length=512
                 )
 
             # Combine scores with higher weight on abstract when available
@@ -268,20 +636,25 @@ class SemanticMatcher:
                 scores.append(body_sim)
                 weights.append(0.2)  # Body weight
 
-            # Normalize weights
             total_weight = sum(weights)
             normalized_weights = [w / total_weight for w in weights]
             weighted_similarity = sum(s * w for s, w in zip(scores, normalized_weights))
 
-            # If abstract strongly aligns with cited context even when paper title is brief/metaphorical,
-            # ensure abstract alignment is preserved
+            # Preserve strong abstract or sentence-level evidence alignment even when title is metaphorical
             if abstract_sim >= self.ALIGNMENT_THRESHOLD_HIGH:
-                final_sim = max(weighted_similarity, abstract_sim * 0.9)
+                final_sim = max(weighted_similarity, abstract_sim * 0.92, best_evidence_score * 0.90)
+            elif best_evidence_score >= 0.65 and abstract_sim > 0:
+                final_sim = max(weighted_similarity, best_evidence_score * 0.88)
             else:
                 final_sim = weighted_similarity if scores else 0.0
 
-            # Determine confidence và alignment
             confidence, is_aligned = self._determine_alignment(final_sim)
+            stance_label = self.check_claim_stance(
+                focal_sentence or cited_context_trunc,
+                best_evidence_sentence,
+                final_sim,
+                has_abstract=bool(source_abstract),
+            )
 
             return SemanticAlignmentResult(
                 similarity=round(final_sim, 4),
@@ -293,6 +666,14 @@ class SemanticMatcher:
                     "has_abstract": bool(source_abstract),
                     "has_body": bool(source_body),
                 },
+                title_context_sim=round(title_sim, 4),
+                abstract_context_sim=round(abstract_sim, 4),
+                best_evidence_sentence=best_evidence_sentence,
+                best_evidence_score=round(best_evidence_score, 4),
+                best_cited_sentence=focal_sentence or cited_context_trunc,
+                citation_intent=citation_intent,
+                stance_label=stance_label,
+                cross_lingual_detected=is_cross_lingual,
             )
 
         except Exception as e:  # noqa: BLE001
@@ -303,6 +684,180 @@ class SemanticMatcher:
                 is_aligned=False,
                 compared_texts={"cited_context": cited_context, "source": source_title},
             )
+
+    def check_multi_context_alignment(
+        self,
+        occurrence_contexts: list[dict[str, Any]],
+        source_title: str,
+        source_abstract: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """Đánh giá Neural Alignment trên TẤT CẢ các vị trí trích dẫn của cùng 1 tài liệu trong bài.
+
+        Args:
+            occurrence_contexts: List các dict {'page': int, 'context': str, 'raw': str}
+            source_title: Tiêu đề bài báo nguồn
+            source_abstract: Abstract bài báo nguồn (nếu có)
+
+        Returns:
+            Danh sách kết quả alignment theo từng vị trí trích dẫn (page, focal_sentence, score,
+            confidence, is_aligned, intent, stance, best_evidence_sentence).
+        """
+        if not occurrence_contexts:
+            return []
+
+        results: list[dict[str, Any]] = []
+        seen_sentences: set[str] = set()
+        for occ in occurrence_contexts[:8]:
+            ctx = str(occ.get("context") or "").strip()
+            if not ctx:
+                continue
+            marker = str(occ.get("raw") or "").strip()
+            focal = self.extract_focal_sentence(ctx, citation_marker=marker, source_title=source_title)
+            dedup_key = focal[:120].lower()
+            if dedup_key in seen_sentences:
+                continue
+            seen_sentences.add(dedup_key)
+
+            res = self.check_content_alignment(
+                cited_context=ctx,
+                source_title=source_title,
+                source_abstract=source_abstract,
+                citation_marker=marker,
+            )
+            results.append(
+                {
+                    "page": int(occ.get("page") or 0),
+                    "marker": marker,
+                    "focal_sentence": res.best_cited_sentence or focal,
+                    "score": res.similarity,
+                    "confidence": res.confidence,
+                    "is_aligned": res.is_aligned,
+                    "intent": res.citation_intent,
+                    "stance": res.stance_label,
+                    "best_evidence_sentence": res.best_evidence_sentence,
+                }
+            )
+        return results
+
+    def discover_implicit_body_context(
+        self,
+        body_pages: list[tuple[int, str]],
+        source_title: str,
+        source_abstract: Optional[str] = None,
+        source_authors: Optional[list[str]] = None,
+    ) -> tuple[int, str, float] | None:
+        """Tự động dò tìm đoạn văn trong phần thân bài (Body Pages) khớp ngữ nghĩa nhất với
+        tài liệu tham khảo khi sinh viên quên đặt marker trích dẫn trực tiếp trong bài.
+
+        Returns:
+            Tuple (page_num, best_passage, similarity_score) hoặc None.
+        """
+        if not body_pages or not source_title:
+            return None
+
+        model = self._get_model()
+        if model is None:
+            return None
+
+        title_tokens = {
+            w.lower()
+            for w in re.findall(r"[A-Za-zÀ-ỹ0-9]{3,}", source_title)
+            if w.lower()
+            not in {
+                "the", "and", "for", "with", "from", "using", "based", "edition",
+                "guide", "definitive", "introduction", "learning", "pro", "good", "parts",
+                "techniques", "development", "theory", "study", "analysis",
+            }
+        }
+        author_surnames = {
+            re.sub(r"[^a-zA-ZÀ-ỹ]", "", a.split(",")[0].split()[0]).lower()
+            for a in (source_authors or [])
+            if a and len(a.strip()) >= 3
+        }
+
+        norm_title_sub = re.sub(r"\s+", " ", source_title.lower().strip())[:35]
+
+        candidate_passages: list[tuple[int, str, float]] = []
+        for page_num, page_text in body_pages:
+            if not page_text or len(page_text.strip()) < 60:
+                continue
+            # Skip Table of Contents / List of Figures pages
+            if "......" in page_text or "TABLE OF CONTENTS" in page_text.upper():
+                continue
+
+            cleaned_page = self.clean_and_dehyphenate_context(page_text)
+            sents = self._extract_sentences(cleaned_page)
+            # Group into 2-sentence windows
+            for i in range(len(sents)):
+                window = " ".join(sents[i : i + 2]).strip()
+                if len(window) < 45:
+                    continue
+                win_lower = window.lower()
+                # Skip windows that are themselves bibliography entries on an unfiltered reference page
+                if (
+                    "in proceedings of" in win_lower
+                    or "https://doi.org/" in win_lower
+                    or "arxiv preprint" in win_lower
+                    or (len(norm_title_sub) >= 24 and norm_title_sub in win_lower)
+                ):
+                    continue
+                win_words = set(re.findall(r"[a-zA-ZÀ-ỹ0-9]{3,}", win_lower))
+                kw_hits = len(title_tokens & win_words)
+                auth_hits = len(author_surnames & win_words)
+                if kw_hits > 0 or auth_hits > 0:
+                    pre_score = kw_hits * 2.0 + auth_hits * 3.0 + min(len(window), 260) / 300.0
+                    candidate_passages.append((page_num, window[:360], pre_score))
+
+        if not candidate_passages:
+            return None
+
+        # Keep top 8 keyword-relevant body windows and rank them with Sentence-BERT against title + abstract
+        candidate_passages.sort(key=lambda item: item[2], reverse=True)
+        top_windows = candidate_passages[:8]
+
+        try:
+            target_text = f"{source_title}. {self._truncate_text(source_abstract or '', 320)}".strip()
+            batch_texts = [target_text] + [w[1] for w in top_windows]
+            embs = self._encode(
+                model,
+                batch_texts,
+                convert_to_tensor=True,
+                normalize_embeddings=True,
+                show_progress_bar=False,
+            )
+            if len(embs) != len(batch_texts):
+                return top_windows[0][0], top_windows[0][1], 0.5
+
+            target_emb = embs[0]
+            best_idx = 0
+            best_sim = -1.0
+            for idx in range(len(top_windows)):
+                sim = float((target_emb @ embs[1 + idx]).item())
+                if sim > best_sim:
+                    best_sim = sim
+                    best_idx = idx
+
+            best_page, best_text, _ = top_windows[best_idx]
+            return best_page, best_text, max(0.0, min(1.0, best_sim))
+        except Exception:  # noqa: BLE001
+            return top_windows[0][0], top_windows[0][1], 0.5
+
+    def _get_intent_embeddings(self, model: "object") -> Any:
+        """Lazy-compute and cache embeddings for the 3 citation intent prototypes."""
+        key = self.model_name
+        if key not in self._intent_emb_cache:
+            try:
+                proto_texts = list(_INTENT_PROTOTYPES.values())
+                self._intent_emb_cache[key] = self._encode(
+                    model,
+                    proto_texts,
+                    convert_to_tensor=True,
+                    normalize_embeddings=True,
+                    show_progress_bar=False,
+                )
+            except Exception:  # noqa: BLE001
+                return None
+        return self._intent_emb_cache.get(key)
 
     def _compute_similarity(
         self,
@@ -331,19 +886,12 @@ class SemanticMatcher:
         long_text: str,
         max_sample_length: int = 512,
     ) -> float:
-        """So sánh short text với long text bằng cách sample segments.
-
-        Chia long text thành các segments và so sánh từng cái,
-        lấy max similarity.
-        """
+        """So sánh short text với long text bằng cách sample segments."""
         try:
-            # Split long text thành sentences/paragraphs
             segments = self._split_into_segments(long_text, max_sample_length)
-
             if not segments:
                 return 0.0
 
-            # Encode short text once
             short_emb = self._encode(
                 model,
                 short_text,
@@ -352,9 +900,8 @@ class SemanticMatcher:
                 show_progress_bar=False,
             )
 
-            # Encode all segments và compute similarities
             similarities = []
-            for segment in segments[:5]:  # Max 5 segments
+            for segment in segments[:5]:
                 seg_emb = self._encode(
                     model,
                     segment,
@@ -374,7 +921,6 @@ class SemanticMatcher:
         """Split abstract/text into individual substantive sentences for sentence-level alignment."""
         if not text:
             return []
-        import re
         raw_sentences = re.split(r"[.!?]+(?:\s+|$)|\n+", text)
         return [
             s.strip()
@@ -387,8 +933,6 @@ class SemanticMatcher:
         if len(text) <= max_length:
             return [text]
 
-        # Split by sentences
-        import re
         sentences = re.split(r"[.!?]+", text)
         segments = []
         current_segment = ""
@@ -433,14 +977,7 @@ class SemanticMatcher:
     # === Utility methods ===
 
     def batch_similarity(self, text_pairs: list[tuple[str, str]]) -> list[float]:
-        """Compute similarity cho nhiều text pairs cùng lúc (optimized).
-
-        Args:
-            text_pairs: List of (text1, text2) tuples
-
-        Returns:
-            List of similarity scores
-        """
+        """Compute similarity cho nhiều text pairs cùng lúc (optimized)."""
         if not text_pairs:
             return []
 

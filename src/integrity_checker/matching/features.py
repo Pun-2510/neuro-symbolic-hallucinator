@@ -121,20 +121,82 @@ class FeatureCalculator:
 
             venue_sim = VenueNormalizer().similarity(citation.venue, best.venue)
 
-        # Content alignment (NEW v1.3) - Neural layer
+        # Content alignment (NEW v1.3 / v2.1) - Deep Neural Layer
         content_alignment_score = 0.0
         content_alignment_confidence = ""
         content_is_aligned = False
+        title_context_sim = 0.0
+        abstract_context_sim = 0.0
+        best_evidence_sentence = ""
+        best_evidence_score = 0.0
+        best_cited_sentence = ""
+        citation_intent = ""
+        stance_label = ""
+        cross_lingual_detected = False
+        context_source = str(getattr(citation, "_context_source", "") or "")
+        occurrence_alignments: list[dict] = []
 
         if self.enable_content_alignment and citation_context:
+            # Resolve abstract across all agreeing candidates if best.abstract is missing
+            resolved_abstract = getattr(best, "abstract", None)
+            if not resolved_abstract:
+                for cand in source.candidates:
+                    cand_abs = getattr(cand, "abstract", None)
+                    if cand.found and cand_abs:
+                        cand_t = (cand.title or "").lower().strip()
+                        if (
+                            self._doi_matches(best.doi, cand.doi)
+                            or self._compute_title_similarity(cand_title, cand_t) >= 0.80
+                        ):
+                            resolved_abstract = cand_abs
+                            best.abstract = cand_abs
+                            break
+
             alignment_result = self.semantic.check_content_alignment(
                 cited_context=citation_context,
                 source_title=best.title or "",
-                source_abstract=best.abstract if hasattr(best, "abstract") else None,
+                source_abstract=resolved_abstract,
             )
             content_alignment_score = alignment_result.similarity
             content_alignment_confidence = alignment_result.confidence
             content_is_aligned = alignment_result.is_aligned
+            title_context_sim = getattr(alignment_result, "title_context_sim", 0.0)
+            abstract_context_sim = getattr(alignment_result, "abstract_context_sim", 0.0)
+            best_evidence_sentence = getattr(alignment_result, "best_evidence_sentence", "")
+            best_evidence_score = getattr(alignment_result, "best_evidence_score", 0.0)
+            best_cited_sentence = getattr(alignment_result, "best_cited_sentence", "")
+            citation_intent = getattr(alignment_result, "citation_intent", "")
+            stance_label = getattr(alignment_result, "stance_label", "")
+            cross_lingual_detected = bool(getattr(alignment_result, "cross_lingual_detected", False))
+
+            # Evaluate multi-occurrence neural alignment when reference is cited multiple times
+            occ_contexts = getattr(citation, "_occurrence_contexts", None)
+            if (
+                isinstance(occ_contexts, list)
+                and len(occ_contexts) >= 1
+                and hasattr(self.semantic, "check_multi_context_alignment")
+            ):
+                occurrence_alignments = self.semantic.check_multi_context_alignment(
+                    occ_contexts,
+                    source_title=best.title or "",
+                    source_abstract=resolved_abstract,
+                )
+                if len(occurrence_alignments) >= 2:
+                    if not context_source:
+                        context_source = "multi_occurrence"
+                    best_occ = max(occurrence_alignments, key=lambda o: float(o.get("score") or 0.0))
+                    best_occ_score = float(best_occ.get("score") or 0.0)
+                    if best_occ_score > content_alignment_score:
+                        content_alignment_score = best_occ_score
+                        content_alignment_confidence = str(best_occ.get("confidence") or content_alignment_confidence)
+                        content_is_aligned = bool(best_occ.get("is_aligned"))
+                        best_cited_sentence = str(best_occ.get("focal_sentence") or best_cited_sentence)
+                        citation_intent = str(best_occ.get("intent") or citation_intent)
+                        stance_label = str(best_occ.get("stance") or stance_label)
+                        if best_occ.get("best_evidence_sentence"):
+                            best_evidence_sentence = str(best_occ["best_evidence_sentence"])
+            if not context_source:
+                context_source = "in_text_citation"
 
         return MatchFeatures(
             title_sim_fuzzy=fuzzy_sim,
@@ -147,6 +209,16 @@ class FeatureCalculator:
             content_alignment_score=content_alignment_score,
             content_alignment_confidence=content_alignment_confidence,
             content_is_aligned=content_is_aligned,
+            title_context_sim=title_context_sim,
+            abstract_context_sim=abstract_context_sim,
+            best_evidence_sentence=best_evidence_sentence,
+            best_evidence_score=best_evidence_score,
+            best_cited_sentence=best_cited_sentence,
+            citation_intent=citation_intent,
+            stance_label=stance_label,
+            cross_lingual_detected=cross_lingual_detected,
+            context_source=context_source,
+            occurrence_alignments=occurrence_alignments,
         )
 
     @staticmethod

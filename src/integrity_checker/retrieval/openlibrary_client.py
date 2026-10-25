@@ -157,7 +157,10 @@ class OpenLibraryClient(BaseScholarClient):
             )
 
         candidates: list[SourceCandidate] = []
-        base_fields = "key,title,subtitle,author_name,first_publish_year,publish_year,isbn,publisher"
+        base_fields = (
+            "key,title,subtitle,author_name,first_publish_year,"
+            "publish_year,isbn,publisher,first_sentence,subject"
+        )
         surname = self._extract_ol_author_query(citation)
 
         async def _run_ol_query(params: dict[str, Any]) -> list[dict]:
@@ -394,6 +397,24 @@ class OpenLibraryClient(BaseScholarClient):
         if isinstance(isbns, list) and isbns:
             external_ids["isbn"] = str(isbns[0])
 
+        # Build concise abstract/description from first_sentence + top subjects when available
+        abstract_parts: list[str] = []
+        first_sent = doc.get("first_sentence")
+        if isinstance(first_sent, list) and first_sent:
+            fs_text = str(first_sent[0]).strip()
+            if fs_text:
+                abstract_parts.append(fs_text)
+        elif isinstance(first_sent, str) and first_sent.strip():
+            abstract_parts.append(first_sent.strip())
+
+        subjects = doc.get("subject")
+        if isinstance(subjects, list) and subjects:
+            subj_list = [str(s).strip() for s in subjects[:8] if s and str(s).strip()]
+            if subj_list:
+                abstract_parts.append(f"Topics and subjects covered: {', '.join(subj_list)}.")
+
+        abstract_str = " ".join(abstract_parts).strip() or None
+
         return SourceCandidate(
             source_name=cls.name,
             found=False,
@@ -403,6 +424,7 @@ class OpenLibraryClient(BaseScholarClient):
             year=resolved_year,
             venue=venue,
             url=url,
+            abstract=abstract_str,
             external_ids=external_ids,
         )
 
@@ -468,6 +490,12 @@ class OpenLibraryClient(BaseScholarClient):
                     ext_ids["isbn"] = str(ident["identifier"])
                     break
 
+            desc = str(vol.get("description") or "").strip()
+            if not desc:
+                cats = vol.get("categories")
+                if isinstance(cats, list) and cats:
+                    desc = f"Categories: {', '.join(str(c).strip() for c in cats if c)}."
+
             if chosen_title:
                 results.append(
                     SourceCandidate(
@@ -479,6 +507,7 @@ class OpenLibraryClient(BaseScholarClient):
                         year=year,
                         venue=publisher,
                         url=info_link,
+                        abstract=desc or None,
                         external_ids=ext_ids,
                     )
                 )

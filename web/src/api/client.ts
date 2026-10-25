@@ -136,6 +136,26 @@ export interface Verdict {
     content_alignment_score?: number;
     content_alignment_confidence?: string;
     content_is_aligned?: boolean;
+    title_context_sim?: number;
+    abstract_context_sim?: number | null;
+    best_evidence_sentence?: string | null;
+    best_evidence_score?: number | null;
+    best_cited_sentence?: string | null;
+    citation_intent?: string | null;
+    stance_label?: string | null;
+    cross_lingual_detected?: boolean;
+    context_source?: string | null;
+    occurrence_alignments?: Array<{
+      page: number;
+      marker: string;
+      focal_sentence: string;
+      score: number;
+      confidence: string;
+      is_aligned: boolean;
+      intent: string;
+      stance: string;
+      best_evidence_sentence?: string | null;
+    }>;
     url_status?: UrlValidationStatus | null;
     url_status_code?: number | null;
     checked_url?: string | null;

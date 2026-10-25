@@ -296,7 +296,11 @@ class NeuroSymbolicChecker:
             known_year = paper_info.get("year") or (
                 str(citation.year)[:4] if citation.year else None
             )
-            # Create a synthetic SourceCandidate from known paper info
+            # Create a synthetic SourceCandidate from known paper info (preserving abstract)
+            existing_abs = paper_info.get("abstract") or next(
+                (c.abstract for c in source.candidates if getattr(c, "abstract", None)),
+                None,
+            )
             known_candidate = SourceCandidate(
                 source_name="known_papers",
                 found=True,
@@ -304,6 +308,7 @@ class NeuroSymbolicChecker:
                 doi=paper_info.get("doi"),
                 authors=paper_info.get("authors", []),
                 year=known_year,
+                abstract=existing_abs,
                 confidence=0.95,
                 score=1.0,
             )
@@ -388,6 +393,10 @@ class NeuroSymbolicChecker:
                         url_status_code=source.url_status_code,
                     )
                     features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
+                    base_reason = (
+                        f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. "
+                        "APIs failed but paper is well-documented."
+                    )
 
                     return self._apply_dead_link_exception(
                         CitationVerdict(
@@ -396,7 +405,9 @@ class NeuroSymbolicChecker:
                             confidence=0.90,
                             matched_source=enhanced_source,
                             features=features,
-                            reasoning=f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. APIs failed but paper is well-documented.",
+                            reasoning=self._enhance_reasoning_with_neural(
+                                base_reason, features, ["R-KNOWN-PAPER"]
+                            ),
                             triggered_rules=["R-KNOWN-PAPER"],
                             mismatched_fields=[],
                         ),
@@ -415,6 +426,10 @@ class NeuroSymbolicChecker:
                     url_status_code=source.url_status_code,
                 )
                 features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
+                base_reason = (
+                    f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. "
+                    "APIs failed but paper is well-documented."
+                )
 
                 return self._apply_dead_link_exception(
                     CitationVerdict(
@@ -423,7 +438,9 @@ class NeuroSymbolicChecker:
                         confidence=0.90,
                         matched_source=enhanced_source,
                         features=features,
-                        reasoning=f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. APIs failed but paper is well-documented.",
+                        reasoning=self._enhance_reasoning_with_neural(
+                            base_reason, features, ["R-KNOWN-PAPER"]
+                        ),
                         triggered_rules=["R-KNOWN-PAPER"],
                         mismatched_fields=[],
                     ),
@@ -512,22 +529,27 @@ class NeuroSymbolicChecker:
         features: MatchFeatures,
         triggered_rules: list[str],
     ) -> str:
-        """Enhance symbolic reasoning với Neural content alignment info.
-
-        Thêm thông tin về content alignment vào reasoning để giảng viên
-        hiểu được tại sao Neural layer đưa ra kết luận.
-        """
+        """Enhance symbolic reasoning với Neural content alignment & evidence info."""
         if not self.enable_content_alignment:
             return symbolic_reasoning
 
-        # Nếu có content alignment info, thêm vào reasoning
         if features.content_alignment_score > 0:
             alignment_info = (
                 f" [Neural: content alignment score={features.content_alignment_score:.2f} "
                 f"({features.content_alignment_confidence})"
             )
+            intent = getattr(features, "citation_intent", "")
+            stance = getattr(features, "stance_label", "")
+            ev_score = getattr(features, "best_evidence_score", 0.0)
+            if intent:
+                alignment_info += f", intent={intent}"
+            if stance:
+                alignment_info += f", stance={stance}"
+            if ev_score and ev_score > 0:
+                alignment_info += f", evidence_sim={ev_score:.2f}"
+            if getattr(features, "cross_lingual_detected", False):
+                alignment_info += ", cross_lingual=VI->EN"
 
-            # Thêm signal nếu content alignment khác với symbolic decision
             if features.content_is_aligned and "VERIFIED" not in triggered_rules:
                 alignment_info += " - content semantically aligned with source"
             elif not features.content_is_aligned and features.content_alignment_score > 0.3:

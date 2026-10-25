@@ -21,6 +21,9 @@ import {
   ChevronRight,
   Scale,
   GitBranch,
+  Brain,
+  Sparkles,
+  Languages,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -110,6 +113,18 @@ function buildTraceSteps(verdict: Verdict, lang: 'vi' | 'en'): TraceStep[] {
     featureParts.push(
       `content_align=${f.content_alignment_score.toFixed(2)} (${f.content_alignment_confidence || 'checked'})`
     );
+  }
+  if (f?.best_evidence_score !== undefined && f?.best_evidence_score !== null && f.best_evidence_score > 0) {
+    featureParts.push(`evidence_sim=${f.best_evidence_score.toFixed(2)}`);
+  }
+  if (f?.citation_intent) {
+    featureParts.push(`intent=${f.citation_intent}`);
+  }
+  if (f?.stance_label) {
+    featureParts.push(`stance=${f.stance_label}`);
+  }
+  if (f?.cross_lingual_detected) {
+    featureParts.push(`cross_lingual=VI↔EN`);
   }
   if (urlStatus) {
     const codeStr = urlCode ? ` HTTP ${urlCode}` : '';
@@ -234,6 +249,250 @@ function TraceStepCard({ step, isLast }: { step: TraceStep; isLast: boolean }) {
   );
 }
 
+function NeuralAlignmentPanel({
+  verdict,
+  lang,
+}: {
+  verdict: Verdict;
+  lang: 'vi' | 'en';
+}) {
+  const f = verdict.features;
+  if (!f || isUrlResource(verdict) || verdict.label === 'resource') return null;
+
+  const alignScore = f.content_alignment_score ?? 0;
+  const titleSim = f.title_sim_semantic || f.title_context_sim || f.title_sim_fuzzy || 0;
+  const abstractSim = f.abstract_context_sim ?? 0;
+  const evidenceSim = f.best_evidence_score ?? 0;
+  const citedSentence = f.best_cited_sentence || verdict.context || '';
+  const evidenceSentence = f.best_evidence_sentence || '';
+  const intent = f.citation_intent || '';
+  const stance = f.stance_label || '';
+  const contextSource = f.context_source || '';
+  const occAlignments = f.occurrence_alignments ?? [];
+
+  if (alignScore <= 0 && titleSim <= 0 && !evidenceSentence) {
+    return null;
+  }
+
+  const intentBadgeStyle =
+    intent === 'methodology'
+      ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/70 dark:text-indigo-300 dark:border-indigo-800'
+      : intent === 'result_comparison'
+        ? 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/70 dark:text-violet-300 dark:border-violet-800'
+        : 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/70 dark:text-sky-300 dark:border-sky-800';
+
+  const stanceBadgeStyle =
+    stance === 'supported'
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800'
+      : stance === 'partially_supported'
+        ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800'
+        : stance === 'contradiction_risk'
+          ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/70 dark:text-red-300 dark:border-red-800'
+          : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+
+  const formatIntentLabel = (val: string) => {
+    if (val === 'methodology') return lang === 'vi' ? 'Phương pháp (Methodology)' : 'Methodology';
+    if (val === 'result_comparison') return lang === 'vi' ? 'Đối sánh Kết quả (Result)' : 'Result Comparison';
+    if (val === 'background') return lang === 'vi' ? 'Nền tảng (Background)' : 'Background';
+    return val;
+  };
+
+  const formatStanceLabel = (val: string) => {
+    if (val === 'supported') return lang === 'vi' ? 'Đồng thuận (Supported)' : 'Supported';
+    if (val === 'partially_supported') return lang === 'vi' ? 'Hỗ trợ một phần (Partial)' : 'Partially Supported';
+    if (val === 'contradiction_risk') return lang === 'vi' ? 'Nguy cơ Mâu thuẫn (Contradiction Risk)' : 'Contradiction Risk';
+    return lang === 'vi' ? 'Trung lập (Neutral)' : 'Neutral';
+  };
+
+  const formatSourceLabel = (val: string) => {
+    if (val === 'multi_occurrence')
+      return lang === 'vi' ? `Đa điểm trích dẫn (${occAlignments.length || 2}+ vị trí)` : `Multi-Occurrence (${occAlignments.length || 2}+ sites)`;
+    if (val === 'implicit_body_discovery')
+      return lang === 'vi' ? 'Dò tìm Ngữ nghĩa Thân bài (Implicit Body Discovery)' : 'Implicit Body Discovery';
+    if (val === 'in_text_citation')
+      return lang === 'vi' ? 'Trích dẫn Trực tiếp (In-Text Marker)' : 'In-Text Citation';
+    return '';
+  };
+
+  return (
+    <div
+      data-testid="neural-alignment-panel"
+      className="rounded-xl border border-indigo-200/80 dark:border-indigo-900/70 bg-gradient-to-br from-indigo-50/40 via-white to-violet-50/30 dark:from-indigo-950/25 dark:via-slate-900 dark:to-violet-950/20 p-4 space-y-4"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
+            <Brain className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div>
+            <h5 className="text-xs font-mono font-bold text-indigo-950 dark:text-indigo-200 uppercase tracking-wider">
+              {lang === 'vi'
+                ? 'Phân tích Ngữ nghĩa & Bằng chứng Neural (Sentence-BERT)'
+                : 'Deep Neural Semantic & Evidence Alignment (Sentence-BERT)'}
+            </h5>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              {lang === 'vi'
+                ? 'So khớp câu trích dẫn trọng tâm với từng câu trong Abstract gốc, phân loại ý định trích dẫn & kiểm định lập trường.'
+                : 'Sentence-level evidence extraction against source abstract, citation intent classification, and stance verification.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {intent && (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold border ${intentBadgeStyle}`}>
+              <Sparkles className="h-3 w-3" />
+              {formatIntentLabel(intent)}
+            </span>
+          )}
+          {stance && (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold border ${stanceBadgeStyle}`}>
+              {formatStanceLabel(stance)}
+            </span>
+          )}
+          {f.cross_lingual_detected && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold border bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/70 dark:text-teal-300 dark:border-teal-800">
+              <Languages className="h-3 w-3" />
+              VI↔EN Semantic Bridge
+            </span>
+          )}
+          {contextSource && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono border bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+              {formatSourceLabel(contextSource)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* 3 Sub-Score Bars */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[
+          {
+            label: lang === 'vi' ? 'Tương đồng Tiêu đề (Title Sim)' : 'Title Semantic Sim',
+            val: titleSim,
+          },
+          {
+            label: lang === 'vi' ? 'Căn chỉnh Tóm tắt (Abstract Sim)' : 'Abstract Alignment',
+            val: abstractSim,
+          },
+          {
+            label: lang === 'vi' ? 'Câu Bằng chứng Đỉnh (Evidence Sim)' : 'Best Evidence Sentence',
+            val: evidenceSim || alignScore,
+          },
+        ].map((metric) => {
+          const pct = Math.round(Math.max(0, Math.min(1, metric.val)) * 100);
+          return (
+            <div
+              key={metric.label}
+              className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 p-2.5"
+            >
+              <div className="flex items-center justify-between text-[11px] font-mono mb-1.5">
+                <span className="text-slate-600 dark:text-slate-400 truncate">{metric.label}</span>
+                <span className="font-bold text-slate-900 dark:text-slate-100">{pct}%</span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${
+                    pct >= 65
+                      ? 'bg-emerald-500'
+                      : pct >= 40
+                        ? 'bg-indigo-500'
+                        : 'bg-amber-500'
+                  }`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Side-by-side Cited Focal Sentence vs Best Abstract Evidence Sentence */}
+      {(citedSentence || evidenceSentence) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {citedSentence && (
+            <div className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 p-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  {lang === 'vi'
+                    ? 'Câu Trích dẫn Trọng tâm (Manuscript Claim)'
+                    : 'Manuscript Focal Sentence'}
+                </span>
+                {alignScore > 0 && (
+                  <span className="text-[10px] font-mono font-semibold text-indigo-600 dark:text-indigo-400">
+                    align={(alignScore * 100).toFixed(0)}%
+                  </span>
+                )}
+              </div>
+              <p className="text-xs font-serif text-slate-800 dark:text-slate-200 leading-relaxed break-words">
+                “{citedSentence}”
+              </p>
+            </div>
+          )}
+
+          {evidenceSentence && (
+            <div className="rounded-lg border border-emerald-200/80 dark:border-emerald-900/60 bg-emerald-50/40 dark:bg-emerald-950/20 p-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                  {lang === 'vi'
+                    ? 'Câu Bằng chứng Khớp nhất từ Bài báo Gốc (Source Evidence)'
+                    : 'Matched Source Abstract Evidence'}
+                </span>
+                {evidenceSim > 0 && (
+                  <span className="text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-400">
+                    sim={(evidenceSim * 100).toFixed(0)}%
+                  </span>
+                )}
+              </div>
+              <p className="text-xs font-serif text-slate-800 dark:text-slate-200 leading-relaxed break-words">
+                “{evidenceSentence}”
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Multi-occurrence table when cited multiple times */}
+      {occAlignments.length > 1 && (
+        <div className="pt-1">
+          <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+            {lang === 'vi'
+              ? `Chi tiết Căn chỉnh theo Từng Vị trí Trích dẫn (${occAlignments.length} vị trí)`
+              : `Multi-Occurrence Context Alignment (${occAlignments.length} occurrences)`}
+          </div>
+          <div className="space-y-1.5">
+            {occAlignments.map((occ, idx) => (
+              <div
+                key={`${occ.page}-${idx}`}
+                className="flex flex-wrap items-center justify-between gap-2 text-xs rounded-lg border border-slate-200/70 dark:border-slate-800 bg-white/75 dark:bg-slate-900/75 px-3 py-2"
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
+                    p.{occ.page || 1}
+                  </span>
+                  <span className="font-serif text-slate-700 dark:text-slate-300 truncate">
+                    {occ.focal_sentence}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 font-mono text-[10px]">
+                  {occ.intent && (
+                    <span className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300">
+                      {occ.intent}
+                    </span>
+                  )}
+                  <span className="font-bold text-slate-800 dark:text-slate-200">
+                    {Math.round((occ.score || 0) * 100)}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function VerdictTrace({
   verdict,
   index,
@@ -282,6 +541,16 @@ function VerdictTrace({
                     : '✕ FAKE URL'}
             </span>
           )}
+          {verdict.features?.content_alignment_score !== undefined &&
+            verdict.features.content_alignment_score > 0 && (
+              <span className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold border bg-indigo-50/90 text-indigo-700 border-indigo-200 dark:bg-indigo-950/70 dark:text-indigo-300 dark:border-indigo-800">
+                <Brain className="h-3 w-3" />
+                Neural {Math.round(verdict.features.content_alignment_score * 100)}%
+                {verdict.features.citation_intent
+                  ? ` · ${verdict.features.citation_intent.toUpperCase()}`
+                  : ''}
+              </span>
+            )}
           <Badge variant="outline" className="hidden sm:inline-flex font-mono text-[10px]">
             {verdict.triggered_rules.length} rules
           </Badge>
@@ -299,6 +568,8 @@ function VerdictTrace({
 
       {expanded && (
         <div className="border-t border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 bg-slate-50/60 dark:bg-slate-950/60 space-y-5">
+          <NeuralAlignmentPanel verdict={verdict} lang={lang} />
+
           <div>
             <h5 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
               {lang === 'vi'
@@ -349,16 +620,29 @@ export function LogicTracePage() {
 
   const sortedVerdicts = useMemo(() => {
     if (!report?.verdicts) return [];
+    const rankLabel = (v: Verdict) => {
+      if (isUrlResource(v) || v.label === 'resource') return 3;
+      if (v.label !== 'verified') return 0; // genuine flagged items first
+      return 1; // verified academic papers before web resources
+    };
     const base = [...report.verdicts].sort((a, b) => {
-      if (a.label !== 'verified' && b.label === 'verified') return -1;
-      if (a.label === 'verified' && b.label !== 'verified') return 1;
-      return a.confidence - b.confidence;
+      const rA = rankLabel(a);
+      const rB = rankLabel(b);
+      if (rA !== rB) return rA - rB;
+      if (rA === 0) return a.confidence - b.confidence;
+      // For verified academic papers, showcase those with rich neural alignment first
+      const alignA = a.features?.content_alignment_score ?? 0;
+      const alignB = b.features?.content_alignment_score ?? 0;
+      if (Math.abs(alignB - alignA) > 0.05) return alignB - alignA;
+      return b.confidence - a.confidence;
     });
     if (filterMode === 'flagged') {
-      return base.filter((v) => v.label !== 'verified');
+      return base.filter(
+        (v) => v.label !== 'verified' && v.label !== 'resource' && !isUrlResource(v)
+      );
     }
     if (filterMode === 'verified') {
-      return base.filter((v) => v.label === 'verified');
+      return base.filter((v) => v.label === 'verified' || v.label === 'resource' || isUrlResource(v));
     }
     return base;
   }, [report, filterMode]);
@@ -392,7 +676,12 @@ export function LogicTracePage() {
   }
 
   const totalCount = report.verdicts.length;
-  const verifiedCount = report.verdicts.filter((v) => v.label === 'verified').length;
+  const verifiedCount = report.verdicts.filter(
+    (v) => v.label === 'verified' || v.label === 'resource' || isUrlResource(v)
+  ).length;
+  const flaggedCount = report.verdicts.filter(
+    (v) => v.label !== 'verified' && v.label !== 'resource' && !isUrlResource(v)
+  ).length;
   const metaErrCount = report.verdicts.filter((v) => v.label === 'metadata_error').length;
   const hallucinationCount = report.verdicts.filter(
     (v) => v.label === 'suspected_hallucination'
@@ -498,7 +787,7 @@ export function LogicTracePage() {
             {(
               [
                 ['all', `All (${totalCount})`],
-                ['flagged', `Flagged (${totalCount - verifiedCount})`],
+                ['flagged', `Flagged (${flaggedCount})`],
                 ['verified', `Verified (${verifiedCount})`],
               ] as const
             ).map(([key, label]) => (
