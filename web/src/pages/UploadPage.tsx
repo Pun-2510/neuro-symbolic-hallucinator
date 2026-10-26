@@ -97,6 +97,25 @@ export function UploadPage() {
   const handleUpload = async () => {
     if (!file) return;
 
+    // Client-side monthly upload quota pre-check
+    if (quota.monthly_uploads_remaining <= 0) {
+      const msg =
+        lang === 'vi'
+          ? `Bạn đã sử dụng hết hạn mức ${quota.monthly_uploads_limit} lượt kiểm tra PDF/tháng của gói ${planTier.toUpperCase()}. Vui lòng nâng cấp lên gói Pro (50 bài/tháng) hoặc Ultra (1.000 bài/tháng).`
+          : `You have reached the monthly limit of ${quota.monthly_uploads_limit} PDF checks on the ${planTier.toUpperCase()} plan. Upgrade to Pro (50 checks/mo) or Ultra (1,000 checks/mo).`;
+      setError(msg);
+      setUpgradeReason({
+        title:
+          lang === 'vi'
+            ? 'Đã hết lượt kiểm tra PDF trong tháng'
+            : 'Monthly PDF Upload Quota Reached',
+        description: msg,
+        feature: '50–1,000 Monthly PDF Checks',
+      });
+      setUpgradeModalOpen(true);
+      return;
+    }
+
     // Client-side file size pre-check against current plan quota
     const maxBytes = quota.max_file_size_mb * 1024 * 1024;
     if (file.size > maxBytes) {

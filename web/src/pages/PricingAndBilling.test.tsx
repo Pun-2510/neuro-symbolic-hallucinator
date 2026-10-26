@@ -1,0 +1,622 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { ToastProvider } from '@/contexts/ToastContext';
+import { AuthContext } from '@/contexts/AuthContext';
+import { api, type User } from '@/api/client';
+import '@/i18n';
+import { PricingPage } from './PricingPage';
+import { StripeDemoCheckoutPage } from './StripeDemoCheckoutPage';
+import { BillingSuccessPage } from './BillingSuccessPage';
+import { UploadPage } from './UploadPage';
+import { SettingsPage } from './SettingsPage';
+import { EssayHeader } from './essay/EssayHeader';
+import { EssayActionBar } from './essay/EssayActionBar';
+import { UpgradeModal } from '@/components/UpgradeModal';
+import { AppLayout } from '@/components/AppLayout';
+
+function createMockUser(overrides: Partial<User> = {}): User {
+  return {
+    id: 10,
+    username: 'student_free',
+    email: 'student@tdtu.edu.vn',
+    full_name: 'Student Free',
+    role: 'user',
+    is_active: true,
+    avatar_url: null,
+    last_login_at: null,
+    created_at: null,
+    institution: 'TDTU',
+    can_override_verdicts: false,
+    plan_tier: 'basic',
+    billing_cycle: null,
+    subscription_status: 'active',
+    cancel_at_period_end: false,
+    current_period_end: null,
+    quota: {
+      monthly_uploads_used: 2,
+      monthly_uploads_limit: 3,
+      monthly_uploads_remaining: 1,
+      max_file_size_mb: 5,
+      max_pages_per_pdf: 15,
+      max_citations_per_essay: 30,
+      max_batch_files: 1,
+      allowed_export_formats: ['json'],
+      allow_batch_upload: false,
+      allow_deep_inspector: false,
+      allow_serpapi_fallback: false,
+      quota_reset_at: '2026-11-25T00:00:00Z',
+    },
+    ...overrides,
+  };
+}
+
+function renderWithAuth(
+  ui: React.ReactElement,
+  {
+    user = createMockUser(),
+    initialEntries = ['/'],
+    refreshUser = vi.fn().mockResolvedValue(undefined),
+  }: {
+    user?: User | null;
+    initialEntries?: string[];
+    refreshUser?: () => Promise<void>;
+  } = {},
+) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="light">
+        <ToastProvider>
+          <AuthContext.Provider
+            value={{
+              user,
+              token: user ? 'mock-jwt-token' : null,
+              isLoading: false,
+              isAdmin: user?.role === 'admin',
+              login: vi.fn(),
+              logout: vi.fn(),
+              refreshUser,
+            }}
+          >
+            <MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>
+          </AuthContext.Provider>
+        </ToastProvider>
+      </ThemeProvider>
+    </QueryClientProvider>,
+  );
+}
+
+describe('Premium Subscription, Pricing, Stripe Checkout & Paywall UI/UX Flows', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+  });
+
+  it('PricingPage renders 3 tiers (Basic $0, Pro $16/$20, Ultra $160/$200) and toggles Monthly/Annual pricing', () => {
+    renderWithAuth(<PricingPage />, { user: createMockUser(), initialEntries: ['/pricing'] });
+
+    // Default is Annual (-20%): Pro = $16/mo, Ultra = $160/mo
+    expect(screen.getByTestId('plan-card-basic')).toBeDefined();
+    expect(screen.getByTestId('plan-card-pro')).toBeDefined();
+    expect(screen.getByTestId('plan-card-ultra')).toBeDefined();
+    expect(screen.getByTestId('pro-price-display').textContent).toBe('$16');
+    expect(screen.getByTestId('ultra-price-display').textContent).toBe('$160');
+
+    // User clicks Monthly Billing toggle -> Pro = $20/mo, Ultra = $200/mo
+    fireEvent.click(screen.getByTestId('billing-toggle-monthly'));
+    expect(screen.getByTestId('pro-price-display').textContent).toBe('$20');
+    expect(screen.getByTestId('ultra-price-display').textContent).toBe('$200');
+
+    // User switches back to Annual Billing -> Pro = $16/mo, Ultra = $160/mo
+    fireEvent.click(screen.getByTestId('billing-toggle-annual'));
+    expect(screen.getByTestId('pro-price-display').textContent).toBe('$16');
+    expect(screen.getByTestId('ultra-price-display').textContent).toBe('$160');
+  });
+
+  it('PricingPage initiates Stripe Demo Checkout when Basic user clicks Upgrade to Pro or Ultra', async () => {
+    const createSessionSpy = vi.spyOn(api, 'createCheckoutSession').mockResolvedValue({
+      session_id: 'cs_test_demo_pro123',
+      checkout_url: '/billing/checkout?session_id=cs_test_demo_pro123',
+      mode: 'stripe_demo',
+      plan_tier: 'pro',
+      plan_name: 'Pro',
+      billing_cycle: 'annual',
+      amount_usd: 192,
+      transaction_id: 1,
+    });
+
+    renderWithAuth(
+      <Routes>
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/billing/checkout" element={<div data-testid="checkout-dest">Stripe Checkout Route</div>} />
+      </Routes>,
+      { user: createMockUser(), initialEntries: ['/pricing'] },
+    );
+
+    fireEvent.click(screen.getByTestId('select-pro-btn'));
+
+    await waitFor(() => {
+      expect(createSessionSpy).toHaveBeenCalledWith({
+        plan_tier: 'pro',
+        billing_cycle: 'annual',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('checkout-dest')).toBeDefined();
+    });
+  });
+
+  it('StripeDemoCheckoutPage loads session summary, autofills test cards (4242 / 4444), and submits payment', async () => {
+    vi.spyOn(api, 'getCheckoutSessionDetails').mockResolvedValue({
+      session_id: 'cs_test_demo_pro123',
+      status: 'pending',
+      payment_mode: 'stripe_demo',
+      merchant_name: 'CITRA (SourceLogic) Inc.',
+      customer_email: 'student@tdtu.edu.vn',
+      customer_name: 'Nguyen Bao Minh',
+      plan_tier: 'pro',
+      plan_name: 'CITRA Pro',
+      billing_cycle: 'annual',
+      amount_usd: 192,
+      monthly_equivalent_usd: 16,
+      annual_savings_usd: 48,
+      currency: 'usd',
+      features_en: ['50 PDF checks / month', 'Export PDF & DOCX'],
+      features_vi: ['50 lượt tải PDF / tháng', 'Xuất báo cáo PDF & DOCX'],
+    });
+
+    const verifySpy = vi.spyOn(api, 'verifyCheckoutSession').mockResolvedValue({
+      status: 'succeeded',
+      message: 'Upgraded!',
+      transaction: {
+        id: 1,
+        user_id: 10,
+        stripe_session_id: 'cs_test_demo_pro123',
+        stripe_payment_intent_id: 'pi_demo_123',
+        plan_tier: 'pro',
+        plan_name: 'Pro',
+        billing_cycle: 'annual',
+        amount_usd: 192,
+        currency: 'usd',
+        status: 'succeeded',
+        payment_mode: 'stripe_demo',
+        card_brand: 'mastercard',
+        card_last4: '4444',
+        created_at: '2026-10-26T00:00:00Z',
+        paid_at: '2026-10-26T00:01:00Z',
+      },
+      subscription: {
+        plan_tier: 'pro',
+        plan_name: 'Pro',
+        billing_cycle: 'annual',
+        subscription_status: 'active',
+        cancel_at_period_end: false,
+        current_period_start: '2026-10-26T00:00:00Z',
+        current_period_end: '2027-10-26T00:00:00Z',
+        quota: createMockUser().quota!,
+      },
+      user: createMockUser({ plan_tier: 'pro', billing_cycle: 'annual' }),
+    });
+
+    const refreshUserMock = vi.fn().mockResolvedValue(undefined);
+
+    renderWithAuth(
+      <Routes>
+        <Route path="/billing/checkout" element={<StripeDemoCheckoutPage />} />
+        <Route path="/billing/success" element={<div data-testid="success-dest">Success Page</div>} />
+      </Routes>,
+      {
+        user: createMockUser(),
+        initialEntries: ['/billing/checkout?session_id=cs_test_demo_pro123'],
+        refreshUser: refreshUserMock,
+      },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stripe-demo-checkout-page')).toBeDefined();
+    });
+    expect(screen.getByTestId('checkout-amount-display').textContent).toBe('$192.00');
+
+    // User clicks 1-click Mastercard autofill button -> fills 5555 5555 5555 4444
+    fireEvent.click(screen.getByTestId('autofill-mastercard-btn'));
+    const cardInput = screen.getByTestId('stripe-card-number-input') as HTMLInputElement;
+    expect(cardInput.value).toBe('5555 5555 5555 4444');
+
+    // User clicks Pay & Activate button
+    fireEvent.click(screen.getByTestId('stripe-pay-submit-btn'));
+
+    await waitFor(() => {
+      expect(verifySpy).toHaveBeenCalledWith({
+        session_id: 'cs_test_demo_pro123',
+        card_last4: '4444',
+        card_brand: 'mastercard',
+      });
+    });
+    expect(refreshUserMock).toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('success-dest')).toBeDefined();
+    });
+  });
+
+  it('BillingSuccessPage displays Stripe payment receipt and unlocked Pro quotas', async () => {
+    vi.spyOn(api, 'verifyCheckoutSession').mockResolvedValue({
+      status: 'succeeded',
+      message: 'Upgraded',
+      transaction: {
+        id: 7,
+        user_id: 10,
+        stripe_session_id: 'cs_test_demo_pro123',
+        stripe_payment_intent_id: 'pi_demo_777',
+        plan_tier: 'pro',
+        plan_name: 'Pro',
+        billing_cycle: 'annual',
+        amount_usd: 192,
+        currency: 'usd',
+        status: 'succeeded',
+        payment_mode: 'stripe_demo',
+        card_brand: 'visa',
+        card_last4: '4242',
+        created_at: '2026-10-26T00:00:00Z',
+        paid_at: '2026-10-26T00:01:00Z',
+      },
+      subscription: {
+        plan_tier: 'pro',
+        plan_name: 'Pro',
+        billing_cycle: 'annual',
+        subscription_status: 'active',
+        cancel_at_period_end: false,
+        current_period_start: '2026-10-26T00:00:00Z',
+        current_period_end: '2027-10-26T00:00:00Z',
+        quota: {
+          ...createMockUser().quota!,
+          monthly_uploads_limit: 50,
+          max_file_size_mb: 25,
+          max_pages_per_pdf: 100,
+        },
+      },
+      user: createMockUser({ plan_tier: 'pro' }),
+    });
+
+    renderWithAuth(
+      <Routes>
+        <Route path="/billing/success" element={<BillingSuccessPage />} />
+      </Routes>,
+      {
+        user: createMockUser({ plan_tier: 'pro' }),
+        initialEntries: ['/billing/success?session_id=cs_test_demo_pro123'],
+      },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('billing-success-page')).toBeDefined();
+    });
+    expect(screen.getByTestId('billing-receipt-box').textContent).toContain('$192.00 USD');
+    expect(screen.getByTestId('billing-receipt-box').textContent).toContain('4242');
+    expect(screen.getByTestId('success-go-upload-btn')).toBeDefined();
+  });
+
+  it('UploadPage blocks files > 5MB for Basic users and automatically pops up UpgradeModal', async () => {
+    const uploadSpy = vi.spyOn(api, 'uploadEssay');
+    const { container } = renderWithAuth(<UploadPage />, {
+      user: createMockUser({ plan_tier: 'basic' }),
+      initialEntries: ['/upload'],
+    });
+
+    expect(screen.getByTestId('upload-quota-banner').textContent).toContain('2/3');
+
+    // Simulate user selecting a 7 MB PDF file (exceeds Basic 5 MB limit)
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const oversizedFile = new File([new ArrayBuffer(7 * 1024 * 1024)], 'large_thesis.pdf', {
+      type: 'application/pdf',
+    });
+    fireEvent.change(fileInput, { target: { files: [oversizedFile] } });
+
+    // Click Start Verification button
+    const uploadBtn = screen.getByRole('button', {
+      name: /start verification|bắt đầu kiểm tra|kiểm chứng/i,
+    });
+    fireEvent.click(uploadBtn);
+
+    // Should NOT call backend API; instead opens UpgradeModal
+    expect(uploadSpy).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByTestId('upgrade-modal')).toBeDefined();
+    });
+  });
+
+  it('EssayHeader intercepts PDF and DOCX export clicks for Basic users and opens UpgradeModal', async () => {
+    const downloadSpy = vi.spyOn(api, 'downloadReportFile');
+    renderWithAuth(
+      <EssayHeader
+        essayId={42}
+        filename="student_draft.pdf"
+        numPages={8}
+        numCitations={12}
+        styleName="APA"
+      />,
+      { user: createMockUser({ plan_tier: 'basic' }) },
+    );
+
+    fireEvent.click(screen.getByTestId('export-pdf-btn'));
+
+    expect(downloadSpy).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByTestId('upgrade-modal')).toBeDefined();
+    });
+  });
+
+  it('EssayActionBar shows PRO lock badges on deep tabs for Basic users and unlocks them for Pro users', async () => {
+    const { unmount } = renderWithAuth(<EssayActionBar essayId="42" />, {
+      user: createMockUser({ plan_tier: 'basic' }),
+      initialEntries: ['/verification/report/42'],
+    });
+
+    // Basic user sees locked buttons
+    const lockedDocBtn = screen.getByTestId('locked-document-inspector-btn');
+    expect(lockedDocBtn).toBeDefined();
+    fireEvent.click(lockedDocBtn);
+    await waitFor(() => {
+      expect(screen.getByTestId('upgrade-modal')).toBeDefined();
+    });
+    unmount();
+
+    // Pro user sees unlocked links without lock buttons
+    renderWithAuth(<EssayActionBar essayId="42" />, {
+      user: createMockUser({ plan_tier: 'pro' }),
+      initialEntries: ['/verification/report/42'],
+    });
+    expect(screen.queryByTestId('locked-document-inspector-btn')).toBeNull();
+    expect(screen.queryByTestId('locked-logic-trace-btn')).toBeNull();
+  });
+
+  it('SettingsPage displays active subscription, transaction history, and supports Cancel / Reactivate auto-renewal', async () => {
+    vi.spyOn(api, 'getMySubscription').mockResolvedValue({
+      subscription: {
+        plan_tier: 'pro',
+        plan_name: 'Pro',
+        billing_cycle: 'annual',
+        subscription_status: 'active',
+        cancel_at_period_end: false,
+        current_period_start: '2026-10-26T00:00:00Z',
+        current_period_end: '2027-10-26T00:00:00Z',
+        quota: {
+          ...createMockUser().quota!,
+          monthly_uploads_limit: 50,
+          max_file_size_mb: 25,
+          max_pages_per_pdf: 100,
+        },
+      },
+      transactions: [
+        {
+          id: 99,
+          user_id: 10,
+          stripe_session_id: 'cs_test_demo_99',
+          stripe_payment_intent_id: 'pi_demo_99',
+          plan_tier: 'pro',
+          plan_name: 'Pro',
+          billing_cycle: 'annual',
+          amount_usd: 192,
+          currency: 'usd',
+          status: 'succeeded',
+          payment_mode: 'stripe_demo',
+          card_brand: 'visa',
+          card_last4: '4242',
+          created_at: '2026-10-26T00:00:00Z',
+          paid_at: '2026-10-26T00:01:00Z',
+        },
+      ],
+    });
+
+    const cancelSpy = vi.spyOn(api, 'cancelSubscription').mockResolvedValue({
+      message: 'Auto-renewal canceled.',
+      subscription: {
+        plan_tier: 'pro',
+        plan_name: 'Pro',
+        billing_cycle: 'annual',
+        subscription_status: 'active',
+        cancel_at_period_end: true,
+        current_period_start: '2026-10-26T00:00:00Z',
+        current_period_end: '2027-10-26T00:00:00Z',
+        quota: createMockUser().quota!,
+      },
+      user: createMockUser({ plan_tier: 'pro', cancel_at_period_end: true }),
+    });
+
+    renderWithAuth(<SettingsPage />, {
+      user: createMockUser({ plan_tier: 'pro', billing_cycle: 'annual' }),
+      initialEntries: ['/settings'],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-transactions-list')).toBeDefined();
+    });
+    expect(screen.getByTestId('settings-active-tier-badge').textContent).toContain('CITRA PRO');
+
+    // Click Cancel Auto-Renew
+    fireEvent.click(screen.getByTestId('settings-cancel-sub-btn'));
+    await waitFor(() => {
+      expect(cancelSpy).toHaveBeenCalledWith(false);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-reactivate-sub-btn')).toBeDefined();
+    });
+  });
+
+  it('UploadPage blocks upload when monthly quota (3/3) is exhausted and opens UpgradeModal; allows valid <5MB PDF upload when quota is available', async () => {
+    const uploadSpy = vi.spyOn(api, 'uploadEssay').mockResolvedValue({
+      essay_id: 77,
+      filename: 'short_paper.pdf',
+      num_pages: 4,
+      num_citations: 5,
+      citations: [],
+      summary: { cis_score: null, num_unresolved: 0 },
+    });
+
+    // 1. User with exhausted quota (3 used / 3 limit, 0 remaining)
+    const exhaustedUser = createMockUser({
+      plan_tier: 'basic',
+      quota: {
+        ...createMockUser().quota!,
+        monthly_uploads_used: 3,
+        monthly_uploads_limit: 3,
+        monthly_uploads_remaining: 0,
+      },
+    });
+    const { container, unmount } = renderWithAuth(<UploadPage />, {
+      user: exhaustedUser,
+      initialEntries: ['/upload'],
+    });
+
+    expect(screen.getByTestId('upload-quota-banner').textContent).toContain('3/3');
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const validSmallPdf = new File([new ArrayBuffer(512 * 1024)], 'short_paper.pdf', {
+      type: 'application/pdf',
+    });
+    fireEvent.change(fileInput, { target: { files: [validSmallPdf] } });
+
+    const uploadBtn = screen.getByRole('button', {
+      name: /start verification|bắt đầu kiểm tra|kiểm chứng/i,
+    });
+    fireEvent.click(uploadBtn);
+
+    expect(uploadSpy).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByTestId('upgrade-modal')).toBeDefined();
+    });
+    unmount();
+
+    // 2. User with available quota (1 used / 3 limit) uploading valid <5MB PDF succeeds
+    const activeUser = createMockUser({
+      plan_tier: 'basic',
+      quota: {
+        ...createMockUser().quota!,
+        monthly_uploads_used: 1,
+        monthly_uploads_limit: 3,
+        monthly_uploads_remaining: 2,
+      },
+    });
+    const { container: container2 } = renderWithAuth(<UploadPage />, {
+      user: activeUser,
+      initialEntries: ['/upload'],
+    });
+    const fileInput2 = container2.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput2, { target: { files: [validSmallPdf] } });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /start verification|bắt đầu kiểm tra|kiểm chứng/i,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(uploadSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('UpgradeModal supports toggling Monthly ($20 / $200) vs Annual ($16 / $160) pricing and initiating Stripe checkout directly from the modal', async () => {
+    const createSessionSpy = vi.spyOn(api, 'createCheckoutSession').mockResolvedValue({
+      session_id: 'cs_test_demo_ultra_mo',
+      checkout_url: '/billing/checkout?session_id=cs_test_demo_ultra_mo',
+      mode: 'stripe_demo',
+      plan_tier: 'ultra',
+      plan_name: 'Ultra',
+      billing_cycle: 'monthly',
+      amount_usd: 200,
+      transaction_id: 2,
+    });
+
+    renderWithAuth(
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <UpgradeModal
+              open={true}
+              onOpenChange={vi.fn()}
+              featureName="Document Inspector"
+              reasonTitle="Unlock Document Inspector"
+            />
+          }
+        />
+        <Route path="/billing/checkout" element={<div data-testid="modal-checkout-dest">Checkout</div>} />
+      </Routes>,
+      { user: createMockUser(), initialEntries: ['/'] },
+    );
+
+    expect(screen.getByTestId('upgrade-modal')).toBeDefined();
+    expect(screen.getByTestId('modal-upgrade-pro-btn').textContent).toContain('192');
+
+    // Switch to Monthly cycle inside modal -> Pro button shows $20, Ultra button shows $200
+    fireEvent.click(screen.getByTestId('modal-cycle-monthly'));
+    expect(screen.getByTestId('modal-upgrade-pro-btn').textContent).toContain('20');
+    expect(screen.getByTestId('modal-upgrade-ultra-btn').textContent).toContain('200');
+
+    // Click Upgrade to Ultra inside modal
+    fireEvent.click(screen.getByTestId('modal-upgrade-ultra-btn'));
+
+    await waitFor(() => {
+      expect(createSessionSpy).toHaveBeenCalledWith({
+        plan_tier: 'ultra',
+        billing_cycle: 'monthly',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('modal-checkout-dest')).toBeDefined();
+    });
+  });
+
+  it('AppLayout renders Sidebar Quota Meter (used/limit), Plan Badge (BASIC / PRO), and Upgrade CTA link to /pricing', async () => {
+    const { unmount } = renderWithAuth(
+      <AppLayout>
+        <div>Dashboard Content</div>
+      </AppLayout>,
+      { user: createMockUser({ plan_tier: 'basic' }), initialEntries: ['/dashboard'] },
+    );
+
+    expect(screen.getByTestId('sidebar-quota-card')).toBeDefined();
+    expect(screen.getByTestId('sidebar-plan-badge').textContent).toBe('BASIC');
+    expect(screen.getByTestId('sidebar-quota-text').textContent).toBe('2 / 3');
+    expect(screen.getByTestId('sidebar-upgrade-link')).toBeDefined();
+    unmount();
+
+    // Render as Pro user -> badge is PRO, quota is 2 / 50
+    const proUser = createMockUser({
+      plan_tier: 'pro',
+      quota: {
+        ...createMockUser().quota!,
+        monthly_uploads_used: 2,
+        monthly_uploads_limit: 50,
+        monthly_uploads_remaining: 48,
+      },
+    });
+    renderWithAuth(
+      <AppLayout>
+        <div>Dashboard Content</div>
+      </AppLayout>,
+      { user: proUser, initialEntries: ['/dashboard'] },
+    );
+
+    expect(screen.getByTestId('sidebar-plan-badge').textContent).toBe('PRO');
+    expect(screen.getByTestId('sidebar-quota-text').textContent).toBe('2 / 50');
+  });
+});

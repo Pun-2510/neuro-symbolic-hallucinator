@@ -173,5 +173,39 @@ describe('useRole', () => {
     expect(result.current.isTeacher).toBe(false);
     expect(result.current.isUser).toBe(true);
     expect(result.current.role).toBe('user');
+    expect(result.current.planTier).toBe('basic');
+    expect(result.current.isBasic).toBe(true);
+    expect(result.current.isPaid).toBe(false);
+    expect(result.current.quota.monthly_uploads_limit).toBe(3);
+  });
+
+  it('unlocks deep inspection and logic trace capabilities when student upgrades to pro or ultra', () => {
+    const proStudent: User = {
+      ...userOf('user'),
+      plan_tier: 'pro',
+    };
+    const { result: proResult } = renderHook(() => useRole(), {
+      wrapper: hookWrapper(proStudent),
+    });
+    expect(proResult.current.planTier).toBe('pro');
+    expect(proResult.current.isPro).toBe(true);
+    expect(proResult.current.isPaid).toBe(true);
+    expect(proResult.current.quota.monthly_uploads_limit).toBe(50);
+    expect(proResult.current.has('view_document_inspector')).toBe(true);
+    expect(proResult.current.has('view_logic_trace')).toBe(true);
+    expect(proResult.current.has('view_orphan_detection')).toBe(true);
+
+    const ultraStudent: User = {
+      ...userOf('user'),
+      plan_tier: 'ultra',
+    };
+    const { result: ultraResult } = renderHook(() => useRole(), {
+      wrapper: hookWrapper(ultraStudent),
+    });
+    expect(ultraResult.current.planTier).toBe('ultra');
+    expect(ultraResult.current.isUltra).toBe(true);
+    expect(ultraResult.current.isPaid).toBe(true);
+    expect(ultraResult.current.quota.monthly_uploads_limit).toBe(1000);
+    expect(ultraResult.current.quota.max_pages_per_pdf).toBe(500);
   });
 });
