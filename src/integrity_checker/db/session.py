@@ -163,6 +163,54 @@ def _run_inline_migrations(engine: Engine) -> None:
                 "ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 1"
             )
 
+        # --- users (v2.2 — Premium Subscription & Quota fields) ---
+        if "plan_tier" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN plan_tier VARCHAR(20) DEFAULT 'basic'"
+            )
+            conn.exec_driver_sql(
+                "UPDATE users SET plan_tier = 'ultra' WHERE role = 'admin'"
+            )
+            conn.exec_driver_sql(
+                "UPDATE users SET plan_tier = 'pro' WHERE role = 'teacher'"
+            )
+        if "billing_cycle" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN billing_cycle VARCHAR(20)"
+            )
+        if "subscription_status" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN subscription_status VARCHAR(30) DEFAULT 'active'"
+            )
+        if "stripe_customer_id" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN stripe_customer_id VARCHAR(120)"
+            )
+        if "stripe_subscription_id" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN stripe_subscription_id VARCHAR(120)"
+            )
+        if "current_period_start" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN current_period_start DATETIME"
+            )
+        if "current_period_end" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN current_period_end DATETIME"
+            )
+        if "cancel_at_period_end" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN cancel_at_period_end INTEGER DEFAULT 0"
+            )
+        if "monthly_uploads_used" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN monthly_uploads_used INTEGER DEFAULT 0"
+            )
+        if "quota_reset_at" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN quota_reset_at DATETIME"
+            )
+
         # --- Clean up any historical orphan rows ---
         conn.exec_driver_sql(
             "DELETE FROM citations WHERE essay_id NOT IN (SELECT id FROM essays)"
@@ -208,19 +256,22 @@ def _seed_default_users(engine: Engine) -> None:
     import bcrypt
 
     defaults = [
-        ("admin", "admin123", "admin", "admin@example.com", "Administrator", 1),
-        ("teacher", "teacher123", "teacher", "teacher@example.com", "Demo Teacher", 1),
-        ("user", "user123", "user", "user@example.com", "Demo User", 0),
+        ("admin", "admin123", "admin", "admin@example.com", "Administrator", 1, "ultra"),
+        ("teacher", "teacher123", "teacher", "teacher@example.com", "Demo Teacher", 1, "pro"),
+        ("user", "user123", "user", "user@example.com", "Demo User", 0, "basic"),
     ]
     with Session(bind=engine) as session:
         existing_by_username = {u.username: u for u in session.query(User).all()}
         existing_emails = {u.email for u in existing_by_username.values() if u.email}
         added = False
-        for username, password, role, email, full_name, can_override in defaults:
+        for username, password, role, email, full_name, can_override, default_tier in defaults:
             if username in existing_by_username:
                 existing_user = existing_by_username[username]
                 if can_override and not existing_user.can_override_verdicts:
                     existing_user.can_override_verdicts = can_override
+                    added = True
+                if not getattr(existing_user, "plan_tier", None):
+                    existing_user.plan_tier = default_tier
                     added = True
                 continue
             pwd_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -233,6 +284,7 @@ def _seed_default_users(engine: Engine) -> None:
                     full_name=full_name,
                     is_active=1,
                     can_override_verdicts=can_override,
+                    plan_tier=default_tier,
                 )
             )
             added = True

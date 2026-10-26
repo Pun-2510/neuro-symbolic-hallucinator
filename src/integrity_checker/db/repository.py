@@ -12,9 +12,11 @@ from sqlalchemy.orm import Session
 
 from datetime import datetime, timezone
 
+from integrity_checker.billing.plans import default_plan_for_role
 from integrity_checker.db.models import (
     AuditLog,
     AuthToken,
+    BillingTransaction,
     CitationCache,
     CitationRecord,
     Class,
@@ -518,9 +520,11 @@ class Repository:
         institution: str | None = None,
         can_override_verdicts: bool | None = None,
         email_verified: bool = True,
+        plan_tier: str | None = None,
     ) -> User:
         if can_override_verdicts is None:
             can_override_verdicts = role in ("admin", "teacher")
+        resolved_tier = plan_tier or default_plan_for_role(role)
         user = User(
             username=username,
             password_hash=password_hash,
@@ -531,6 +535,7 @@ class Repository:
             institution=institution,
             can_override_verdicts=1 if can_override_verdicts else 0,
             email_verified=1 if email_verified else 0,
+            plan_tier=resolved_tier,
         )
         self.session.add(user)
         self.session.flush()
@@ -540,17 +545,77 @@ class Repository:
         user = self.session.get(User, user_id)
         if not user:
             return None
+        nullable_fields = {
+            "avatar_path",
+            "billing_cycle",
+            "current_period_start",
+            "current_period_end",
+            "stripe_subscription_id",
+        }
         for key, value in kwargs.items():
-            if value is None and key not in ("avatar_path",):
-                # Skip None values to keep partial-update semantics; avatar_path
-                # may be set to None to clear.
+            if value is None and key not in nullable_fields:
+                # Skip None values to keep partial-update semantics
                 continue
-            if key in ("is_active", "can_override_verdicts", "email_verified") and isinstance(value, bool):
+            if (
+                key in ("is_active", "can_override_verdicts", "email_verified", "cancel_at_period_end")
+                and isinstance(value, bool)
+            ):
                 value = 1 if value else 0
             if hasattr(user, key):
                 setattr(user, key, value)
         self.session.flush()
         return user
+
+    # -- Billing Transactions --
+
+    def create_billing_transaction(
+        self,
+        user_id: int,
+        stripe_session_id: str,
+        plan_tier: str,
+        billing_cycle: str,
+        amount_usd: float,
+        currency: str = "usd",
+        status: str = "pending",
+        payment_mode: str = "stripe_demo",
+        card_brand: str | None = "visa",
+        card_last4: str | None = "4242",
+    ) -> BillingTransaction:
+        tx = BillingTransaction(
+            user_id=user_id,
+            stripe_session_id=stripe_session_id,
+            plan_tier=plan_tier,
+            billing_cycle=billing_cycle,
+            amount_usd=amount_usd,
+            currency=currency,
+            status=status,
+            payment_mode=payment_mode,
+            card_brand=card_brand,
+            card_last4=card_last4,
+        )
+        self.session.add(tx)
+        self.session.flush()
+        return tx
+
+    def get_billing_transaction_by_session(
+        self, stripe_session_id: str
+    ) -> BillingTransaction | None:
+        return (
+            self.session.query(BillingTransaction)
+            .filter(BillingTransaction.stripe_session_id == stripe_session_id)
+            .first()
+        )
+
+    def list_billing_transactions_for_user(
+        self, user_id: int, limit: int = 50
+    ) -> list[BillingTransaction]:
+        return list(
+            self.session.query(BillingTransaction)
+            .filter(BillingTransaction.user_id == user_id)
+            .order_by(BillingTransaction.created_at.desc())
+            .limit(limit)
+            .all()
+        )
 
     def update_last_login(self, user_id: int) -> None:
         from datetime import datetime, timezone

@@ -13,6 +13,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from integrity_checker.api.deps import get_current_user, get_db, require_admin
 from integrity_checker.api.services.avatar_service import get_avatar_service
+from integrity_checker.billing.plans import PLAN_TIERS, get_user_subscription_summary
 from integrity_checker.db.models import VALID_USER_ROLES, User
 from integrity_checker.db.repository import Repository
 
@@ -31,6 +32,7 @@ class UserCreate(BaseModel):
     is_active: bool = True
     institution: str | None = Field(default=None, max_length=255)
     can_override_verdicts: bool | None = None
+    plan_tier: str | None = None
 
 
 class UserUpdate(BaseModel):
@@ -44,6 +46,7 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
     institution: str | None = Field(default=None, max_length=255)
     can_override_verdicts: bool | None = None
+    plan_tier: str | None = None
 
 
 class UserSelfUpdate(BaseModel):
@@ -70,6 +73,12 @@ class UserResponse(BaseModel):
     created_at: str | None
     institution: str | None = None
     can_override_verdicts: bool = False
+    plan_tier: str = "basic"
+    billing_cycle: str | None = None
+    subscription_status: str = "active"
+    cancel_at_period_end: bool = False
+    current_period_end: str | None = None
+    quota: dict | None = None
 
 
 class MessageResponse(BaseModel):
@@ -91,6 +100,7 @@ def _verify_password(password: str, hashed: str) -> bool:
 
 
 def _to_response(user: User) -> UserResponse:
+    sub = get_user_subscription_summary(user)
     return UserResponse(
         id=user.id,
         username=user.username,
@@ -103,6 +113,12 @@ def _to_response(user: User) -> UserResponse:
         created_at=user.created_at.isoformat() if user.created_at else None,
         institution=user.institution,
         can_override_verdicts=bool(user.can_override_verdicts),
+        plan_tier=sub["plan_tier"],
+        billing_cycle=sub["billing_cycle"],
+        subscription_status=sub["subscription_status"],
+        cancel_at_period_end=sub["cancel_at_period_end"],
+        current_period_end=sub["current_period_end"],
+        quota=sub["quota"],
     )
 
 
@@ -140,6 +156,11 @@ def create_user(
             status_code=400,
             detail=f"Role must be one of {list(VALID_USER_ROLES)}",
         )
+    if request.plan_tier is not None and request.plan_tier not in PLAN_TIERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"plan_tier must be one of {list(PLAN_TIERS)}",
+        )
 
     password_hash = _hash_password(request.password)
     user = repo.create_user(
@@ -151,6 +172,7 @@ def create_user(
         is_active=request.is_active,
         institution=request.institution,
         can_override_verdicts=request.can_override_verdicts,
+        plan_tier=request.plan_tier,
     )
     repo.commit()
     return _to_response(user)
@@ -225,6 +247,14 @@ def update_user(
 
     if request.can_override_verdicts is not None:
         update_data["can_override_verdicts"] = request.can_override_verdicts
+
+    if request.plan_tier is not None:
+        if request.plan_tier not in PLAN_TIERS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"plan_tier must be one of {list(PLAN_TIERS)}",
+            )
+        update_data["plan_tier"] = request.plan_tier
 
     if request.password is not None:
         update_data["password_hash"] = _hash_password(request.password)

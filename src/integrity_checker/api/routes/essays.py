@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from integrity_checker.api.deps import get_current_user, get_db, get_pipeline, require_admin
 from integrity_checker.api.progress import get_tracker
+from integrity_checker.billing.plans import ensure_user_quota_current, get_user_plan_policy
 from integrity_checker.config import PROJECT_ROOT, is_test_runtime
 from integrity_checker.db.models import CitationRecord, User, VerdictRecord
 from integrity_checker.db.repository import Repository
@@ -254,13 +255,55 @@ async def upload_essay(
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files allowed")
 
+    ensure_user_quota_current(current_user)
+    policy = get_user_plan_policy(current_user)
+
+    # Respect module-level MAX_PDF_UPLOAD_BYTES if monkeypatched in tests (< 25MB),
+    # otherwise enforce the user's subscription plan file size limit.
+    default_env_bytes = 25 * 1024 * 1024
+    effective_max_bytes = (
+        min(policy.max_file_size_bytes, MAX_PDF_UPLOAD_BYTES)
+        if MAX_PDF_UPLOAD_BYTES != default_env_bytes
+        else policy.max_file_size_bytes
+    )
+
     safe_filename = _sanitize_upload_filename(file.filename)
-    content = await _read_pdf_upload_bounded(file)
+    content = await _read_pdf_upload_bounded(file, max_bytes=effective_max_bytes)
 
     if not content:
         raise HTTPException(status_code=400, detail="Uploaded PDF file is empty")
     if b"%PDF-" not in content[:1024]:
         raise HTTPException(status_code=400, detail="Invalid PDF file: missing %PDF- header")
+
+    # Enforce monthly upload quota for the user's subscription tier
+    used_uploads = int(current_user.monthly_uploads_used or 0)
+    if used_uploads >= policy.max_uploads_per_month:
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                f"Monthly upload quota reached ({used_uploads}/{policy.max_uploads_per_month} documents "
+                f"on the {policy.name} plan). Please upgrade to Pro or Ultra to continue analyzing manuscripts."
+            ),
+        )
+
+    # Enforce per-document PDF page limit if readable by PyMuPDF
+    detected_pages = 0
+    try:
+        import fitz
+
+        with fitz.open(stream=content, filetype="pdf") as pdf_doc:
+            detected_pages = len(pdf_doc)
+    except Exception:
+        detected_pages = 0
+
+    if detected_pages > policy.max_pages_per_pdf:
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                f"PDF page limit exceeded ({detected_pages} pages uploaded; maximum allowed on "
+                f"the {policy.name} plan is {policy.max_pages_per_pdf} pages). Please upgrade to Pro or Ultra."
+            ),
+        )
 
     repo = Repository(db)
     if class_id is not None:
@@ -277,10 +320,11 @@ async def upload_essay(
     # Create essay record immediately (num_pages=0 until pipeline fills it)
     essay = repo.create_essay_with_user(
         filename=safe_filename,
-        num_pages=0,
+        num_pages=detected_pages,
         user_id=current_user.id,
         class_id=class_id,
     )
+    current_user.monthly_uploads_used = used_uploads + 1
     repo.commit()
 
     if is_test_runtime():

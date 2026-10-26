@@ -45,9 +45,23 @@ class User(Base):
     can_override_verdicts: Mapped[bool] = mapped_column(Integer, default=0)
     # v1.17 — email verification status (1 for admin/demo/verified, 0 for pending activation)
     email_verified: Mapped[bool] = mapped_column(Integer, default=1)
+    # v2.2 — Premium Subscription & Quota fields
+    plan_tier: Mapped[str] = mapped_column(String(20), default="basic")
+    billing_cycle: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    subscription_status: Mapped[str] = mapped_column(String(30), default="active")
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    current_period_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    cancel_at_period_end: Mapped[bool] = mapped_column(Integer, default=0)
+    monthly_uploads_used: Mapped[int] = mapped_column(Integer, default=0)
+    quota_reset_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     sessions: Mapped[list["Session"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     auth_tokens: Mapped[list["AuthToken"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    billing_transactions: Mapped[list["BillingTransaction"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
     essays: Mapped[list["EssayRecord"]] = relationship(back_populates="user")
@@ -259,6 +273,33 @@ class ClassMembership(Base):
 
     class_: Mapped["Class"] = relationship(back_populates="memberships")
     student: Mapped["User"] = relationship("User", foreign_keys=[student_id], back_populates="memberships")
+
+
+class BillingTransaction(Base):
+    """Stripe / Demo billing transaction and invoice record (v2.2)."""
+
+    __tablename__ = "billing_transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    stripe_session_id: Mapped[str] = mapped_column(String(120), unique=True, nullable=False, index=True)
+    stripe_payment_intent_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    plan_tier: Mapped[str] = mapped_column(String(20), nullable=False)  # "pro" | "ultra"
+    billing_cycle: Mapped[str] = mapped_column(String(20), nullable=False)  # "monthly" | "annual"
+    amount_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    currency: Mapped[str] = mapped_column(String(10), default="usd")
+    status: Mapped[str] = mapped_column(String(30), default="pending")  # "pending" | "succeeded" | "canceled" | "failed"
+    payment_mode: Mapped[str] = mapped_column(String(20), default="stripe_demo")  # "stripe_test" | "stripe_demo"
+    card_brand: Mapped[str | None] = mapped_column(String(20), default="visa")
+    card_last4: Mapped[str | None] = mapped_column(String(4), default="4242")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="billing_transactions")
 
 
 # ---------------------------------------------------------------------------

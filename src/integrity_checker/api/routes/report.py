@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from integrity_checker.api.deps import get_db, get_current_user
 from integrity_checker.api.progress import get_tracker
+from integrity_checker.billing.plans import get_user_plan_policy
 from integrity_checker.config import get_settings
 from integrity_checker.db.models import User
 from integrity_checker.db.repository import Repository
@@ -51,6 +52,18 @@ def get_report(
     # SECURITY: Mandatory ownership / teacher class check
     if not repo.can_user_access_essay(current_user, essay):
         raise HTTPException(status_code=403, detail="Access denied")
+
+    # Subscription plan export format check (Basic allows json only; Pro/Ultra unlock pdf, docx, csv)
+    if format in ("pdf", "docx", "csv"):
+        policy = get_user_plan_policy(current_user)
+        if format not in policy.allowed_export_formats:
+            raise HTTPException(
+                status_code=402,
+                detail=(
+                    f"Exporting reports in {format.upper()} format is a Pro / Ultra feature. "
+                    f"Your current plan is {policy.name}. Please upgrade to unlock academic exports."
+                ),
+            )
 
     # If the pipeline is still running, return 425 so the frontend knows to keep polling.
     tracker = get_tracker()

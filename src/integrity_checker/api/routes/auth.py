@@ -17,6 +17,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from integrity_checker.api.deps import get_current_user, get_db
 from integrity_checker.api.services.email_service import get_email_service
+from integrity_checker.billing.plans import get_user_subscription_summary
 from integrity_checker.config import get_settings, is_test_runtime
 from integrity_checker.db.models import User
 from integrity_checker.db.repository import Repository
@@ -210,6 +211,12 @@ class UserResponse(BaseModel):
     created_at: str | None = None
     institution: str | None = None
     can_override_verdicts: bool = False
+    plan_tier: str = "basic"
+    billing_cycle: str | None = None
+    subscription_status: str = "active"
+    cancel_at_period_end: bool = False
+    current_period_end: str | None = None
+    quota: dict | None = None
 
 
 class MessageResponse(BaseModel):
@@ -234,6 +241,7 @@ def _ensure_utc(dt: datetime) -> datetime:
 
 
 def _to_response_dict(user: User) -> dict:
+    sub = get_user_subscription_summary(user)
     return {
         "id": user.id,
         "username": user.username,
@@ -247,6 +255,12 @@ def _to_response_dict(user: User) -> dict:
         "created_at": user.created_at.isoformat() if user.created_at else None,
         "institution": user.institution,
         "can_override_verdicts": bool(user.can_override_verdicts),
+        "plan_tier": sub["plan_tier"],
+        "billing_cycle": sub["billing_cycle"],
+        "subscription_status": sub["subscription_status"],
+        "cancel_at_period_end": sub["cancel_at_period_end"],
+        "current_period_end": sub["current_period_end"],
+        "quota": sub["quota"],
     }
 
 
