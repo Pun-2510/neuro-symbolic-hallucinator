@@ -173,8 +173,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5 text-slate-600 dark:text-slate-300" />
           </button>
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-white dark:bg-white/95 p-1 flex items-center justify-center shadow-2xs ring-1 ring-slate-200/90 dark:ring-white/20 shrink-0">
+          <Link
+            to="/dashboard"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Go to dashboard"
+            className="group flex items-center gap-2 min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          >
+            <div className="w-7 h-7 rounded-lg bg-white dark:bg-white/95 p-1 flex items-center justify-center shadow-2xs ring-1 ring-slate-200/90 dark:ring-white/20 shrink-0 group-hover:scale-[1.03] transition-transform">
               <img
                 src="/citra-logo.png"
                 alt="CITRA"
@@ -187,7 +192,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="font-display text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
               CITRA
             </span>
-          </div>
+          </Link>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
