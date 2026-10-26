@@ -852,7 +852,7 @@ class IntegrityPipeline:
                     discovered = self._discover_implicit_body_context_for_reference(
                         citation, source, body_pages_for_discovery
                     )
-                    if discovered is not None:
+                    if isinstance(discovered, tuple) and len(discovered) == 3:
                         disc_page, disc_ctx, _disc_score = discovered
                         citation_context = disc_ctx
                         citation._context_source = "implicit_body_discovery"  # type: ignore[attr-defined]
