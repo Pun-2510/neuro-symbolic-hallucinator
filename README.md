@@ -1,6 +1,7 @@
 <div align="center">
 
 # CITRA — Verify Every Citation. Trace Every Source.
+citra.io.vn
 
 **Explainable Neuro-Symbolic Citation & Source Integrity Verification Platform · GROBID TEI-XML · Federated Scholarly Retrieval · Hybrid ML Calibration**
 
