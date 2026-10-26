@@ -1,7 +1,6 @@
 <div align="center">
 
 # CITRA — Verify Every Citation. Trace Every Source.
-citra.io.vn
 
 **Explainable Neuro-Symbolic Citation & Source Integrity Verification Platform · GROBID TEI-XML · Federated Scholarly Retrieval · Hybrid ML Calibration**
 
@@ -18,7 +17,14 @@ citra.io.vn
 
 *An editorial-grade academic citation debugger and thesis integrity verification workspace engineered for researchers, instructors, and university committees — combining structural PDF parsing, smart domain-aware retrieval across 8 scholarly databases, and transparent 5-stage Neuro-Symbolic decision traces.*
 
-[Visual Demo](#visual-demo--ui-walkthrough) · [Feature Matrix](#complete-feature-matrix) · [Neuro-Symbolic Architecture](#neuro-symbolic-architecture--cis-scoring) · [Quick Start](#quick-start--deployment) · [Demo Credentials](#default-demo-credentials) · [API & Docs](#api-reference--automated-testing)
+<br/>
+
+[![Live Production Demo](https://img.shields.io/badge/Live%20Demo-citra.io.vn-00E676?style=for-the-badge&logo=googlechrome&logoColor=black)](https://citra.io.vn)
+[![API Documentation](https://img.shields.io/badge/Swagger%20API-citra.io.vn%2Fdocs-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://citra.io.vn/docs)
+
+<br/>
+
+[🌐 Live Demo (citra.io.vn)](https://citra.io.vn) · [Visual Demo](#visual-demo--ui-walkthrough) · [Feature Matrix](#complete-feature-matrix) · [Neuro-Symbolic Architecture](#neuro-symbolic-architecture--cis-scoring) · [Quick Start](#quick-start--deployment) · [Demo Credentials](#default-demo-credentials) · [API & Docs](#api-reference--automated-testing)
 
 </div>
 
@@ -37,11 +43,12 @@ citra.io.vn
 5. [Real-World Evaluation & Benchmark Metrics](#real-world-evaluation--benchmark-metrics)
 6. [Tech Stack](#tech-stack)
 7. [Repository Structure](#repository-structure)
-8. [Quick Start & Deployment](#quick-start--deployment)
-9. [Default Demo Credentials](#default-demo-credentials)
-10. [Docker Services & Port Matrix](#docker-services--port-matrix)
-11. [API Reference & Automated Testing](#api-reference--automated-testing)
-12. [Documentation Index & Contributors](#documentation-index--contributors)
+8. [Live Production Demo](#live-production-demo)
+9. [Quick Start & Deployment](#quick-start--deployment)
+10. [Default Demo Credentials](#default-demo-credentials)
+11. [Docker Services & Port Matrix](#docker-services--port-matrix)
+12. [API Reference & Automated Testing](#api-reference--automated-testing)
+13. [Documentation Index & Contributors](#documentation-index--contributors)
 
 ---
 
@@ -350,6 +357,18 @@ essay-integrity-checker/
 │   └── screenshots/                    # High-resolution live UI screenshots
 └── reports/                            # Verified JSON audit reports for the 5 benchmark PDFs
 ```
+
+---
+
+## Live Production Demo
+
+The platform is deployed and running on Google Cloud Platform (GCP Compute Engine with Docker Compose, Nginx reverse proxy, and Let's Encrypt SSL):
+
+- 🌐 **Web Application**: [https://citra.io.vn](https://citra.io.vn)
+- 📚 **Swagger API Documentation**: [https://citra.io.vn/docs](https://citra.io.vn/docs)
+- 🩺 **Production API Health**: [https://citra.io.vn/api/health](https://citra.io.vn/api/health)
+
+You can log in directly using the [Default Demo Credentials](#default-demo-credentials) below.
 
 ---
 
