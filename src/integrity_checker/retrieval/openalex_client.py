@@ -7,6 +7,7 @@ Docs: https://docs.openalex.org/
 from __future__ import annotations
 
 import os
+import re
 from typing import Any
 
 import httpx
@@ -334,6 +335,22 @@ class OpenAlexClient(BaseScholarClient):
         return d.rstrip(".")
 
     @staticmethod
+    def _is_boilerplate_citation_abstract(text: str | None) -> bool:
+        """Detect publisher landing-page meta descriptions that are only bibliographic
+        strings (e.g., 'Author1, Author2. Proceedings of the ... 2019.') rather than an abstract.
+        """
+        if not text:
+            return True
+        s = text.strip()
+        if len(s) < 340 and re.search(
+            r"\.\s*(?:In\s+)?(?:Proceedings\s+of\s+the|Findings\s+of\s+the\s+Association|Transactions\s+of\s+the\s+Association)\b.*?\b(?:19|20)\d{2}\.?\s*$",
+            s,
+            re.IGNORECASE,
+        ):
+            return True
+        return False
+
+    @staticmethod
     def _reconstruct_abstract(inverted_index: dict | None) -> str | None:
         """Reconstruct plain-text abstract from OpenAlex abstract_inverted_index."""
         if not inverted_index or not isinstance(inverted_index, dict):
@@ -391,6 +408,8 @@ class OpenAlexClient(BaseScholarClient):
             abstract = OpenAlexClient._reconstruct_abstract(
                 work.get("abstract_inverted_index")
             )
+        if OpenAlexClient._is_boilerplate_citation_abstract(abstract):
+            abstract = None
 
         return SourceCandidate(
             source_name="openalex",

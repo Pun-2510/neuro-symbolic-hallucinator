@@ -1283,6 +1283,29 @@ class RetrievalOrchestrator:
                         if not fc.abstract:
                             fc.abstract = abs_text
                     return abs_text
+
+            # Fallback for ACL Anthology DOIs (10.18653/v1/<id>): fetch abstract directly from aclanthology.org
+            if ref_doi and ref_doi.lower().startswith("10.18653/v1/"):
+                acl_id = ref_doi.split("10.18653/v1/", 1)[1].strip("/")
+                if acl_id:
+                    import httpx
+
+                    async with httpx.AsyncClient(timeout=4.0, follow_redirects=True) as client:
+                        resp = await client.get(f"https://aclanthology.org/{acl_id}/")
+                        if resp.status_code == 200:
+                            m = re.search(
+                                r'<div class="card-body acl-abstract">.*?<span>(.*?)</span>',
+                                resp.text,
+                                re.S | re.I,
+                            )
+                            if m:
+                                acl_abs = re.sub(r"<[^>]+>", " ", m.group(1))
+                                acl_abs = re.sub(r"\s+", " ", acl_abs).strip()
+                                if len(acl_abs) >= 40:
+                                    for fc in found_cands:
+                                        if not fc.abstract:
+                                            fc.abstract = acl_abs
+                                    return acl_abs
         except Exception as exc:  # noqa: BLE001
             logger.debug(f"Abstract enrichment skipped: {exc}")
 
