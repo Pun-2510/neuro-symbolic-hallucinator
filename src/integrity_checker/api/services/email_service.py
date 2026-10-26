@@ -319,12 +319,20 @@ class EmailService:
             )
             return record
 
+        from_addr_formatted = formataddr((settings.email.from_name, settings.email.from_email))
+        from_domain = (
+            settings.email.from_email.split("@", 1)[1].strip()
+            if "@" in settings.email.from_email
+            else "citra.io.vn"
+        )
+
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = formataddr((settings.email.from_name, settings.email.from_email))
+        msg["From"] = from_addr_formatted
+        msg["Reply-To"] = from_addr_formatted
         msg["To"] = to_email
         msg["Date"] = formatdate(localtime=True)
-        msg["Message-ID"] = make_msgid(domain="citra.workspace")
+        msg["Message-ID"] = make_msgid(domain=from_domain)
 
         msg.attach(MIMEText(text_body, "plain", "utf-8"))
         msg.attach(MIMEText(html_body, "html", "utf-8"))

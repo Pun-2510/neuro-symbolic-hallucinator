@@ -126,7 +126,7 @@
     "checkEmailTitle": "Check your email inbox",
     "checkEmailSubtitle": "We sent an HTML activation email with a one-time verification link to:",
     "checkEmailStepsTitle": "Next steps to activate your workspace",
-    "checkEmailStep1": "Open the email from CITRA — Academic Source Verification.",
+    "checkEmailStep1": "Open the email from CITRA — Academic Source Verification in your inbox (or check your Spam/Promotions folder).",
     "checkEmailStep2": "Click the \"Activate Account Now\" button inside the email (valid for 24 hours).",
     "checkEmailStep3": "Once verified, sign in immediately to start verifying documents.",
     "resendInSeconds": "Resend available in {{seconds}}s",

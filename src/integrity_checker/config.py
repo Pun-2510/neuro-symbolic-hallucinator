@@ -135,8 +135,8 @@ class EmailConfig(BaseModel):
 
     @property
     def normalized_password(self) -> str:
-        """Return Google App Password with spaces stripped."""
-        return (self.smtp_password or "").replace(" ", "").strip()
+        """Return Google App Password with quotes and spaces stripped."""
+        return (self.smtp_password or "").strip().strip('"').strip("'").replace(" ", "").strip()
 
 
 class PathsConfig(BaseModel):
