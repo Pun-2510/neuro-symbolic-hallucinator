@@ -1224,17 +1224,29 @@ class RetrievalOrchestrator:
             return False
 
         # Build enrichment client pool (abstract-bearing sources not yet queried)
+        already_queried = {c.source_name for c in candidates if c.source_name}
+        signals = self.classify_citation_domain(citation)
         pool: list[BaseScholarClient] = []
-        if extra_clients:
-            pool.extend([c for c in extra_clients if c.name != "dblp"])
-        else:
-            signals = self.classify_citation_domain(citation)
-            for c in [self.openalex, self.arxiv, self.europepmc, self.openlibrary, self.semantic_scholar, self.coreapi]:
-                if c is None:
+        if extra_clients is not None:
+            for c in extra_clients:
+                if c is None or c.name in {"dblp", "crossref"} or c.name in already_queried:
                     continue
                 if c.name == "openlibrary" and not signals.get("is_book"):
                     continue
-                if c.name == "europepmc" and not (signals.get("is_biomed") or citation.doi):
+                if c.name == "arxiv" and signals.get("is_book"):
+                    continue
+                pool.append(c)
+        else:
+            enabled_clients = {c.name: c for c in self.clients()}
+            for name in ("openalex", "arxiv", "europepmc", "openlibrary", "semantic_scholar", "coreapi"):
+                c = enabled_clients.get(name)
+                if c is None or c.name in already_queried:
+                    continue
+                if c.name == "openlibrary" and not signals.get("is_book"):
+                    continue
+                if c.name == "arxiv" and signals.get("is_book"):
+                    continue
+                if c.name == "europepmc" and not (signals.get("is_biomed") or citation.doi or ref_doi):
                     continue
                 pool.append(c)
 
@@ -1252,10 +1264,10 @@ class RetrievalOrchestrator:
             # Fallback: if OpenAlex was queried by DOI and the publisher DOI record had no abstract,
             # try OpenAlex title search to pick up an arXiv/repository mirror with an abstract.
             if (
-                self.openalex is not None
+                isinstance(self.openalex, OpenAlexClient)
                 and ref_doi
                 and ref_title
-                and hasattr(self.openalex, "_lookup_by_search")
+                and (citation.doi or not citation.title)
             ):
                 title_only_cit = Citation(
                     raw_text=citation.raw_text,
@@ -1392,7 +1404,7 @@ class RetrievalOrchestrator:
             await self._enrich_missing_abstract(
                 citation,
                 valid,
-                extra_clients=tier2_clients if tier1_sufficient else None,
+                extra_clients=tier2_clients if tier1_sufficient else [],
             )
 
         deduped = self._dedupe_candidates(valid, citation=citation)
