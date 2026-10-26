@@ -265,6 +265,16 @@ def test_stripe_demo_checkout_upgrade_to_pro_and_ultra() -> None:
     assert verified["subscription"]["quota"]["allow_deep_inspector"] is True
     assert verified["transaction"]["card_last4"] == "4242"
 
+    # Both /api/auth/me and /api/users/me return the updated subscription & quota on page reload
+    for me_endpoint in ("/api/auth/me", "/api/users/me"):
+        me_resp = client.get(me_endpoint, headers=headers)
+        assert me_resp.status_code == 200
+        me_json = me_resp.json()
+        assert me_json["plan_tier"] == "pro"
+        assert me_json["billing_cycle"] == "annual"
+        assert me_json["quota"]["monthly_uploads_limit"] == 50
+        assert me_json["quota"]["allow_deep_inspector"] is True
+
     # Step 4: Verify user can now upload a 20-page PDF (4th upload of the month) AND export PDF/DOCX/CSV
     pdf_20_pages = _make_pdf_bytes(num_pages=20)
     with patch("integrity_checker.api.routes.essays._run_pipeline_task"):

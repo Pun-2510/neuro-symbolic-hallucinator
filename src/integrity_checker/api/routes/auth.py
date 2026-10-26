@@ -678,20 +678,7 @@ def logout(
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     """Get current user info (full profile)."""
-    return UserResponse(
-        id=current_user.id,
-        username=current_user.username,
-        email=current_user.email,
-        full_name=current_user.full_name,
-        role=current_user.role,
-        is_active=bool(current_user.is_active),
-        email_verified=bool(getattr(current_user, "email_verified", True)),
-        avatar_url=current_user.avatar_path,
-        last_login_at=current_user.last_login_at.isoformat() if current_user.last_login_at else None,
-        created_at=current_user.created_at.isoformat() if current_user.created_at else None,
-        institution=current_user.institution,
-        can_override_verdicts=bool(current_user.can_override_verdicts),
-    )
+    return UserResponse(**_to_response_dict(current_user))
 
 
 @router.get("/dev/latest-email")

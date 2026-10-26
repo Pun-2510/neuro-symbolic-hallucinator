@@ -70,7 +70,8 @@ export function BillingSuccessPage() {
     return () => {
       active = false;
     };
-  }, [sessionId, refreshUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   if (loading) {
     return (
