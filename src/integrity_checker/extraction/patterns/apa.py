@@ -88,7 +88,7 @@ _APA_REFERENCE_ENTRY = CompiledPattern.create(
     pattern=(
         r"^"
         r"(?P<authors>.+?)"
-        r"\s+\(\s*(?:(?P<year>\d{4})(?P<suffix>[a-z])?(?:\s*,\s*[^)]+)?|(?P<nd>n\.?\s*d\.?))\s*\)"
+        r"\s+\(\s*(?:(?P<year>\d{4})(?P<suffix>[a-z])?(?:\s*,\s*[^)]+)?|(?P<nd>n\.?\s*d\.?)(?:-(?P<nd_suffix>[a-z]))?)\s*\)"
         r"\.?\s*"
         r"(?P<title>[^\.]+?)"
         r"\.(?:\s*)"
@@ -526,24 +526,57 @@ class APAFormat:
             authors_str = re.sub(r"^\[\s*\d+\s*\]\s*", "", authors_str).strip()
             citation.authors = self._parse_authors(authors_str)
 
-        # Extract year (for "(n.d.)" entries, fallback to retrieval/access year in venue)
+        # Extract year (for "(n.d.)" entries, only fallback to explicit Retrieved/Accessed year, not URL path years)
         citation.year = match.group("year")
-        if not citation.year:
-            venue_year_m = re.search(r"\b((?:19|20)\d{2})\b", match.group("venue") or "")
+        if not citation.year and not match.group("nd"):
+            venue_no_url = re.sub(r"https?://\S+", "", match.group("venue") or "")
+            venue_year_m = re.search(r"\b((?:19|20)\d{2})\b", venue_no_url)
             if venue_year_m:
                 citation.year = venue_year_m.group(1)
-        suffix = match.group("suffix")
+        suffix = match.group("suffix") or match.groupdict().get("nd_suffix")
         citation.year_suffix = suffix if suffix else None
 
         # Extract title and venue (rest of the text after title)
         title = match.group("title").strip()
         venue = match.group("venue").strip()
 
-        # Rejoin title if it was split at a Vietnamese abbreviation like "Tp. HCM."
-        while re.search(r"\b(?:Tp|TP|ThS|TS|PGS|GS)$", title) and ". " in venue:
+        # Rejoin title if it was split at an abbreviation, middle initial, or decimal (e.g. "Tp. HCM.", "fMRI vs. SPECT", "Dr. Amen", "Daniel G. Amen", "Version 24.12")
+        while (
+            re.search(
+                r"(?:\b(?:Tp|TP|ThS|TS|PGS|GS|vs|Dr|Mr|Mrs|Ms|St|Jr|Sr|U\.S|U\.K|No|Vol|Ed|Fig|al|Inc|Ltd|Co|Corp|[A-Z][a-z]{2,}\s+[A-Z])|\d)$",
+                title,
+            )
+            and ". " in venue
+        ):
             next_part, rest_venue = venue.split(". ", 1)
+            if next_part.strip().lower().startswith(("http://", "https://")):
+                break
             title = f"{title}. {next_part.strip()}"
             venue = rest_venue.strip()
+
+        # Detect Title-first anonymous APA entry where the article title precedes (Year)/(n.d.)
+        # and only the site/publisher name + URL follow (Year):
+        # e.g. "CAC payback period vs LTV: CAC ratio. (2022). MetricHQ. https://..."
+        venue_without_url = re.sub(r"\s*(?:https?://|www\.)\S+\s*", "", venue).strip().rstrip(".")
+        if (
+            not venue_without_url
+            and authors_str
+            and not re.search(r"[A-Z][a-z]+,\s*[A-Z]\.", authors_str)
+            and (
+                any(ch in authors_str for ch in (":", "?", "|"))
+                or authors_str[0].islower()
+                or re.search(
+                    r"\b(?:what\s+is|how\s+to|metrics\s+for|state\s+of|top\s+\d+|top\s+fitness|growth|statistics|payback\s+period)\b",
+                    authors_str,
+                    re.I,
+                )
+            )
+        ):
+            real_title = authors_str.strip().rstrip(".")
+            real_site = title.strip().rstrip(".")
+            title = real_title
+            venue = real_site
+            citation.authors = [_make_corp_author(real_site)]
 
         # TDTU Vietnamese thesis format uses a comma after (Luận án ...), e.g.:
         # "Title (Luận án Tiến sĩ kinh tế), Trường Đại học Kinh tế Tp. HCM, Việt Nam."

@@ -112,17 +112,35 @@ _CORPORATE_AUTHOR_RE = re.compile(
     r"|Department|Ministry|Association|Organization|Organisation|Institute|Institution"
     r"|Council|Committee|Commission|Agency|Bureau|Office|University|College"
     r"|World\s+Health|United\s+Nations|World\s+Bank|Reserve\s+Bank|General\s+Statistics"
-    r"|International\s+Monetary|European\s+Union|National\s+Institute|Australian\s+Council)\b"
+    r"|International\s+Monetary|European\s+Union|National\s+Institute|Australian\s+Council"
+    r"|Barnes\s*&\s*Noble|Bookish\s+Goblin|ReadDown|Goodreads|Calibraint|Fortinet|FireEye"
+    r"|Radware|MITRE|IBM|OpenRocket|MathWorks|Statista|Liberty\s+Rocketry)\b"
     r"|\b(?:of|for)\s+(?:the\s+)?[A-ZÀ-Ý]"
     r"|\b(?:PTNT|GD&ĐT|KH&CN|GTVT|TN&MT|LĐTB&XH|Association|Organization|Organisation"
-    r"|Ministry|Department|University|Institute|Council|Government|Corporation|Administration)\b",
+    r"|Ministry|Department|University|Institute|Institution|Council|Government|Corporation"
+    r"|Administration|Center|Centre|Research|Advisors|Project|Team|Developers|Clinics"
+    r"|Foundation|Society|Federation|Encyclopedia|Archive|Initiative|Network|Contributors"
+    r"|Guard|Force|Command|Commission|Intelligence|Security|Deals|Drug)\b",
     re.IGNORECASE,
 )
 
 
+_CREDENTIAL_NOISE_RE = re.compile(
+    r"(?:\s*\[[^\]]+\]|,\s*(?:Ph\.?D\.?|M\.?D\.?|Esq\.?|ATC|PT|SCS|CSCS|FACSM|RN|MPH|Ed\.?D\.?|Psy\.?D\.?)\b)+",
+    re.IGNORECASE,
+)
+
+
+def _strip_author_credentials(raw: str) -> str:
+    """Remove bracketed aliases (e.g. '[Doctor Mike]') and academic credentials ('PhD, ATC')."""
+    if not raw:
+        return ""
+    return _CREDENTIAL_NOISE_RE.sub("", raw).strip()
+
+
 def _is_corporate_author(raw: str) -> bool:
     """True if ``raw`` represents an organization/institution rather than personal names."""
-    cleaned = (raw or "").strip().rstrip(".,;").strip()
+    cleaned = _strip_author_credentials((raw or "").strip()).rstrip(".,;").strip()
     if not cleaned:
         return False
     # If it contains "Surname, I." APA initial pattern, it's personal author(s)
@@ -186,8 +204,10 @@ def normalize_author(raw: str) -> Author:
     if not raw:
         return Author(last_name="", raw="")
 
-    # Chuẩn hoá Unicode (NFC) trước
-    raw = unicodedata.normalize("NFC", raw)
+    # Chuẩn hoá Unicode (NFC) trước + strip credentials / bracketed handles
+    raw = _strip_author_credentials(unicodedata.normalize("NFC", raw))
+    if not raw:
+        return Author(last_name="", raw="")
 
     # FIX: Handle "et al." / "và cộng sự" / "và cs." pattern - NOT part of the author name
     et_al_match = re.search(
@@ -319,7 +339,9 @@ def parse_authors(raw: str, format_name: str | None = None) -> list[Author]:
     if not raw:
         return []
 
-    raw_nfc = unicodedata.normalize("NFC", raw.strip())
+    raw_nfc = _strip_author_credentials(unicodedata.normalize("NFC", raw.strip()))
+    if not raw_nfc:
+        return []
     if _is_corporate_author(raw_nfc):
         corp_author = normalize_author(raw_nfc)
         return [corp_author] if corp_author.last_name else []
@@ -604,21 +626,21 @@ def _safe_parse(piece: str) -> Author | None:
 # Compound particles (van der, de la) need to be matched together.
 # Use ordered alternation: longest first ("van der", "de la", etc.) then individual.
 _PARTICLES_GROUP = (
-    r"(?:van\s+der|ten\s+ter|de\s+la|der\s+den|zu\s+zur|le\s+la)?"  # compound particles first
-    r"(?:van|de|der|den|von|zu|zur|af|le|la|du|di|da|el|al|ten|ter)?"  # then single particles
+    r"(?:[Vv]an\s+der|[Tt]en\s+ter|[Dd]e\s+la|[Dd]er\s+den|[Zz]u\s+zur|[Ll]e\s+la|[Dd]os\s+[Rr]eis)?"  # compound particles first
+    r"(?:[Vv]an|[Dd]e|[Dd]er|[Dd]en|[Vv]on|[Zz]u|[Zz]ur|[Aa]f|[Ll]e|[Ll]a|[Dd]u|[Dd]i|[Dd]a|[Dd]os|[Ee]l|[Aa]l|[Tt]en|[Tt]er|[Ss]t\.)?"  # then single particles
 )
 
 _APA_AUTHOR_RE = re.compile(
     rf"""
     (?P<author>
         { _PARTICLES_GROUP }\s*  # optional particles
-        {_UPPER_VN}[a-zà-ỹ\-\']+(?:[A-ZÀ-Ý][a-zà-ỹ\-\']+)*   # last name MUST start with uppercase + lowercase
+        {_UPPER_VN}[a-zà-ỹ\-\'\u2019]+(?:[A-ZÀ-Ý][a-zà-ỹ\-\'\u2019]+)*(?:\s+{_UPPER_VN}[a-zà-ỹ\-\'\u2019]+){{0,2}}   # 1-3 word surname
         ,\s*
-        (?:{_UPPER_VN}\.(?:\s*{_UPPER_VN}\.?)*|{_UPPER_VN}(?:\s+{_UPPER_VN})*)(?![A-Za-zÀ-ỹ])
+        (?:{_UPPER_VN}\.(?:\s*[-–]?\s*{_UPPER_VN}\.?)*|{_UPPER_VN}(?:\s*[-–]?\s*{_UPPER_VN})*)(?![A-Za-zÀ-ỹ])
     |
-        {_UPPER_VN}[a-zà-ỹ\-\']+(?:[A-ZÀ-Ý][a-zà-ỹ\-\']+)*   # last name start with uppercase + lowercase
+        {_UPPER_VN}[a-zà-ỹ\-\'\u2019]+(?:[A-ZÀ-Ý][a-zà-ỹ\-\'\u2019]+)*(?:\s+{_UPPER_VN}[a-zà-ỹ\-\'\u2019]+){{0,2}}   # 1-3 word surname
         ,\s*
-        (?:{_UPPER_VN}\.(?:\s*{_UPPER_VN}\.?)*|{_UPPER_VN}(?:\s+{_UPPER_VN})*)(?![A-Za-zÀ-ỹ])
+        (?:{_UPPER_VN}\.(?:\s*[-–]?\s*{_UPPER_VN}\.?)*|{_UPPER_VN}(?:\s*[-–]?\s*{_UPPER_VN})*)(?![A-Za-zÀ-ỹ])
     )
     """,
     re.VERBOSE,

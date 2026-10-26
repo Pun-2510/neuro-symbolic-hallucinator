@@ -175,13 +175,16 @@ _LEGAL_HEAD_R = (
     r"|(?:Nghị\s+định|Thông\s+tư(?:\s+liên\s+tịch)?|Quyết\s+định|Nghị\s+quyết(?:\s+liên\s+tịch)?|Chỉ\s+thị)\s+(?:số\s+)?\d+/\d{4}/)"
 )
 _MLA_BOOK_AUTHOR_HEAD_R = (
-    rf"{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s+{_UPPER_VN_R}[A-Za-zÀ-ỹ.\s'\u2019\-]{{1,35}}?(?:,\s*et\s+al\.|\.)\s+(?=[A-Z0-9\"\u201c])"
+    rf"(?:{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s+{_UPPER_VN_R}[A-Za-zÀ-ỹ.\s'\u2019\-]{{1,35}}?(?:,\s*et\s+al\.|\.)"
+    r"|(?:Homer|Aeschylus|Euripides|Herodotus|Sophocles|Plato|Aristotle|Virgil|Ovid|Seneca|Epictetus)\."
+    r"|(?:The\s+)?(?:English\s+Standard\s+Version|ESV(?:\s+Study)?|King\s+James|New\s+International\s+Version|NIV|NKJV|NASB|Holy)\s+Bible[.,]"
+    r"|[\-\u2013\u2014_]{3,}\.)\s+(?=[A-Z0-9\"\u201c])"
 )
 _INLINE_ENTRY_START_RE = re.compile(
     rf"(?:{_PERSONAL_AUTHOR_HEAD_R}|{_DATED_WEB_AUTHOR_HEAD_R}|{_CORP_AUTHOR_HEAD_R}|{_LEGAL_HEAD_R})"
 )
 _MLA_INLINE_SPLIT_RE = re.compile(
-    rf"(?<=\b(?:19|20)\d{{2}}\.)\s+(?={_MLA_BOOK_AUTHOR_HEAD_R})"
+    rf"(?:(?<=\b(?:19|20)\d{{2}}\.)|(?<=ProQuest Ebook Central\.)|(?<=Google Scholar\.))\s+(?={_MLA_BOOK_AUTHOR_HEAD_R})"
 )
 
 # URL/DOI terminator — most web-style APA/MLA entries end with one of these
@@ -290,19 +293,25 @@ def _is_fake_entry(entry: str) -> bool:
     # FIX v1.11: Remove [N] prefix for pattern matching
     text_without_index = re.sub(r'^\[\s*\d+\s*\]\s*', '', text_stripped)
 
+    # Check for basic citation structure (author + year)
+    has_year = bool(re.search(r'\b(19|20)\d{2}\b', text_stripped))
+    has_author_pattern = bool(re.search(r'[A-Z][a-z]+,\s*[A-Z]', text_stripped))
+    has_doi_or_url = bool(_DOI_RE.search(text_stripped) or _URL_RE.search(text_stripped))
+
     # Check against fake entry patterns (both with and without [N] prefix)
     for pattern in _FAKE_ENTRY_PATTERNS:
         if pattern.search(text_stripped) or pattern.search(text_without_index):
+            # A reference containing an explicit DOI or URL is not a methodology section heading
+            if has_doi_or_url and pattern.pattern in (
+                r'^\[\s*\d+\s*\]\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+){2,}:',
+                r'^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){2,}:',
+            ):
+                continue
             return True
 
     # Check for method description indicators
     lower_entry = text_without_index.lower()
     indicator_count = sum(1 for ind in _METHOD_INDICATORS if ind in lower_entry)
-
-    # Check for basic citation structure (author + year)
-    has_year = bool(re.search(r'\b(19|20)\d{2}\b', text_stripped))
-    has_author_pattern = bool(re.search(r'[A-Z][a-z]+,\s*[A-Z]', text_stripped))
-    has_doi_or_url = bool(_DOI_RE.search(text_stripped) or _URL_RE.search(text_stripped))
 
     # If many method indicators but no year or author pattern, it's fake
     if indicator_count >= 2 and not has_year and not has_author_pattern:
@@ -657,7 +666,26 @@ class ReferenceListParser:
             r"\1\2",
             flat,
         )
-        flat = re.sub(r"(https?://[^\s/]+(?:/[^\s/]+)*/)\s+([A-Za-z0-9_\-]+)", r"\1\2", flat)
+        flat = re.sub(r"\.(p)\s+(df)\b", r".\1\2", flat, flags=re.IGNORECASE)
+        flat = re.sub(r"\.(ht)\s+(ml?)\b", r".\1\2", flat, flags=re.IGNORECASE)
+        flat = re.sub(
+            r"([a-z0-9_])_([a-z]{1,4})\s+([a-z0-9_]+\.html?)\b",
+            r"\1_\2\3",
+            flat,
+            flags=re.IGNORECASE,
+        )
+        # Only join a broken URL after '/' or '-' when the next token starts with lowercase/digit
+        # and is NOT the start of a new bibliography entry (never glue capitalized author surnames!).
+        flat = re.sub(
+            r"(https?://[^\s/]+(?:/[^\s/]+)*[/\-])\s+([a-z0-9_~%#][^\s]*)",
+            r"\1\2",
+            flat,
+        )
+        flat = re.sub(
+            r"\b(10\.\d{4,9}/[A-Za-z0-9._;()/-]+[-/])\s+(\d+[A-Za-z0-9._;()/-]*)",
+            r"\1\2",
+            flat,
+        )
 
         # Step 3: Split at every URL/DOI terminator.
         matches = list(_URL_BOUNDARY_RE.finditer(flat))
@@ -804,8 +832,9 @@ class ReferenceListParser:
         entry = entry.replace("\n", " ").replace("  ", " ")
         entry = entry.replace("\u2018\u2018", "\u201c").replace("\u2019\u2019", "\u201d")
         entry = re.sub(r"\b(https?)\s*:\s*//\s*", r"\1://", entry, flags=re.IGNORECASE)
+        entry = re.sub(r"\.(p)\s+(df)\b", r".\1\2", entry, flags=re.IGNORECASE)
         for _ in range(3):
-            entry = re.sub(r"(https?://\S*[/_\-~])\s+([A-Za-z0-9_\-~])", r"\1\2", entry)
+            entry = re.sub(r"(https?://\S*[/_\-~])\s+([a-z0-9_\-~])", r"\1\2", entry)
             entry = re.sub(r"(https?://\S*\.)\s+([a-z0-9_\-~])", r"\1\2", entry)
 
         # FIX: Extract numeric_index first if entry starts with [N] prefix
@@ -823,7 +852,9 @@ class ReferenceListParser:
                 legal_citation.numeric_index = numeric_index
             return legal_citation
 
-        # Scriptural / Bible edition entry (e.g. "The Bible. ESV ed., Crossway, 2022.")
+        # Scriptural / Bible edition entry (e.g. "The Bible. ESV ed., Crossway, 2022.",
+        # "English Standard Version Bible. Crossway Bibles, 2016.",
+        # "The ESV Study Bible, Wheaton, IL: Crossway, 2008.")
         bible_m = re.match(
             r"^The\s+Bible\.\s*(?:([A-Z]{2,6})\s+ed\.,\s*)?([^,]+),\s*((?:19|20)\d{2})\.?$",
             entry.strip(),
@@ -842,6 +873,29 @@ class ReferenceListParser:
                 matched_pattern="mla_bible_edition",
                 authors=[ed_code],
                 title=f"The Bible ({ed_code} ed.)" if bible_m.group(1) else "The Bible",
+                year=yr,
+                venue=pub,
+                confidence=0.9,
+            )
+
+        bible_named_m = re.match(
+            r"^(?P<btitle>(?:The\s+)?(?:English\s+Standard\s+Version|ESV(?:\s+Study)?|King\s+James|New\s+International\s+Version|NIV|NKJV|NASB|RSV|NRSV|Holy)\s+Bible)[.,]\s*(?:(?P<city>[A-Za-z.\s]+,\s*[A-Z]{2}):\s*)?(?P<pub>[^,]+),\s*(?P<yr>(?:19|20)\d{2})\.?$",
+            entry.strip(),
+            re.IGNORECASE,
+        )
+        if bible_named_m:
+            btitle = bible_named_m.group("btitle").strip()
+            pub = bible_named_m.group("pub").strip()
+            yr = bible_named_m.group("yr")
+            return Citation(
+                raw_text=entry.strip(),
+                citation_type=CitationType.REFERENCE_LIST,
+                style=CitationStyle.MLA,
+                page_num=page_num,
+                order_index=order_index,
+                matched_pattern="mla_bible_edition",
+                authors=[btitle],
+                title=btitle,
                 year=yr,
                 venue=pub,
                 confidence=0.9,

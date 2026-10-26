@@ -184,18 +184,31 @@ class DocumentParser:
             )
             parser_used = "regex"  # Fallback to regex since PyMuPDF failed
 
+        total_chars = sum(len((p.text or "").strip()) for p in (text_doc.pages or []))
+        is_scanned_empty_pdf = bool(
+            text_doc.num_pages > 0
+            and total_chars == 0
+            and self._grobid_post_fn is None
+        )
+        if is_scanned_empty_pdf:
+            warnings.append(
+                "SCANNED_PDF_NO_TEXT_LAYER: Document has pages but 0 extractable text characters; OCR is required."
+            )
+            parser_used = "regex"
+            grobid_status = "unavailable"
+
         # 2. GROBID (optional)
         grobid_out: Optional[GrobidOutput] = None
 
         # Try to use GrobidServiceManager for better integration
         grobid_manager = None
-        if use_service_manager and self.config.extraction.grobid.enabled:
+        if not is_scanned_empty_pdf and use_service_manager and self.config.extraction.grobid.enabled:
             try:
                 grobid_manager = get_grobid_manager()
             except Exception as exc:
                 logger.debug("GrobidServiceManager not available: %s", exc)
 
-        if self.config.extraction.grobid.enabled:
+        if not is_scanned_empty_pdf and self.config.extraction.grobid.enabled:
             try:
                 # Check if GROBID is available (via service manager)
                 grobid_available = (
@@ -331,7 +344,7 @@ class DocumentParser:
         body_citations = self._extract_body_citations(sections, text_doc)
 
         # 3.3 References (ưu tiên GROBID, fallback regex)
-        references = self._extract_references(sections, grobid)
+        references = self._extract_references(sections, grobid, text_doc)
 
         # 3.3b MLA reference-guided in-text extraction (for MLA documents with page-less
         # parentheticals like "(Felson)", "(Goodreads)", or narrative "George Athas ... (260)")
@@ -552,6 +565,7 @@ class DocumentParser:
         self,
         sections: list[DocumentSection],
         grobid: Optional[GrobidOutput],
+        source_doc: Optional[Document] = None,
     ) -> list[Citation]:
         """Trích references — GROBID + regex merge với deduplication.
 
@@ -573,22 +587,19 @@ class DocumentParser:
             (s.text or "") for s in sections if s.section_type == SectionType.APPENDIX
         ).lower()
 
+        # If a multi-page document (3+ pages) has no BIBLIOGRAPHY section at all (e.g. 3.pdf screenplay),
+        # ignore any GROBID-hallucinated references from body text.
+        has_no_bib_section = bool(
+            source_doc is not None
+            and len(source_doc.pages or []) >= 3
+            and not bib_text_norm.strip()
+        )
+
         grobid_refs: list[Citation] = []
-        if grobid is not None and grobid.is_available and grobid.bibliography:
+        if not has_no_bib_section and grobid is not None and grobid.is_available and grobid.bibliography:
             raw_grobid_refs = self._grobid_to_citations(grobid)
             for ref in raw_grobid_refs:
-                if (
-                    _is_fake_entry(ref.raw_text)
-                    or (
-                        ref.year is None
-                        and not ref.doi
-                        and not ref.url
-                        and (
-                            _is_fake_entry(ref.title or "")
-                            or _is_fake_entry(ref.venue or "")
-                        )
-                    )
-                ):
+                if _is_fake_entry(ref.raw_text):
                     logger.debug(
                         f"Filtered fake GROBID entry before indexing: {ref.raw_text[:50]}..."
                     )
@@ -845,8 +856,27 @@ class DocumentParser:
             donor_is_multi_chunk = len(donor.raw_text or "") > max(
                 len(target.raw_text or "") * 2.2, 320
             )
-            if not target.doi and donor.doi and not donor_is_multi_chunk:
-                target.doi = donor.doi
+            # Restore dropped leading authors when GROBID missed the first author(s) on a page/column break (e.g. 9.pdf [14, 20])
+            if (
+                donor.authors
+                and target.authors
+                and len(donor.authors) > len(target.authors)
+                and not donor_is_multi_chunk
+            ):
+                t_last = (getattr(target.authors[-1], "last_name", None) or str(target.authors[-1])).split(",")[0].strip().lower()
+                d_last = (getattr(donor.authors[-1], "last_name", None) or str(donor.authors[-1])).split(",")[0].strip().lower()
+                if t_last and t_last == d_last:
+                    target.authors = [
+                        getattr(a, "raw", None) or str(a) for a in donor.authors
+                    ]
+
+            if donor.doi and not donor_is_multi_chunk:
+                if (
+                    not target.doi
+                    or target.doi.endswith("-")
+                    or (donor.doi.lower().startswith(target.doi.lower()) and len(donor.doi) > len(target.doi))
+                ):
+                    target.doi = donor.doi
             if not target.url and donor.url and not donor_is_multi_chunk:
                 target.url = donor.url
             if not target.venue and donor.venue:
@@ -933,6 +963,55 @@ class DocumentParser:
                     _enrich_grobid_ref(g_num, c)
                     logger.debug(
                         f"Skipping regex duplicate at same numeric_index={c.numeric_index}: {c.raw_text[:50]}"
+                    )
+                    continue
+
+            # Check URL match or title/raw_text substring overlap against GROBID entries (BUG-15)
+            c_url_norm = (c.url or "").strip().rstrip("/.,;").lower()
+            c_title_norm = re.sub(r"[^\w\s]", " ", (c.title or "").lower())
+            c_title_norm = re.sub(r"\s+", " ", c_title_norm).strip()
+            overlap_g: Optional[Citation] = None
+            for g in grobid_refs:
+                g_url_norm = (g.url or "").strip().rstrip("/.,;").lower()
+                if c_url_norm and g_url_norm and (c_url_norm == g_url_norm or c_url_norm in g_url_norm or g_url_norm in c_url_norm):
+                    overlap_g = g
+                    break
+                if c.doi and g.doi and (c.doi.lower().startswith(g.doi.lower()) or g.doi.lower().startswith(c.doi.lower())):
+                    overlap_g = g
+                    break
+                g_title_norm = re.sub(r"[^\w\s]", " ", (g.title or "").lower())
+                g_title_norm = re.sub(r"\s+", " ", g_title_norm).strip()
+                g_raw_norm = re.sub(r"[^\w\s]", " ", (g.raw_text or "").lower())
+                g_raw_norm = re.sub(r"\s+", " ", g_raw_norm).strip()
+                c_raw_norm = re.sub(r"[^\w\s]", " ", (c.raw_text or "").lower())
+                c_raw_norm = re.sub(r"\s+", " ", c_raw_norm).strip()
+                if len(c_title_norm) >= 12 and (c_title_norm in g_title_norm or c_title_norm in g_raw_norm):
+                    overlap_g = g
+                    break
+                if len(g_title_norm) >= 12 and (g_title_norm in c_title_norm or g_title_norm in c_raw_norm):
+                    overlap_g = g
+                    break
+            if overlap_g is not None:
+                _enrich_grobid_ref(overlap_g, c)
+                logger.debug(f"Skipping overlapping regex entry: {c.raw_text[:50]}")
+                continue
+
+            # When GROBID has already extracted a substantive bibliography (>= 5 entries),
+            # do not append noisy cross-style fallback fragments or unsplit multi-entry chunks.
+            if len(grobid_refs) >= 5:
+                if (c.matched_pattern or "") in {
+                    "harvard_article",
+                    "harvard_book",
+                    "apa_fallback",
+                    "chicago_fallback",
+                    "mla_fallback",
+                    "vancouver_reference_entry",
+                    "nature_book",
+                    "acm_fallback",
+                    "unquoted_book_entry",
+                } or len(c.raw_text or "") > 420:
+                    logger.debug(
+                        f"Skipping noisy regex fallback ({c.matched_pattern}) when GROBID is present: {c.raw_text[:50]}"
                     )
                     continue
 

@@ -141,6 +141,15 @@ def _grobid_bib_to_citation(bib: GrobidBibEntry, order_index: int) -> Citation:
     if year and len(year) > 4:
         year_suffix = year[4:]
         year = year[:4]
+    raw_ref_str = getattr(bib, "raw_reference", "") or ""
+    if not year_suffix and raw_ref_str:
+        suf_m = re.search(
+            r"\(\s*(?:(?:19|20)\d{2}|n\.?\s*d\.?)-?([a-z])\b",
+            raw_ref_str,
+            re.IGNORECASE,
+        )
+        if suf_m:
+            year_suffix = suf_m.group(1).lower()
 
     # Title: GROBID sometimes attaches year prefix to title
     # e.g. "2018a. Actual Title Here" → "Actual Title Here"
@@ -177,7 +186,9 @@ def _grobid_bib_to_citation(bib: GrobidBibEntry, order_index: int) -> Citation:
         raw_parts.append(f"DOI: {bib.doi}")
     if url:
         raw_parts.append(url)
-    raw_text = " ".join(raw_parts) if raw_parts else title or getattr(bib, "raw_reference", "") or ""
+    raw_text = " ".join(raw_parts) if raw_parts else title or raw_ref_str or ""
+    if len(raw_text) < 35 and len(raw_ref_str) > len(raw_text):
+        raw_text = raw_ref_str
 
     # Estimate confidence based on field completeness
     confidence = _estimate_bib_confidence(bib, authors_raw, title, year, bib.doi)
