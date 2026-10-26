@@ -355,6 +355,12 @@ class DocumentParser:
             if guided:
                 body_citations.extend(guided)
 
+        # 3.3c Chicago Notes & Bibliography footnote extraction (BUG-02 & BUG-18)
+        if references:
+            body_citations = self._extract_chicago_footnote_citations(
+                sections, text_doc, body_citations, references
+            )
+
         # 3.4 Appendix citations (chỉ track, không analyse)
         appendix_citations = self._extract_appendix_citations(sections)
 
@@ -560,6 +566,250 @@ class DocumentParser:
                     break
 
         return added
+
+    def _extract_chicago_footnote_citations(
+        self,
+        sections: list[DocumentSection],
+        source_doc: Document,
+        existing_body: list[Citation],
+        references: list[Citation],
+    ) -> list[Citation]:
+        """Extract Chicago Notes & Bibliography bottom-of-page footnotes and linkable citations."""
+        import unicodedata
+
+        if len(existing_body) >= 20 or sum(1 for c in existing_body if c.citation_type == CitationType.NUMERIC) >= 3:
+            return existing_body
+
+        def _fold(s: str) -> str:
+            if not s:
+                return ""
+            s = s.replace("\u2019", "'").replace("\u2018", "'").replace("`", "'")
+            s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+            return re.sub(r"\s+", " ", s.lower()).strip()
+
+        by_page = {p.page_num: p for p in source_doc.pages}
+        body_page_nums: list[int] = []
+        for section in sections:
+            if section.section_type != SectionType.BODY:
+                continue
+            for n in sorted(by_page):
+                if section.start_page <= n <= section.end_page and by_page[n].text:
+                    if n not in body_page_nums:
+                        body_page_nums.append(n)
+        if not body_page_nums:
+            return existing_body
+
+        # Build reference profiles for footnote matching
+        _STOP = {"the", "and", "for", "with", "from", "into", "that", "this", "what", "when", "where", "how", "why"}
+        ref_profiles = []
+        surname_counts: dict[str, int] = {}
+        for idx, ref in enumerate(references):
+            first_raw = ""
+            if ref.authors:
+                a0 = ref.authors[0]
+                first_raw = (getattr(a0, "raw", None) or getattr(a0, "last_name", None) or str(a0)).strip()
+            surname = first_raw.split(",", 1)[0].strip() if first_raw else ""
+            given = first_raw.split(",", 1)[1].strip() if "," in first_raw else ""
+            sn_fold = _fold(surname)
+            gv_fold = _fold(given.split()[0].rstrip(".")) if given else ""
+            if sn_fold:
+                surname_counts[sn_fold] = surname_counts.get(sn_fold, 0) + 1
+            t_fold = _fold(ref.title or "")
+            t_words = [
+                w for w in re.findall(r"[a-z0-9]{4,}", t_fold)
+                if w not in _STOP
+            ]
+            ref_profiles.append({
+                "idx": idx,
+                "ref": ref,
+                "first_raw": first_raw or (ref.title or ""),
+                "surname": surname or (ref.title or ""),
+                "sn_fold": sn_fold,
+                "gv_fold": gv_fold,
+                "t_fold": t_fold,
+                "t_words": t_words[:8],
+                "url": (ref.url or "").strip().lower(),
+                "doi": (ref.doi or "").strip().lower(),
+            })
+
+        # Extract numbered footnote blocks from body pages
+        fn_blocks: list[tuple[int, int, str]] = []
+        fn_starter_re = re.compile(
+            r"^\s*(\d{1,3})(?:[\s\u00a0\u202f]+|(?=[A-Z\u201c\"]))(Ibid\.?.*|[A-Z\u201c\"].*)$"
+        )
+        has_ibid = False
+        has_pub_city = 0
+
+        for p_num in body_page_nums:
+            lines = [ln.strip() for ln in by_page[p_num].text.splitlines() if ln.strip()]
+            in_fn_zone = False
+            curr_num: Optional[int] = None
+            curr_lines: list[str] = []
+
+            for l_idx, ln in enumerate(lines):
+                if re.search(r"\.{4,}", ln):
+                    continue
+                m = fn_starter_re.match(ln)
+                if m:
+                    num_val = int(m.group(1))
+                    rest_txt = m.group(2).strip()
+                    is_ibid_line = bool(re.match(r"^Ibid\b", rest_txt, re.I))
+                    looks_like_fn = (
+                        is_ibid_line
+                        or in_fn_zone
+                        or l_idx >= max(2, len(lines) // 3)
+                        or "," in rest_txt
+                        or "\u201c" in rest_txt
+                        or '"' in rest_txt
+                        or "http" in rest_txt
+                    )
+                    if looks_like_fn and not re.match(r"^(?:Introduction|Conclusion|Chapter|Section|Abstract|Methodology|Results|Discussion|Bibliography|References)\b", rest_txt, re.I):
+                        if curr_num is not None and curr_lines:
+                            fn_blocks.append((p_num, curr_num, " ".join(curr_lines)))
+                        in_fn_zone = True
+                        curr_num = num_val
+                        curr_lines = [rest_txt]
+                        if is_ibid_line:
+                            has_ibid = True
+                        if re.search(r"\([^()]+:\s+[^()]+,\s*(?:18|19|20)\d{2}\)", rest_txt):
+                            has_pub_city += 1
+                        continue
+                if in_fn_zone and curr_num is not None:
+                    if re.match(r"^\d{1,3}$", ln):
+                        continue
+                    curr_lines.append(ln)
+                    if re.search(r"\([^()]+:\s+[^()]+,\s*(?:18|19|20)\d{2}\)", ln):
+                        has_pub_city += 1
+
+            if curr_num is not None and curr_lines:
+                fn_blocks.append((p_num, curr_num, " ".join(curr_lines)))
+
+        if not (has_ibid or has_pub_city >= 2 or len(fn_blocks) >= 5):
+            return existing_body
+
+        def _match_fn_text(fn_txt: str) -> list[dict]:
+            f_fold = _fold(fn_txt)
+            f_low = fn_txt.lower()
+            matched: list[dict] = []
+            for prof in ref_profiles:
+                if prof["doi"] and prof["doi"] in f_low:
+                    matched.append(prof)
+                    continue
+                if prof["url"] and len(prof["url"]) >= 18 and prof["url"][:36] in f_low:
+                    matched.append(prof)
+                    continue
+                sn = prof["sn_fold"]
+                tw = prof["t_words"]
+                tf = prof["t_fold"]
+                sn_in = bool(sn and len(sn) >= 3 and re.search(rf"\b{re.escape(sn)}\b", f_fold))
+                if not sn_in and sn and " " in sn:
+                    last_tok = sn.split()[-1]
+                    if len(last_tok) >= 4 and re.search(rf"\b{re.escape(last_tok)}\b", f_fold):
+                        sn_in = True
+                tw_hits = sum(1 for w in tw[:5] if re.search(rf"\b{re.escape(w)}\b", f_fold))
+                if sn_in and (
+                    tw_hits >= 1
+                    or (surname_counts.get(sn, 0) == 1 and len(sn) >= 4)
+                    or (prof["gv_fold"] and len(prof["gv_fold"]) >= 2 and re.search(rf"\b{re.escape(prof['gv_fold'])}\b", f_fold))
+                ):
+                    matched.append(prof)
+                    continue
+                if tf and len(tf) >= 12:
+                    prefix_tf = tf[:min(len(tf), 38)].strip()
+                    if len(prefix_tf) >= 12 and prefix_tf in f_fold:
+                        matched.append(prof)
+                        continue
+                    if len(tw) >= 3 and tw_hits >= min(3, len(tw)):
+                        matched.append(prof)
+                        continue
+            return matched
+
+        chicago_cits: list[Citation] = []
+        matched_ref_indices: set[int] = set()
+        last_matched: list[dict] = []
+
+        for p_num, _fn_num, fn_txt in fn_blocks:
+            if re.match(r"^Ibid\b", fn_txt, re.I):
+                curr_matched = last_matched[:1]
+            else:
+                curr_matched = _match_fn_text(fn_txt)
+                if curr_matched:
+                    last_matched = curr_matched
+            for prof in curr_matched:
+                ref = prof["ref"]
+                matched_ref_indices.add(prof["idx"])
+                sn_disp = prof["surname"]
+                raw_cit = f"({sn_disp}, {ref.year})" if ref.year else f"({sn_disp})"
+                chicago_cits.append(
+                    Citation(
+                        raw_text=raw_cit,
+                        citation_type=CitationType.IN_TEXT,
+                        style=CitationStyle.CHICAGO,
+                        page_num=p_num,
+                        authors=[prof["first_raw"]],
+                        year=ref.year,
+                        year_suffix=ref.year_suffix,
+                        title=ref.title,
+                        title_normalized=ref.title_normalized,
+                        matched_pattern="chicago_footnote",
+                        confidence=0.90,
+                    )
+                )
+
+        # Fallback page scan for bibliography entries whose footnote wrapped across pages or lost its leading number
+        for prof in ref_profiles:
+            if prof["idx"] in matched_ref_indices:
+                continue
+            sn = prof["sn_fold"]
+            tw = prof["t_words"]
+            tf = prof["t_fold"]
+            for p_num in body_page_nums:
+                p_fold = _fold(by_page[p_num].text)
+                sn_in = bool(sn and len(sn) >= 3 and re.search(rf"\b{re.escape(sn)}\b", p_fold))
+                if not sn_in and sn and " " in sn:
+                    last_tok = sn.split()[-1]
+                    if len(last_tok) >= 4 and re.search(rf"\b{re.escape(last_tok)}\b", p_fold):
+                        sn_in = True
+                tw_hits = sum(1 for w in tw[:5] if re.search(rf"\b{re.escape(w)}\b", p_fold))
+                prefix_tf = tf[:min(len(tf), 35)].strip() if tf else ""
+                if (
+                    (sn_in and (tw_hits >= 1 or (prof["gv_fold"] and len(prof["gv_fold"]) >= 3 and prof["gv_fold"] in p_fold) or (surname_counts.get(sn, 0) == 1 and len(sn) >= 5)))
+                    or (len(prefix_tf) >= 14 and prefix_tf in p_fold)
+                    or (len(tw) >= 3 and tw_hits >= 3)
+                ):
+                    ref = prof["ref"]
+                    matched_ref_indices.add(prof["idx"])
+                    sn_disp = prof["surname"]
+                    raw_cit = f"({sn_disp}, {ref.year})" if ref.year else f"({sn_disp})"
+                    chicago_cits.append(
+                        Citation(
+                            raw_text=raw_cit,
+                            citation_type=CitationType.IN_TEXT,
+                            style=CitationStyle.CHICAGO,
+                            page_num=p_num,
+                            authors=[prof["first_raw"]],
+                            year=ref.year,
+                            year_suffix=ref.year_suffix,
+                            title=ref.title,
+                            title_normalized=ref.title_normalized,
+                            matched_pattern="chicago_footnote",
+                            confidence=0.88,
+                        )
+                    )
+                    break
+
+        if not chicago_cits:
+            return existing_body
+
+        # Keep only existing_body citations that match a known bibliography author surname
+        valid_existing = [
+            c for c in existing_body
+            if any(
+                prof["sn_fold"] and len(prof["sn_fold"]) >= 3 and prof["sn_fold"] in _fold(c.raw_text)
+                for prof in ref_profiles
+            )
+        ]
+        return valid_existing + chicago_cits
 
     def _extract_references(
         self,
@@ -863,9 +1113,10 @@ class DocumentParser:
                 and len(donor.authors) > len(target.authors)
                 and not donor_is_multi_chunk
             ):
+                first_d = (getattr(donor.authors[0], "raw", None) or str(donor.authors[0])).strip().rstrip(".").lower()
                 t_last = (getattr(target.authors[-1], "last_name", None) or str(target.authors[-1])).split(",")[0].strip().lower()
                 d_last = (getattr(donor.authors[-1], "last_name", None) or str(donor.authors[-1])).split(",")[0].strip().lower()
-                if t_last and t_last == d_last:
+                if t_last and t_last == d_last and first_d not in {"iii", "ii", "iv", "jr", "sr"}:
                     target.authors = [
                         getattr(a, "raw", None) or str(a) for a in donor.authors
                     ]

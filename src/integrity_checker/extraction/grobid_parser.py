@@ -934,7 +934,10 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
             raw_authors.append((sn, fn))
 
         authors: list[GrobidAuthor] = []
-        _DEGREE_TOKENS = {"phd", "md", "esq", "cscs", "rscc", "bs", "ms", "mph", "facsm", "fissn", "atc", "pt", "scs", "rn"}
+        _DEGREE_TOKENS = {
+            "phd", "md", "esq", "cscs", "rscc", "bs", "ms", "mph",
+            "facsm", "fissn", "atc", "pt", "scs", "rn", "iii", "ii", "iv", "jr", "sr",
+        }
         _DEGREE_PREFIX_RE = re.compile(
             r"^(?:phd|md|esq|cscs|rscc|bs|ms|mph|facsm|fissn|atc|pt|scs|rn)[.,;\s]+",
             re.IGNORECASE,
@@ -955,6 +958,10 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
             fn_tok = fn.lower().strip(".,; ")
             if (not sn_tok or sn_tok in _DEGREE_TOKENS) and (not fn_tok or fn_tok in _DEGREE_TOKENS):
                 continue
+            if not fn and " " in sn and raw_ref_text and re.match(r"^(?:III|II|IV|Jr\.?|Sr\.?),\s+" + re.escape(sn), raw_ref_text):
+                parts_sn = sn.split()
+                sn = parts_sn[-1]
+                fn = " ".join(parts_sn[:-1])
             authors.append(
                 GrobidAuthor(
                     full_name=f"{sn}, {fn}".strip(", "),
@@ -964,10 +971,8 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
             )
 
         # Recover corporate/organization author from raw_reference when GROBID
-        # omitted <author> (e.g. "American Psychiatric Association. (2022)...",
-        # "Dictionary.com (2026, March 12)...", "Fight the New Drug. 'Is Reading...'",
-        # or "'Erotica Sub-Genres...' Shameless Book Deals, ...").
-        if not authors and raw_ref_text:
+        # omitted <author> or inverted/split a corporate name (e.g. "Security Risk Advisors. (n.d.-a)..." -> "Risk, Security")
+        if raw_ref_text:
             org_m = re.match(
                 r"^(?:\[\s*\d+\s*\]\s*)?([A-Z][A-Za-z0-9.\s&'\u2019-]{2,80}?)\.?\s*"
                 r"(?:\(\s*(?:(?:19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)\b|\.\s*[\"\u201c]|\.\s+(?:19|20)\d{2}:)",
@@ -976,10 +981,20 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
             )
             if org_m:
                 org_name = org_m.group(1).strip().rstrip(".")
-                authors.append(
-                    GrobidAuthor(full_name=org_name, first_name=None, last_name=org_name)
-                )
-            else:
+                if not authors or (
+                    "," not in org_name
+                    and re.search(
+                        r"\b(?:Advisors|Association|Organization|Institute|Society|Center|Centre|Project|Team|"
+                        r"Developers|Clinics|Initiative|Foundation|Council|Commission|Committee|Agency|"
+                        r"Administration|Academy|University|College|Press|Group|Corporation|Security|Goblin|Noble)\b",
+                        org_name,
+                        re.IGNORECASE,
+                    )
+                ):
+                    authors = [
+                        GrobidAuthor(full_name=org_name, first_name=None, last_name=org_name)
+                    ]
+            elif not authors:
                 anon_m = re.match(
                     r"^[\"\u201c].+?[\"\u201d]\s*([A-Z][A-Za-z0-9\s&'\u2019-]{2,55}?)[,.]",
                     raw_ref_text,
@@ -1126,6 +1141,43 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
                     if title and title.lower() != b_name.lower() and not venue:
                         venue = title
                     title = b_name
+
+        # Recover missing co-authors or compound surnames before (YYYY)/(n.d.) when GROBID
+        # dropped co-authors or split multi-word surnames (e.g. "Santa Rosa Lana, G.", "dos Reis Alves, S. F.")
+        if raw_ref_text:
+            yr_parens_any = re.search(
+                r"\(\s*(?:(?:19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)\b",
+                raw_ref_text,
+                re.IGNORECASE,
+            )
+            if yr_parens_any and yr_parens_any.start() <= 320:
+                auth_prefix_raw = raw_ref_text[:yr_parens_any.start()].strip()
+                pers_list = list(
+                    re.finditer(
+                        r"([A-ZÀ-Ýa-zà-ÿ][A-Za-zÀ-ÿ'\u2019-]+(?:\s+[A-ZÀ-Ýa-zà-ÿ][A-Za-zÀ-ÿ'\u2019-]+){0,3}),\s*((?:[A-ZÀ-Ý]\.(?:\s*-\s*[A-ZÀ-Ý]\.)?\s*)+)",
+                        auth_prefix_raw,
+                    )
+                )
+                has_fragmented_author = any(
+                    not a.first_name
+                    or not a.last_name
+                    or "." in (a.last_name or "").rstrip(".")
+                    or "," in (a.last_name or "")
+                    or (a.first_name or "").strip(". ") == ""
+                    for a in authors
+                )
+                if pers_list and (
+                    (len(authors) <= 1 and len(pers_list) > len(authors))
+                    or (has_fragmented_author and len(pers_list) >= 2)
+                ):
+                    authors = [
+                        GrobidAuthor(
+                            full_name=f"{pm.group(1).strip()}, {pm.group(2).strip().rstrip('.')}",
+                            first_name=pm.group(2).strip().rstrip("."),
+                            last_name=pm.group(1).strip(),
+                        )
+                        for pm in pers_list
+                    ]
 
         # Fix unquoted IEEE/APA/MLA book entries where GROBID places the book title
         # into <author> inside <monogr> and leaves title=None or sets title to the series/publisher

@@ -138,15 +138,31 @@ def _is_in_test_scenario_context(text: str, match_start: int) -> bool:
 
 
 def _is_date_only_citation(extracted_text: str) -> bool:
-    """Check if extracted text is a date-only pattern, not a real citation.
+    """Check if extracted text is a date-only or non-citation parenthetical pattern.
 
-    Filters out patterns like "(May 2012)", "(June 1996)", "(Spring 2013)"
-    which are dates in legal citations, not author-year citations.
+    Filters out patterns like "(May 2012)", "(June 1996)", "(Spring 2013)",
+    "(September 23, 1934)", "(Years 1–3)", "(City: Publisher, Year)"
+    which are dates, ranges, or Chicago footnote publication blocks.
 
-    Returns True if the text appears to be a date only, not a citation.
+    Returns True if the text appears to be a date/non-citation only.
     """
     # Extract content inside parentheses
     inner = extracted_text.strip('()').strip()
+
+    # Chicago footnote publication block: "(City: Publisher, YYYY)" or "(City, ST: Publisher, YYYY)"
+    if re.match(
+        r"^[A-Z][a-zA-Z.]+(?:\s+[A-Z][a-zA-Z.]+){0,2}(?:,\s*[A-Z]{2,3})?:\s+[^():]+,\s*(?:17|18|19|20)\d{2}$",
+        inner,
+    ):
+        return True
+
+    # Non-citation range or biblical chapter parenthetical: "(Years 1–3)", "(ages 18-25)", "(Acts 18)"
+    if re.match(
+        r"^(?:years?|ages?|grades?|phases?|steps?|stages?|weeks?|months?|days?|chapters?|sections?|tables?|figures?|acts|genesis|exodus|psalms?|matthew|mark|luke|john|romans|corinthians)\s+\d",
+        inner,
+        re.IGNORECASE,
+    ):
+        return True
 
     # Split by comma to get first word(s)
     first_part = inner.split(',')[0].strip()
@@ -156,6 +172,13 @@ def _is_date_only_citation(extracted_text: str) -> bool:
         return True
     if first_part.lower() in _SEASON_NAMES_LOWER:
         return True
+
+    # Full calendar date: "(September 23, 1934)" or "(Jan. 5, 2021)"
+    first_words = first_part.split()
+    if len(first_words) == 2 and re.match(r"^\d{1,2}(?:st|nd|rd|th)?$", first_words[1]):
+        m_word = first_words[0].lower().rstrip(".")
+        if m_word in _MONTH_NAMES_LOWER or m_word in {"jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec"}:
+            return True
 
     # Additional check: if the entire inner text is just "Month Year" or "Season Year"
     # without any author-like structure (comma or "et al.")
@@ -377,11 +400,33 @@ class CitationExtractor:
                 # and non-author parentheticals like "(42, 123, 2024)" or "(loadComments, 5000)"
                 if _is_date_only_citation(raw):
                     continue
-                if citation_type == CitationType.IN_TEXT and raw.startswith("("):
-                    if style != CitationStyle.MLA and not re.search(r"\b(?:19|20)\d{2}[a-z]?\b", raw):
+                if citation_type == CitationType.IN_TEXT and not raw.startswith(("(", "[")):
+                    # Strip leading acronym clause before ", Author (Year)" (e.g. "EI and HRV, Vanuk et al. (2019)")
+                    raw = re.sub(r"^(?:[A-Z]{2,5}\s+and\s+[A-Z]{2,5},\s+)", "", raw).strip()
+                    # Skip common-noun page/year parentheticals or pre-1900 historical founding years
+                    if re.match(
+                        r"^(?:Networks?|Papers?|Tables?|Figures?|Chapters?|Sections?|Parts?|Equations?|Models?|Systems?)\s+\(",
+                        raw,
+                        re.IGNORECASE,
+                    ):
                         continue
-                    inner_head = raw[1:].split(",")[0].strip()
-                    if not inner_head or not any(ch.isupper() for ch in inner_head) or inner_head[0].isdigit() or inner_head[0].islower():
+                    if re.search(r"\(\s*(?:1[0-8]\d{2})\s*\)$", raw):
+                        continue
+                if citation_type == CitationType.IN_TEXT and raw.startswith("("):
+                    if style != CitationStyle.MLA and not re.search(
+                        r"\b(?:(?:19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)",
+                        raw,
+                        re.IGNORECASE,
+                    ):
+                        continue
+                    inner_head = raw[1:].split(",")[0].strip().lstrip("\"\u201c\u201d'\u2018\u2019")
+                    has_particle = bool(
+                        re.match(
+                            r"^(?:da|de|del|della|der|di|do|dos|du|el|la|le|van|von|zu|zur)\s+[A-ZÀ-Ý]",
+                            inner_head,
+                        )
+                    )
+                    if not inner_head or not any(ch.isupper() for ch in inner_head) or inner_head[0].isdigit() or (inner_head[0].islower() and not has_particle):
                         continue
 
                 accepted_spans.add(span_key)

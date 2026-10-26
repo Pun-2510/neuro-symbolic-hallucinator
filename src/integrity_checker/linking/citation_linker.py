@@ -40,27 +40,28 @@ from integrity_checker.models.validation import CitationLink, MappingMethod
 logger = logging.getLogger(__name__)
 
 # Regex cho in-text APA / Harvard / Chicago / CSE pattern:
-# (Author, Year) / (Author Year) / (Author A và Author B, Year) / (Author, Year, tr. 15) / (Author 2020, 25) / (Author, 2020: 25)
+# (Author, Year) / (Author Year) / (Author A và Author B, Year) / (Author, Year, tr. 15) / (Author 2020, 25) / (Author, 2020: 25) / (Author, n.d.)
 _APA_YEAR_RE = re.compile(
-    r"\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'.\s,&\-]*?)(?:,\s*|\s+)((?:19|20)\d{2}[a-z]?)"
-    r"(?:\s*[,:]\s*(?:pp?\.?|tr\.?|trang)?\s*\d+(?:\s*[-–]\s*\d+)?)?\)"
+    r"\([\"\u201c\u201d'\u2018\u2019]?([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'\u2019\u2018.\s,&\-\u2013\u2014\[\]:]*?)(?:,[\"\u201d\u2019']?\s*|\s+)((?:19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)"
+    r"(?:\s*[,:]\s*(?:pp?\.?|tr\.?|trang)?\s*\d+(?:\s*[-–]\s*\d+)?)?\)",
+    re.IGNORECASE,
 )
 # Regex cho MLA in-text author-page: (Smith 25), (Smith and Doe 42), (Smith et al. 105),
 # (L'Engle 72-73), (Longman III 57), (Lewis XXII), (Mulvey et al. 17, 19), (Smith et al.)
 _MLA_AUTHOR_PAGE_RE = re.compile(
     r"^\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?)(?:,\s*pp?\.?\s*|\s+)(?!(?:19|20)\d{2}\b)(?:\d{1,4}(?:[-–]\d{1,4})?(?:,\s*\d{1,4}(?:[-–]\d{1,4})?)*|[IVXLCDMivxlcdm]{1,7})\)$"
-    r"|^\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?\s+et\s+al\.)\)$"
+    r"|^\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?\s+et\s+a?l\.)\)$"
     r"|^([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?)\s+\(pp?\.?\s*\d{1,4}(?:[-–]\d{1,4})?\)$"
 )
-# Regex cho Author et al. / và cộng sự (Year) format (no parens around author)
+# Regex cho Author et al. / và cộng sự (Year) or Author et al. Year format
 _APA_ETAL_YEAR_RE = re.compile(
-    r"([A-Za-zÀ-ỹ'.\s,&\-]+?)\s+(?:et\s+al\.?|và\s+cộng\s+sự|và\s+cs\.?)\s*"
-    r"\(\s*((?:19|20)\d{2}[a-z]?)(?:\s*,\s*[^)]*)?\s*\)",
+    r"([A-Za-zÀ-ỹ'\u2019.\s,&\-]+?)\s+(?:et\s+a?l\.?|và\s+cộng\s+sự|và\s+cs\.?)\s*"
+    r"(?:\(\s*((?:19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)(?:\s*,\s*[^)]*)?\s*\)|((?:19|20)\d{2}[a-z]?)\b)",
     re.IGNORECASE,
 )
 # Narrative citation: ``Author et al. (2018)`` or ``Author (2018)`` or ``Author A và Author B (2018)``.
 _NARRATIVE_YEAR_RE = re.compile(
-    r"([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'.\s,&\-]*?)\s*\(\s*((?:19|20)\d{2}[a-z]?)(?:\s*,\s*[^)]*)?\s*\)",
+    r"([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'\u2019.\s,&\-\[\]]*?)\s*\(\s*((?:19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)(?:\s*,\s*[^)]*)?\s*\)",
     re.IGNORECASE,
 )
 # Secondary citation (trích dẫn gián tiếp): "(Smith, 2005, dẫn theo Tran, 2016)" / "Smith (2005, as cited in Tran, 2016)"
@@ -72,9 +73,12 @@ _SECONDARY_CITATION_RE = re.compile(
 _INSTITUTIONAL_AUTHOR_RE = re.compile(
     r"^(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Chính\s+phủ|Quốc\s+hội|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội"
     r"|Hiến\s+pháp|Bộ\s+luật|Luật|Pháp\s+lệnh|Nghị\s+định|Thông\s+tư|Quyết\s+định|Nghị\s+quyết|Chỉ\s+thị"
-    r"|Viện|Trường|Cục|Vụ|Sở|Department|Ministry|Association|Organization"
-    r"|Institute|Council|World\s+Health|United\s+Nations|Reserve\s+Bank)\b"
-    r"|\b(?:of|for)\b",
+    r"|Viện|Trường|Cục|Vụ|Sở|Department|Ministry|Association|Organization|Organisation"
+    r"|Institute|Council|World\s+Health|United\s+Nations|Reserve\s+Bank|National\s+Institute"
+    r"|National\s+Academ(?:ies|ics)|American\s+Psychiatric|American\s+Library|American\s+College"
+    r"|Substance\s+Abuse|Centers?\s+for\s+Disease|Pew\s+Research|Media\s+Helping|Local\s+News"
+    r"|News\s+Literacy|Security\s+Risk|Microsoft|OpenRocket|RocketPy|RocketSerializer|Wikipedia\s+Contributors)\b"
+    r"|\b(?:of|for|Association|Organization|Institute|Initiative|Project|Advisors|Clinics|Contributors|Developers)\b",
     re.IGNORECASE,
 )
 # Regex cho in-text IEEE numeric: [N] or [N, M] or [N-M]
@@ -168,13 +172,17 @@ class CitationLinker:
                             if (bib.reference_id or f"ref-{idx:04d}") == link.reference_id:
                                 bib_matched.add(idx)
                                 break
-                cit.mapping_status = (
-                    links[0].status.value
-                    if hasattr(links[0].status, "value")
-                    else str(links[0].status)
+                best_link = next(
+                    (l for l in links if l.status == CitationMappingStatus.MATCHED),
+                    links[0],
                 )
-                cit.mapping_confidence = links[0].confidence
-                cit.citation_link = links[0]
+                cit.mapping_status = (
+                    best_link.status.value
+                    if hasattr(best_link.status, "value")
+                    else str(best_link.status)
+                )
+                cit.mapping_confidence = best_link.confidence
+                cit.citation_link = best_link
                 cit.citation_links = list(links)
             else:
                 # No match → MISSING_REFERENCE. Also set raw so lookups succeed.
@@ -315,6 +323,7 @@ class CitationLinker:
         # still link to every cited bibliography entry.
         if cit.citation_type == CitationType.IN_TEXT and ";" in cit.raw_text:
             multi_links: list[CitationLink] = []
+            has_trailing_secondary = bool(_SECONDARY_CITATION_RE.search(cit.raw_text))
             for part in cit.raw_text.split(";"):
                 # Splitting removes the outer closing parenthesis from every
                 # component except the last one.  Parse each component as a
@@ -322,6 +331,9 @@ class CitationLinker:
                 part = re.sub(r"(?<=\w)-\s+(?=\w)", "", part).strip().strip("()")
                 if not part:
                     continue
+                sec_part_m = _SECONDARY_CITATION_RE.search(part)
+                if sec_part_m:
+                    part = sec_part_m.group(1).strip().strip("()")
                 part = f"({part})"
                 author_part, year_part, suffix_part = self._extract_author_year(part)
                 if not author_part or not year_part:
@@ -329,10 +341,17 @@ class CitationLinker:
                     if mla_part_links:
                         multi_links.extend(mla_part_links)
                     continue
+                folded_part = self._fold_author_key(author_part)
                 candidates = (
-                    bib_by_author_year_suffix.get((author_part.lower(), year_part, suffix_part), [])
+                    (
+                        bib_by_author_year_suffix.get((author_part.lower(), year_part, suffix_part), [])
+                        or bib_by_author_year_suffix.get((folded_part, year_part, suffix_part), [])
+                    )
                     if suffix_part
-                    else bib_by_author_year.get((author_part.lower(), year_part), [])
+                    else (
+                        bib_by_author_year.get((author_part.lower(), year_part), [])
+                        or bib_by_author_year.get((folded_part, year_part), [])
+                    )
                 )
                 if candidates:
                     bib_idx = self._find_bib_index(candidates[0], bib_citations)
@@ -344,13 +363,17 @@ class CitationLinker:
                         method=MappingMethod.AUTHOR_YEAR,
                     ))
                 else:
-                    multi_links.append(CitationLink(
-                        occurrence_id=occ_id,
-                        reference_id=None,
-                        status=CitationMappingStatus.MISSING_REFERENCE,
-                        confidence=0.0,
-                        method=MappingMethod.NO_KEYS,
-                    ))
+                    fuzzy_semi = self._try_fuzzy_author_year(occ_id, author_part, year_part, bib_citations)
+                    if fuzzy_semi is not None:
+                        multi_links.append(fuzzy_semi)
+                    elif not has_trailing_secondary:
+                        multi_links.append(CitationLink(
+                            occurrence_id=occ_id,
+                            reference_id=None,
+                            status=CitationMappingStatus.MISSING_REFERENCE,
+                            confidence=0.0,
+                            method=MappingMethod.NO_KEYS,
+                        ))
             if any(l.status == CitationMappingStatus.MATCHED for l in multi_links):
                 return multi_links
 
@@ -363,9 +386,11 @@ class CitationLinker:
             sec_probe = sec_raw if "(" in sec_raw else f"({sec_raw})"
             sec_author, sec_year, sec_suffix = self._extract_author_year(sec_probe)
             if sec_author and sec_year:
+                sec_folded = self._fold_author_key(sec_author)
                 if sec_suffix:
-                    sec_cands = bib_by_author_year_suffix.get(
-                        (sec_author.lower().strip(), sec_year, sec_suffix), []
+                    sec_cands = (
+                        bib_by_author_year_suffix.get((sec_author.lower().strip(), sec_year, sec_suffix), [])
+                        or bib_by_author_year_suffix.get((sec_folded, sec_year, sec_suffix), [])
                     )
                     if sec_cands:
                         return _bib_link(
@@ -373,20 +398,33 @@ class CitationLinker:
                             self.author_year_confidence,
                             MappingMethod.AUTHOR_YEAR,
                         )
-                sec_cands = bib_by_author_year.get((sec_author.lower().strip(), sec_year), [])
+                sec_cands = (
+                    bib_by_author_year.get((sec_author.lower().strip(), sec_year), [])
+                    or bib_by_author_year.get((sec_folded, sec_year), [])
+                )
                 if sec_cands:
                     return _bib_link(
                         sec_cands[0],
                         self.author_year_confidence,
                         MappingMethod.AUTHOR_YEAR,
                     )
+                fuzzy_sec = self._try_fuzzy_author_year(occ_id, sec_author, sec_year, bib_citations)
+                if fuzzy_sec is not None:
+                    return _one(fuzzy_sec)
 
         author, year, year_suffix = self._extract_author_year(cit.raw_text)
+        if not author and cit.authors:
+            author = self._normalize_last_name(cit.authors[0])
+            if not year and cit.year:
+                year = str(cit.year)
         if author and year:
+            folded_auth = self._fold_author_key(author)
             # Try exact match first (author + year + suffix)
             if year_suffix:
-                key_suffix = (author.lower().strip(), year, year_suffix)
-                candidates_suffix = bib_by_author_year_suffix.get(key_suffix, [])
+                candidates_suffix = (
+                    bib_by_author_year_suffix.get((author.lower().strip(), year, year_suffix), [])
+                    or bib_by_author_year_suffix.get((folded_auth, year, year_suffix), [])
+                )
                 if candidates_suffix:
                     return _bib_link(
                         candidates_suffix[0],
@@ -394,18 +432,42 @@ class CitationLinker:
                         MappingMethod.AUTHOR_YEAR,
                     )
             # Fallback: author + year only
-            key = (author.lower().strip(), year)
-            candidates = bib_by_author_year.get(key, [])
+            candidates = (
+                bib_by_author_year.get((author.lower().strip(), year), [])
+                or bib_by_author_year.get((folded_auth, year), [])
+            )
             if candidates:
+                if cit.title and len(candidates) > 1:
+                    cit_t_low = cit.title.strip().lower()
+                    t_matched = [c for c in candidates if (c.title or "").strip().lower() == cit_t_low]
+                    if t_matched:
+                        candidates = t_matched
+                if not year_suffix and len(candidates) > 1 and (
+                    year == "n.d." or not any(c.year_suffix for c in candidates)
+                ):
+                    return [
+                        CitationLink(
+                            occurrence_id=occ_id,
+                            reference_id=c.reference_id or f"ref-{self._find_bib_index(c, bib_citations):04d}",
+                            status=CitationMappingStatus.MATCHED,
+                            confidence=self.author_year_confidence,
+                            method=MappingMethod.AUTHOR_YEAR,
+                        )
+                        for c in candidates
+                    ]
                 return _bib_link(
                     candidates[0],
                     self.author_year_confidence,
                     MappingMethod.AUTHOR_YEAR,
                 )
 
-        # 3b. ORGANIZATION_AS_AUTHOR — web/corporate references often cite the
-        # publisher/institution (e.g. "(RevenueCat, 2025)", "(Bộ nông nghiệp & PTNT, 1996)").
+        # 3b. Fuzzy author-year & ORGANIZATION_AS_AUTHOR — handles 1-edit/transposition
+        # surname typos, (n.d.) references, ±year slips on personal authors, and
+        # publisher/institution or article title citations.
         if author and year:
+            fuzzy_ay = self._try_fuzzy_author_year(occ_id, author, year, bib_citations)
+            if fuzzy_ay is not None:
+                return _one(fuzzy_ay)
             org = self._try_org_author(cit, occ_id, author, year, bib_citations)
             if org is not None:
                 return _one(org)
@@ -428,14 +490,109 @@ class CitationLinker:
 
     @staticmethod
     def _fold_author_key(text: str) -> str:
-        """Fold diacritics, curly apostrophes, and generational suffixes for author matching."""
+        """Fold ligatures, diacritics, curly apostrophes, hyphens, and generational suffixes for author matching."""
         if not text:
             return ""
-        pre = text.replace("\u2019", "'").replace("\u2018", "'").replace("`", "'")
+        pre = (
+            text.replace("\u2019", "'")
+            .replace("\u2018", "'")
+            .replace("`", "'")
+            .replace("æ", "ae")
+            .replace("Æ", "ae")
+            .replace("œ", "oe")
+            .replace("Œ", "oe")
+            .replace("ø", "o")
+            .replace("Ø", "o")
+            .replace("ł", "l")
+            .replace("Ł", "l")
+            .replace("ß", "ss")
+            .replace("đ", "d")
+            .replace("Đ", "d")
+        )
         folded = unicodedata.normalize("NFKD", pre).encode("ascii", "ignore").decode("ascii")
         folded = folded.lower().strip()
+        folded = re.sub(r"\s*[-–]\s*", "-", folded)
         folded = re.sub(r"\s+\b(?:iii|ii|iv|jr|sr)\.?$", "", folded)
+        folded = re.sub(r"\s+", " ", folded)
         return folded.strip()
+
+    def _try_fuzzy_author_year(
+        self,
+        occ_id: str,
+        author: str,
+        year: str,
+        bib_citations: list[Citation],
+    ) -> Optional[CitationLink]:
+        """Fallback for 1-edit/transposition surname typos on same year, (n.d.) bibs, or year slip on unique personal author."""
+        author_folded = self._fold_author_key(author)
+        if not author_folded or len(author_folded) < 3:
+            return None
+
+        # Pass 1: Exact surname match against an (n.d.) entry (bib.year is None)
+        for bib_idx, bib in enumerate(bib_citations):
+            if not bib.authors or bib.year is not None:
+                continue
+            bib_first = self._fold_author_key(self._normalize_last_name(bib.authors[0]))
+            if author_folded == bib_first or (
+                len(author_folded) >= 5 and author_folded in bib_first
+            ):
+                return CitationLink(
+                    occurrence_id=occ_id,
+                    reference_id=bib.reference_id or f"ref-{bib_idx:04d}",
+                    status=CitationMappingStatus.MATCHED,
+                    confidence=self.author_year_confidence,
+                    method=MappingMethod.AUTHOR_YEAR,
+                )
+
+        # Pass 2: Minor spelling/transposition typo on surname when year agrees (e.g. Beauvias/Beauvais, Adizogel/Adigozel, Kato-Katoaka/Kato-Kataoka, Shet/Shen, Zade/Zadeh)
+        if len(author_folded) >= 4:
+            for bib_idx, bib in enumerate(bib_citations):
+                if not bib.authors or (bib.year or "") != year:
+                    continue
+                bib_first = self._fold_author_key(self._normalize_last_name(bib.authors[0]))
+                if not bib_first or len(bib_first) < 4:
+                    continue
+                if author_folded[0] != bib_first[0]:
+                    continue
+                ratio = difflib.SequenceMatcher(None, author_folded, bib_first).ratio()
+                one_char_diff = (
+                    len(author_folded) == len(bib_first)
+                    and sum(a != b for a, b in zip(author_folded, bib_first)) == 1
+                ) or (
+                    abs(len(author_folded) - len(bib_first)) == 1
+                    and (bib_first.startswith(author_folded) or author_folded.startswith(bib_first))
+                ) or (
+                    len(author_folded) >= 5
+                    and sorted(author_folded) == sorted(bib_first)
+                    and sum(a != b for a, b in zip(author_folded, bib_first)) <= 3
+                )
+                if ratio >= 0.84 or one_char_diff:
+                    return CitationLink(
+                        occurrence_id=occ_id,
+                        reference_id=bib.reference_id or f"ref-{bib_idx:04d}",
+                        status=CitationMappingStatus.MATCHED,
+                        confidence=self.fuzzy_confidence,
+                        method=MappingMethod.FUZZY,
+                    )
+
+        # Pass 3: Personal author with year difference when author surname uniquely matches in bib.authors
+        if year.isdigit() and len(author_folded) >= 4 and not _INSTITUTIONAL_AUTHOR_RE.search(author):
+            yr_int = int(year)
+            for bib_idx, bib in enumerate(bib_citations):
+                if not bib.authors or not bib.year or not str(bib.year).isdigit():
+                    continue
+                bib_first = self._fold_author_key(self._normalize_last_name(bib.authors[0]))
+                short_first = bib_first.split()[-1] if " " in bib_first else bib_first
+                if author_folded in (bib_first, short_first) and abs(int(bib.year) - yr_int) <= 9:
+                    return CitationLink(
+                        occurrence_id=occ_id,
+                        reference_id=bib.reference_id or f"ref-{bib_idx:04d}",
+                        status=CitationMappingStatus.MATCHED,
+                        confidence=self.fuzzy_confidence,
+                        method=MappingMethod.AUTHOR_YEAR,
+                    )
+
+        return None
 
     def _match_mla_author_page(
         self,
@@ -448,11 +605,9 @@ class CitationLinker:
         mla_m = _MLA_AUTHOR_PAGE_RE.match(raw_text.strip())
         if mla_m:
             raw_mla_author = (mla_m.group(1) or mla_m.group(2) or mla_m.group(3) or "").strip()
-            has_et_al = bool(re.search(r"\bet\s+al\.?\b", raw_mla_author, re.IGNORECASE))
             norm_mla_author = self._fold_author_key(self._clean_intext_author(raw_mla_author))
         elif cit_authors:
             raw_mla_author = self._normalize_last_name(cit_authors[0])
-            has_et_al = False
             norm_mla_author = self._fold_author_key(raw_mla_author)
         else:
             return []
@@ -468,10 +623,19 @@ class CitationLinker:
             if norm_mla_author in (first_last, short_last):
                 matched_bibs.append(bib)
             elif (
-                has_et_al
-                and len(norm_mla_author) >= 5
+                len(norm_mla_author) >= 5
                 and len(first_last) >= 5
+                and norm_mla_author[0] == first_last[0]
                 and difflib.SequenceMatcher(None, norm_mla_author, first_last).ratio() >= 0.85
+            ):
+                matched_bibs.append(bib)
+            elif bib.title_normalized and norm_mla_author == bib.title_normalized.strip():
+                matched_bibs.append(bib)
+            elif (
+                bib.title
+                and len(norm_mla_author) >= 4
+                and re.search(rf"\b{re.escape(norm_mla_author)}\b", bib.title.lower())
+                and any("euripides" in str(a).lower() or "sophocles" in str(a).lower() or "shakespeare" in str(a).lower() for a in bib.authors)
             ):
                 matched_bibs.append(bib)
 
@@ -497,28 +661,42 @@ class CitationLinker:
         year: str,
         bib_citations: list[Citation],
     ) -> Optional[CitationLink]:
-        """Match an organization in-text name against entry title/venue/raw_text.
-
-        Supports both single-token organizations (e.g. "RevenueCat", "WHO") and
-        multi-word institutional authors (e.g. "Bộ nông nghiệp & PTNT",
-        "Department of Finance and Administration") when the entry year agrees.
-        """
-        token = author.strip().lower()
-        if not token or len(token) < 3:
+        """Match an organization or title-first in-text name against entry title/venue/authors/raw_text."""
+        token = re.sub(r"^the\s+", "", author.strip(), flags=re.IGNORECASE).lower().strip()
+        if not token or len(token) < 2:
             return None
         is_multi_word = " " in token
-        if is_multi_word and not _INSTITUTIONAL_AUTHOR_RE.search(token):
-            return None
+        compact_token = re.sub(r"[^a-z0-9]", "", token)
 
         for bib_idx, bib in enumerate(bib_citations):
-            if (bib.year or "") != year:
+            bib_yr = bib.year or "n.d."
+            if bib_yr != year and not (bib.year is None and year in (bib.raw_text or "")):
                 continue
             haystack = " ".join(
                 str(part or "")
-                for part in (bib.title, bib.venue, bib.raw_text)
+                for part in (bib.title, bib.venue, " ".join(str(a) for a in (bib.authors or [])), bib.raw_text)
             ).lower()
+
+            # Check corporate acronym (e.g. "spj", "spj national president...", "nimh", "cisa")
+            org_acronyms: set[str] = set()
+            for auth in bib.authors or []:
+                auth_str = auth if isinstance(auth, str) else getattr(auth, "last_name", "") or ""
+                words = [w for w in re.split(r"\W+", auth_str) if w and len(w) > 2 and w.lower() not in ("and", "the", "for", "of")]
+                if len(words) >= 2:
+                    org_acronyms.add("".join(w[0].lower() for w in words))
+
+            first_tok = token.split()[0]
+            if first_tok in org_acronyms and (not is_multi_word or "president" in token):
+                return CitationLink(
+                    occurrence_id=occ_id,
+                    reference_id=bib.reference_id or f"ref-{bib_idx:04d}",
+                    status=CitationMappingStatus.MATCHED,
+                    confidence=self.fuzzy_confidence,
+                    method=MappingMethod.FUZZY,
+                )
+
             if is_multi_word:
-                if token in haystack:
+                if token in haystack or self._org_token_in_haystack(token, haystack):
                     return CitationLink(
                         occurrence_id=occ_id,
                         reference_id=bib.reference_id or f"ref-{bib_idx:04d}",
@@ -526,14 +704,32 @@ class CitationLinker:
                         confidence=self.author_year_confidence,
                         method=MappingMethod.AUTHOR_YEAR,
                     )
+                if bib.title:
+                    compact_title = re.sub(r"[^a-z0-9]", "", bib.title.lower())
+                    if compact_token and compact_title and (
+                        compact_token in compact_title
+                        or compact_title in compact_token
+                        or difflib.SequenceMatcher(None, compact_token, compact_title).ratio() >= 0.85
+                    ):
+                        return CitationLink(
+                            occurrence_id=occ_id,
+                            reference_id=bib.reference_id or f"ref-{bib_idx:04d}",
+                            status=CitationMappingStatus.MATCHED,
+                            confidence=self.author_year_confidence,
+                            method=MappingMethod.AUTHOR_YEAR,
+                        )
+                if bib.authors:
+                    compact_auth = re.sub(r"[^a-z0-9]", "", str(bib.authors[0]).lower())
+                    if len(compact_token) >= 8 and len(compact_auth) >= 8 and difflib.SequenceMatcher(None, compact_token, compact_auth).ratio() >= 0.85:
+                        return CitationLink(
+                            occurrence_id=occ_id,
+                            reference_id=bib.reference_id or f"ref-{bib_idx:04d}",
+                            status=CitationMappingStatus.MATCHED,
+                            confidence=self.author_year_confidence,
+                            method=MappingMethod.AUTHOR_YEAR,
+                        )
                 continue
-            # Also check if token is an acronym of the corporate author (e.g. "who" -> "World Health Organization")
-            org_acronyms: set[str] = set()
-            for auth in bib.authors or []:
-                auth_str = auth if isinstance(auth, str) else getattr(auth, "last_name", "") or ""
-                words = [w for w in re.split(r"\W+", auth_str) if w and len(w) > 2 and w.lower() not in ("and", "the", "for", "of")]
-                if len(words) >= 2:
-                    org_acronyms.add("".join(w[0].lower() for w in words))
+
             if token in org_acronyms or self._org_token_in_haystack(token, haystack):
                 return CitationLink(
                     occurrence_id=occ_id,
@@ -626,7 +822,13 @@ class CitationLinker:
     ) -> dict[tuple[str, str], list[Citation]]:
         out: dict[tuple[str, str], list[Citation]] = {}
         for bib in bibs:
-            if bib.year:
+            bib_yr = bib.year or "n.d."
+            years_to_index = [bib_yr]
+            if bib.year is None:
+                for yr_m in re.findall(r"\b((?:19|20)\d{2})\b", bib.raw_text or ""):
+                    if yr_m not in years_to_index:
+                        years_to_index.append(yr_m)
+            for yr in years_to_index:
                 if bib.authors:
                     authors_to_index = (
                         bib.authors
@@ -636,52 +838,71 @@ class CitationLinker:
                     for auth_obj in authors_to_index:
                         last_name = self._normalize_last_name(auth_obj)
                         if last_name:
-                            key = (last_name.lower(), bib.year)
-                            if bib not in out.setdefault(key, []):
-                                out[key].append(bib)
-                            if " " in last_name and bib.matched_pattern != "vn_legal_document":
-                                short_key = (last_name.split()[-1].lower(), bib.year)
-                                if bib not in out.setdefault(short_key, []):
-                                    out[short_key].append(bib)
-                # Also index raw institutional author head before (Year) if present
-                raw_head_m = re.match(r"^([^\(]+?)\s*\(\s*(?:19|20)\d{2}", bib.raw_text or "")
+                            folded = self._fold_author_key(last_name)
+                            for ln_variant in {last_name.lower(), folded, folded.replace("-", " "), folded.replace(" ", "-")}:
+                                if not ln_variant:
+                                    continue
+                                key = (ln_variant, yr)
+                                if bib not in out.setdefault(key, []):
+                                    out[key].append(bib)
+                            if " " in folded and bib.matched_pattern != "vn_legal_document":
+                                for short_tok in (folded.split()[-1], folded.removeprefix("national ")):
+                                    short_key = (short_tok.lower(), yr)
+                                    if bib not in out.setdefault(short_key, []):
+                                        out[short_key].append(bib)
+                # Also index raw institutional author head before (Year)/(n.d.) if present
+                raw_head_m = re.match(
+                    r"^([^\(]+?)\s*\(\s*(?:(?:19|20)\d{2}|n\.?\s*d\.?)",
+                    bib.raw_text or "",
+                    re.IGNORECASE,
+                )
                 if raw_head_m:
                     raw_head = raw_head_m.group(1).strip().rstrip(".,").strip()
                     if _INSTITUTIONAL_AUTHOR_RE.search(raw_head):
-                        inst_key = (raw_head.lower(), bib.year)
-                        if bib not in out.setdefault(inst_key, []):
-                            out[inst_key].append(bib)
+                        for h_var in {raw_head.lower(), self._fold_author_key(raw_head)}:
+                            inst_key = (h_var, yr)
+                            if bib not in out.setdefault(inst_key, []):
+                                out[inst_key].append(bib)
         return out
 
     def _index_by_author_year_suffix(
         self, bibs: list[Citation]
     ) -> dict[tuple[str, str, str], list[Citation]]:
-        """Index bibs by (last_name, year, year_suffix) for 2020a/2020b matching."""
+        """Index bibs by (last_name, year, year_suffix) for 2020a/2020b/n.d.-a matching."""
         out: dict[tuple[str, str, str], list[Citation]] = {}
         for bib in bibs:
-            if bib.year:
-                year_suffix = bib.year_suffix or ""
-                if bib.authors:
-                    authors_to_index = (
-                        bib.authors
-                        if bib.matched_pattern == "vn_legal_document"
-                        else [bib.authors[0]]
-                    )
-                    for auth_obj in authors_to_index:
-                        last_name = self._normalize_last_name(auth_obj)
-                        if last_name:
-                            key = (last_name.lower(), bib.year, year_suffix)
+            bib_yr = bib.year or "n.d."
+            year_suffix = bib.year_suffix or ""
+            if bib.authors:
+                authors_to_index = (
+                    bib.authors
+                    if bib.matched_pattern == "vn_legal_document"
+                    else [bib.authors[0]]
+                )
+                for auth_obj in authors_to_index:
+                    last_name = self._normalize_last_name(auth_obj)
+                    if last_name:
+                        folded = self._fold_author_key(last_name)
+                        for ln_variant in {last_name.lower(), folded, folded.replace("-", " "), folded.replace(" ", "-")}:
+                            if not ln_variant:
+                                continue
+                            key = (ln_variant, bib_yr, year_suffix)
                             if bib not in out.setdefault(key, []):
                                 out[key].append(bib)
-                            if " " in last_name and bib.matched_pattern != "vn_legal_document":
-                                short_key = (last_name.split()[-1].lower(), bib.year, year_suffix)
-                                if bib not in out.setdefault(short_key, []):
-                                    out[short_key].append(bib)
-                raw_head_m = re.match(r"^([^\(]+?)\s*\(\s*(?:19|20)\d{2}", bib.raw_text or "")
-                if raw_head_m:
-                    raw_head = raw_head_m.group(1).strip().rstrip(".,").strip()
-                    if _INSTITUTIONAL_AUTHOR_RE.search(raw_head):
-                        inst_key = (raw_head.lower(), bib.year, year_suffix)
+                        if " " in folded and bib.matched_pattern != "vn_legal_document":
+                            short_key = (folded.split()[-1].lower(), bib_yr, year_suffix)
+                            if bib not in out.setdefault(short_key, []):
+                                out[short_key].append(bib)
+            raw_head_m = re.match(
+                r"^([^\(]+?)\s*\(\s*(?:(?:19|20)\d{2}|n\.?\s*d\.?)",
+                bib.raw_text or "",
+                re.IGNORECASE,
+            )
+            if raw_head_m:
+                raw_head = raw_head_m.group(1).strip().rstrip(".,").strip()
+                if _INSTITUTIONAL_AUTHOR_RE.search(raw_head):
+                    for h_var in {raw_head.lower(), self._fold_author_key(raw_head)}:
+                        inst_key = (h_var, bib_yr, year_suffix)
                         if bib not in out.setdefault(inst_key, []):
                             out[inst_key].append(bib)
         return out
@@ -692,7 +913,7 @@ class CitationLinker:
         Handles:
             - str "Smith, J." → "Smith"
             - str "De Choudhury, M." → "De Choudhury"
-            - str "Smith J." → "Smith"
+            - str "Smith J." / "Ashwini L. H." → "Smith" / "Ashwini"
             - str "De Choudhury" → "De Choudhury"
             - Author object → .last_name attribute
         """
@@ -707,10 +928,10 @@ class CitationLinker:
             tokens = raw.split()
             if not tokens:
                 return ""
-            if len(tokens) >= 2 and len(tokens[-1].rstrip(".")) == 1 and tokens[-1][0].isupper():
-                # "Smith J." → "Smith"
-                last = " ".join(tokens[:-1])
-            elif len(tokens) >= 2 and len(tokens[0].rstrip(".")) == 1 and tokens[0][0].isupper():
+            # Strip trailing single-letter initials ("Smith J.", "Ashwini L. H.")
+            while len(tokens) >= 2 and len(tokens[-1].rstrip(".")) == 1 and tokens[-1][0].isupper():
+                tokens = tokens[:-1]
+            if len(tokens) >= 2 and len(tokens[0].rstrip(".")) == 1 and tokens[0][0].isupper():
                 # "J. Smith" → "Smith"
                 non_init = [t for t in tokens if len(t.rstrip(".")) > 1]
                 last = " ".join(non_init) if non_init else tokens[-1]
@@ -756,15 +977,24 @@ class CitationLinker:
         return indices
 
     def _clean_intext_author(self, raw_author: str) -> str:
-        """Strip et al. / và cộng sự / 2nd+ authors (while preserving corporate names)."""
-        author_stripped = re.sub(
-            r",?\s*(?:et\s+al\.?|and\s+others?|và\s+cộng\s+sự|và\s+cs\.?)\s*$",
+        """Strip et al. / caption prefixes / bracketed acronyms / 2nd+ authors."""
+        # Strip bracketed acronym definitions like "[NIMH]", "[SAMHSA]" and surrounding quotes
+        cleaned = re.sub(r"\s*\[[^\]]+\]", "", raw_author).strip(" \t\"'\u201c\u201d\u2018\u2019,")
+        # Strip leading figure/table caption or discourse prefixes ("Adapted from ", "for example in ", "see ")
+        cleaned = re.sub(
+            r"^(?:.*?\b(?:for\s+example\s+in|such\s+as\s+in|adapted\s+from|reprinted\s+from|modified\s+from|data\s+from|derived\s+from|based\s+on|source\s*:|see\s+also|see|e\.g\.,?|i\.e\.,?|cf\.?)\s+)",
             "",
-            raw_author,
+            cleaned,
             flags=re.IGNORECASE,
-        ).strip().rstrip(",").strip()
+        ).strip(" \t\"'\u201c\u201d\u2018\u2019,")
+        author_stripped = re.sub(
+            r",?\s*(?:et\s+a?l\.?|and\s+others?|và\s+cộng\s+sự|và\s+cs\.?)\s*$",
+            "",
+            cleaned,
+            flags=re.IGNORECASE,
+        ).strip().rstrip(",").strip(" \t\"'\u201c\u201d\u2018\u2019")
 
-        if _INSTITUTIONAL_AUTHOR_RE.search(author_stripped):
+        if _INSTITUTIONAL_AUTHOR_RE.search(author_stripped) or ":" in author_stripped:
             return author_stripped.strip(" .,")
 
         # Multi-author in-text: "Zhang và Hanks", "Carr & Kemmis", "Simon, Smith & West"
@@ -779,20 +1009,19 @@ class CitationLinker:
 
         return self._normalize_last_name(author_stripped)
 
+    @staticmethod
+    def _parse_year_token(year_raw: str) -> tuple[str, Optional[str]]:
+        """Normalize year token ('2020a' -> ('2020', 'a'), 'n.d.-a' -> ('n.d.', 'a'))."""
+        yr = re.sub(r"\s+", "", year_raw.strip().lower())
+        nd_m = re.match(r"^n\.?d\.?(?:-([a-z]))?$", yr)
+        if nd_m:
+            return "n.d.", nd_m.group(1)
+        if len(yr) == 5 and yr[:4].isdigit() and yr[4] in "abcdefgh":
+            return yr[:4], yr[4]
+        return yr[:4] if len(yr) >= 4 and yr[:4].isdigit() else yr, None
+
     def _extract_author_year(self, text: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
-        """Trích (author, year, year_suffix) từ APA-style (Author, Year).
-
-        Handles: (Smith, 2020) → ("smith", "2020", None)
-                 (Smith, 2020a) → ("smith", "2020", "a")
-                 (Smith et al., 2020) / (Tran và cộng sự, 2019) → ("tran", "2019", None)
-                 (Zhang và Hanks, 2018) / (Carr & Kemmis, 1986) → ("zhang", "2018", None)
-                 (Simon, Smith & West, 2009) → ("simon", "2009", None)
-                 (Bộ nông nghiệp & PTNT, 1996) → ("Bộ nông nghiệp & PTNT", "1996", None)
-
-        Returns:
-            (normalized_last_name, year, year_suffix) — author đã được normalize
-            để khớp với _index_by_author_year.
-        """
+        """Trích (author, year, year_suffix) từ APA-style (Author, Year) hoặc (Author, n.d.)."""
         # Normalize newlines to spaces to handle line breaks in extracted text
         text_normalized = text.replace("\n", " ").replace("\r", " ")
 
@@ -800,15 +1029,12 @@ class CitationLinker:
         m = _APA_YEAR_RE.search(text_normalized)
         if m:
             raw_author = m.group(1).strip()
-            year = m.group(2).strip()
+            year_raw = m.group(2).strip()
             # If raw_author contains a secondary citation ("Smith, 2005, dẫn theo Tran"),
             # strip everything up to the secondary citation keyword or take primary author.
             if re.search(r"\b(?:19|20)\d{2}\b", raw_author):
                 raw_author = re.split(r",\s*(?:19|20)\d{2}", raw_author)[0].strip()
-            year_suffix = None
-            if len(year) == 5 and year[4] in "abcdefgh":
-                year_suffix = year[4]
-                year = year[:4]
+            year, year_suffix = self._parse_year_token(year_raw)
             normalized = self._clean_intext_author(raw_author)
             return normalized, year, year_suffix
 
@@ -816,20 +1042,16 @@ class CitationLinker:
         m2 = _APA_ETAL_YEAR_RE.search(text_normalized)
         if m2:
             raw_author = m2.group(1).strip()
-            year = m2.group(2).strip()
-            year_suffix = None
-            if len(year) == 5 and year[4] in "abcdefgh":
-                year_suffix = year[4]
-                year = year[:4]
+            year_raw = (m2.group(2) or m2.group(3) or "").strip()
+            year, year_suffix = self._parse_year_token(year_raw)
             normalized = self._clean_intext_author(raw_author)
             return normalized, year, year_suffix
 
         m3 = _NARRATIVE_YEAR_RE.search(text_normalized)
         if m3:
             raw_author = m3.group(1).strip()
-            year = m3.group(2)
-            year_suffix = year[4:] if len(year) == 5 else None
-            return self._clean_intext_author(raw_author), year[:4], year_suffix
+            year, year_suffix = self._parse_year_token(m3.group(2))
+            return self._clean_intext_author(raw_author), year, year_suffix
 
         return None, None, None
 

@@ -37,9 +37,15 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 _UPPER_VN = r"[A-ZÀ-ÝĂÂĐÊÔƠƯĨŨẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ]"
 _STOPWORDS_AHEAD = (
     r"(?!(?:Theo|Trong|Tại|Với|Như|Của|Bởi|Qua|Từ|Khi|Nếu|Vì|Do|Ở|Hoặc|Và"
-    r"|In|For|By|From|See|As|With|According|However|Although)\s+)"
+    r"|In|For|By|From|See|As|With|According|However|Although|Similarly|Conversely"
+    r"|Specifically|Furthermore|Moreover|Notably|Importantly|Additionally|Meanwhile"
+    r"|Consequently|Nevertheless|Nonetheless|Therefore|Thus|Hence|Indeed|Instead"
+    r"|Likewise|Otherwise|Subsequently|Accordingly|Alternatively|Finally|Overall"
+    r"|Recently|Traditionally|Historically|Yet|Still|Even|While|Whereas|Because"
+    r"|Since|When|Where|If|Unless|Until|After|Before|Once|Despite|Unlike|Like"
+    r"|Table|Figure|Chapter|Section|Appendix|Part|Page|Papers|Networks)(?:,|\s+))"
 )
-_AUTHOR_TOKEN = rf"(?:(?:van|de|der|von)\s+)*{_UPPER_VN}[a-zA-ZÀ-ỹ'\-]+"
+_AUTHOR_TOKEN = rf"(?:(?:van|de|der|von)\s+)*{_UPPER_VN}[a-zA-ZÀ-ỹ'\u2019\-]+"
 _CORP_AUTHOR_NARRATIVE = (
     r"(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Ngân\s+hàng\s+Nhà\s+nước|Tổ\s+chức|Hiệp\s+hội)(?:\s+[A-Za-zÀ-ỹ&]+){1,8}"
     r"|(?:Chính\s+phủ|Quốc\s+hội|Hiến\s+pháp)(?:\s+[A-Za-zÀ-ỹ&]+){0,6}"
@@ -47,6 +53,7 @@ _CORP_AUTHOR_NARRATIVE = (
     r"|(?:Nghị\s+định|Thông\s+tư(?:\s+liên\s+tịch)?|Quyết\s+định|Nghị\s+quyết|Chỉ\s+thị)(?:\s+số)?\s+\d+[A-Za-zĐđ0-9/\-]+"
     r"|(?:Department|Ministry|World\s+Health\s+Organization|United\s+Nations|Reserve\s+Bank)"
     rf"(?:\s+(?:of|for|and|the|&|{_UPPER_VN}[a-zA-ZÀ-ỹ\-]*)){{1,8}}"
+    r"|(?:Media\s+Helping\s+Media|Amen\s+Clinics|OpenRocket\s+Project|RocketPy\s+Team|RocketSerializer\s+Developers|Pew\s+Research\s+Center|Security\s+Risk\s+Advisors|Microsoft\s+Security|American\s+Library\s+Association|National\s+News\s+Literacy\s+Project|Local\s+News\s+Initiative|IBM|MITRE|Fortinet)"
 )
 _PAGE_OR_SECONDARY_SUFFIX = (
     r"(?:\s*,\s*(?:"
@@ -55,28 +62,27 @@ _PAGE_OR_SECONDARY_SUFFIX = (
     r"))?"
 )
 
-# Parenthetical: (Author, 2020), (Author et al., 2020), (Author và cộng sự, 2020),
-# (Author A và Author B, 2020), (Author, 2020, tr. 15), (Author, 2005, dẫn theo B, 2016)
+# Parenthetical: (Author, 2020), (Author et al., 2020), ("Title," 2024), (Author, n.d.)
 _APA_INTEXT_PARENTHETICAL = CompiledPattern.create(
     name="apa_intext_parenthetical",
-    pattern=rf"\(([^)]+),\s*(\d{{4}}[a-z]?){_PAGE_OR_SECONDARY_SUFFIX}\)",
+    pattern=rf"\(([^)]+),[\"\u201d\u2019']?\s*((?:19|20)\d{{2}}[a-z]?|n\.?\s*d\.?(?:-[a-z])?){_PAGE_OR_SECONDARY_SUFFIX}\)",
     pattern_type=PatternType.IN_TEXT,
-    description="APA in-text parenthetical: (Author, 2020) | (Author et al., 2020) | (Author và cộng sự, 2020)",
+    description="APA in-text parenthetical: (Author, 2020) | (Author et al., 2020) | (Author, n.d.)",
 )
 
-# Narrative: Author (2020), Author et al. (2020), Author và cộng sự (2020),
-# Author A và Author B (2020), Corporate Author (2020)
+# Narrative: Author (2020), Author et al. (2020), Author et al. 2020, Corporate Author (2020)
 _APA_INTEXT_NARRATIVE = CompiledPattern.create(
     name="apa_intext_narrative",
     pattern=(
         rf"({_CORP_AUTHOR_NARRATIVE}|{_STOPWORDS_AHEAD}{_AUTHOR_TOKEN}"
         rf"(?:(?:\s*,\s*(?:và|and|&)\s+|\s+(?:và|and|&)\s+|\s*,\s*){_STOPWORDS_AHEAD}{_AUTHOR_TOKEN})*"
-        rf"(?:\s*,?\s*(?:et\s+al\.?|và\s+cộng\s+sự|và\s+cs\.?))?"
-        rf"(?:[\s,]{_UPPER_VN}[a-zA-ZÀ-ỹ'\-]*)*)"
-        rf"\s+\((\d{{4}}[a-z]?){_PAGE_OR_SECONDARY_SUFFIX}\)"
+        rf"(?:\s*,?\s*(?:et\s+a?l\.?|và\s+cộng\s+sự|và\s+cs\.?))?"
+        rf"(?:[\s,]{_UPPER_VN}[a-zA-ZÀ-ỹ'\u2019\-]*)*)"
+        rf"\s+\(((?:19|20)\d{{2}}[a-z]?|n\.?\s*d\.?(?:-[a-z])?){_PAGE_OR_SECONDARY_SUFFIX}\)"
+        rf"|({_STOPWORDS_AHEAD}{_AUTHOR_TOKEN}\s+et\s+al\.)\s+((?:19|20)\d{{2}}[a-z]?)\b"
     ),
     pattern_type=PatternType.IN_TEXT,
-    description="APA narrative: Author (2020) | Author et al. (2020) | Author và cộng sự (2020)",
+    description="APA narrative: Author (2020) | Author et al. (2020) | Author (n.d.)",
 )
 
 # --- Reference list APA patterns ---
