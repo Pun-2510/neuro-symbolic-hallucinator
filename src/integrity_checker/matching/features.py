@@ -195,6 +195,12 @@ class FeatureCalculator:
                         stance_label = str(best_occ.get("stance") or stance_label)
                         if best_occ.get("best_evidence_sentence"):
                             best_evidence_sentence = str(best_occ["best_evidence_sentence"])
+                    # Preserve polarity contradiction if any occurrence explicitly refutes the paper
+                    if any(
+                        o.get("stance") == "contradiction_risk" and float(o.get("score") or 0.0) >= 0.30
+                        for o in occurrence_alignments
+                    ):
+                        stance_label = "contradiction_risk"
             if not context_source:
                 context_source = "in_text_citation"
 
@@ -222,11 +228,11 @@ class FeatureCalculator:
         )
 
     @staticmethod
-    def _year_distance(y1: str | None, y2: str | None) -> int:
+    def _year_distance(y1: str | int | None, y2: str | int | None) -> int:
         if not y1 or not y2:
             return 999
-        m1 = re.search(r"\d{4}", y1)
-        m2 = re.search(r"\d{4}", y2)
+        m1 = re.search(r"\d{4}", str(y1))
+        m2 = re.search(r"\d{4}", str(y2))
         if not m1 or not m2:
             return 999
         return abs(int(m1.group(0)) - int(m2.group(0)))

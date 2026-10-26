@@ -78,6 +78,35 @@ _VN_EN_ACADEMIC_BRIDGE: tuple[tuple[str, str], ...] = (
     ("giao diện người dùng", "user interface DOM responsive frontend"),
     ("xác thực người dùng", "user authentication login session security"),
     ("mã hóa mật khẩu", "password hashing security authentication"),
+    ("mạng nơ-ron tích chập", "convolutional neural network CNN deep learning"),
+    ("học chuyển giao", "transfer learning pre-trained fine-tuning"),
+    ("tăng cường dữ liệu", "data augmentation synthetic training"),
+    ("rừng ngẫu nhiên", "random forest ensemble decision trees"),
+    ("cây quyết định", "decision tree classification"),
+    ("hồi quy", "regression linear logistic prediction"),
+    ("thị giác máy tính", "computer vision image recognition object detection"),
+    ("nhận dạng", "recognition detection classification"),
+    ("nghiên cứu lâm sàng", "clinical study trial patients medical"),
+    ("lâm sàng", "clinical medical patients"),
+    ("bệnh nhân", "patients clinical cohort subjects"),
+    ("chẩn đoán", "diagnosis detection screening clinical"),
+    ("điều trị", "treatment therapy intervention"),
+    ("thiếu ngủ", "sleep deprivation restriction insomnia"),
+    ("trí nhớ ngắn hạn", "short-term working memory cognitive retention"),
+    ("trí nhớ", "memory cognitive working memory"),
+    ("khả năng tập trung", "sustained attention cognitive focus"),
+    ("tập trung", "attention concentration cognitive"),
+    ("thanh thiếu niên", "adolescents youth students teenagers"),
+    ("người cao tuổi", "elderly older adults aging"),
+    ("suy giảm", "impairs reduces decline degradation"),
+    ("đột quỵ", "stroke ischemic cerebrovascular"),
+    ("tim mạch", "cardiovascular heart disease"),
+    ("tiểu đường", "diabetes diabetic blood glucose"),
+    ("ung thư", "cancer tumor oncology"),
+    ("tăng trưởng kinh tế", "economic growth GDP macroeconomic"),
+    ("rủi ro tín dụng", "credit risk financial default"),
+    ("gian lận", "fraud detection anomaly"),
+    ("thương mại điện tử", "e-commerce online shopping"),
 )
 
 # Canonical Zero-Shot Neural Intent Prototypes (SciCite / ACL-ARC taxonomy)
@@ -111,8 +140,8 @@ _RESULT_CUES_RE = re.compile(
 
 _NEGATION_CUES_RE = re.compile(
     r"\b(?:not|never|no\s+longer|fails?\s+to|cannot|ineffective|insufficient|weak|"
-    r"worse\s+than|unreliable|impossible|evaded\s+by|lack\s+of|"
-    r"không\s+thể|không\s+hiệu\s+quả|thất\s+bại|kém\s+hơn)\b",
+    r"worse\s+than|unreliable|impossible|evaded\s+by|lack\s+of|useless|incapable|"
+    r"không\s+thể|không\s+hiệu\s+quả|thất\s+bại|kém\s+hơn|vô\s+dụng)\b",
     re.IGNORECASE,
 )
 _STRONG_POSITIVE_CLAIM_RE = re.compile(
@@ -120,6 +149,18 @@ _STRONG_POSITIVE_CLAIM_RE = re.compile(
     r"never\s+fails|eliminates\s+all|surprisingly\s+effective|highly\s+effective|"
     r"superior\s+in\s+quality|significantly\s+outperforms|"
     r"hoàn\s+toàn\s+chính\s+xác|luôn\s+đúng|rất\s+hiệu\s+quả)\b",
+    re.IGNORECASE,
+)
+_DIRECT_REFUTATION_RE = re.compile(
+    r"\b(?:completely\s+ineffective|fails?\s+to\s+\w+|useless|does\s+not\s+work|"
+    r"cannot\s+improve|worse\s+than\s+random|incapable\s+of|"
+    r"hoàn\s+toàn\s+thất\s+bại|không\s+có\s+tác\s+dụng|hoàn\s+toàn\s+vô\s+dụng)\b",
+    re.IGNORECASE,
+)
+_POSITIVE_EVIDENCE_RE = re.compile(
+    r"\b(?:state-of-the-art|outperforms?|effective|improves?|achieves?|successfully|"
+    r"we\s+introduce|we\s+present|we\s+propose|we\s+demonstrate|we\s+show|"
+    r"superior|accurate|robust|significant\s+improvement)\b",
     re.IGNORECASE,
 )
 
@@ -291,10 +332,7 @@ class SemanticMatcher:
             cleaned = trimmed
 
         # Protect common scholarly abbreviations before splitting into sentences
-        protected = cleaned
-        protected = re.sub(r"\bet\s+al\.", "et al<DOT>", protected, flags=re.IGNORECASE)
-        protected = re.sub(r"\b(Fig|Table|Eq|Sec|Ch|Vol|No|pp|dr|prof|vs|e\.g|i\.e)\.", r"\1<DOT>", protected, flags=re.IGNORECASE)
-        protected = re.sub(r"(\d)\.(\d)", r"\1<DOT>\2", protected)
+        protected = cls._protect_abbreviations(cleaned)
 
         raw_parts = re.split(r"(?<=[.!?;;])\s+(?=[A-ZÀ-Ỹ0-9\[\(])", protected)
         sentences = [
@@ -307,9 +345,9 @@ class SemanticMatcher:
 
         # 1. If explicit citation marker (e.g. "[2]", "(Vaswani et al., 2017)") is present, find its sentence
         marker_clean = (citation_marker or "").strip()
-        if marker_clean and len(marker_clean) <= 40:
+        if marker_clean and len(marker_clean) <= 60:
             for idx, sent in enumerate(sentences):
-                if marker_clean.lower() in sent.lower():
+                if cls._sentence_matches_marker(sent, marker_clean):
                     if len(sent) < 55 and len(sentences) > 1:
                         neighbor = sentences[idx + 1] if idx + 1 < len(sentences) else sentences[idx - 1]
                         return f"{sent} {neighbor}".strip()
@@ -337,6 +375,63 @@ class SemanticMatcher:
                 best_sent = sent
 
         return best_sent
+
+    @staticmethod
+    def _protect_abbreviations(text: str) -> str:
+        """Protect scholarly abbreviations, initials, and decimals from sentence splitting."""
+        if not text:
+            return ""
+        protected = text
+        protected = protected.replace("...", "<DOT><DOT><DOT>")
+        protected = re.sub(r"\bet\s+al\.", "et al<DOT>", protected, flags=re.IGNORECASE)
+        protected = re.sub(r"\be\.g\.", "e<DOT>g<DOT>", protected, flags=re.IGNORECASE)
+        protected = re.sub(r"\bi\.e\.", "i<DOT>e<DOT>", protected, flags=re.IGNORECASE)
+        protected = re.sub(
+            r"\b(Fig|Figs|Table|Tab|Eq|Eqs|Sec|Secs|Ch|Vol|Iss|No|Nos|pp|Dr|Prof|Mr|Mrs|Ms|Jr|Sr|Inc|Ltd|Co|Corp|vs|cf|viz|approx|est|dept|univ|proc|intl|conf)\.",
+            r"\1<DOT>",
+            protected,
+            flags=re.IGNORECASE,
+        )
+        # Protect single uppercase initial before a capitalized name (e.g. "J. Devlin")
+        protected = re.sub(r"\b([A-Z])\.(?=\s+[A-Z])", r"\1<DOT>", protected)
+        # Protect decimal numbers / versions (e.g. "94.5%", "Sec. 4.2")
+        protected = re.sub(r"(\d)\.(\d)", r"\1<DOT>\2", protected)
+        return protected
+
+    @staticmethod
+    def _sentence_matches_marker(sent: str, marker_clean: str) -> bool:
+        """Check if sentence contains the exact citation marker OR a multi-citation cluster containing it."""
+        if not sent or not marker_clean:
+            return False
+        sent_lower = sent.lower()
+        marker_lower = marker_clean.lower()
+        if marker_lower in sent_lower:
+            return True
+
+        # Handle numeric bracket marker [N] inside multi-citation clusters like [1, 2] or [1-4]
+        num_match = re.fullmatch(r"\[(\d+)\]", marker_clean)
+        if num_match:
+            target_num = int(num_match.group(1))
+            for bracket_inner in re.findall(r"\[([^\]]+)\]", sent):
+                # Direct number match in comma list: [1, 2, 5]
+                if re.search(rf"\b{target_num}\b", bracket_inner):
+                    return True
+                # Range match: [1-4] or [1–4]
+                for rng in re.finditer(r"(\d+)\s*[-–—]\s*(\d+)", bracket_inner):
+                    start_n, end_n = int(rng.group(1)), int(rng.group(2))
+                    if start_n <= target_num <= end_n:
+                        return True
+
+        # Handle author-year marker (Surname et al., YYYY) inside multi-citation parentheses
+        year_match = re.search(r"\b((?:19|20)\d{2}[a-z]?)\b", marker_clean)
+        author_match = re.search(r"([A-Za-zÀ-ỹ]{3,})", marker_clean)
+        if year_match and author_match:
+            yr = year_match.group(1).lower()
+            surname = author_match.group(1).lower()
+            if surname in sent_lower and yr in sent_lower:
+                return True
+
+        return False
 
     @staticmethod
     def detect_and_bridge_cross_lingual(
@@ -420,6 +515,8 @@ class SemanticMatcher:
         best_evidence_sentence: str,
         similarity: float,
         has_abstract: bool,
+        is_cross_lingual: bool = False,
+        source_abstract: Optional[str] = None,
     ) -> str:
         """Kiểm tra tính đồng thuận / mâu thuẫn ngữ nghĩa (Stance & Polarity Verification).
 
@@ -433,19 +530,28 @@ class SemanticMatcher:
             return "neutral"
 
         # Check for severe polarity inversion when discussing the same technical concept
-        if best_evidence_sentence and similarity >= 0.35:
+        if best_evidence_sentence and similarity >= 0.30:
             ctx_neg = bool(_NEGATION_CUES_RE.search(focal_sentence))
             ev_neg = bool(_NEGATION_CUES_RE.search(best_evidence_sentence))
             ctx_abs_pos = bool(_STRONG_POSITIVE_CLAIM_RE.search(focal_sentence))
             ev_abs_pos = bool(_STRONG_POSITIVE_CLAIM_RE.search(best_evidence_sentence))
-            if (ctx_abs_pos and ev_neg and not ctx_neg) or (ctx_neg and ev_abs_pos and not ev_neg):
+            ctx_direct_refute = bool(_DIRECT_REFUTATION_RE.search(focal_sentence))
+            ev_pos = bool(
+                _POSITIVE_EVIDENCE_RE.search(best_evidence_sentence)
+                or (source_abstract and _POSITIVE_EVIDENCE_RE.search(source_abstract))
+            )
+            if (
+                (ctx_abs_pos and ev_neg and not ctx_neg)
+                or (ctx_neg and ev_abs_pos and not ev_neg)
+                or (ctx_direct_refute and ev_pos and not ev_neg)
+            ):
                 return "contradiction_risk"
 
         if similarity >= 0.50:
             return "supported"
         if similarity >= 0.35:
             return "partially_supported"
-        if has_abstract and similarity < 0.22:
+        if has_abstract and similarity < 0.22 and not is_cross_lingual:
             return "contradiction_risk"
         return "neutral"
 
@@ -478,7 +584,21 @@ class SemanticMatcher:
             )
 
         try:
+            source_abstract = self._sanitize_abstract(source_abstract)
             raw_context_clean = self.clean_and_dehyphenate_context(cited_context)
+            if len(re.findall(r"[A-Za-zÀ-ỹ]{2,}", raw_context_clean)) < 2:
+                return SemanticAlignmentResult(
+                    similarity=0.0,
+                    confidence="low",
+                    is_aligned=False,
+                    compared_texts={
+                        "cited_context": cited_context,
+                        "source_title": source_title,
+                        "has_abstract": bool(source_abstract),
+                        "has_body": bool(source_body),
+                    },
+                    stance_label="neutral",
+                )
             focal_sentence = self.extract_focal_sentence(
                 raw_context_clean,
                 citation_marker=citation_marker,
@@ -511,11 +631,16 @@ class SemanticMatcher:
                     has_abs = bool(source_abstract and source_abstract.strip())
                     abs_sents: list[str] = []
                     if has_abs and source_abstract:
-                        truncated_abstract = self._truncate_text(source_abstract, max_length=512)
+                        if len(source_abstract) > 512:
+                            truncated_abstract = (
+                                source_abstract[:300].strip() + " ... " + source_abstract[-200:].strip()
+                            )
+                        else:
+                            truncated_abstract = self._truncate_text(source_abstract, max_length=512)
                         batch_texts.append(truncated_abstract)
                         extracted = self._extract_sentences(source_abstract)
                         if len(extracted) >= 1:
-                            abs_sents = extracted[:10]
+                            abs_sents = extracted[:25]
                             batch_texts.extend(abs_sents)
 
                     # Append focal_sentence and optional cross-lingual bridged context
@@ -594,13 +719,18 @@ class SemanticMatcher:
 
                 abstract_sim = 0.0
                 if source_abstract:
-                    truncated_abstract = self._truncate_text(source_abstract, max_length=512)
+                    if len(source_abstract) > 512:
+                        truncated_abstract = (
+                            source_abstract[:300].strip() + " ... " + source_abstract[-200:].strip()
+                        )
+                    else:
+                        truncated_abstract = self._truncate_text(source_abstract, max_length=512)
                     whole_abs_sim = self._compute_similarity(model, cited_context_trunc, truncated_abstract)
                     abs_sentences = self._extract_sentences(source_abstract)
                     if len(abs_sentences) >= 2:
                         sent_sims = [
                             self._compute_similarity(model, cited_context_trunc, sent)
-                            for sent in abs_sentences[:6]
+                            for sent in abs_sentences[:25]
                         ]
                         if sent_sims:
                             best_idx = max(range(len(sent_sims)), key=lambda i: sent_sims[i])
@@ -654,6 +784,8 @@ class SemanticMatcher:
                 best_evidence_sentence,
                 final_sim,
                 has_abstract=bool(source_abstract),
+                is_cross_lingual=is_cross_lingual,
+                source_abstract=source_abstract,
             )
 
             return SemanticAlignmentResult(
@@ -777,6 +909,15 @@ class SemanticMatcher:
 
         norm_title_sub = re.sub(r"\s+", " ", source_title.lower().strip())[:35]
 
+        # Build reverse Vietnamese concept cues for English references (so Vietnamese body paragraphs
+        # discussing an English paper's concept without English keywords are also discovered)
+        src_full_lower = f"{source_title} {source_abstract or ''}".lower()
+        vn_concept_cues: list[str] = []
+        for vn_phrase, en_equiv in _VN_EN_ACADEMIC_BRIDGE:
+            en_words = [w.lower() for w in re.findall(r"[A-Za-z0-9-]{3,}", en_equiv)]
+            if any(ew in src_full_lower for ew in en_words):
+                vn_concept_cues.append(vn_phrase)
+
         candidate_passages: list[tuple[int, str, float]] = []
         for page_num, page_text in body_pages:
             if not page_text or len(page_text.strip()) < 60:
@@ -794,18 +935,32 @@ class SemanticMatcher:
                     continue
                 win_lower = window.lower()
                 # Skip windows that are themselves bibliography entries on an unfiltered reference page
+                is_bib_entry = bool(
+                    re.search(
+                        r"\b[A-ZÀ-Ỹ][a-zà-ỹ]+,\s+[A-Z]\.(?:.*?\(\s*(?:19|20)\d{2}[a-z]?\s*\))",
+                        window,
+                    )
+                    or (len(norm_title_sub) >= 12 and norm_title_sub in win_lower and re.search(r"\b(?:19|20)\d{2}\b", win_lower))
+                )
                 if (
                     "in proceedings of" in win_lower
                     or "https://doi.org/" in win_lower
                     or "arxiv preprint" in win_lower
                     or (len(norm_title_sub) >= 24 and norm_title_sub in win_lower)
+                    or is_bib_entry
                 ):
                     continue
                 win_words = set(re.findall(r"[a-zA-ZÀ-ỹ0-9]{3,}", win_lower))
                 kw_hits = len(title_tokens & win_words)
                 auth_hits = len(author_surnames & win_words)
-                if kw_hits > 0 or auth_hits > 0:
-                    pre_score = kw_hits * 2.0 + auth_hits * 3.0 + min(len(window), 260) / 300.0
+                vn_hits = sum(1 for vp in vn_concept_cues if vp in win_lower)
+                if kw_hits > 0 or auth_hits > 0 or vn_hits > 0:
+                    pre_score = (
+                        kw_hits * 2.0
+                        + auth_hits * 3.0
+                        + vn_hits * 2.2
+                        + min(len(window), 260) / 300.0
+                    )
                     candidate_passages.append((page_num, window[:360], pre_score))
 
         if not candidate_passages:
@@ -817,7 +972,14 @@ class SemanticMatcher:
 
         try:
             target_text = f"{source_title}. {self._truncate_text(source_abstract or '', 320)}".strip()
-            batch_texts = [target_text] + [w[1] for w in top_windows]
+            encoded_windows: list[str] = []
+            for _, win_text, _ in top_windows:
+                is_xl, bridged_win = self.detect_and_bridge_cross_lingual(
+                    win_text, source_title, source_abstract
+                )
+                encoded_windows.append(bridged_win if (is_xl and bridged_win) else win_text)
+
+            batch_texts = [target_text] + encoded_windows
             embs = self._encode(
                 model,
                 batch_texts,
@@ -841,6 +1003,19 @@ class SemanticMatcher:
             return best_page, best_text, max(0.0, min(1.0, best_sim))
         except Exception:  # noqa: BLE001
             return top_windows[0][0], top_windows[0][1], 0.5
+
+    @staticmethod
+    def _sanitize_abstract(text: Optional[str]) -> Optional[str]:
+        """Clean XML/JATS/HTML tags, entities, and leading 'Abstract:' prefix from source abstracts."""
+        if not text or not isinstance(text, str):
+            return None
+        import html
+
+        cleaned = re.sub(r"<[^>]+>", " ", text)
+        cleaned = html.unescape(cleaned)
+        cleaned = " ".join(cleaned.split()).strip()
+        cleaned = re.sub(r"^(?:abstract|summary)\s*[:.\-—]?\s+", "", cleaned, flags=re.IGNORECASE)
+        return cleaned if cleaned else None
 
     def _get_intent_embeddings(self, model: "object") -> Any:
         """Lazy-compute and cache embeddings for the 3 citation intent prototypes."""
@@ -921,11 +1096,12 @@ class SemanticMatcher:
         """Split abstract/text into individual substantive sentences for sentence-level alignment."""
         if not text:
             return []
-        raw_sentences = re.split(r"[.!?]+(?:\s+|$)|\n+", text)
+        protected = self._protect_abbreviations(text)
+        raw_sentences = re.split(r"[.!?]+(?:\s+|$)|\n+", protected)
         return [
-            s.strip()
+            s.replace("<DOT>", ".").strip()
             for s in raw_sentences
-            if len(s.strip()) >= 25
+            if len(s.replace("<DOT>", ".").strip()) >= 25
         ]
 
     def _split_into_segments(self, text: str, max_length: int) -> list[str]:

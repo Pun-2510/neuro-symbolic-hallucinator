@@ -427,3 +427,159 @@ class TestDeepNeuralLayerUpgrade:
         assert score >= 0.30
 
 
+class TestExtremeNeuralEdgeCases:
+    """Extreme, rare, and adversarial edge-case tests for the Deep Neural Layer."""
+
+    def test_extract_sentences_preserves_scholarly_abbreviations_and_decimals(self):
+        from integrity_checker.matching.semantic import SemanticMatcher
+
+        sm = SemanticMatcher()
+        tricky = (
+            "Following Vaswani et al. (2017) and Dr. J. Devlin et al. (2019), e.g., BERT-base vs. RoBERTa "
+            "on GLUE (Sec. 4.2, Fig. 3, i.e., bidirectional transformers), our model achieves 94.5% accuracy. "
+            "However, earlier recurrent architectures struggled with long-range dependencies."
+        )
+        sents = sm._extract_sentences(tricky)
+        assert len(sents) == 2
+        assert "Vaswani et al. (2017)" in sents[0]
+        assert "e.g., BERT-base vs. RoBERTa" in sents[0]
+        assert "94.5% accuracy" in sents[0]
+
+    def test_extract_focal_sentence_handles_multi_citation_clusters_and_ranges(self):
+        from integrity_checker.matching.semantic import SemanticMatcher
+
+        ctx = (
+            "Previous studies explored recurrent neural networks for sequence modeling [1, 2, 5]. "
+            "In contrast, our quantitative evaluation on benchmark datasets follows the protocol in [3–6]. "
+            "Finally, deployment details are provided in Chapter 5."
+        )
+        focal_2 = SemanticMatcher.extract_focal_sentence(
+            ctx, citation_marker="[2]", source_title="Sequence to Sequence Learning"
+        )
+        focal_4 = SemanticMatcher.extract_focal_sentence(
+            ctx, citation_marker="[4]", source_title="GLUE Benchmark"
+        )
+        assert "recurrent neural networks" in focal_2
+        assert "quantitative evaluation" in focal_4
+
+    def test_long_structured_abstract_matches_late_conclusion_sentence(self):
+        from integrity_checker.matching.semantic import SemanticMatcher
+
+        sm = SemanticMatcher.get_instance()
+        long_sents = [
+            f"Background sentence {i} discussing general hospital administrative logistics and billing codes."
+            for i in range(1, 15)
+        ]
+        long_sents.append(
+            "Specifically, random forest models combined with oversampling achieved 94% sensitivity for early stroke prediction."
+        )
+        long_sents.append("Future work will expand to multi-center cohorts.")
+        res = sm.check_content_alignment(
+            cited_context="Our pipeline adopts random forest with oversampling, reaching 94% sensitivity in early stroke prediction [4].",
+            source_title="A Multi-Center Clinical Study of Patient Outcomes",
+            source_abstract=" ".join(long_sents),
+            citation_marker="[4]",
+        )
+        assert "random forest models combined with oversampling" in res.best_evidence_sentence
+        assert res.similarity >= 0.70
+
+    def test_cross_lingual_pure_vietnamese_medical_and_niche_domains(self):
+        from integrity_checker.matching.semantic import SemanticMatcher
+
+        sm = SemanticMatcher.get_instance()
+        vn_medical = (
+            "Các nghiên cứu lâm sàng gần đây chỉ ra rằng việc thiếu ngủ kéo dài làm suy giảm "
+            "nghiêm trọng trí nhớ ngắn hạn và khả năng tập trung của thanh thiếu niên [12]."
+        )
+        res_med = sm.check_content_alignment(
+            cited_context=vn_medical,
+            source_title="Effects of Chronic Sleep Deprivation on Working Memory and Sustained Attention in Adolescents",
+            source_abstract="Chronic sleep restriction in high school students significantly impairs short-term working memory capacity and cognitive attention span.",
+            citation_marker="[12]",
+        )
+        assert res_med.cross_lingual_detected is True
+        assert res_med.similarity >= 0.60
+        assert res_med.stance_label == "supported"
+
+        vn_niche = "Nghệ thuật chạm khắc gỗ thời nhà Lê thể hiện nét tinh hoa văn hóa dân gian vùng đồng bằng Bắc Bộ [15]."
+        res_niche = sm.check_content_alignment(
+            cited_context=vn_niche,
+            source_title="Traditional Woodblock Carving in 15th Century Dai Viet",
+            source_abstract="This monograph surveys temple architecture and artisanal woodcraft across northern Vietnam.",
+            citation_marker="[15]",
+        )
+        assert res_niche.cross_lingual_detected is True
+        assert res_niche.stance_label != "contradiction_risk"
+
+    def test_polarity_refutation_and_multi_occurrence_contradiction_trigger_mismatch_rule(self):
+        from integrity_checker.logic.neuro_symbolic_checker import NeuroSymbolicChecker
+        from integrity_checker.models.citation import Citation
+        from integrity_checker.models.source import SourceCandidate, SourceResult
+
+        checker = NeuroSymbolicChecker()
+        cit = Citation(
+            raw_text="Devlin, J., Chang, M. W., Lee, K., & Toutanova, K. (2019). BERT: Pre-training of deep bidirectional transformers for language understanding.",
+            title="BERT: Pre-training of deep bidirectional transformers for language understanding",
+            authors=["Devlin, J.", "Chang, M. W.", "Lee, K.", "Toutanova, K."],
+            year=2019,
+            doi="10.18653/v1/N19-1423",
+        )
+        cit._occurrence_contexts = [
+            {
+                "page": 3,
+                "raw": "(Devlin et al., 2019)",
+                "context": "We fine-tune pre-trained bidirectional transformer representations from BERT for text classification (Devlin et al., 2019).",
+            },
+            {
+                "page": 11,
+                "raw": "(Devlin et al., 2019)",
+                "context": "However, Devlin et al. (2019) proved that bidirectional pre-training is completely ineffective and fails to improve language understanding.",
+            },
+        ]
+        src = SourceResult(
+            citation_raw=cit.raw_text,
+            candidates=[
+                SourceCandidate(
+                    source_name="semantic_scholar",
+                    found=True,
+                    title="BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+                    authors=["Jacob Devlin", "Ming-Wei Chang", "Kenton Lee", "Kristina Toutanova"],
+                    year=2019,
+                    doi="10.18653/v1/N19-1423",
+                    abstract="We introduce a new language representation model called BERT, which stands for Bidirectional Encoder Representations from Transformers.",
+                    confidence=0.98,
+                    score=0.98,
+                )
+            ],
+            sources_queried=["semantic_scholar"],
+            sources_succeeded=["semantic_scholar"],
+        )
+        verdict = checker.check(cit, src, citation_context=cit._occurrence_contexts[0]["context"])
+        assert verdict.features.stance_label == "contradiction_risk"
+        assert "R-CONTENT-MISMATCH" in verdict.triggered_rules
+
+    def test_sanitize_jats_xml_and_degenerate_contexts(self):
+        from integrity_checker.matching.semantic import SemanticMatcher
+
+        sm = SemanticMatcher.get_instance()
+        jats_abs = "<jats:title>Abstract</jats:title><jats:p>We propose &amp; evaluate a graph attention network for molecular property prediction.</jats:p>"
+        res = sm.check_content_alignment(
+            cited_context="We adopt the graph attention network for molecular property prediction [8].",
+            source_title="Graph Attention Networks for Molecular Property Prediction",
+            source_abstract=jats_abs,
+        )
+        assert "<jats:" not in res.best_evidence_sentence
+        assert "&amp;" not in res.best_evidence_sentence
+        assert not res.best_evidence_sentence.lower().startswith("abstract ")
+
+        for deg in ("", "   \n\t ", "??? !!! ... [1] ()"):
+            r_deg = sm.check_content_alignment(
+                cited_context=deg,
+                source_title="Attention Is All You Need",
+                source_abstract="We propose the Transformer architecture.",
+            )
+            assert r_deg.similarity == 0.0
+            assert r_deg.stance_label == "neutral"
+
+
+

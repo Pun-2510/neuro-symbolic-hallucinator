@@ -393,6 +393,14 @@ class NeuroSymbolicChecker:
                         url_status_code=source.url_status_code,
                     )
                     features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
+                    known_rules = ["R-KNOWN-PAPER"]
+                    if (
+                        self.enable_content_alignment
+                        and citation_context
+                        and getattr(features, "stance_label", "") == "contradiction_risk"
+                        and not getattr(features, "cross_lingual_detected", False)
+                    ):
+                        known_rules.append("R-CONTENT-MISMATCH")
                     base_reason = (
                         f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. "
                         "APIs failed but paper is well-documented."
@@ -406,9 +414,9 @@ class NeuroSymbolicChecker:
                             matched_source=enhanced_source,
                             features=features,
                             reasoning=self._enhance_reasoning_with_neural(
-                                base_reason, features, ["R-KNOWN-PAPER"]
+                                base_reason, features, known_rules
                             ),
-                            triggered_rules=["R-KNOWN-PAPER"],
+                            triggered_rules=known_rules,
                             mismatched_fields=[],
                         ),
                         enhanced_source,
@@ -426,6 +434,14 @@ class NeuroSymbolicChecker:
                     url_status_code=source.url_status_code,
                 )
                 features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
+                known_rules = ["R-KNOWN-PAPER"]
+                if (
+                    self.enable_content_alignment
+                    and citation_context
+                    and getattr(features, "stance_label", "") == "contradiction_risk"
+                    and not getattr(features, "cross_lingual_detected", False)
+                ):
+                    known_rules.append("R-CONTENT-MISMATCH")
                 base_reason = (
                     f"Known seminal paper verified via known papers database: '{paper_info.get('title')}'. "
                     "APIs failed but paper is well-documented."
@@ -439,9 +455,9 @@ class NeuroSymbolicChecker:
                         matched_source=enhanced_source,
                         features=features,
                         reasoning=self._enhance_reasoning_with_neural(
-                            base_reason, features, ["R-KNOWN-PAPER"]
+                            base_reason, features, known_rules
                         ),
-                        triggered_rules=["R-KNOWN-PAPER"],
+                        triggered_rules=known_rules,
                         mismatched_fields=[],
                     ),
                     enhanced_source,
@@ -467,9 +483,19 @@ class NeuroSymbolicChecker:
             citation_raw=citation.raw_text,
         )
 
+        final_rules = list(outcome.triggered_rules)
+        if (
+            self.enable_content_alignment
+            and citation_context
+            and getattr(features, "stance_label", "") == "contradiction_risk"
+            and not getattr(features, "cross_lingual_detected", False)
+            and "R-CONTENT-MISMATCH" not in final_rules
+        ):
+            final_rules.append("R-CONTENT-MISMATCH")
+
         # Enhance reasoning với content alignment info (Neural layer feedback)
         enhanced_reasoning = self._enhance_reasoning_with_neural(
-            outcome.reasoning, features, outcome.triggered_rules
+            outcome.reasoning, features, final_rules
         )
 
         final_confidence = outcome.confidence
@@ -482,7 +508,7 @@ class NeuroSymbolicChecker:
                 has_candidate=has_cand,
                 style_penalty=outcome.style_penalty,
             )
-            if "R-AMBIGUOUS-MAPPING" in outcome.triggered_rules:
+            if "R-AMBIGUOUS-MAPPING" in final_rules:
                 final_confidence = min(final_confidence, self.rules.ambiguous_confidence_cap)
 
         return self._apply_dead_link_exception(
@@ -493,7 +519,7 @@ class NeuroSymbolicChecker:
                 matched_source=source,
                 features=features,
                 reasoning=enhanced_reasoning,
-                triggered_rules=list(outcome.triggered_rules),
+                triggered_rules=final_rules,
                 mismatched_fields=list(outcome.mismatched_fields),
                 style_penalty=outcome.style_penalty,
                 domain_exception=outcome.domain_exception,
@@ -533,13 +559,13 @@ class NeuroSymbolicChecker:
         if not self.enable_content_alignment:
             return symbolic_reasoning
 
-        if features.content_alignment_score > 0:
+        stance = getattr(features, "stance_label", "")
+        if features.content_alignment_score > 0 or stance == "contradiction_risk":
             alignment_info = (
                 f" [Neural: content alignment score={features.content_alignment_score:.2f} "
                 f"({features.content_alignment_confidence})"
             )
             intent = getattr(features, "citation_intent", "")
-            stance = getattr(features, "stance_label", "")
             ev_score = getattr(features, "best_evidence_score", 0.0)
             if intent:
                 alignment_info += f", intent={intent}"
@@ -550,7 +576,9 @@ class NeuroSymbolicChecker:
             if getattr(features, "cross_lingual_detected", False):
                 alignment_info += ", cross_lingual=VI->EN"
 
-            if features.content_is_aligned and "VERIFIED" not in triggered_rules:
+            if stance == "contradiction_risk":
+                alignment_info += " - WARNING: citation claim may contradict or be off-topic from source"
+            elif features.content_is_aligned and "VERIFIED" not in triggered_rules:
                 alignment_info += " - content semantically aligned with source"
             elif not features.content_is_aligned and features.content_alignment_score > 0.3:
                 alignment_info += " - WARNING: content may not align with source"
