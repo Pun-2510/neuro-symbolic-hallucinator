@@ -16,6 +16,7 @@ import {
   Activity,
   FileText,
   Globe,
+  Sparkles,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -76,6 +77,7 @@ const SIDEBAR_GROUPS: NavGroup[] = [
   {
     labelKey: 'nav.preferences',
     items: [
+      { path: '/pricing', labelKey: 'nav.pricing', icon: Sparkles },
       { path: '/settings', labelKey: 'nav.settings', icon: Settings },
     ],
   },
@@ -86,7 +88,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
-  const { has, role } = useRole();
+  const { has, role, planTier, isBasic, quota } = useRole();
   const { toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -303,6 +305,75 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
+
+          {/* Subscription Quota & Upgrade Card */}
+          <div className="px-3.5 pb-2" data-testid="sidebar-quota-card">
+            <div className="rounded-xl p-3 bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 dark:from-slate-800/80 dark:via-slate-900 dark:to-indigo-950/30 border border-slate-200/90 dark:border-slate-800 space-y-2 shadow-2xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  {currentLang === 'vi' ? 'Gói cước' : 'Plan'}
+                </span>
+                <span
+                  data-testid="sidebar-plan-badge"
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
+                    planTier === 'ultra'
+                      ? 'bg-violet-600 text-white'
+                      : planTier === 'pro'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200'
+                  }`}
+                >
+                  {planTier.toUpperCase()}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-mono text-slate-600 dark:text-slate-400">
+                  <span>
+                    {currentLang === 'vi' ? 'Lượt tải tháng' : 'Monthly Checks'}
+                  </span>
+                  <span data-testid="sidebar-quota-text" className="font-semibold text-slate-900 dark:text-white">
+                    {quota.monthly_uploads_used} / {quota.monthly_uploads_limit}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      quota.monthly_uploads_used >= quota.monthly_uploads_limit
+                        ? 'bg-red-500'
+                        : 'bg-indigo-600 dark:bg-indigo-400'
+                    }`}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round(
+                          (quota.monthly_uploads_used /
+                            Math.max(1, quota.monthly_uploads_limit)) *
+                            100,
+                        ),
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {isBasic && (
+                <Link
+                  to="/pricing"
+                  onClick={() => setMobileOpen(false)}
+                  data-testid="sidebar-upgrade-link"
+                  className="mt-1 w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors shadow-2xs"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>
+                    {currentLang === 'vi'
+                      ? 'Nâng cấp Pro · $16/th'
+                      : 'Upgrade to Pro · $16/mo'}
+                  </span>
+                </Link>
+              )}
+            </div>
+          </div>
 
           <Separator />
 

@@ -16,7 +16,9 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
+import { UpgradeModal } from '@/components/UpgradeModal';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,11 +35,18 @@ const ACCEPTED_MIME = { 'application/pdf': ['.pdf'] };
 
 export function UploadPage() {
   const { t, i18n } = useTranslation();
-  const { isUser, isTeacher, isAdmin } = useRole();
+  const { refreshUser } = useAuth();
+  const { isUser, isTeacher, isAdmin, planTier, isBasic, quota } = useRole();
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState<{
+    title?: string;
+    description?: string;
+    feature?: string;
+  }>({});
   const navigate = useNavigate();
 
   const lang = i18n.language?.startsWith('vi') ? 'vi' : 'en';
@@ -87,14 +96,54 @@ export function UploadPage() {
 
   const handleUpload = async () => {
     if (!file) return;
+
+    // Client-side file size pre-check against current plan quota
+    const maxBytes = quota.max_file_size_mb * 1024 * 1024;
+    if (file.size > maxBytes) {
+      const msg =
+        lang === 'vi'
+          ? `File vượt quá giới hạn dung lượng gói ${planTier.toUpperCase()} (${quota.max_file_size_mb} MB). Vui lòng nâng cấp lên gói Pro (25 MB) hoặc Ultra (100 MB).`
+          : `File exceeds the ${planTier.toUpperCase()} plan size limit (${quota.max_file_size_mb} MB). Upgrade to Pro (25 MB) or Ultra (100 MB).`;
+      setError(msg);
+      setUpgradeReason({
+        title:
+          lang === 'vi'
+            ? 'Tài liệu vượt quá dung lượng gói Basic (5 MB)'
+            : 'Manuscript Exceeds Plan File Size Limit',
+        description: msg,
+        feature: '25MB–100MB PDF Upload',
+      });
+      setUpgradeModalOpen(true);
+      return;
+    }
+
     setUploading(true);
     setError(null);
     try {
       const response = await api.uploadEssay(file);
+      await refreshUser();
       navigate(`/verification/processing/${response.essay_id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('upload.uploadFailed'));
+      const errMsg = e instanceof Error ? e.message : t('upload.uploadFailed');
+      setError(errMsg);
       setUploading(false);
+      if (
+        errMsg.includes('402') ||
+        errMsg.includes('413') ||
+        errMsg.toLowerCase().includes('quota') ||
+        errMsg.toLowerCase().includes('limit') ||
+        errMsg.toLowerCase().includes('upgrade')
+      ) {
+        setUpgradeReason({
+          title:
+            lang === 'vi'
+              ? 'Đã chạm giới hạn gói cước hiện tại'
+              : 'Plan Quota or Limit Reached',
+          description: errMsg.replace(/^API \d+:\s*/, ''),
+          feature: 'Elevated Upload Quota & Page Limit',
+        });
+        setUpgradeModalOpen(true);
+      }
     }
   };
 
@@ -164,6 +213,61 @@ export function UploadPage() {
               <span>{t('nav.batchCheck')}</span>
             </Link>
           </Button>
+        )}
+      </div>
+
+      {/* Subscription Plan Quota & Limits Strip */}
+      <div
+        className="rounded-2xl bg-gradient-to-r from-slate-50 via-white to-indigo-50/40 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/30 border border-slate-200/90 dark:border-slate-800 px-4 py-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+        data-testid="upload-quota-banner"
+      >
+        <div className="flex flex-wrap items-center gap-2.5 text-xs">
+          <Badge
+            className={
+              planTier === 'ultra'
+                ? 'bg-violet-600 text-white font-mono uppercase'
+                : planTier === 'pro'
+                  ? 'bg-indigo-600 text-white font-mono uppercase'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-mono uppercase'
+            }
+          >
+            {planTier.toUpperCase()} PLAN
+          </Badge>
+          <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+            {lang === 'vi'
+              ? `Lượt kiểm tra tháng: ${quota.monthly_uploads_used}/${quota.monthly_uploads_limit}`
+              : `Monthly Checks: ${quota.monthly_uploads_used}/${quota.monthly_uploads_limit}`}
+          </span>
+          <span className="text-slate-400">·</span>
+          <span className="text-slate-600 dark:text-slate-400 font-mono">
+            {lang === 'vi'
+              ? `Tối đa ${quota.max_file_size_mb} MB · ${quota.max_pages_per_pdf} trang / PDF`
+              : `Max ${quota.max_file_size_mb} MB · ${quota.max_pages_per_pdf} pages / PDF`}
+          </span>
+        </div>
+
+        {isBasic && (
+          <button
+            type="button"
+            data-testid="upload-open-upgrade-modal-btn"
+            onClick={() => {
+              setUpgradeReason({
+                title:
+                  lang === 'vi'
+                    ? 'Nâng cấp lên CITRA Pro hoặc Ultra'
+                    : 'Upgrade to CITRA Pro or Ultra',
+              });
+              setUpgradeModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors shrink-0 cursor-pointer"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>
+              {lang === 'vi'
+                ? 'Mở khóa 50 bài/tháng & 100 trang'
+                : 'Unlock 50 docs/mo & 100 pages'}
+            </span>
+          </button>
         )}
       </div>
 
@@ -340,6 +444,14 @@ export function UploadPage() {
           })}
         </div>
       )}
+
+      <UpgradeModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        reasonTitle={upgradeReason.title}
+        reasonDescription={upgradeReason.description}
+        featureName={upgradeReason.feature}
+      />
     </div>
   );
 }

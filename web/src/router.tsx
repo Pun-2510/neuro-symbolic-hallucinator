@@ -69,6 +69,33 @@ const ClassDetailPage = lazy(() => import('./pages/ClassDetailPage').then((m) =>
 const PendingReviewsPage = lazy(() => import('./pages/PendingReviewsPage').then((m) => ({ default: m.PendingReviewsPage })));
 const SystemHealthPage = lazy(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
+const PricingPage = lazy(() => import('./pages/PricingPage').then((m) => ({ default: m.PricingPage })));
+const StripeDemoCheckoutPage = lazy(() => import('./pages/StripeDemoCheckoutPage').then((m) => ({ default: m.StripeDemoCheckoutPage })));
+const BillingSuccessPage = lazy(() => import('./pages/BillingSuccessPage').then((m) => ({ default: m.BillingSuccessPage })));
+
+// Hybrid route: renders inside AppLayout when authenticated, or standalone when visited publicly
+function HybridPricingRoute() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) {
+    return <PageSkeleton />;
+  }
+  if (user) {
+    return (
+      <AppLayout>
+        <Suspense fallback={<PageSkeleton />}>
+          <PricingPage />
+        </Suspense>
+      </AppLayout>
+    );
+  }
+  return (
+    <div className="min-h-screen bg-slate-50/80 dark:bg-slate-950 px-4 sm:px-6 lg:px-10 py-6">
+      <Suspense fallback={<PageSkeleton />}>
+        <PricingPage />
+      </Suspense>
+    </div>
+  );
+}
 
 // Wrap any lazy component in a Suspense boundary using PageSkeleton as fallback
 function withSuspense(LazyComponent: React.ComponentType) {
@@ -102,6 +129,9 @@ const PAGE_TITLE_ROUTES: Array<{ pattern: string; title: string }> = [
   { pattern: '/admin/system', title: 'System Health' },
   { pattern: '/admin/audit', title: 'Audit Log' },
   { pattern: '/settings', title: 'Settings' },
+  { pattern: '/pricing', title: 'Pricing & Plans' },
+  { pattern: '/billing/checkout', title: 'Stripe Checkout' },
+  { pattern: '/billing/success', title: 'Payment Confirmed' },
   { pattern: '/teacher/classes', title: 'My Classes' },
   { pattern: '/teacher/classes/:classId', title: 'Class Detail' },
   { pattern: '/teacher/reviews', title: 'Pending Reviews' },
@@ -189,6 +219,10 @@ export const router = createBrowserRouter([
       {
         path: '/reset-password',
         element: <ResetPasswordPage />,
+      },
+      {
+        path: '/pricing',
+        element: <HybridPricingRoute />,
       },
 
       // Protected routes with AppLayout (sidebar navigation) — all lazy
@@ -281,6 +315,8 @@ export const router = createBrowserRouter([
             ),
           },
           { path: '/settings', element: withSuspense(SettingsPage) },
+          { path: '/billing/checkout', element: withSuspense(StripeDemoCheckoutPage) },
+          { path: '/billing/success', element: withSuspense(BillingSuccessPage) },
           // Teacher (v1.15 / Phase 3) — gated by view_class_history capability
           {
             path: '/teacher/classes',

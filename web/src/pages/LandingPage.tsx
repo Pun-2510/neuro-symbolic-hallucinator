@@ -586,6 +586,12 @@ function LandingHeader({
           <Separator orientation="vertical" className="h-5 hidden sm:block mx-0.5" />
 
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+            <Link to="/pricing" data-testid="landing-pricing-link">
+              {lang === 'vi' ? 'Bảng giá' : 'Pricing'}
+            </Link>
+          </Button>
+
+          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
             <Link to="/login">Sign in</Link>
           </Button>
 

@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, FileText, Quote, Clock, Download, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, FileText, Quote, Clock, Download, ShieldCheck, Lock } from 'lucide-react';
 import { api } from '@/api/client';
 import { useRole } from '@/hooks/useRole';
+import { UpgradeModal } from '@/components/UpgradeModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -27,7 +29,9 @@ export function EssayHeader({
   styleName,
 }: EssayHeaderProps) {
   const { t, i18n } = useTranslation();
-  const { isUser } = useRole();
+  const { isUser, isBasic } = useRole();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [lockedFormat, setLockedFormat] = useState<string>('PDF');
   const lang = i18n.language?.startsWith('vi') ? 'vi' : 'en';
 
   const handleDownload = (
@@ -35,6 +39,11 @@ export function EssayHeader({
     fmt: 'json' | 'csv' | 'pdf' | 'docx',
   ) => {
     e.preventDefault();
+    if (isBasic && fmt !== 'json') {
+      setLockedFormat(fmt.toUpperCase());
+      setUpgradeOpen(true);
+      return;
+    }
     void api.downloadReportFile(essayId, fmt, filename);
   };
 
@@ -127,10 +136,16 @@ export function EssayHeader({
                 href={api.downloadReport(essayId, 'pdf')}
                 onClick={(e) => handleDownload(e, 'pdf')}
                 download
+                data-testid="export-pdf-btn"
                 aria-label={`Download ${filename} as PDF`}
               >
-                <Download className="h-3.5 w-3.5" />
+                {isBasic ? <Lock className="h-3.5 w-3.5 text-amber-300" /> : <Download className="h-3.5 w-3.5" />}
                 PDF
+                {isBasic && (
+                  <span className="ml-1 px-1 py-0.2 rounded bg-amber-400/20 text-amber-200 text-[9px] font-bold">
+                    PRO
+                  </span>
+                )}
               </a>
             </Button>
             <Button asChild variant="outline" size="sm" className="h-8 font-mono text-xs rounded-xl w-full sm:w-auto">
@@ -138,15 +153,37 @@ export function EssayHeader({
                 href={api.downloadReport(essayId, 'docx')}
                 onClick={(e) => handleDownload(e, 'docx')}
                 download
+                data-testid="export-docx-btn"
                 aria-label={`Download ${filename} as DOCX`}
               >
-                <Download className="h-3.5 w-3.5" />
+                {isBasic ? <Lock className="h-3.5 w-3.5 text-amber-500" /> : <Download className="h-3.5 w-3.5" />}
                 DOCX
+                {isBasic && (
+                  <span className="ml-1 px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[9px] font-bold">
+                    PRO
+                  </span>
+                )}
               </a>
             </Button>
           </div>
         </div>
       </div>
+
+      <UpgradeModal
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        featureName={`Export ${lockedFormat} Report`}
+        reasonTitle={
+          lang === 'vi'
+            ? `Mở khóa xuất báo cáo học thuật định dạng ${lockedFormat}`
+            : `Unlock Academic Report Export (${lockedFormat})`
+        }
+        reasonDescription={
+          lang === 'vi'
+            ? `Gói Basic chỉ hỗ trợ xem báo cáo trực tuyến. Nâng cấp lên gói Pro ($16/tháng khi trả năm) để tải xuống báo cáo ${lockedFormat}, Word (DOCX) và CSV đầy đủ.`
+            : `The free Basic tier supports web viewing only. Upgrade to Pro ($16/mo billed annually) to export formatted ${lockedFormat}, Word (DOCX), and CSV reports.`
+        }
+      />
     </div>
   );
 }

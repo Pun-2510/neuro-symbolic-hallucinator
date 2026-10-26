@@ -394,6 +394,113 @@ async function getReportOrNull(
 
 // --- User types ---
 
+export type PlanTier = 'basic' | 'pro' | 'ultra';
+export type BillingCycle = 'monthly' | 'annual';
+
+export interface UserQuota {
+  monthly_uploads_used: number;
+  monthly_uploads_limit: number;
+  monthly_uploads_remaining: number;
+  max_file_size_mb: number;
+  max_pages_per_pdf: number;
+  max_citations_per_essay: number;
+  max_batch_files: number;
+  allowed_export_formats: Array<'json' | 'csv' | 'pdf' | 'docx'>;
+  allow_batch_upload: boolean;
+  allow_deep_inspector: boolean;
+  allow_serpapi_fallback: boolean;
+  quota_reset_at: string;
+}
+
+export interface PlanCatalogItem {
+  tier: PlanTier;
+  name: string;
+  tagline_en: string;
+  tagline_vi: string;
+  badge_en: string | null;
+  badge_vi: string | null;
+  highlighted: boolean;
+  monthly_price_usd: number;
+  annual_price_usd: number;
+  annual_monthly_equiv_usd: number;
+  annual_savings_usd: number;
+  annual_discount_pct: number;
+  max_uploads_per_month: number;
+  max_file_size_mb: number;
+  max_pages_per_pdf: number;
+  max_citations_per_essay: number;
+  max_batch_files: number;
+  max_classes: number;
+  history_retention_days: number;
+  allowed_export_formats: string[];
+  allow_batch_upload: boolean;
+  allow_deep_inspector: boolean;
+  allow_serpapi_fallback: boolean;
+  priority_processing: boolean;
+  features_en: string[];
+  features_vi: string[];
+  limitations_en: string[];
+  limitations_vi: string[];
+}
+
+export interface SubscriptionSummary {
+  plan_tier: PlanTier;
+  plan_name: string;
+  billing_cycle: BillingCycle | null;
+  subscription_status: string;
+  cancel_at_period_end: boolean;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  quota: UserQuota;
+}
+
+export interface BillingTransactionItem {
+  id: number;
+  user_id: number;
+  stripe_session_id: string;
+  stripe_payment_intent_id: string | null;
+  plan_tier: PlanTier;
+  plan_name: string;
+  billing_cycle: BillingCycle;
+  amount_usd: number;
+  currency: string;
+  status: string;
+  payment_mode: string;
+  card_brand: string | null;
+  card_last4: string | null;
+  created_at: string | null;
+  paid_at: string | null;
+}
+
+export interface CheckoutSessionResponse {
+  session_id: string;
+  checkout_url: string;
+  mode: 'stripe_test' | 'stripe_demo';
+  plan_tier: PlanTier;
+  plan_name: string;
+  billing_cycle: BillingCycle;
+  amount_usd: number;
+  transaction_id: number;
+}
+
+export interface CheckoutSessionDetails {
+  session_id: string;
+  status: string;
+  payment_mode: string;
+  merchant_name: string;
+  customer_email: string;
+  customer_name: string;
+  plan_tier: PlanTier;
+  plan_name: string;
+  billing_cycle: BillingCycle;
+  amount_usd: number;
+  monthly_equivalent_usd: number;
+  annual_savings_usd: number;
+  currency: string;
+  features_en: string[];
+  features_vi: string[];
+}
+
 export interface User {
   id: number;
   username: string;
@@ -406,6 +513,12 @@ export interface User {
   created_at: string | null;
   institution: string | null;
   can_override_verdicts: boolean;
+  plan_tier?: PlanTier;
+  billing_cycle?: BillingCycle | null;
+  subscription_status?: string;
+  cancel_at_period_end?: boolean;
+  current_period_end?: string | null;
+  quota?: UserQuota | null;
 }
 
 export interface UserCreate {
@@ -747,5 +860,65 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+    }),
+
+  // Billing & Subscriptions (v2.2)
+  getBillingPlans: () =>
+    request<{
+      plans: PlanCatalogItem[];
+      current_subscription: SubscriptionSummary | null;
+    }>('/billing/plans'),
+  getMySubscription: () =>
+    request<{
+      subscription: SubscriptionSummary;
+      transactions: BillingTransactionItem[];
+    }>('/billing/subscription'),
+  createCheckoutSession: (data: {
+    plan_tier: 'pro' | 'ultra';
+    billing_cycle: BillingCycle;
+    force_demo?: boolean;
+  }) =>
+    request<CheckoutSessionResponse>('/billing/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  getCheckoutSessionDetails: (sessionId: string) =>
+    request<CheckoutSessionDetails>(
+      `/billing/checkout-session/${encodeURIComponent(sessionId)}`,
+    ),
+  verifyCheckoutSession: (data: {
+    session_id: string;
+    card_last4?: string;
+    card_brand?: string;
+  }) =>
+    request<{
+      status: string;
+      message: string;
+      transaction: BillingTransactionItem;
+      subscription: SubscriptionSummary;
+      user: User;
+    }>('/billing/verify-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  cancelSubscription: (immediate: boolean = false) =>
+    request<{
+      message: string;
+      subscription: SubscriptionSummary;
+      user: User;
+    }>('/billing/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ immediate }),
+    }),
+  reactivateSubscription: () =>
+    request<{
+      message: string;
+      subscription: SubscriptionSummary;
+      user: User;
+    }>('/billing/reactivate', {
+      method: 'POST',
     }),
 };
