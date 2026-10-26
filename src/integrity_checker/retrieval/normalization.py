@@ -143,7 +143,15 @@ def author_match_score(
         for ck in c_keys:
             if len(qk) >= 4 and len(ck) >= 4 and (qk in ck or ck in qk):
                 return 0.8
-    return 0.0
+    # Swapped East Asian / 2-token fallback (via author_matcher)
+    try:
+        from integrity_checker.matching.author_matcher import author_match_score as _full_author_score
+
+        q_list = [query_authors] if isinstance(query_authors, str) else list(query_authors)  # type: ignore[arg-type]
+        c_list = [candidate_authors] if isinstance(candidate_authors, str) else list(candidate_authors)  # type: ignore[arg-type]
+        return _full_author_score(q_list, c_list)
+    except Exception:  # noqa: BLE001
+        return 0.0
 
 
 _BOOK_REVIEW_TITLE_RE = re.compile(

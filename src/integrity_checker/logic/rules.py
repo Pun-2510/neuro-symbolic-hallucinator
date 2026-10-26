@@ -135,6 +135,132 @@ def _has_substantive_citation_metadata(
     )
 
 
+_PERIODICAL_JOURNAL_SIGNAL_RE = re.compile(
+    r"\b(?:"
+    r"journal\s+of|international\s+journal|proceedings\s+of|transactions\s+on|"
+    r"conference\s+on|symposium\s+on|workshop\s+on|annals\s+of|bulletin\s+of|"
+    r"archives\s+of|quarterly\s+journal|european\s+journal|american\s+journal|"
+    r"british\s+journal|asian\s+journal|australian\s+journal|canadian\s+journal|"
+    r"ieee\s+(?:transactions|journal|access|letters|software|network|communications|spectrum)|"
+    r"acm\s+(?:transactions|computing\s+surveys)|"
+    r"nature\s+[a-z]+|lancet|jama|bmj|plos\s+one|frontiers\s+in|sensors|energies|sustainability|"
+    r"vol\.\s*\d+|no\.\s*\d+|pp\.\s*\d+\s*[-–—]\s*\d+"
+    r")\b"
+    r"|,\s*\d{1,4}\s*\(\s*\d{1,3}\s*\)\s*,\s*(?:e?\d+|\d+\s*[-–—]\s*\d+)\b",
+    re.IGNORECASE,
+)
+
+_CLASSICAL_OR_BIBLE_SIGNAL_RE = re.compile(
+    r"\b(?:"
+    r"holy\s+bible|the\s+bible|\besv\b|\bniv\b|\bkjv\b|\bnrsv\b|\bnasb\b|\bnkjv\b|"
+    r"english\s+standard\s+version|new\s+international\s+version|king\s+james\s+version|"
+    r"shakespeare|plato|aristotle|aquinas|augustine|homer|sophocles|euripides|aeschylus|"
+    r"cicero|virgil|ovid|seneca|marcus\s+aurelius|epictetus|plutarch|herodotus|thucydides|"
+    r"dante|chaucer|milton|cervantes|machiavelli|hobbes|locke|rousseau|kant|hegel|nietzsche|"
+    r"kierkegaard|dostoevsky|tolstoy|dickens|austen|bront[eë]|melville|hawthorne|twain|"
+    r"project\s+gutenberg|gutenberg\.org|oxford\s+world['’]?s\s+classics|penguin\s+classics|"
+    r"loeb\s+classical\s+library|translated\s+by|trans\.\s+[A-Z]"
+    r")\b",
+    re.IGNORECASE,
+)
+
+_THESIS_OR_REPORT_SIGNAL_RE = re.compile(
+    r"\b(?:"
+    r"master['’]?s\s+thesis|doctoral\s+dissertation|phd\s+thesis|honours\s+thesis|honors\s+thesis|"
+    r"senior\s+thesis|bachelor['’]?s\s+thesis|unpublished\s+(?:master|doctoral|thesis|dissertation|manuscript)|"
+    r"proquest\s+dissertations|digitalcommons|scholarscentre|scholars\s+crossing|liberty\s+university|"
+    r"technical\s+report|working\s+paper|white\s+paper|policy\s+brief|fact\s+sheet|"
+    r"u\.?s\.?\s+department\s+of|ministry\s+of|world\s+health\s+organization|united\s+nations|"
+    r"national\s+institute\s+of|centers\s+for\s+disease\s+control|bureau\s+of\s+labor\s+statistics|"
+    r"substance\s+abuse\s+and\s+mental\s+health|security\s+risk\s+advisors|crowdstrike|mandiant"
+    r")\b",
+    re.IGNORECASE,
+)
+
+_LEGAL_OR_STANDARD_SIGNAL_RE = re.compile(
+    r"\b(?:"
+    r"quốc\s+hội|chính\s+phủ|thủ\s+tướng|bộ\s+[a-zà-ỹ]+|nghị\s+định|thông\s+tư|quyết\s+định|"
+    r"luật\s+số|bộ\s+luật|hiến\s+pháp|u\.?s\.?c\.?\s*§|c\.?f\.?r\.?\s*§|pub\.\s*l\.\s*no\.|"
+    r"iso/iec\s*\d+|nist\s+special\s+publication|nist\s+sp\s*\d+|rfc\s*\d+"
+    r")\b",
+    re.IGNORECASE,
+)
+
+_BOOK_PUBLISHER_SIGNAL_RE = re.compile(
+    r"\b(?:"
+    r"isbn(?:-1[03])?|(?:1st|2nd|3rd|\d+th|first|second|third|fourth|fifth|revised|expanded)\s+(?:ed\.?|edition)|"
+    r"university\s+press|oxford\s+university\s+press|cambridge\s+university\s+press|"
+    r"harvard\s+university\s+press|mit\s+press|princeton\s+university\s+press|yale\s+university\s+press|"
+    r"stanford\s+university\s+press|uchicago\s+press|university\s+of\s+chicago\s+press|"
+    r"routledge|sage\s+publications|palgrave\s+macmillan|bloomsbury|penguin|random\s+house|"
+    r"harper\s*collins|harper\s*one|simon\s*&\s*schuster|farrar,\s*straus|knopf|doubleday|"
+    r"norton|w\.\s*w\.\s*norton|little,\s*brown|hachette|macmillan|scholastic|"
+    r"wiley|john\s+wiley|pearson|mcgraw-hill|prentice\s+hall|addison-wesley|o['’]reilly|"
+    r"springer\s+nature|academic\s+press|crc\s+press|elsevier\s+books|de\s+gruyter|brill|"
+    r"zondervan|crossway|baker\s+academic|baker\s+books|baker\s+publishing|eerdmans|"
+    r"intervarsity\s+press|ivp\s+academic|ivp\s+books|brazos\s+press|thomas\s+nelson|"
+    r"b&h\s+publishing|b&h\s+academic|holman|tyndale|moody\s+publishers|waterbrook|"
+    r"westminster\s+john\s+knox|fortress\s+press|abingdon\s+press|ignatius\s+press|"
+    r"nhà\s+xuất\s+bản|\bnxb\b"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _is_non_journal_or_unindexed_source(
+    citation_raw: str | None,
+    citation_url: str | None = None,
+    citation_doi: str | None = None,
+    citation_authors: list | None = None,
+) -> tuple[bool, str]:
+    """Identify legitimate non-journal / non-indexed sources (BUG-22) so they are not
+    falsely flagged as SUSPECTED_HALLUCINATION when academic paper APIs return 0 matches.
+
+    Returns:
+        (is_non_journal, category) where category is one of:
+        'web_resource', 'legal_or_standard', 'classical_or_scriptural',
+        'thesis_or_report', 'book_or_monograph', or ''.
+    """
+    if citation_doi and str(citation_doi).strip():
+        return False, ""
+
+    raw = (citation_raw or "").strip()
+    url = (citation_url or "").strip()
+    combined = f"{raw} {url}".strip()
+    if not combined:
+        return False, ""
+
+    # If it explicitly looks like a journal/conference periodical article, it SHOULD be
+    # indexed in scholarly databases — do not exempt it from hallucination rules.
+    if _PERIODICAL_JOURNAL_SIGNAL_RE.search(raw):
+        return False, ""
+
+    # 1. Legal / regulatory / technical standard documents
+    if _LEGAL_OR_STANDARD_SIGNAL_RE.search(combined):
+        return True, "legal_or_standard"
+
+    # 2. Web / audiovisual / online media / documentation URLs (without DOI/arXiv)
+    if url and re.match(r"^https?://", url, re.IGNORECASE):
+        if not re.search(r"(?:doi\.org|arxiv\.org|aclanthology\.org|ieee\.org|acm\.org|springer\.com|sciencedirect\.com|nature\.com|wiley\.com)", url, re.IGNORECASE):
+            return True, "web_resource"
+    if re.search(r"\b(?:youtube\.com|youtu\.be|\[Video\]|\[Online\]|Retrieved\s+[A-Z][a-z]+\s+\d{1,2},\s+\d{4},\s+from\s+https?://)\b", combined, re.IGNORECASE):
+        return True, "web_resource"
+
+    # 3. Classical literature, philosophy, plays, or Bible editions
+    if _CLASSICAL_OR_BIBLE_SIGNAL_RE.search(combined):
+        return True, "classical_or_scriptural"
+
+    # 4. Theses, dissertations, working papers, or government/institutional reports
+    if _THESIS_OR_REPORT_SIGNAL_RE.search(combined):
+        return True, "thesis_or_report"
+
+    # 5. Books / monographs with explicit book publishers, editions, or ISBNs
+    if _BOOK_PUBLISHER_SIGNAL_RE.search(combined):
+        return True, "book_or_monograph"
+
+    return False, ""
+
+
 def _has_live_source(
     source: SourceResult,
     verified_sources: list[str],
@@ -707,7 +833,9 @@ class SymbolicRules:
             )
 
             # When >= 2 live scholarly registries responded cleanly (HTTP 200) and found
-            # zero matching records for a substantive citation, flag as SUSPECTED_HALLUCINATION.
+            # zero matching records for a substantive citation, flag as SUSPECTED_HALLUCINATION
+            # UNLESS the reference is a non-journal source (book, classical/Bible text, web URL,
+            # thesis, or legal/gov report — BUG-22).
             if has_substantive_meta and len(clean_empty_sources) >= 2 and not is_known_author:
                 if citation_doi and str(citation_doi).strip():
                     return RuleOutcome(
@@ -720,6 +848,37 @@ class SymbolicRules:
                         ),
                         triggered_rules=["R-NONEXISTENT-DOI", "R-NO-CANDIDATE"],
                         mismatched_fields=["doi", "title"],
+                        style_penalty=style_penalty,
+                    )
+                is_non_journal, non_journal_kind = _is_non_journal_or_unindexed_source(
+                    citation_raw or source.citation_raw,
+                    citation_url=citation_url,
+                    citation_doi=citation_doi,
+                    citation_authors=citation_authors,
+                )
+                if is_non_journal:
+                    if non_journal_kind in ("web_resource", "legal_or_standard"):
+                        return RuleOutcome(
+                            label=ValidationLabel.RESOURCE,
+                            confidence=0.85,
+                            reasoning=(
+                                f"Reference is a non-scholarly {non_journal_kind.replace('_', ' ')} "
+                                f"not indexed in academic paper registries ({', '.join(clean_empty_sources)})."
+                            ),
+                            triggered_rules=["R-NON-SCHOLARLY-RESOURCE"],
+                            mismatched_fields=[],
+                            style_penalty=0.0,
+                        )
+                    return RuleOutcome(
+                        label=ValidationLabel.UNRESOLVED,
+                        confidence=max(0.0, 0.55 - style_penalty),
+                        reasoning=(
+                            f"Non-periodical source ({non_journal_kind.replace('_', ' ')}) is not indexed "
+                            f"in academic paper databases ({', '.join(clean_empty_sources)}) — abstaining "
+                            f"from hallucination verdict."
+                        ),
+                        triggered_rules=["R-UNINDEXED-BOOK-OR-SOURCE"],
+                        mismatched_fields=[],
                         style_penalty=style_penalty,
                     )
                 return RuleOutcome(
@@ -837,7 +996,19 @@ class SymbolicRules:
 
         # --- Rule 1b (NEW): Well-linked citation with high title similarity → VERIFIED ---
         # Requires fuzzy title match, non-zero author overlap, compatible year, and no DOI conflict.
-        has_doi_conflict = bool(citation_doi and best.doi and not doi_match)
+        # FIX Phase 3 (BUG-21): Preprint arXiv DOI (10.48550/arXiv.*) vs published conference/journal DOI
+        # is not a DOI conflict when title & author match.
+        is_arxiv_vs_pub_doi = bool(
+            citation_doi
+            and best.doi
+            and (
+                "10.48550/arxiv" in citation_doi.lower()
+                or "10.48550/arxiv" in best.doi.lower()
+            )
+            and features.title_sim_fuzzy >= 0.85
+            and author_sim >= 0.50
+        )
+        has_doi_conflict = bool(citation_doi and best.doi and not doi_match and not is_arxiv_vs_pub_doi)
         if (
             mapping_is_matched
             and features.title_sim_fuzzy >= 0.7
@@ -1334,7 +1505,9 @@ class SymbolicRules:
 
         # When live sources were queried and the best candidate has very low similarity
         # (below abstention_low=0.40) and low author overlap (<0.30) without DOI match,
-        # classify as SUSPECTED_HALLUCINATION rather than hiding in UNRESOLVED.
+        # classify as SUSPECTED_HALLUCINATION rather than hiding in UNRESOLVED —
+        # UNLESS the reference is a non-journal source (book, classical/Bible text, web URL,
+        # thesis, or legal/gov report — BUG-22).
         if (
             title_sim < self.abstention_low
             and author_sim < 0.30
@@ -1342,6 +1515,38 @@ class SymbolicRules:
             and _has_live_source(source, verified_sources)
             and not is_known_author
         ):
+            is_non_journal, non_journal_kind = _is_non_journal_or_unindexed_source(
+                citation_raw or source.citation_raw,
+                citation_url=citation_url,
+                citation_doi=citation_doi,
+                citation_authors=citation_authors,
+            )
+            if is_non_journal:
+                if non_journal_kind in ("web_resource", "legal_or_standard"):
+                    return RuleOutcome(
+                        label=ValidationLabel.RESOURCE,
+                        confidence=0.85,
+                        reasoning=(
+                            f"Reference is a non-scholarly {non_journal_kind.replace('_', ' ')} "
+                            f"and noisy scholarly search candidates (title_sim={title_sim:.2f}) were ignored."
+                        ),
+                        triggered_rules=["R-NON-SCHOLARLY-RESOURCE"],
+                        mismatched_fields=[],
+                        style_penalty=0.0,
+                    )
+                triggered_rules.append("R-UNINDEXED-BOOK-OR-SOURCE")
+                return RuleOutcome(
+                    label=ValidationLabel.UNRESOLVED,
+                    confidence=max(0.0, 0.55 - style_penalty),
+                    reasoning=(
+                        f"Non-periodical source ({non_journal_kind.replace('_', ' ')}) is not indexed "
+                        f"in academic paper databases (best paper candidate title_sim={title_sim:.2f}) — "
+                        f"abstaining from hallucination verdict."
+                    ),
+                    triggered_rules=triggered_rules,
+                    mismatched_fields=[],
+                    style_penalty=style_penalty,
+                )
             triggered_rules.append("R-HALLUCINATED-SOURCE")
             hallucination_conf = max(
                 0.55,

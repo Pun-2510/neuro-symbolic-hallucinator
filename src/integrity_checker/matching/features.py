@@ -105,14 +105,37 @@ class FeatureCalculator:
                 year_dist = min(year_dist, min(same_work_dists))
 
         # DOI exact match (normalized + known arXiv/ACL equivalent DOIs + explicit arXiv ID)
-        cit_doi_effective = citation.doi
-        if not cit_doi_effective:
-            from integrity_checker.retrieval.arxiv_client import ArxivClient
+        from integrity_checker.retrieval.arxiv_client import ArxivClient
 
-            arxiv_id = ArxivClient.extract_arxiv_id(citation)
-            if arxiv_id:
-                cit_doi_effective = f"10.48550/arxiv.{arxiv_id}"
+        cit_arxiv_id = ArxivClient.extract_arxiv_id(citation)
+        cit_doi_effective = citation.doi
+        if not cit_doi_effective and cit_arxiv_id:
+            cit_doi_effective = f"10.48550/arxiv.{cit_arxiv_id}"
         doi_match = self._doi_matches(cit_doi_effective, best.doi)
+
+        # FIX Phase 3 (BUG-21): Recognize exact arXiv ID match when candidate returned its
+        # published conference/journal DOI alongside external_ids["arxiv"] (or vice versa)
+        if not doi_match and cit_arxiv_id:
+            cand_arxiv_id = None
+            if best.external_ids:
+                cand_arxiv_id = best.external_ids.get("arxiv") or best.external_ids.get("ArXiv")
+            if not cand_arxiv_id and (best.doi or best.url):
+                cand_arxiv_id = ArxivClient.extract_arxiv_id(
+                    Citation(raw_text="", doi=best.doi, url=best.url)
+                )
+            if cand_arxiv_id and cand_arxiv_id.lower() == cit_arxiv_id.lower():
+                doi_match = True
+        if (
+            not doi_match
+            and cit_doi_effective
+            and best.doi
+            and fuzzy_sim >= 0.90
+            and author_sim >= 0.70
+        ):
+            d1_norm = self._normalize_doi_str(cit_doi_effective)
+            d2_norm = self._normalize_doi_str(best.doi)
+            if d1_norm.startswith("10.48550/arxiv") != d2_norm.startswith("10.48550/arxiv"):
+                doi_match = True
 
         # Venue similarity
         venue_sim = 0.0

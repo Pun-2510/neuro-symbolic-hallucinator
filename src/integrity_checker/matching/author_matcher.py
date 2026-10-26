@@ -233,6 +233,83 @@ def _to_last_name_set(authors: list, *, fold_diacritics: bool = True) -> set[str
     return result
 
 
+def _extract_author_signature(
+    author: Union[Author, str], *, fold_diacritics: bool = True
+) -> tuple[str, list[str], set[str]]:
+    """Extract (primary_last_name, full_word_tokens, initial_letters) for East-Asian/swapped matching."""
+    primary = _author_to_last_name(author, fold_diacritics=fold_diacritics)
+    if isinstance(author, Author):
+        raw_parts = [
+            author.last_name or "",
+            getattr(author, "first_name", "") or "",
+            getattr(author, "middle_name", "") or "",
+            getattr(author, "initials", "") or "",
+        ]
+        raw_str = " ".join(p for p in raw_parts if p)
+    else:
+        raw_str = str(author or "")
+
+    folded = _fold_diacritics(raw_str) if fold_diacritics else raw_str
+    cleaned = _WHITESPACE_RE.sub(
+        " ", _LONE_APOSTROPHE_RE.sub(" ", _strip_punctuation(folded.lower()))
+    ).strip()
+    tokens = [
+        t for t in cleaned.split()
+        if t not in _GENERATIONAL_SUFFIXES and t not in _PURE_PARTICLES
+    ]
+    full_tokens = [t for t in tokens if len(t) >= 2]
+    initials = {t[0] for t in tokens if t}
+    return primary, full_tokens, initials
+
+
+def _is_swapped_author_match(
+    sig_a: tuple[str, list[str], set[str]],
+    sig_b: tuple[str, list[str], set[str]],
+) -> bool:
+    """Return True if two author signatures represent the same person with swapped Given/Family order.
+
+    Examples:
+        - "Wei, G." (primary='wei', full=['wei'], initials={'w','g'})
+          vs "Wei Guodong" (primary='guodong', full=['wei','guodong'], initials={'w','g'})
+        - "Guodong, W." (primary='guodong', full=['guodong'], initials={'g','w'})
+          vs "Guodong Wei" (primary='wei', full=['guodong','wei'], initials={'g','w'})
+        - "Wei, Guodong" vs "Guodong, Wei"
+    """
+    prim_a, full_a, init_a = sig_a
+    prim_b, full_b, init_b = sig_b
+    if not prim_a or not prim_b:
+        return False
+    if prim_a == prim_b:
+        return True
+
+    # Case 1: Both have >= 2 full tokens and share the exact same 2-token set (e.g. {"wei", "guodong"})
+    if len(full_a) >= 2 and len(full_b) >= 2 and set(full_a) == set(full_b):
+        return True
+
+    # Case 2: One side has primary surname + initial(s), and the other side has 2+ full tokens
+    # where one full token == primary surname and another full token starts with the given initial
+    def _check_one_way(
+        prim_1: str, full_1: list[str], init_1: set[str], full_2: list[str]
+    ) -> bool:
+        if len(full_2) < 2 or prim_1 not in full_2:
+            return False
+        other_tokens_2 = [t for t in full_2 if t != prim_1]
+        if not other_tokens_2:
+            return False
+        given_inits_1 = init_1 - {prim_1[0]}
+        if given_inits_1:
+            return any(t[0] in given_inits_1 for t in other_tokens_2)
+        # If the given name happens to start with the same letter as the surname (e.g. "Wang, W."),
+        # check if init_1 had at least 1 initial and full_1 had only 1 full token while raw had 2+ tokens
+        return False
+
+    if _check_one_way(prim_a, full_a, init_a, full_b):
+        return True
+    if _check_one_way(prim_b, full_b, init_b, full_a):
+        return True
+    return False
+
+
 def author_match_score(
     cited: list,
     candidate: list,
@@ -245,21 +322,23 @@ def author_match_score(
     When citation has 1 author but candidate has many, we check if the
     first author matches any candidate author (common in short citations
     like "Settles, B (2012)").
-
-    Args:
-        cited: Citation.authors (list[Author] or list[str]).
-        candidate: SourceCandidate.authors (list[str]).
-        fold_diacritics: True nếu muốn fold 'Nguyễn' → 'nguyen'
-            (recommended for Vietnamese names).
-
-    Returns:
-        0.0–1.0. 1.0 = perfect match; 0.0 = no overlap.
-        Returns 0.0 nếu 1 trong 2 lists rỗng.
+    FIX Phase 3 (BUG-21): Handles East Asian swapped Given/Family name order
+    (e.g. "Wei, G." vs "Wei Guodong" or "Guodong, W." vs "Guodong Wei").
     """
     cited_set = _to_last_name_set(cited, fold_diacritics=fold_diacritics)
     cand_set = _to_last_name_set(candidate, fold_diacritics=fold_diacritics)
     if not cited_set or not cand_set:
         return 0.0
+
+    # Augment cand_set with any swapped East-Asian / 2-token matches
+    if not (cited_set <= cand_set):
+        cited_sigs = [_extract_author_signature(a, fold_diacritics=fold_diacritics) for a in cited]
+        cand_sigs = [_extract_author_signature(b, fold_diacritics=fold_diacritics) for b in candidate]
+        for sig_c in cited_sigs:
+            prim_c = sig_c[0]
+            if prim_c and prim_c not in cand_set:
+                if any(_is_swapped_author_match(sig_c, sig_b) for sig_b in cand_sigs):
+                    cand_set.add(prim_c)
 
     # FIX v1.11: If all cited authors are present in the candidate's author list
     # (e.g., "Settles, B" or "Pedregosa, Varoquaux, Gramfort, et al." on a 16-author paper),

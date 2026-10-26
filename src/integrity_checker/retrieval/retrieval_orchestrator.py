@@ -769,6 +769,20 @@ _WEB_RESOURCE_PATTERNS = [
         r"cloud\s+native\s+terminology)\b.*https?://",
         re.IGNORECASE,
     ),
+    # Audiovisual / YouTube / News / Government / Health / Industry web portals (BUG-22)
+    re.compile(
+        r"(?:youtube\.com|youtu\.be|\[Video\]|forbes\.com|nytimes\.com|reuters\.com|bbc\.(?:com|co\.uk)|"
+        r"theguardian\.com|washingtonpost\.com|wsj\.com|bloomberg\.com|cnbc\.com|techcrunch\.com|"
+        r"wired\.com|theverge\.com|arstechnica\.com|gartner\.com|mckinsey\.com|deloitte\.com|pwc\.com|"
+        r"ibm\.com|cisco\.com|crowdstrike\.com|mandiant\.com|fireeye\.com|paloaltonetworks\.com|"
+        r"fortinet\.com|kaspersky\.com|symantec\.com|securityriskadvisors\.com|sans\.org|mitre\.org|"
+        r"cve\.org|nist\.gov|cisa\.gov|cdc\.gov|fda\.gov|sec\.gov|ftc\.gov|state\.gov|whitehouse\.gov|"
+        r"nimh\.nih\.gov|samhsa\.gov|europa\.eu|un\.org|worldbank\.org|imf\.org|oecd\.org|weforum\.org|"
+        r"statista\.com|investopedia\.com|pewresearch\.org|gallup\.com|mayoclinic\.org|"
+        r"clevelandclinic\.org|webmd\.com|healthline\.com|verywellmind\.com|verywellhealth\.com|"
+        r"medicalnewstoday\.com|psychologytoday\.com)",
+        re.IGNORECASE,
+    ),
 ]
 
 
@@ -1024,10 +1038,11 @@ class RetrievalOrchestrator:
 
         signals = self.classify_citation_domain(citation)
 
-        # 1. Explicit arXiv DOI (10.48550/arXiv.*): Crossref/OpenAlex DOI endpoints return 404
+        # 1. Explicit arXiv DOI (10.48550/arXiv.*): Crossref DOI endpoint returns 404,
+        # so route to arXiv, DBLP, OpenAlex (which falls back to title search), and S2/CORE.
         if signals["is_arxiv_doi"]:
-            tier1 = _pick(["arxiv", "dblp", "semantic_scholar", "coreapi"])
-            tier2 = _pick(["openalex"]) if citation.title else []
+            tier1 = _pick(["arxiv", "dblp", "openalex", "semantic_scholar", "coreapi"])
+            tier2 = []
             return tier1, tier2
 
         # 2. Preprint / arXiv citation (by arXiv ID in URL/text or venue="arXiv")
@@ -1550,6 +1565,18 @@ class RetrievalOrchestrator:
 
             paper = self._local_db.find_by_doi(doi)
             if paper:
+                # Guard against stale/polluted local_db rows whose title conflicts with the cited title
+                if citation.title and paper.title:
+                    doi_title_sim = max(
+                        title_similarity(citation.title, paper.title),
+                        title_similarity(
+                            OpenLibraryClient.strip_edition_suffix(citation.title),
+                            OpenLibraryClient.strip_edition_suffix(paper.title),
+                        ),
+                    )
+                    if doi_title_sim < 0.70:
+                        paper = None
+            if paper:
                 cand = SourceCandidate(
                     source_name="local_db",
                     found=True,
@@ -1577,6 +1604,9 @@ class RetrievalOrchestrator:
         arxiv_id = self._extract_arxiv_id(citation)
         if arxiv_id:
             paper = self._local_db.find_by_arxiv_id(arxiv_id)
+            if paper and citation.title and paper.title:
+                if title_similarity(citation.title, paper.title) < 0.70:
+                    paper = None
             if paper:
                 cand = SourceCandidate(
                     source_name="local_db",
@@ -1602,7 +1632,9 @@ class RetrievalOrchestrator:
                 )
 
         # Try FTS5 search by title (fuzzy fallback)
-        # This helps when citation has no DOI but has title/author
+        # FIX Phase 3 (BUG-20): Require normalized title similarity >= 0.85, year difference <= 1,
+        # and author overlap >= 0.50 (when cited authors exist) before accepting a non-DOI local_db
+        # FTS5 hit, so weak/partial FTS5 hits never short-circuit live Tier-1 APIs.
         if citation.title and self._local_db is not None:
             try:
                 # Extract first author last name from citation
@@ -1623,9 +1655,11 @@ class RetrievalOrchestrator:
                     if citation.year and str(citation.year)[:4].isdigit():
                         cit_year_int = int(str(citation.year)[:4])
 
-                    # Prefer a result whose title matches AND whose year is within ±1 of cited year
-                    paper = results[0]
+                    best_paper = None
+                    best_score = 0.0
                     for r_paper in results:
+                        if not r_paper.title:
+                            continue
                         r_sim = max(
                             title_similarity(citation.title, r_paper.title),
                             title_similarity(
@@ -1633,29 +1667,23 @@ class RetrievalOrchestrator:
                                 OpenLibraryClient.strip_edition_suffix(r_paper.title),
                             ),
                         )
-                        if r_sim >= 0.75 and cit_year_int is not None and r_paper.year:
-                            if abs(int(r_paper.year) - cit_year_int) <= 1:
-                                paper = r_paper
-                                break
+                        if r_sim < 0.85:
+                            continue
+                        if cit_year_int is not None:
+                            if not r_paper.year or abs(int(r_paper.year) - cit_year_int) > 1:
+                                continue
+                        if citation.authors:
+                            if not r_paper.authors or author_match_score(citation.authors, r_paper.authors) < 0.50:
+                                continue
+                        if r_sim > best_score:
+                            best_score = r_sim
+                            best_paper = r_paper
 
-                    match_score = max(
-                        title_similarity(citation.title, paper.title),
-                        title_similarity(
-                            OpenLibraryClient.strip_edition_suffix(citation.title),
-                            OpenLibraryClient.strip_edition_suffix(paper.title),
-                        ),
-                    )
-                    if match_score < 0.70:
+                    if best_paper is None:
                         return None
-                    # Do not short-circuit external APIs on a non-DOI FTS hit if the cached year
-                    # disagrees with the cited year (e.g., cached 4th edition 2014 vs cited 5th edition 2018)
-                    if cit_year_int is not None and paper.year:
-                        if abs(int(paper.year) - cit_year_int) > 1:
-                            logger.debug(
-                                f"Local DB FTS year mismatch ({paper.year} vs cited {cit_year_int}) "
-                                f"for '{citation.title[:40]}' -> deferring to external APIs"
-                            )
-                            return None
+
+                    paper = best_paper
+                    match_score = best_score
                     cand = SourceCandidate(
                         source_name="local_db",
                         found=True,
@@ -2045,12 +2073,8 @@ class RetrievalOrchestrator:
     @staticmethod
     def is_arxiv_doi(doi: str | None) -> bool:
         """Check if DOI is an arXiv DOI (10.48550/arXiv.XXXXX)."""
-        if not doi:
-            return False
-        normalized = doi.strip().lower()
-        return normalized.startswith("10.48550/arxiv") or normalized.startswith(
-            "https://doi.org/10.48550/arxiv"
-        )
+        norm = normalize_doi(doi)
+        return bool(norm and norm.startswith("10.48550/arxiv"))
 
     async def _lookup_with_ratelimit(
         self,
