@@ -1914,60 +1914,60 @@ function PipelineSection({ lang }: { lang: Lang }) {
           {
             step: '01',
             icon: FileSearch,
-            tech: 'PyMuPDF + GROBID TEI',
-            title: 'Bóc tách Cấu trúc PDF',
-            desc: 'Tự động nhận diện chuẩn trích dẫn (APA, IEEE, Vancouver, Chicago, MLA), tách các cụm trích dẫn trong bài và danh mục tài liệu tham khảo.',
+            tech: 'PyMuPDF + DOCX XML + GROBID',
+            title: 'Bóc tách PDF & Word (.docx)',
+            desc: 'Tự động nhận diện 11 chuẩn trích dẫn (APA, IEEE, Vancouver, Chicago, MLA, ACS, CSE, TDTU...) trên cả file PDF và Word (.docx bao gồm bảng biểu & footnotes).',
           },
           {
             step: '02',
             icon: Link2,
             tech: 'CitationLinker Graph',
-            title: 'Liên kết Hai chiều',
-            desc: 'Ánh xạ từng trích dẫn trong câu tới mục tài liệu tham khảo tương ứng; phát hiện trích dẫn thiếu nguồn hoặc nguồn liệt kê khống.',
+            title: 'Đồ thị Liên kết Hai chiều',
+            desc: 'Ánh xạ từng trích dẫn trong câu tới mục tài liệu tham khảo tương ứng; trực quan hóa trên Đồ thị Mạng lưới Trích dẫn & phát hiện trích dẫn mồ côi.',
           },
           {
             step: '03',
             icon: Database,
-            tech: 'FTS5 + Smart Tiered APIs',
-            title: 'Truy hồi Đa Nguồn',
-            desc: 'Tra cứu phân tầng trên 127K bài báo ACL nội bộ và 6 API học thuật quốc tế (Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, Europe PMC).',
+            tech: 'FTS5 + 9 APIs + VN Legal Registry',
+            title: 'Truy hồi Đa Nguồn & Pháp luật VN',
+            desc: 'Tra cứu trên 127K bài báo ACL nội bộ, 9 API học thuật quốc tế (Semantic Scholar, Crossref, OpenAlex, PubMed, arXiv...) và Cơ sở dữ liệu Văn bản Pháp luật Việt Nam.',
           },
           {
             step: '04',
             icon: Shield,
-            tech: 'Rules R01–R12 + CIS',
-            title: 'Suy diễn & Báo cáo',
-            desc: 'Đánh giá bằng chứng theo tập luật hình thức, tính điểm toàn vẹn CIS và xuất báo cáo chi tiết (PDF, DOCX, CSV, JSON).',
+            tech: 'Evidence DAG + 1-Click Auto-Fix',
+            title: 'Suy diễn, Đồ thị & Tự động Sửa lỗi',
+            desc: 'Trực quan hóa cây bằng chứng Neuro-Symbolic, tính điểm CIS 5 thành phần, tự động chuẩn hóa danh mục ra APA/IEEE/BibTeX/RIS và xuất báo cáo PDF/DOCX.',
           },
         ]
       : [
           {
             step: '01',
             icon: FileSearch,
-            tech: 'PyMuPDF + GROBID TEI',
-            title: 'Parse & Extract',
-            desc: 'Auto-detects citation style (APA, IEEE, Vancouver, Chicago, MLA) and extracts in-text occurrences alongside structured bibliography entries.',
+            tech: 'PyMuPDF + DOCX XML + GROBID',
+            title: 'Parse PDF & Word (.docx)',
+            desc: 'Auto-detects 11 citation styles (APA, IEEE, Vancouver, Chicago, MLA, ACS, CSE, TDTU...) across both PDF and native Word (.docx paragraphs, tables & footnotes).',
           },
           {
             step: '02',
             icon: Link2,
             tech: 'CitationLinker Graph',
-            title: 'Bidirectional Linking',
-            desc: 'Maps every in-text citation to its bibliography target and flags unlinked orphans, uncited references, and duplicate entries.',
+            title: 'Bidirectional Network Graph',
+            desc: 'Maps every in-text citation to its bibliography target, visualizes the Interactive Citation Network Graph, and flags orphans or duplicates.',
           },
           {
             step: '03',
             icon: Database,
-            tech: 'FTS5 + Smart Tiered APIs',
-            title: 'Federated Retrieval',
-            desc: 'Queries 127K+ local ACL Anthology papers and smart-routes across Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, and Europe PMC.',
+            tech: 'FTS5 + 9 APIs + VN Legal Registry',
+            title: 'Federated & Statutory Retrieval',
+            desc: 'Queries 127K+ local ACL Anthology papers, 9 global scholarly APIs, and the built-in Vietnamese Legal Statute & Vigencia Registry.',
           },
           {
             step: '04',
             icon: Shield,
-            tech: 'Rules R01–R12 + CIS',
-            title: 'Symbolic Verdict',
-            desc: 'Applies 12 formal neuro-symbolic rules to produce explainable verdicts, field-level diffs, CIS scores, and exportable reports.',
+            tech: 'Evidence DAG + 1-Click Auto-Fix',
+            title: 'Symbolic Verdict & Auto-Remediation',
+            desc: 'Renders interactive Neuro-Symbolic Evidence DAGs, computes 5-component CIS scores, repairs broken references into BibTeX/RIS/APA/IEEE, and exports PDF/DOCX.',
           },
         ];
 
@@ -2275,16 +2275,16 @@ function RoleWorkspacesSection({ lang }: { lang: Lang }) {
       capabilities:
         lang === 'vi'
           ? [
-              'Tải lên file PDF bài tiểu luận / khóa luận và theo dõi tiến trình 8 bước thời gian thực',
-              'Xem bảng tổng hợp kết quả kiểm chứng 2 lớp và điểm Citation Integrity Score (CIS)',
-              'Kiểm tra chi tiết sự sai lệch giữa thông tin trích dẫn trong bài và bản ghi gốc',
-              'Xuất báo cáo kiểm chứng ra định dạng PDF, DOCX, CSV hoặc JSON',
+              'Tải lên file PDF hoặc Word (.docx) bài tiểu luận / khóa luận và tham gia lớp học bằng mã CITRA-XXXX',
+              'Xem bảng kết quả kiểm chứng 2 lớp, điểm CIS 5 thành phần & Đồ thị Mạng lưới Trích dẫn tương tác',
+              '1-Click Auto-Fix Studio: Tự động sửa lỗi năm/tạp chí/DOI và xuất chuẩn APA 7th, IEEE, TDTU, BibTeX (.bib), RIS',
+              'Xuất báo cáo kiểm chứng toàn diện ra định dạng PDF, DOCX (Word), CSV hoặc JSON',
             ]
           : [
-              'Upload single PDF manuscripts with live 8-step pipeline progress tracking',
-              'Review comprehensive 2-layer Verdict Tables and Citation Integrity Score (CIS)',
-              'Inspect side-by-side metadata comparisons for every flagged reference',
-              'Export verification reports to PDF, DOCX, CSV, or JSON formats',
+              'Upload PDF or Word (.docx) manuscripts and self-enroll into instructor cohorts via CITRA-XXXX join codes',
+              'Review 2-layer Verdict Tables, 5-component CIS scores & Interactive Citation Network Graphs',
+              '1-Click Auto-Fix Studio: Repair metadata errors into canonical APA 7th, IEEE, TDTU, BibTeX (.bib) & RIS',
+              'Export rich compliance reports to PDF, DOCX (Word), CSV, or JSON formats',
             ],
     },
     {
@@ -2305,15 +2305,15 @@ function RoleWorkspacesSection({ lang }: { lang: Lang }) {
       capabilities:
         lang === 'vi'
           ? [
-              'Quản lý danh sách lớp học (/teacher/classes), thêm sinh viên và tải lên hàng loạt (Batch Upload)',
-              'Hàng đợi Pending Reviews tập trung các bài nộp có nghi ngờ bịa đặt hoặc lỗi metadata',
-              'Mở khóa Document Inspector (Split-pane PDF), Logic Trace (R01–R12) và Orphan Detection',
+              'Tạo mã lớp CITRA-XXXX cho sinh viên tự tham gia, tải lên hàng loạt (Batch Upload PDF/DOCX)',
+              'Cohort Analytics & Shared Hallucination Detector: Phát hiện trích dẫn ảo giác trùng lặp giữa nhiều sinh viên',
+              'Mở khóa Document Inspector (Xem trang PDF & Highlight tọa độ), Đồ thị Bằng chứng DAG & Logic Trace',
               'Ghi đè nhãn kiểm chứng (Override Verdict) kèm lý do giải trình được lưu vào Audit Log',
             ]
           : [
-              'Manage academic classes (/teacher/classes), student rosters, and sequential Batch Uploads',
-              'Dedicated Pending Reviews queue prioritizing flagged hallucinations and metadata errors',
-              'Full access to Split-Pane Document Inspector, Symbolic Logic Trace, and Orphan Detection',
+              'Generate CITRA-XXXX class join codes for student self-enrollment and run Batch PDF/DOCX Uploads',
+              'Cohort Analytics & Shared Hallucination Detector: Catch fabricated sources shared across multiple students',
+              'Full access to Bounding-Box PDF Page Preview, Interactive Evidence DAG Graph, and Symbolic Logic Trace',
               'Human-in-the-Loop Verdict Override with mandatory justification and audit persistence',
             ],
     },

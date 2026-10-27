@@ -63,11 +63,14 @@ export function buildEvidenceGraph(
 ): { graph: GraphNode; isLocalOnly: boolean } {
   const sourcesByDatabase: Record<string, CandidateInfo[]> = {};
   for (const source of verdict.matched_sources ?? []) {
-    const dbKey = source.source.toLowerCase();
+    const dbKey = (source.source || 'local_db').toLowerCase();
+    const matchedFields = Array.isArray(source.matched_fields)
+      ? source.matched_fields
+      : ['title', 'authors', 'year'];
     const entry: CandidateInfo = {
       source: dbKey,
-      matched: source.matched_fields.length > 0,
-      fields: source.matched_fields,
+      matched: matchedFields.length > 0,
+      fields: matchedFields,
       url: source.url ?? undefined,
     };
     if (sourcesByDatabase[dbKey]) {
@@ -257,23 +260,23 @@ export function buildEvidenceGraph(
         label: 'Verification Rules',
         type: 'rules',
         status: (
-          verdict.triggered_rules.length > 0 ? 'warning' : 'success'
+          (verdict.triggered_rules ?? []).length > 0 ? 'warning' : 'success'
         ) as GraphNode['status'],
         detail:
-          verdict.triggered_rules.length > 0
-            ? verdict.triggered_rules.map(getRuleDisplayName).join('. ')
+          (verdict.triggered_rules ?? []).length > 0
+            ? (verdict.triggered_rules ?? []).map(getRuleDisplayName).join('. ')
             : 'No additional warnings were raised.',
         children:
-          verdict.triggered_rules.length > 0
+          (verdict.triggered_rules ?? []).length > 0
             ? [
                 {
                   id: 'rules-list',
-                  label: `${verdict.triggered_rules.length} rules triggered`,
+                  label: `${(verdict.triggered_rules ?? []).length} rules triggered`,
                   type: 'rules' as const,
                   status: 'warning' as GraphNode['status'],
                   detail: getVerdictExplanation(verdict),
                 },
-                ...verdict.mismatched_fields.map((field, idx) => ({
+                ...(verdict.mismatched_fields ?? []).map((field, idx) => ({
                   id: `mismatch-${idx}`,
                   label: `${getFieldDisplayName(field).replace(/^the /, '')} needs review`,
                   type: 'rules' as const,
