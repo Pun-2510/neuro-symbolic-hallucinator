@@ -70,6 +70,7 @@ class EuropePMCClient(BaseScholarClient):
         self.max_retries = max_retries or min(settings.retrieval.retry.max_attempts, 3)
         self._backoff = settings.retrieval.retry.backoff
         self._last_status_code: int | None = None
+        EuropePMCClient._backoff_until = 0.0
         self._headers = {
             "User-Agent": (
                 f"EssayIntegrityChecker/0.2 (mailto:{self.contact_email})"

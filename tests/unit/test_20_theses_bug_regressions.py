@@ -497,9 +497,20 @@ async def test_bug_20_local_db_rejects_partial_title_or_wrong_author_and_queries
         )
     )
 
+    def _make_empty_client(name: str) -> MagicMock:
+        m = MagicMock()
+        m.name = name
+        m.lookup = AsyncMock(return_value=SourceCandidate(source_name=name, found=False))
+        return m
+
     orchestrator = RetrievalOrchestrator(
         crossref=mock_crossref,
         openalex=mock_openalex,
+        semantic_scholar=_make_empty_client("semantic_scholar"),
+        europepmc=_make_empty_client("europepmc"),
+        dblp=_make_empty_client("dblp"),
+        arxiv=_make_empty_client("arxiv"),
+        openlibrary=_make_empty_client("openlibrary"),
         local_db=fake_local_db,
         use_local_db=True,
         enable_link_validation=False,
@@ -553,7 +564,9 @@ def test_bug_21_east_asian_swapped_author_order_and_arxiv_doi_equivalence() -> N
         sources_queried=["arxiv"],
         sources_succeeded=["arxiv"],
     )
-    fc = FeatureCalculator(enable_content_alignment=False)
+    mock_semantic = MagicMock()
+    mock_semantic.similarity.return_value = 1.0
+    fc = FeatureCalculator(semantic=mock_semantic, enable_content_alignment=False)
     features = fc.compute(cit, source)
     assert features.doi_exact_match is True
 
