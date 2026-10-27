@@ -94,8 +94,8 @@ _APA_REFERENCE_ENTRY = CompiledPattern.create(
     pattern=(
         r"^"
         r"(?P<authors>.+?)"
-        r"\s+\(\s*(?:(?P<year>\d{4})(?P<suffix>[a-z])?(?:\s*,\s*[^)]+)?|(?P<nd>n\.?\s*d\.?)(?:-(?P<nd_suffix>[a-z]))?)\s*\)"
-        r"\.?\s*"
+        r"\s*,?\s*\(\s*(?:(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?P<year>(?:18|19|20)\d{2})(?P<suffix>[a-z])?(?:\s*[,–\-/]\s*[^)]+)?|(?P<nd>n\.?\s*d\.?)(?:-(?P<nd_suffix>[a-z]))?)\s*\)"
+        r"[.,:]?\s*"
         r"(?P<title>[^\.]+?)"
         r"\.(?:\s*)"
         r"(?P<venue>.+)"
@@ -103,6 +103,24 @@ _APA_REFERENCE_ENTRY = CompiledPattern.create(
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="APA reference entry with full author block and venue",
+)
+
+# Vietnamese APA entry where title and venue are separated by quotes or comma (e.g. Author (2020), “Title”, Tạp chí... or Author (2020), Title, Nxb...)
+_APA_VN_COMMA_ENTRY = CompiledPattern.create(
+    name="apa_reference_entry",
+    pattern=(
+        r"^"
+        r"(?P<authors>.+?)"
+        r"\s*,?\s*\(\s*(?:(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?P<year>(?:18|19|20)\d{2})(?P<suffix>[a-z])?(?:\s*[,–\-/]\s*[^)]+)?|(?P<nd>n\.?\s*d\.?)(?:-(?P<nd_suffix>[a-z]))?)\s*\)"
+        r"[.,:]?\s*"
+        r"(?:"
+        r"[\"\u201c\u2018](?P<q_title>[^\"\u201d\u2019]+)[\"\u201d\u2019]\s*[.,;]?\s*(?P<q_venue>.+?)"
+        r"|(?P<c_title>.+?)\s*,\s*(?P<c_venue>(?:Nxb|NXB|Nhà\s+xuất\s+bản|Tạp\s+chí|Báo\s+|Trường\s+|Học\s+viện|Viện\s+|Khoa\s+|Luận\s+văn|Luận\s+án|Khóa\s+luận|Đồ\s+án|Tiểu\s+luận|Kỷ\s+yếu|Hội\s+thảo|Đặc\s+san|Số\s+chuyên\s+đề|Tài\s+liệu|Hà\s+Nội|TP\.?\s*Hồ\s+Chí\s+Minh|TP\.?\s*HCM|H\.?\s*[,:]?\s*NXB|https?://|truy\s+cập).+?)"
+        r"|(?P<s_title>[^\.]{10,})"
+        r")\.?$"
+    ),
+    pattern_type=PatternType.REFERENCE_ENTRY,
+    description="Vietnamese APA reference entry with quoted or comma-delimited title and venue",
 )
 
 # APA reference entry with numbered prefix: [1] Author (Year). Title. Venue.
@@ -166,23 +184,49 @@ _APA_SIMPLE_ENTRY = CompiledPattern.create(
 # =============================================================================
 
 _VN_LEGAL_LIST_PREFIX_RE = re.compile(
-    r"^\s*(?:\[\s*(?P<b_idx>\d+)\s*\]|\d+\s*[\.\)]|[a-z]\s*\)|[-•–])\s*"
+    r"^\s*(?:\[\s*(?P<b_idx>\d+)\s*\]|(?P<d_idx>\d{1,3})\s*[\.\)]|[a-z]\s*\)|[-•–])\s*"
+)
+
+_VN_LEGAL_ACADEMIC_EXCLUSION_RE = re.compile(
+    r"\b(?:Nxb\.?|NXB|Nhà\s+xuất\s+bản|Tạp\s+chí|chủ\s+biên|Luận\s+văn|Luận\s+án|Khóa\s+luận|Giáo\s+trình)\b",
+    re.IGNORECASE,
+)
+
+_VN_AGENCY_FIRST_LEGAL_RE = re.compile(
+    r"^(?P<agency>(?:Quốc\s+hội|Ủy\s+ban\s+Thường\s+vụ\s+Quốc\s+hội|Uỷ\s+ban\s+Thường\s+vụ\s+Quốc\s+hội"
+    r"|Văn\s+phòng\s+Quốc\s+hội|Chính\s+phủ|Thủ\s+tướng\s+Chính\s+phủ|Bộ\s+Chính\s+trị|Ban\s+Bí\s+thư"
+    r"|Ban\s+Chấp\s+hành\s+Trung\s+ương(?:\s+Đảng)?|Tòa\s+án\s+nhân\s+dân[^,(\n]{0,55}"
+    r"|Toà\s+án\s+nhân\s+dân[^,(\n]{0,55}|Hội\s+đồng\s+Thẩm\s+phán[^,(\n]{0,55}"
+    r"|Viện\s+kiểm\s+sát\s+nhân\s+dân[^,(\n]{0,55}|Thanh\s+tra\s+Chính\s+phủ|Kiểm\s+toán\s+Nhà\s+nước"
+    r"|Ngân\s+hàng\s+Nhà\s+nước(?:\s+Việt\s+Nam)?|Bộ\s+[A-ZÀ-ÝĐ][^,().\n]{2,60}"
+    r"|Ủy\s+ban\s+nhân\s+dân[^,(\n]{0,50}|Uỷ\s+ban\s+nhân\s+dân[^,(\n]{0,50}"
+    r"|Chủ\s+tịch\s+nước|Chủ\s+tịch\s+Chính\s+phủ[^,(\n]{0,30}))\s*"
+    r"(?:\(\s*(?P<agency_year>(?:19|20)\d{2}[a-z]?(?:\s*[,–\-/]\s*(?:19|20)\d{2}[a-z]?)*)\s*\))?\s*[.,:]+\s*"
+    r"(?P<doc_rest>.+)$",
+    re.IGNORECASE,
 )
 
 _VN_CONSTITUTION_RE = re.compile(
-    r"^Hiến\s+pháp(?:\s+nước\s+Cộng\s+hòa\s+xã\s+hội\s+chủ\s+nghĩa\s+Việt\s+Nam)?"
-    r"(?:\s+năm)?\s*\(?(?P<year>(?:19|20)\d{2})\)?[.,;\s]*$",
+    r"^Hiến\s+pháp(?:\s+nước\s+Cộng\s+hòa\s+xã\s+hội\s+chủ\s+nghĩa\s+Việt\s+Nam|\s+Việt\s+Nam)?"
+    r"(?:\s+các)?(?:\s+năm)?\s*\(?(?P<years>(?:19|20)\d{2}(?:\s*(?:,|và|-|–)\s*(?:19|20)\d{2})*)\)?[.,;\s]*$",
     re.IGNORECASE,
 )
 
 _VN_LAW_RE = re.compile(
-    r"^(?P<law_prefix>Bộ\s+luật|Luật|Pháp\s+lệnh)\s+(?P<rest>.+)$",
+    r"^(?P<law_prefix>Bộ\s+luật|Luật|Pháp\s+lệnh|Sắc\s+lệnh|LDN|BLDS|BLHS|BLLĐ|BLTTDS|BLTTHS|LTM|LSHTT)\s+(?P<rest>.+)$",
     re.IGNORECASE,
 )
 
 _VN_SUBLAW_RE = re.compile(
     r"^(?P<doc_type>Nghị\s+định|Thông\s+tư(?:\s+liên\s+tịch)?|Quyết\s+định"
-    r"|Nghị\s+quyết(?:\s+liên\s+tịch)?|Chỉ\s+thị)\s+(?:số\s+)?(?P<doc_code>\d+[\d/A-ZĐa-z\-–]+)",
+    r"|Nghị\s+quyết(?:\s+liên\s+tịch)?|Chỉ\s+thị|Sắc\s+lệnh|Bản\s+án|Án\s+lệ"
+    r"|Công\s+văn|Kết\s+luận|Văn\s+bản\s+hợp\s+nhất|Thông\s+báo)\s+"
+    r"(?:số\s*:?\s*)?(?P<doc_code>\d+\s*(?:[/\-–]\s*[0-9A-ZĐƯa-zđư\-–/]+)+)",
+    re.IGNORECASE,
+)
+
+_VN_TREATY_OR_DRAFT_RE = re.compile(
+    r"^(?P<doc_type>Công\s+ước|Hiệp\s+ước|Hiệp\s+định|Dự\s+thảo\s+(?:Bộ\s+luật|Luật|Nghị\s+định|Thông\s+tư)|Tờ\s+trình)\s+(?P<rest>.+)$",
     re.IGNORECASE,
 )
 
@@ -190,14 +234,23 @@ _SUBLAW_AGENCY_SUFFIX_MAP = {
     "NĐ-CP": "Chính phủ",
     "NQ-CP": "Chính phủ",
     "QĐ-TTG": "Thủ tướng Chính phủ",
+    "QĐTTG": "Thủ tướng Chính phủ",
     "CT-TTG": "Thủ tướng Chính phủ",
     "NQ-QH": "Quốc hội",
+    "NQ/TW": "Bộ Chính trị",
+    "NQ/TƯ": "Ban Chấp hành Trung ương",
     "UBTVQH": "Ủy ban Thường vụ Quốc hội",
+    "VBHN-VPQH": "Văn phòng Quốc hội",
+    "TANDTC": "Tòa án nhân dân tối cao",
+    "KL-TTCP": "Thanh tra Chính phủ",
     "TT-BTC": "Bộ Tài chính",
     "TT-NHNN": "Ngân hàng Nhà nước",
     "TT-BGDĐT": "Bộ Giáo dục và Đào tạo",
     "TT-BCT": "Bộ Công Thương",
     "TT-BKHĐT": "Bộ Kế hoạch và Đầu tư",
+    "TT-BKHCN": "Bộ Khoa học và Công nghệ",
+    "TT-BTTTT": "Bộ Thông tin và Truyền thông",
+    "TT-BCA": "Bộ Công an",
     "TT-BTNMT": "Bộ Tài nguyên và Môi trường",
     "TT-BLĐTBXH": "Bộ Lao động - Thương binh và Xã hội",
     "TT-BTP": "Bộ Tư pháp",
@@ -221,26 +274,62 @@ def parse_vn_legal_reference(text: str) -> Optional[Citation]:
         1. Hiến pháp: ``Hiến pháp 2013.``
         2. Đạo luật / Bộ luật: ``Luật Doanh nghiệp (Luật số 68/2014/QH13) ngày 26/12/2014.``
         3. Văn bản dưới luật: ``Nghị định số 23/2015/NĐ-CP của Chính phủ ngày 16/02/2015 về ...``
+        4. Agency-first legal citations: ``Quốc hội (2020), Luật Doanh nghiệp...``, ``Chính phủ (2024). Nghị định số...``
     """
     if not text:
         return None
     normalized_text = re.sub(r"\s+", " ", text.strip())
     lead_m = _VN_LEGAL_LIST_PREFIX_RE.match(normalized_text)
-    numeric_index = (
-        int(lead_m.group("b_idx"))
-        if lead_m and lead_m.group("b_idx")
-        else None
-    )
+    idx_str = (lead_m.group("b_idx") or lead_m.group("d_idx")) if lead_m else None
+    numeric_index = int(idx_str) if idx_str else None
     cleaned = normalized_text[lead_m.end():].strip() if lead_m else normalized_text
+    cleaned = re.sub(r"\s*\[trans\s*:[^\]]*\]?\s*$", "", cleaned, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r"([a-zà-ỹ])(năm\s+(?:19|20)\d{2})\b", r"\1 \2", cleaned, flags=re.IGNORECASE)
     if not cleaned:
+        return None
+    if _VN_LEGAL_ACADEMIC_EXCLUSION_RE.search(cleaned):
         return None
     clean_title = cleaned.rstrip(".,; ").strip()
     title_norm = re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", clean_title.lower())).strip()
 
+    # 0. Agency-first legal reference: "Quốc hội (2020), Luật Doanh nghiệp...", "Chính phủ (2024). Nghị định số..."
+    agency_m = _VN_AGENCY_FIRST_LEGAL_RE.match(cleaned)
+    if agency_m:
+        agency_name = re.sub(r"\s+", " ", agency_m.group("agency")).strip().rstrip(".,:")
+        agency_yr_raw = agency_m.group("agency_year") or ""
+        agency_yr_m = re.search(r"((?:19|20)\d{2})", agency_yr_raw)
+        doc_rest = agency_m.group("doc_rest").strip()
+        # Normalize "Số: 12/VBHN-VPQH ... Luật Thương mại" into "Văn bản hợp nhất số 12/VBHN-VPQH ..."
+        if re.match(r"^Số\s*:\s*\d+/", doc_rest, re.IGNORECASE):
+            doc_rest = "Văn bản hợp nhất " + re.sub(r"^Số\s*:\s*", "số ", doc_rest, flags=re.IGNORECASE)
+        inner_cit = parse_vn_legal_reference(doc_rest)
+        if inner_cit is not None:
+            year = agency_yr_m.group(1) if agency_yr_m else inner_cit.year
+            authors: list[Author] = [_make_corp_author(agency_name)]
+            for a in inner_cit.authors or []:
+                if a.last_name != agency_name.lower():
+                    authors.append(a)
+            url_m = re.search(r"(https?://[^\s,;)\]]+)", cleaned, re.IGNORECASE)
+            return Citation(
+                raw_text=normalized_text,
+                citation_type=CitationType.REFERENCE_LIST,
+                style=CitationStyle.APA,
+                matched_pattern="vn_legal_document",
+                numeric_index=numeric_index,
+                title=inner_cit.title or clean_title,
+                title_normalized=inner_cit.title_normalized or title_norm,
+                year=year,
+                venue=agency_name,
+                authors=authors,
+                url=url_m.group(1).rstrip(".,;") if url_m else inner_cit.url,
+                confidence=0.95,
+            )
+
     # 1. Hiến pháp
     const_m = _VN_CONSTITUTION_RE.match(cleaned)
     if const_m:
-        year = const_m.group("year")
+        all_years = re.findall(r"(?:19|20)\d{2}", const_m.group("years"))
+        year = all_years[-1] if all_years else None
         return Citation(
             raw_text=normalized_text,
             citation_type=CitationType.REFERENCE_LIST,
@@ -258,15 +347,16 @@ def parse_vn_legal_reference(text: str) -> Optional[Citation]:
             confidence=0.95,
         )
 
-    # 2. Đạo luật / Bộ luật / Pháp lệnh
+    # 2. Đạo luật / Bộ luật / Pháp lệnh / Sắc lệnh
     law_m = _VN_LAW_RE.match(cleaned)
     if law_m and not re.match(r"^(?:Bộ\s+luật|Luật|Pháp\s+lệnh)\s*\(\s*\d{4}\s*\)\.", cleaned, re.IGNORECASE):
         has_legal_marker = bool(
             re.search(
                 r"\((?:Bộ\s+luật|Luật|Pháp\s+lệnh)?\s*(?:số\s*)?\d+[\d/A-ZĐa-z\-–]+\)"
-                r"|\bsố\s+\d+[\d/A-ZĐa-z\-–]+"
+                r"|\bsố\s*:?\s*\d+[\d/A-ZĐa-z\-–]+"
                 r"|\bngày\s+\d{1,2}\s*(?:[/-]|tháng)\s*\d{1,2}\s*(?:[/-]|năm)\s*(?:19|20)\d{2}"
-                r"|\bnăm\s+(?:19|20)\d{2}\b",
+                r"|\b(?:các\s+)?năm\s+(?:19|20)\d{2}\b"
+                r"|\b(?:19|20)\d{2}(?:\s*\([^)]*\))?[.,;\s]*$",
                 cleaned,
                 re.IGNORECASE,
             )
@@ -274,8 +364,8 @@ def parse_vn_legal_reference(text: str) -> Optional[Citation]:
         if has_legal_marker:
             # Extract short law name before (Luật số ...), số ..., ngày ..., or năm YYYY
             name_m = re.match(
-                r"^(?P<name>(?:Bộ\s+luật|Luật|Pháp\s+lệnh)\s+[^().\n]+?)"
-                r"(?=\s*\(|\s+số\s+\d|\s+ngày\s+\d|\s+năm\s+(?:19|20)\d{2}|[.,;]|$)",
+                r"^(?P<name>(?:Bộ\s+luật|Luật|Pháp\s+lệnh|Sắc\s+lệnh|LDN|BLDS|BLHS|BLLĐ|BLTTDS|BLTTHS|LTM|LSHTT)\s+[^(),.\n]+?)"
+                r"(?=\s*\(|\s*,\s*số\s+\d|\s+số\s+\d|\s+ngày\s+\d|\s+(?:các\s+)?năm\s+(?:19|20)\d{2}|\s+(?:19|20)\d{2}\b|[.,;]|$)",
                 cleaned,
                 re.IGNORECASE,
             )
@@ -288,22 +378,23 @@ def parse_vn_legal_reference(text: str) -> Optional[Citation]:
                 re.IGNORECASE,
             )
             code_y = re.search(r"/((?:19|20)\d{2})/", cleaned)
-            any_y = re.search(r"\b((?:19|20)\d{2})\b", cleaned)
+            any_years = re.findall(r"\b((?:19|20)\d{2})\b", cleaned)
             year = (
                 date_y.group(1)
                 if date_y
-                else (code_y.group(1) if code_y else (any_y.group(1) if any_y else None))
+                else (code_y.group(1) if code_y else (any_years[0] if any_years else None))
             )
 
             authors = [_make_corp_author(law_name), _make_corp_author("Quốc hội")]
             code_full_m = re.search(
-                r"((?:Bộ\s+luật|Luật|Pháp\s+lệnh)\s+số\s+[\d/A-ZĐa-z\-–]+)",
+                r"((?:Bộ\s+luật|Luật|Pháp\s+lệnh|Sắc\s+lệnh)\s+số\s+[\d/A-ZĐa-z\-–]+)",
                 cleaned,
                 re.IGNORECASE,
             )
             if code_full_m:
                 authors.append(_make_corp_author(code_full_m.group(1)))
 
+            url_m = re.search(r"(https?://[^\s,;)\]]+)", cleaned, re.IGNORECASE)
             return Citation(
                 raw_text=normalized_text,
                 citation_type=CitationType.REFERENCE_LIST,
@@ -315,20 +406,28 @@ def parse_vn_legal_reference(text: str) -> Optional[Citation]:
                 year=year,
                 venue="Quốc hội",
                 authors=authors,
+                url=url_m.group(1).rstrip(".,;") if url_m else None,
                 confidence=0.95,
             )
 
-    # 3. Văn bản dưới luật (Nghị định, Thông tư, Quyết định, Nghị quyết, Chỉ thị)
+    # 3. Văn bản dưới luật (Nghị định, Thông tư, Quyết định, Nghị quyết, Chỉ thị, Bản án, Án lệ, Công văn, Kết luận)
     sublaw_m = _VN_SUBLAW_RE.match(cleaned)
     if sublaw_m:
         doc_type = re.sub(r"\s+", " ", sublaw_m.group("doc_type")).strip()
-        doc_code = sublaw_m.group("doc_code").strip().rstrip(".,;")
+        doc_code = re.sub(r"\s+", "", sublaw_m.group("doc_code").strip().rstrip(".,;"))
 
         # Extract issuing agency after "của ..."
         agency: Optional[str] = None
         agency_m = re.search(
-            r"\bcủa\s+(?P<agency>[^,.\n]+?)"
-            r"(?=\s+ngày\s+\d|\s+về\s+|\s+ban\s+hành|\s+quy\s+định|\s+hướng\s+dẫn|\s+sửa\s+đổi|[.,]|$)",
+            r"\bcủa\s+(?P<agency>(?:Chính\s+phủ|Thủ\s+tướng(?:\s+Chính\s+phủ)?|Quốc\s+hội"
+            r"|Ủy\s+ban\s+Thường\s+vụ\s+Quốc\s+hội|Uỷ\s+ban\s+Thường\s+vụ\s+Quốc\s+hội"
+            r"|Bộ\s+Chính\s+trị|Ban\s+Bí\s+thư|Ban\s+Chấp\s+hành\s+Trung\s+ương(?:\s+Đảng)?"
+            r"|Bộ\s+(?:trưởng\s+Bộ\s+)?[A-ZÀ-ÝĐ][^,.\n“\"']{2,55}?"
+            r"|Ngân\s+hàng\s+Nhà\s+nước(?:\s+Việt\s+Nam)?|Tòa\s+án\s+nhân\s+dân[^,.\n“\"']{0,45}?"
+            r"|Toà\s+án\s+nhân\s+dân[^,.\n“\"']{0,45}?|Hội\s+đồng\s+Thẩm\s+phán[^,.\n“\"']{0,45}?"
+            r"|Viện\s+kiểm\s+sát\s+nhân\s+dân[^,.\n“\"']{0,45}?|Thanh\s+tra\s+Chính\s+phủ"
+            r"|Ủy\s+ban\s+nhân\s+dân[^,.\n“\"']{0,45}?|Uỷ\s+ban\s+nhân\s+dân[^,.\n“\"']{0,45}?|Chủ\s+tịch\s+nước))"
+            r"(?=\s+ngày\s+\d|\s+về\s+|\s+ban\s+hành|\s+quy\s+định|\s+hướng\s+dẫn|\s+sửa\s+đổi|\s+phê\s+duyệt|[,.\"“]|$)",
             cleaned,
             re.IGNORECASE,
         )
@@ -354,12 +453,13 @@ def parse_vn_legal_reference(text: str) -> Optional[Citation]:
             else (code_y.group(1) if code_y else (any_y.group(1) if any_y else None))
         )
 
-        authors: list[Author] = []
+        authors = []
         if agency:
             authors.append(_make_corp_author(agency))
         authors.append(_make_corp_author(f"{doc_type} số {doc_code}"))
         authors.append(_make_corp_author(f"{doc_type} {doc_code}"))
 
+        url_m = re.search(r"(https?://[^\s,;)\]]+)", cleaned, re.IGNORECASE)
         return Citation(
             raw_text=normalized_text,
             citation_type=CitationType.REFERENCE_LIST,
@@ -371,7 +471,30 @@ def parse_vn_legal_reference(text: str) -> Optional[Citation]:
             year=year,
             venue=agency or doc_type,
             authors=authors,
+            url=url_m.group(1).rstrip(".,;") if url_m else None,
             confidence=0.95,
+        )
+
+    # 4. International treaties / Draft laws (Công ước, Hiệp định, Dự thảo Luật)
+    treaty_m = _VN_TREATY_OR_DRAFT_RE.match(cleaned)
+    if treaty_m:
+        doc_type = re.sub(r"\s+", " ", treaty_m.group("doc_type")).strip()
+        any_y = re.search(r"\b((?:18|19|20)\d{2})\b", cleaned)
+        year = any_y.group(1) if any_y else None
+        short_name_m = re.match(r"^([^(),.\n]{4,70})", cleaned)
+        short_name = short_name_m.group(1).strip() if short_name_m else doc_type
+        return Citation(
+            raw_text=normalized_text,
+            citation_type=CitationType.REFERENCE_LIST,
+            style=CitationStyle.APA,
+            matched_pattern="vn_legal_document",
+            numeric_index=numeric_index,
+            title=clean_title,
+            title_normalized=title_norm,
+            year=year,
+            venue=doc_type,
+            authors=[_make_corp_author(short_name)],
+            confidence=0.90,
         )
 
     return None
@@ -456,6 +579,7 @@ class APAFormat:
 
         # Normalize whitespace and repair broken URLs with space after slash
         text = re.sub(r'\s+', ' ', text.strip())
+        text = re.sub(r"\s*\[trans\s*:[^\]]*\]?\s*$", "", text, flags=re.IGNORECASE).strip()
         text = re.sub(r"(https?://[^\s/]+(?:/[^\s/]+)*/)\s+([A-Za-z0-9_\-]+)", r"\1\2", text)
 
         # Check for TDTU Vietnamese legal document entry (§2.6.1)
@@ -463,13 +587,15 @@ class APAFormat:
         if legal_cit is not None:
             return legal_cit
 
-        # Check for numbered reference first (has [N] prefix)
-        idx_match = re.search(r"\[\s*(\d+)\s*\]", text)
-        numeric_index = int(idx_match.group(1)) if idx_match else None
+        # Check for numbered reference first (has [N] or N. prefix)
+        idx_match = re.match(r"^\s*(?:\[\s*(?P<b_idx>\d+)\s*\]|(?P<d_idx>\d{1,3})\s*[\.\)]\s+)", text)
+        idx_str = (idx_match.group("b_idx") or idx_match.group("d_idx")) if idx_match else None
+        numeric_index = int(idx_str) if idx_str else None
 
         # Try each reference pattern in order
         patterns_to_try = [
             (_APA_REFERENCE_ENTRY, self._parse_apa_entry),
+            (_APA_VN_COMMA_ENTRY, self._parse_apa_vn_comma_entry),
             (_APA_NUMBERED_REFERENCE, self._parse_apa_numbered_entry),
             (_APA_BOOK_CHAPTER, self._parse_apa_book_chapter_entry),
             (_APA_SIMPLE_ENTRY, self._parse_apa_simple_entry),
@@ -486,11 +612,14 @@ class APAFormat:
                     return citation
 
         # Fallback: try to extract whatever we can from unstructured text
-        return self._parse_apa_fallback(text)
+        fallback_cit = self._parse_apa_fallback(text)
+        if fallback_cit and numeric_index and fallback_cit.numeric_index is None:
+            fallback_cit.numeric_index = numeric_index
+        return fallback_cit
 
     def _is_non_apa_structure(self, authors_str: str, title: str, text: str) -> bool:
         """Return True if matched groups actually belong to Harvard/ACM/Nature/Chicago."""
-        clean_auth = re.sub(r"^\[\s*\d+\s*\]\s*", "", (authors_str or "")).strip()
+        clean_auth = re.sub(r"^\s*(?:\[\s*\d+\s*\]|\d{1,3}\s*[\.\)])\s*", "", (authors_str or "")).strip()
         # Authors block in APA cannot contain quoted titles, volume/issue markers, or trailing numbers
         if re.search(r'["\u201c\u201d]|\b(?:vol|no|pp)\.\s*\d|\d+\s*,\s*\d+\s*$|:\s*\d+\s*$', clean_auth, re.IGNORECASE):
             return True
@@ -499,16 +628,66 @@ class APAFormat:
         # Title in APA cannot start with punctuation like ',' or ':'
         if not title or title[0] in ",:;":
             return True
-        # Harvard check: no period after (Year) AND (quoted title or Harvard edition/pp./Place:Publisher)
-        no_dot_after_year = bool(
-            re.search(r"\(\s*(?:19|20)\d{2}[a-z]?\s*\)\s+(?!\.)", text)
+        # Harvard check: no period/comma after (Year) AND (quoted title or Harvard edition/pp./Place:Publisher)
+        has_vn_diacritics = bool(
+            re.search(r"[àáảãạăằắẳẵặâầấẩẫậđèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]", text, re.IGNORECASE)
         )
-        if no_dot_after_year:
+        no_dot_after_year = bool(
+            re.search(r"\(\s*(?:19|20)\d{2}[a-z]?\s*\)\s+(?![.,])", text)
+        )
+        if no_dot_after_year and not has_vn_diacritics:
             if title[0] in "'\"‘“" or re.search(
                 r"\b\d+(?:st|nd|rd|th)\s+edn?\.?\b|,\s*pp?\.\s*\d", text, re.IGNORECASE
             ):
                 return True
         return False
+
+    def _parse_apa_vn_comma_entry(
+        self, match: re.Match, text: str
+    ) -> Optional[Citation]:
+        """Parse Vietnamese APA entry where title and venue are separated by quotes or commas."""
+        authors_raw = match.group("authors") or ""
+        title_raw = (
+            match.group("q_title")
+            or match.group("c_title")
+            or match.group("s_title")
+            or ""
+        ).strip()
+        venue_raw = (match.group("q_venue") or match.group("c_venue") or "").strip()
+        if self._is_non_apa_structure(authors_raw, title_raw, text):
+            return None
+        # For single-sentence unquoted s_title without venue, require either a period/comma after (Year)
+        # or Vietnamese diacritics so we do not steal Harvard/ACM entries.
+        if match.group("s_title") and not venue_raw:
+            has_vn = bool(
+                re.search(r"[àáảãạăằắẳẵặâầấẩẫậđèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]", text, re.IGNORECASE)
+            )
+            has_punct_after_yr = bool(re.search(r"\(\s*(?:18|19|20)\d{2}[^)]*\)\s*[.,:]", text))
+            if not (has_vn or has_punct_after_yr):
+                return None
+
+        citation = Citation(
+            raw_text=text,
+            citation_type=CitationType.REFERENCE_LIST,
+            style=CitationStyle.APA,
+            matched_pattern="apa_reference_entry",
+        )
+        clean_auth = re.sub(r"^\s*(?:\[\s*\d+\s*\]|\d{1,3}\s*[\.\)])\s*", "", authors_raw).strip().rstrip(",")
+        if clean_auth:
+            citation.authors = self._parse_authors(clean_auth)
+        citation.year = match.group("year")
+        suffix = match.group("suffix") or match.groupdict().get("nd_suffix")
+        citation.year_suffix = suffix if suffix else None
+        citation.title = title_raw.rstrip(".,;").strip()
+        citation.title_normalized = self._normalize_title(citation.title)
+        if venue_raw:
+            self._parse_venue(citation, venue_raw)
+        doi_match = re.search(r"(10\.\d{4,9}/[^\s\]\)\,;]+)", text)
+        if doi_match:
+            citation.doi = doi_match.group(1).rstrip(".,;")
+        self._extract_url_into(citation, text)
+        citation.confidence = self._estimate_confidence(citation)
+        return citation
 
     def _parse_apa_entry(
         self, match: re.Match, text: str
@@ -526,10 +705,10 @@ class APAFormat:
             matched_pattern="apa_reference_entry",
         )
 
-        # Extract authors (strip any leading [N] marker before parsing)
+        # Extract authors (strip any leading [N] or N. marker before parsing)
         authors_str = match.group("authors")
         if authors_str:
-            authors_str = re.sub(r"^\[\s*\d+\s*\]\s*", "", authors_str).strip()
+            authors_str = re.sub(r"^\s*(?:\[\s*\d+\s*\]|\d{1,3}\s*[\.\)])\s*", "", authors_str).strip().rstrip(",")
             citation.authors = self._parse_authors(authors_str)
 
         # Extract year (for "(n.d.)" entries, only fallback to explicit Retrieved/Accessed year, not URL path years)

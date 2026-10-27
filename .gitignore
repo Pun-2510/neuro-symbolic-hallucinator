@@ -93,8 +93,11 @@ web/test-results/
 web/playwright-report/
 *.tsbuildinfo
 
-# Bộ đề tham chiếu (20 PDF) — dữ liệu nội bộ, không commit
+# Bộ đề tham chiếu (20 PDF) & corpora thực nghiệm — dữ liệu nội bộ, không commit
 20-theses/
+vn_legal_reports/
+style_corpora/
+tdtu_github_reports/
 
 # Kilo Code agent state (worktrees/state, không phải config)
 .kilo/worktrees/

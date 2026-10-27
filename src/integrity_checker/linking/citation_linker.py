@@ -824,28 +824,33 @@ class CitationLinker:
         for bib in bibs:
             bib_yr = bib.year or "n.d."
             years_to_index = [bib_yr]
-            if bib.year is None:
+            if bib.year is None or bib.matched_pattern == "vn_legal_document":
                 for yr_m in re.findall(r"\b((?:19|20)\d{2})\b", bib.raw_text or ""):
                     if yr_m not in years_to_index:
                         years_to_index.append(yr_m)
             for yr in years_to_index:
                 if bib.authors:
-                    authors_to_index = (
-                        bib.authors
-                        if bib.matched_pattern == "vn_legal_document"
-                        else [bib.authors[0]]
-                    )
-                    for auth_obj in authors_to_index:
+                    for auth_idx, auth_obj in enumerate(bib.authors):
+                        if auth_idx > 0 and bib.matched_pattern != "vn_legal_document":
+                            raw_co = (getattr(auth_obj, "raw", None) or (auth_obj if isinstance(auth_obj, str) else "")).strip()
+                            if "," in raw_co or len(raw_co.split()) < 2:
+                                continue
                         last_name = self._normalize_last_name(auth_obj)
-                        if last_name:
-                            folded = self._fold_author_key(last_name)
-                            for ln_variant in {last_name.lower(), folded, folded.replace("-", " "), folded.replace(" ", "-")}:
+                        raw_auth = (getattr(auth_obj, "raw", None) or (auth_obj if isinstance(auth_obj, str) else "")).strip()
+                        candidate_names = [last_name]
+                        if raw_auth and "," not in raw_auth and raw_auth.lower() != (last_name or "").lower():
+                            candidate_names.append(raw_auth)
+                        for cname in candidate_names:
+                            if not cname:
+                                continue
+                            folded = self._fold_author_key(cname)
+                            for ln_variant in {cname.lower(), folded, folded.replace("-", " "), folded.replace(" ", "-")}:
                                 if not ln_variant:
                                     continue
                                 key = (ln_variant, yr)
                                 if bib not in out.setdefault(key, []):
                                     out[key].append(bib)
-                            if " " in folded and bib.matched_pattern != "vn_legal_document":
+                            if " " in folded and bib.matched_pattern != "vn_legal_document" and auth_idx == 0:
                                 for short_tok in (folded.split()[-1], folded.removeprefix("national ")):
                                     short_key = (short_tok.lower(), yr)
                                     if bib not in out.setdefault(short_key, []):
@@ -874,22 +879,27 @@ class CitationLinker:
             bib_yr = bib.year or "n.d."
             year_suffix = bib.year_suffix or ""
             if bib.authors:
-                authors_to_index = (
-                    bib.authors
-                    if bib.matched_pattern == "vn_legal_document"
-                    else [bib.authors[0]]
-                )
-                for auth_obj in authors_to_index:
+                for auth_idx, auth_obj in enumerate(bib.authors):
+                    if auth_idx > 0 and bib.matched_pattern != "vn_legal_document":
+                        raw_co = (getattr(auth_obj, "raw", None) or (auth_obj if isinstance(auth_obj, str) else "")).strip()
+                        if "," in raw_co or len(raw_co.split()) < 2:
+                            continue
                     last_name = self._normalize_last_name(auth_obj)
-                    if last_name:
-                        folded = self._fold_author_key(last_name)
-                        for ln_variant in {last_name.lower(), folded, folded.replace("-", " "), folded.replace(" ", "-")}:
+                    raw_auth = (getattr(auth_obj, "raw", None) or (auth_obj if isinstance(auth_obj, str) else "")).strip()
+                    candidate_names = [last_name]
+                    if raw_auth and "," not in raw_auth and raw_auth.lower() != (last_name or "").lower():
+                        candidate_names.append(raw_auth)
+                    for cname in candidate_names:
+                        if not cname:
+                            continue
+                        folded = self._fold_author_key(cname)
+                        for ln_variant in {cname.lower(), folded, folded.replace("-", " "), folded.replace(" ", "-")}:
                             if not ln_variant:
                                 continue
                             key = (ln_variant, bib_yr, year_suffix)
                             if bib not in out.setdefault(key, []):
                                 out[key].append(bib)
-                        if " " in folded and bib.matched_pattern != "vn_legal_document":
+                        if " " in folded and bib.matched_pattern != "vn_legal_document" and auth_idx == 0:
                             short_key = (folded.split()[-1].lower(), bib_yr, year_suffix)
                             if bib not in out.setdefault(short_key, []):
                                 out[short_key].append(bib)

@@ -156,9 +156,18 @@ def _is_date_only_citation(extracted_text: str) -> bool:
     ):
         return True
 
-    # Non-citation range or biblical chapter parenthetical: "(Years 1–3)", "(ages 18-25)", "(Acts 18)"
+    # Journal editorial receipt/acceptance metadata: "(Received: 29/07/2025; Revised: ...)"
     if re.match(
-        r"^(?:years?|ages?|grades?|phases?|steps?|stages?|weeks?|months?|days?|chapters?|sections?|tables?|figures?|acts|genesis|exodus|psalms?|matthew|mark|luke|john|romans|corinthians)\s+\d",
+        r"^(?:received|revised|accepted|published|submitted|ngày\s+nhận|ngày\s+duyệt|ngày\s+đăng)\b",
+        inner,
+        re.IGNORECASE,
+    ):
+        return True
+
+    # Non-citation range, chemistry/math label, or biblical chapter parenthetical:
+    # "(Years 1–3)", "(ages 18-25)", "(Acts 18)", "(Scope 1, 2, 3)", "(Scheme 1)", "(Compound 2)"
+    if re.match(
+        r"^(?:years?|ages?|grades?|phases?|steps?|stages?|weeks?|months?|days?|chapters?|subchapters?|sections?|scopes?|parts?|clauses?|tables?|figures?|schemes?|charts?|entries|entry|runs?|compounds?|reactions?|pathways?|models?|equations?|eqs?\.?|experiments?|trials?|cases?|groups?|types?|classes|levels?|rules?|theorems?|lemmas?|propositions?|corollaries|definitions?|examples?|algorithms?|listings?|appendices|appendix|supplements?|notes?|acts|genesis|exodus|psalms?|matthew|mark|luke|john|romans|corinthians)\s+\d",
         inner,
         re.IGNORECASE,
     ):

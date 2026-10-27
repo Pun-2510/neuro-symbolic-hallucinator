@@ -12,8 +12,9 @@
 [![Sentence-BERT](https://img.shields.io/badge/SBERT-MiniLM--L6--v2-FF6F00?style=for-the-badge)](https://sbert.net)
 [![SQLite FTS5](https://img.shields.io/badge/ACL_Anthology-128K+_Papers_FTS5-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://aclanthology.org)
 [![Benchmark](https://img.shields.io/badge/Benchmark-80%2C000_Samples_%C2%B7_98.6%25_Acc_%C2%B7_0.041_ECE-6B21A8?style=for-the-badge)](./data/models/neuro_symbolic_benchmark_report.json)
+[![PDF Corpus](https://img.shields.io/badge/PDF_Stress_Corpus-310_PDFs_%C2%B7_12_Styles_%C2%B7_100%25_Hard_Cases-0F766E?style=for-the-badge)](#3-310-pdf-multi-style--vietnamese-legal-corpus-evaluation-real-world--hard-case-stress-tests)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
-[![Pytest](https://img.shields.io/badge/Tests-1%2C304_Backend_%C2%B7_41_Frontend_Passed-0A0A0A?style=for-the-badge&logo=pytest&logoColor=00E676)](./tests)
+[![Pytest](https://img.shields.io/badge/Tests-1%2C310_Backend_%C2%B7_41_Frontend_Passed-0A0A0A?style=for-the-badge&logo=pytest&logoColor=00E676)](./tests)
 
 *An editorial-grade academic citation debugger and thesis integrity verification workspace engineered for researchers, instructors, and university committees — combining structural PDF parsing, smart domain-aware retrieval across 8 scholarly databases, and transparent 5-stage Neuro-Symbolic decision traces.*
 
@@ -305,6 +306,48 @@ All 5 benchmark PDFs in the repository root were verified end-to-end with live m
 
 ---
 
+### 3. 310-PDF Multi-Style & Vietnamese Legal Corpus Evaluation (Real-World + Hard-Case Stress Tests)
+
+Beyond synthetic benchmarks and individual root PDFs, CITRA's structural extraction, bibliography segmentation, multi-style reference parser, and bidirectional citation linker were stress-tested and self-improved against a **310-PDF real-world & adversarial evaluation corpus** ([`scripts/evaluate_all_corpora.py`](./scripts/evaluate_all_corpora.py), [`scripts/evaluate_vn_legal_reports.py`](./scripts/evaluate_vn_legal_reports.py)):
+
+1. **30 Real Vietnamese Legal Manuscripts (`vn_legal_reports/`)**: Peer-reviewed articles, student theses, and legal reports from *Tạp chí Tòa án nhân dân*, *Tạp chí Công Thương*, *Tạp chí Khoa học Pháp lý Việt Nam (HCMULAW)*, and *Kinh tế & Dự báo* covering Civil, Criminal, Land, Labor, Intellectual Property, and Enterprise Law.
+2. **220 Real Multi-Style Academic PDFs (`style_corpora/<STYLE>/real/`)**: `20` authentic open-access PDFs for **each of the 11 citation styles** (`APA`, `IEEE`, `Vancouver`, `Chicago`, `Harvard`, `MLA`, `ACM`, `Nature`, `CSE`, `ACS`, `AMA`).
+3. **60 Adversarial / Hard-Case Diagnostic PDFs (`12 Styles × 5 PDFs`)**: Generated with [`scripts/generate_style_hard_cases.py`](./scripts/generate_style_hard_cases.py) paired with exact ground-truth JSON specifications (`397` references) to test all 5 validation verdicts (`VERIFIED`, `METADATA_ERROR`, `HALLUCINATION`, `UNVERIFIED_EXTERNAL`, `UNRESOLVED`) and all 3 Layer-1 mapping states (`MATCHED`, `AMBIGUOUS`, `MISSING_IN_BIBLIOGRAPHY`).
+
+#### Overall Corpus Summary & Self-Improvement Progression
+
+| Evaluation Corpus | PDFs | Bib Section Detected | Total Extracted Refs | Matched Refs (`Layer 1`) | Matched In-Text Citations (`Layer 1`) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **VN Legal Real Corpus *(Baseline Before Self-Improvement)*** | `30` | `27 / 30` (`90.0%`) | `164` *(15 Legal)* | `73 / 164` (`44.5%`) | `109 / 235` (`46.4%`) |
+| **VN Legal Real Corpus *(After Self-Improvement — MVP)*** | **`30`** | **`30 / 30` (`100.0%`)** | **`258` *(91 Legal — 6.1× ↑)*** | **`197 / 258` (`76.4%`)** | **`403 / 416` (`96.9%`)** |
+| **Adversarial Hard-Case Diagnostic Suite (`12 Styles × 5 PDFs`)** | **`60`** | **`60 / 60` (`100.0%`)** | **`397 / 397` (`100.0%` exact)** | **`60 / 60` PDFs (`100.0%`)** | **`60 / 60` PDFs (`100.0%` scenarios)** |
+| **Multi-Style Real Academic Corpus (`11 Styles × 20 PDFs`)** | **`220`** | **`215 / 220` (`97.7%`)** | **`8,126` refs** | **`6,768 / 8,126` (`83.3%`)** | **`8,954 / 12,770` (`70.1%`)** |
+
+#### Per-Style Breakdown Across 220 Real Academic PDFs & 60 Hard-Case PDFs
+
+| Citation Style | Real PDFs | Real Bib Section | Real Extracted Refs | Real Matched Refs (`%`) | Real Matched Body (`%`) | Hard-Case Exact Refs & Linking (`5 PDFs/Style`) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`VN_LEGAL`** *(Vietnamese Legal & TDTU)* | `30` | **`30 / 30` (`100%`)** | `258` *(91 Legal)* | `197` (**`76.4%`**) | `403 / 416` (**`96.9%`**) | **`5 / 5` (`100%` Exact Refs & Linking)** |
+| **`Vancouver`** *(Biomedical Numbered)* | `20` | **`20 / 20` (`100%`)** | `967` | `955` (**`98.8%`**) | `989 / 1,035` (**`95.6%`**) | **`5 / 5` (`100%` Exact Refs & Linking)** |
+| **`ACS`** *(Chemistry Superscript / Numbered)* | `20` | **`20 / 20` (`100%`)** | `1,276` | `1,241` (**`97.3%`**) | `1,206 / 2,328` (`51.8%`) | **`5 / 5` (`100%` Exact Refs & Linking)** |
+| **`AMA`** *(Medical Superscript Numbered)* | `20` | **`20 / 20` (`100%`)** | `781` | `673` (**`86.2%`**) | `690 / 705` (**`97.9%`**) | **`5 / 5` (`100%` Exact Refs & Linking)** |
+| **`APA`** *(7th Ed. Author–Date)* | `20` | **`20 / 20` (`100%`)** | `758` | `631` (**`83.2%`**) | `936 / 1,280` (**`73.1%`**) | **`5 / 5` (`100%` Exact Refs & Linking)** |
+| **`CSE`** *(Council of Science Editors)* | `20` | **`20 / 20` (`100%`)** | `377` | `309` (**`82.0%`**) | `690 / 1,790` (`38.5%`) | **`5 / 5` (`100%` Exact Refs & Linking)** |
+| **`ACM`** *(Computing `[N]` Bracketed)* | `20` | `19 / 20` (`95%`) | `591` | `480` (**`81.2%`**) | `598 / 732` (**`81.7%`**) | **`5 / 5` (`100%` Exact Refs & Linking)** |
+| **`IEEE`** *(Engineering `[N]` Bracketed)* | `20` | **`20 / 20` (`100%`)** | `592` | `474` (**`80.1%`**) | `889 / 970` (**`91.6%`**) | **`5 / 5` (`100%` Exact Refs & Linking)** |
+| **`Harvard`** *(Author–Date Parenthetical)* | `20` | **`20 / 20` (`100%`)** | `812` | `642` (**`79.1%`**) | `929 / 1,149` (**`80.9%`**) | **`5 / 5` (`100%` Exact Refs & Linking)** |
+| **`MLA`** *(9th Ed. Author–Page)* | `20` | **`20 / 20` (`100%`)** | `609` | `474` (**`77.8%`**) | `876 / 1,275` (**`68.7%`**) | **`5 / 5` (`100%` Exact Refs & Linking)** |
+| **`Nature`** *(Superscript Numbered)* | `20` | `19 / 20` (`95%`) | `933` | `700` (**`75.0%`**) | `690 / 698` (**`98.9%`**) | **`5 / 5` (`100%` Exact Refs & Linking)** |
+| **`Chicago`** *(Author–Date & Notes)* | `20` | `17 / 20` (`85%`) | `430` | `189` (`44.0%`) | `461 / 808` (`57.1%`) | **`5 / 5` (`100%` Exact Refs & Linking)** |
+
+> **Key Structural & Algorithmic Innovations Driven by the 310-PDF Stress Test**:
+> - **2-Column PDF Reading-Order Reconstruction (`mupdf_parser.py`)**: Automatically detects multi-column layouts where PDF producers emit the right column before the left column (common in Vietnamese legal journals) and restores strict `Top-Full-Width → Left-Column → Right-Column → Bottom-Full-Width` reading order.
+> - **Mid-Page Bibliography Splitting (`section_segmenter.py`)**: Preserves body text and in-text citations appearing *above* a `TÀI LIỆU THAM KHẢO` or `REFERENCES` heading on the same page (`pre_header_body_text`), preventing loss of concluding body citations.
+> - **Agency-First & Multi-Section Vietnamese Legal Parser (`patterns/apa.py`, `reference_parser.py`)**: Supports agency-first citations (`Quốc hội (2020), Luật Doanh nghiệp...`, `Tòa án nhân dân cấp cao tại TP. Hồ Chí Minh (2022), Bản án số...`), legal abbreviations (`BLDS`, `BLHS`, `BLLĐ`, `LDN`, `LĐĐ`), multi-section Roman headers (`I. Văn bản pháp luật` / `II. Tài liệu tham khảo`), and inline footnote-superscript resolution (`...quy định.4` → `[4]`).
+> - **Flattened Superscript & Standalone-Dot Reference Recovery (`document_parser.py`, `reference_parser.py`)**: Recovers attached word/punctuation superscripts (`results1–3`, `reported.12,15`) in `Nature`, `AMA`, and `ACS` manuscripts as well as PDF layouts where reference numbers `1.` appear on standalone lines above the reference body.
+
+---
+
 ## Tech Stack
 
 | Layer | Technologies |
@@ -314,7 +357,7 @@ All 5 benchmark PDFs in the repository root were verified end-to-end with live m
 | **Document Parsing & NLP** | GROBID 0.8.0 (TEI-XML REST Service), PyMuPDF (`fitz`), `python-docx`, `RapidFuzz`, `ftfy`, `langdetect` |
 | **Neuro-Symbolic & ML Engine** | `sentence-transformers` (`all-MiniLM-L6-v2` on MPS/GPU), `scikit-learn` (`HybridMLScorer` Multinomial Logistic Regression + Logit-Space `PlattCalibrator`), 16D Feature Engineering, 23 Deterministic Symbolic Rules |
 | **Scholarly Knowledge & APIs** | SQLite FTS5 (`128,626` papers with `81,973` abstracts), Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, Europe PMC, SerpApi Google Scholar, Active HTTP `LinkValidator` |
-| **Testing & DevOps** | Pytest (`1,304` backend tests), Vitest (`41` frontend tests), Playwright E2E, Docker & Docker Compose |
+| **Testing & DevOps** | Pytest (`1,310` backend tests), Vitest (`41` frontend tests), Playwright E2E, Docker & Docker Compose |
 
 ---
 

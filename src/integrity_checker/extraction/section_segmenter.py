@@ -68,9 +68,13 @@ class SectionType(str, Enum):
 # Pattern ở ĐẦU dòng (line-start), case-insensitive, cho phép số + whitespace trước.
 
 _BIBLIOGRAPHY_HEADERS = re.compile(
-    r"^\s*(?:(?:\d+|I{1,3}|IV|V|VI{0,3}|IX|X)\.?\s+)?(?:"
-    r"references|reference\s+list|bibliography|works?\s+cited|literature\s+cited|"
+    r"^\s*(?:(?:\d+(?:\.\d+)*|I{1,3}|IV|V|VI{0,3}|IX|X|[A-Z])[\.\)]?\s+)?(?:"
+    r"references?|reference\s+list|bibliography|works?\s+cited|literature(?:\s+cited)?|"
+    r"bibliografia(?:/bibliografía/bibliographie/works?\s+cited)?|bibliografía|bibliographie|"
+    r"referências(?:\s+bibliográficas)?|referencias(?:\s+bibliográficas)?|daftar\s+pustaka|"
+    r"(?:[^/\n]{2,50}/\s*)?list\s+of\s+references|"
     r"danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?|tài\s+liệu\s+tham\s+khảo|"
+    r"tài\s+liệu\s+trích\s+dẫn|"
     r"参考文献|参考文献$"
     r")\s*[:.]?\s*$",
     re.IGNORECASE,
@@ -244,7 +248,7 @@ class SectionSegmenter:
         # Only scan the second half of the document (avoids abstract pages)
         start_scan_at = max(1, doc.num_pages // 2)
 
-        ieee_line_re = re.compile(r"^\s*\[\d+\]\s+\S")
+        ieee_line_re = re.compile(r"^\s*(?:\[\d+\](?:\s+\S|\s*$)|\d{1,3}\.\s*$)")
         prose_end_re = re.compile(r"\.\s+$")   # ends with sentence period
 
         candidate_start = 0
@@ -298,7 +302,7 @@ class SectionSegmenter:
         Stop when a page has no `[N]` reference markers and has substantial prose.
         Return start_page if no end is found (treat entire tail as bibliography).
         """
-        ieee_line_re = re.compile(r"^\s*\[\d+\]\s+\S")
+        ieee_line_re = re.compile(r"^\s*(?:\[\d+\](?:\s+\S|\s*$)|\d{1,3}\.\s*$)")
         prose_end_re = re.compile(r"\.\s+$")
 
         for page in doc.pages:
@@ -327,18 +331,20 @@ class SectionSegmenter:
         return doc.num_pages
 
     @staticmethod
-    def _page_has_bibliography_header(page: Page) -> bool:
-        """True nếu page có dòng khớp bibliography header (English / Vietnamese / Chinese)."""
-        # Scan only the first lines, but leave enough room for page furniture:
-        # many PDFs put a running header + page number (plus blank lines) above
-        # the "References" heading, pushing it past the 5th line.
-        for line in page.text.splitlines()[:15]:
+    def _find_bibliography_header_line_idx(page: Page) -> int | None:
+        """Return 0-indexed line number of bibliography header on `page`, or None."""
+        for idx, line in enumerate(page.text.splitlines()):
             stripped = line.strip()
             if not stripped or stripped.islower():
                 continue
             if _BIBLIOGRAPHY_HEADERS.match(stripped):
-                return True
-        return False
+                return idx
+        return None
+
+    @staticmethod
+    def _page_has_bibliography_header(page: Page) -> bool:
+        """True nếu page có dòng khớp bibliography header (English / Vietnamese / Chinese)."""
+        return SectionSegmenter._find_bibliography_header_line_idx(page) is not None
 
     @staticmethod
     def _page_has_appendix_header(page: Page) -> bool:
@@ -360,10 +366,23 @@ class SectionSegmenter:
     ) -> DocumentSection:
         """Ghép text của tất cả page trong range."""
         parts: list[str] = []
+        metadata: dict = {}
         pages = [p for p in doc.pages if start_page <= p.page_num <= end_page]
         for p in pages:
-            if p.text:
-                parts.append(p.text)
+            if not p.text:
+                continue
+            if section_type == SectionType.BIBLIOGRAPHY and p.page_num == start_page:
+                hdr_idx = self._find_bibliography_header_line_idx(p)
+                if hdr_idx is not None and hdr_idx > 0:
+                    lines = p.text.splitlines()
+                    pre_text = "\n".join(lines[:hdr_idx]).strip()
+                    post_text = "\n".join(lines[hdr_idx:])
+                    if len(pre_text) >= 60:
+                        metadata["pre_header_body_text"] = pre_text
+                        metadata["pre_header_page_num"] = p.page_num
+                    parts.append(post_text)
+                    continue
+            parts.append(p.text)
         text = "\n".join(parts)
         return DocumentSection(
             section_type=section_type,
@@ -371,6 +390,7 @@ class SectionSegmenter:
             end_page=end_page,
             text=text,
             page_break_used=(end_page > start_page),
+            metadata=metadata,
         )
 
     @staticmethod

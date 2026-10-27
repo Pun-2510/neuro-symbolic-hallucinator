@@ -131,22 +131,26 @@ _LONG_TEXT_NO_YEAR_RE = re.compile(r"^[A-Za-z]{50,}")
 # (used to drop it wherever it lands once running headers/page numbers have been stripped).
 _BIB_HEADER_LINE_RE = re.compile(
     r"^\s*(?:(?:\d+|[A-Z]|[IVX]+)\s*[\.\)]\s*)?(?:"
-    r"references?|bibliography|works?\s+cited"
-    r"|danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?|tài\s+liệu\s+tham\s+khảo"
-    r"|văn\s+bản\s+(?:quy\s+phạm\s+)?pháp\s+luật"
+    r"references?|reference\s+list|bibliography|works?\s+cited|literature(?:\s+cited)?"
+    r"|bibliografia(?:/bibliografía/bibliographie/works?\s+cited)?|bibliografía|bibliographie"
+    r"|referências(?:\s+bibliográficas)?|referencias(?:\s+bibliográficas)?|daftar\s+pustaka"
+    r"|(?:[^/\n]{2,50}/\s*)?list\s+of\s+references"
+    r"|danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?|tài\s+liệu\s+tham\s+khảo(?:\s+khác)?"
+    r"|văn\s+bản\s+(?:quy\s+phạm\s+)?pháp\s+luật(?:\s+việt\s+nam|\s+nước\s+ngoài|\s+quốc\s+tế)?"
+    r"|tài\s+liệu\s+trích\s+dẫn|nguồn\s+tài\s+liệu(?:\s+tham\s+khảo)?"
     r"|(?:tài\s+liệu\s+)?(?:tiếng\s+việt|tiếng\s+anh|tiếng\s+pháp|tiếng\s+đức"
-    r"|tiếng\s+nga|tiếng\s+trung|tiếng\s+nhật|nước\s+ngoài)"
+    r"|tiếng\s+nga|tiếng\s+trung|tiếng\s+nhật|nước\s+ngoài|internet|website|trực\s+tuyến)"
     r")\s*[:.]?\s*$",
     re.IGNORECASE,
 )
 
 _LEADING_SUBHEADER_RE = re.compile(
     r"^\s*(?:(?:[A-Z]|[IVX]+|\d+)\s*[\.\)]\s*)?(?:"
-    r"văn\s+bản\s+(?:quy\s+phạm\s+)?pháp\s+luật"
+    r"văn\s+bản\s+(?:quy\s+phạm\s+)?pháp\s+luật(?:\s+việt\s+nam|\s+nước\s+ngoài|\s+quốc\s+tế)?"
     r"|danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?"
-    r"|tài\s+liệu\s+tham\s+khảo"
+    r"|tài\s+liệu\s+tham\s+khảo(?:\s+khác)?"
     r"|(?:tài\s+liệu\s+)?(?:tiếng\s+việt|tiếng\s+anh|tiếng\s+pháp|tiếng\s+đức"
-    r"|tiếng\s+nga|tiếng\s+trung|tiếng\s+nhật|nước\s+ngoài)"
+    r"|tiếng\s+nga|tiếng\s+trung|tiếng\s+nhật|nước\s+ngoài|internet|website|trực\s+tuyến)"
     r")\s*[:.]?\s+",
     re.IGNORECASE,
 )
@@ -160,19 +164,24 @@ _PERSONAL_AUTHOR_HEAD_R = (
     r"(?:\s*,?\s*(?:et\s+al\.?|và\s+cộng\s+sự|và\s+cs\.?))?"
     r"\s*\(\s*(?:(?:19|20)\d{2}[a-z]?(?:,\s*[A-Za-z]+\.?(?:\s+\d{1,2})?)?|n\.?\s*d\.?)\s*\)"
 )
+_VN_FULLNAME_AUTHOR_HEAD_R = (
+    rf"(?:\d{{1,2}}\s*[\.\)]\s*)?{_UPPER_VN_R}[a-zà-ỹ]+(?:\s+{_UPPER_VN_R}[a-zà-ỹ]+){{1,4}}"
+    rf"(?:(?:\s*,\s*|\s+(?:&|và|and)\s+){_UPPER_VN_R}[a-zà-ỹ]+(?:\s+{_UPPER_VN_R}[a-zà-ỹ]+){{1,4}})*"
+    r"(?:\s*\(chủ\s+biên\))?\s*,?\s*\(\s*(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?:19|20)\d{2}[a-z]?\s*\)[.,:]"
+)
 _DATED_WEB_AUTHOR_HEAD_R = (
     rf"{_UPPER_VN_R}[A-Za-zÀ-ỹ0-9.'\u2019\-]+(?:\s+{_UPPER_VN_R}?[A-Za-zÀ-ỹ0-9.'\u2019\-]+){{0,3}}\.?\s*"
     r"\(\s*(?:19|20)\d{2}[a-z]?,\s*[A-Za-z]+\.?(?:\s+\d{1,2})?\s*\)\."
 )
 _CORP_AUTHOR_HEAD_R = (
-    r"(?:(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Chính\s+phủ|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội"
-    r"|Department|Ministry|Reserve\s+Bank|World\s+Health|United\s+Nations|World\s+Bank)"
-    r"[^().\n]{2,70}?\.?\s*\(\s*(?:19|20)\d{2}[a-z]?\s*\)\.)"
+    r"(?:(?:\d{1,2}\s*[\.\)]\s*)?(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Chính\s+phủ|Quốc\s+hội|Thủ\s+tướng|Ban\s+Chấp\s+hành|Đảng\s+Cộng\s+sản|Tòa\s+án|Toà\s+án|Viện\s+kiểm\s+sát|Thanh\s+tra|Kiểm\s+toán|Văn\s+phòng\s+Quốc\s+hội|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội|Trường\s+Đại\s+học"
+    r"|Department|Ministry|Reserve\s+Bank|World\s+Health|United\s+Nations|World\s+Bank|International\s+Labour|National\s+Assembly)"
+    r"[^().\n]{0,70}?\.?\s*\(\s*(?:19|20)\d{2}[a-z]?\s*\)[.,:])"
 )
 _LEGAL_HEAD_R = (
-    r"(?:\d+\s*[\.\)]\s*)?(?:Hiến\s+pháp(?:\s+năm|\s+\d{4})"
-    r"|(?:Bộ\s+luật|Luật|Pháp\s+lệnh)\s+[^().\n]{2,80}?(?:\((?:Bộ\s+luật|Luật|Pháp\s+lệnh)?\s*số|\bsố\s+\d|\bngày\s+\d)"
-    r"|(?:Nghị\s+định|Thông\s+tư(?:\s+liên\s+tịch)?|Quyết\s+định|Nghị\s+quyết(?:\s+liên\s+tịch)?|Chỉ\s+thị)\s+(?:số\s+)?\d+/\d{4}/)"
+    r"(?:\d+\s*[\.\)]\s*)?(?:Hiến\s+pháp(?:\s+nước\s+Cộng\s+hòa\s+xã\s+hội\s+chủ\s+nghĩa\s+Việt\s+Nam)?(?:\s+các)?(?:\s+năm|\s+\d{4})"
+    r"|(?:Bộ\s+luật|Luật|Pháp\s+lệnh|Sắc\s+lệnh)\s+[^().\n]{2,80}?(?:\((?:Bộ\s+luật|Luật|Pháp\s+lệnh)?\s*số|\bsố\s+\d|\bngày\s+\d|\bnăm\s+(?:19|20)\d{2}|\s+(?:19|20)\d{2}\b)"
+    r"|(?:Nghị\s+định|Thông\s+tư(?:\s+liên\s+tịch)?|Quyết\s+định|Nghị\s+quyết(?:\s+liên\s+tịch)?|Chỉ\s+thị|Bản\s+án|Án\s+lệ|Công\s+văn|Kết\s+luận|Văn\s+bản\s+hợp\s+nhất)\s+(?:số\s*:?\s*)?\d+\s*[/\-–])"
 )
 _MLA_BOOK_AUTHOR_HEAD_R = (
     rf"(?:{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s+{_UPPER_VN_R}[A-Za-zÀ-ỹ.\s'\u2019\-]{{1,35}}?(?:,\s*et\s+al\.|\.)"
@@ -181,18 +190,21 @@ _MLA_BOOK_AUTHOR_HEAD_R = (
     r"|[\-\u2013\u2014_]{3,}\.)\s+(?=[A-Z0-9\"\u201c])"
 )
 _INLINE_ENTRY_START_RE = re.compile(
-    rf"(?:{_PERSONAL_AUTHOR_HEAD_R}|{_DATED_WEB_AUTHOR_HEAD_R}|{_CORP_AUTHOR_HEAD_R}|{_LEGAL_HEAD_R})"
+    rf"(?:{_PERSONAL_AUTHOR_HEAD_R}|{_VN_FULLNAME_AUTHOR_HEAD_R}|{_DATED_WEB_AUTHOR_HEAD_R}|{_CORP_AUTHOR_HEAD_R}|{_LEGAL_HEAD_R})"
 )
 _MLA_INLINE_SPLIT_RE = re.compile(
     rf"(?:(?<=\b(?:19|20)\d{{2}}\.)|(?<=ProQuest Ebook Central\.)|(?<=Google Scholar\.))\s+(?={_MLA_BOOK_AUTHOR_HEAD_R})"
 )
 
 # URL/DOI terminator — most web-style APA/MLA entries end with one of these
-# (optionally followed by MLA "Accessed DD Mon. YYYY."), which makes them a
-# reliable boundary between consecutive reference entries.
+# (optionally followed by MLA "Accessed DD Mon. YYYY." or Vietnamese ", truy cập ngày DD/MM/YYYY."),
+# which makes them a reliable boundary between consecutive reference entries.
 _URL_BOUNDARY_RE = re.compile(
     r"(?:(?:https?://|www\.|doi\.org/)\S+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|org|edu|gov|net)/\S+)"
-    r"(?:\s+Accessed\s+\d{1,2}\s+[A-Za-z.]+\s+(?:19|20)\d{2}\.?)?",
+    r"(?:"
+    r"\s+Accessed\s+\d{1,2}\s+[A-Za-z.]+\s+(?:19|20)\d{2}\.?"
+    r"|\s*(?:[,;.]\s*)?(?:\[|\()?\s*(?:truy\s+cập\s+(?:lần\s+cuối\s+)?(?:ngày\s+)?|ngày\s+(?:truy\s+cập\s*:?\s*)?|accessed\s+(?:on\s+)?)?\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*(?:19|20)\d{2}(?:\]|\))?\.?"
+    r")?",
     re.IGNORECASE,
 )
 
@@ -449,7 +461,10 @@ class ReferenceListParser:
         """
         # 1. Strip header prefix
         header_strip_re = re.compile(
-            r"^\s*(?:\d+\.?\s+)?(?:references?|bibliography"
+            r"^\s*(?:(?:\d+|[A-Z]|[IVX]+)\.?\s+)?(?:references?|reference\s+list|bibliography|literature(?:\s+cited)?"
+            r"|bibliografia(?:/bibliografía/bibliographie/works?\s+cited)?|bibliografía|bibliographie"
+            r"|referências(?:\s+bibliográficas)?|referencias(?:\s+bibliográficas)?|daftar\s+pustaka"
+            r"|(?:[^/\n]{2,50}/\s*)?list\s+of\s+references"
             r"|danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?|tài\s+liệu\s+tham\s+khảo"
             r"|works?\s+cited)\s*[:.]?\s*",
             flags=re.IGNORECASE,
@@ -500,6 +515,11 @@ class ReferenceListParser:
         if len(ieee_inline_split) >= 2:
             return ieee_inline_split
 
+        # 3b. Sequentially dot/paren-numbered bibliography ('1. ...', '2. ...', '3. ...')
+        dot_numbered_split = self._split_sequential_dot_numbered(text)
+        if len(dot_numbered_split) >= 2:
+            return dot_numbered_split
+
         # 4. Merge wrapped lines + year-marker boundary split
         entries = self._split_by_year_boundary(text)
         if len(entries) >= 2:
@@ -514,6 +534,116 @@ class ReferenceListParser:
 
         # 6. Chỉ 1 entry
         return [text] if len(text) > 20 else []
+
+    def _split_sequential_dot_numbered(self, text: str) -> list[str]:
+        """Split a bibliography that uses sequential dot/paren numbering ('1. ...', '2. ...').
+
+        Also handles multi-section numbered lists ('I. Văn bản... 1..M', 'II. Tài liệu... 1..N')
+        and hybrid TDTU lists ('A. Văn bản... 1..3', 'B. Tài liệu... unnumbered APA').
+        """
+        lines = text.splitlines()
+        num_line_re = re.compile(
+            r"^\s*(?:(?:\((?P<pnum>\d{1,3})\)|(?P<num>\d{1,3})\s*[\.\)])(?:\s+(?P<rest>\S.*))?|(?P<tnum>\d{1,3})[\t\u2002\u2003]+\s*(?P<trest>[A-ZÀ-Ý]\S.*))$"
+        )
+        found_nums: list[int] = []
+        expected = 1
+        for raw_ln in lines:
+            ln = raw_ln.strip()
+            if not ln:
+                continue
+            if _BIB_HEADER_LINE_RE.match(ln):
+                if found_nums:
+                    expected = 1
+                continue
+            m = num_line_re.match(raw_ln) or num_line_re.match(ln)
+            if m:
+                n = int(m.group("num") or m.group("pnum") or m.group("tnum"))
+                if n == expected or (expected < n <= expected + 2) or (n == 1 and len(found_nums) >= 1):
+                    found_nums.append(n)
+                    expected = n + 1
+        if len(found_nums) < 2 or found_nums[0] != 1:
+            return []
+
+        def _flush_numbered_chunk(chunk_text: str, start_num: int | None, out_list: list[str]) -> None:
+            curr = chunk_text.strip()
+            if not curr:
+                return
+            if start_num is not None:
+                next_n = start_num + 1
+                while True:
+                    inline_m = re.search(
+                        rf"(?:(?<=[.;])\s+|\s+)(?={next_n}\s*[\.\)]\s+[A-ZÀ-ÝĂÂĐÊÔƠƯ\"\u201c])",
+                        curr,
+                    )
+                    if not inline_m:
+                        break
+                    first_part = curr[:inline_m.start()].strip()
+                    curr = curr[inline_m.end():].strip()
+                    if len(first_part) > 15 or is_vn_legal_reference(first_part):
+                        out_list.append(first_part)
+                    next_n += 1
+            if len(curr) > 15 or is_vn_legal_reference(curr):
+                out_list.append(curr)
+
+        entries: list[str] = []
+        unnumbered_tail_lines: list[str] = []
+        in_unnumbered_section = False
+        expected = 1
+        curr_entry = ""
+        curr_num: int | None = None
+
+        for raw_ln in lines:
+            ln = raw_ln.strip()
+            if not ln:
+                continue
+            if _BIB_HEADER_LINE_RE.match(ln):
+                if curr_entry:
+                    _flush_numbered_chunk(curr_entry, curr_num, entries)
+                    curr_entry = ""
+                    curr_num = None
+                expected = 1
+                if entries:
+                    in_unnumbered_section = True
+                continue
+            m = num_line_re.match(raw_ln) or num_line_re.match(ln)
+            if m:
+                n = int(m.group("num") or m.group("pnum") or m.group("tnum"))
+                if n == expected or (expected < n <= expected + 2) or (n == 1 and entries):
+                    if in_unnumbered_section and unnumbered_tail_lines:
+                        tail_text = "\n".join(unnumbered_tail_lines)
+                        entries.extend(self._split_by_year_boundary(tail_text))
+                        unnumbered_tail_lines = []
+                    in_unnumbered_section = False
+                    if curr_entry:
+                        _flush_numbered_chunk(curr_entry, curr_num, entries)
+                    rest_part = (m.group("rest") or m.group("trest") or "").strip()
+                    curr_entry = f"{n}. {rest_part}".strip()
+                    curr_num = n
+                    expected = n + 1
+                    continue
+            if in_unnumbered_section:
+                unnumbered_tail_lines.append(ln)
+            elif curr_entry:
+                # Detect transition from numbered section (1..N) to unnumbered APA section ("Author (Year).")
+                if re.match(
+                    r"^[A-ZÀ-ÝĂÂĐÊÔƠƯ][^\n()]{1,85}\(\s*(?:(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?:18|19|20)\d{2}[a-z]?|n\.?\s*d\.?)\s*\)[.,]",
+                    ln,
+                ):
+                    _flush_numbered_chunk(curr_entry, curr_num, entries)
+                    curr_entry = ""
+                    curr_num = None
+                    in_unnumbered_section = True
+                    unnumbered_tail_lines.append(ln)
+                else:
+                    curr_entry = self._join_wrapped_line(curr_entry, ln)
+
+        if curr_entry:
+            _flush_numbered_chunk(curr_entry, curr_num, entries)
+        if unnumbered_tail_lines:
+            tail_text = "\n".join(unnumbered_tail_lines)
+            entries.extend(self._split_by_year_boundary(tail_text))
+
+        return entries if len(entries) >= 2 else []
 
     def _split_ieee_inline(self, text: str) -> list[str]:
         """Split IEEE entries that are on the same line due to PDF text wrapping.
@@ -752,28 +882,67 @@ class ReferenceListParser:
           - standalone page numbers ("43"),
           - standalone bibliography headers ("References"),
           - short lines that repeat at least twice (running headers),
-          - running headers with page numbers (e.g. "TITLE...  28").
+          - running headers with page numbers (e.g. "TITLE...  28"),
+          - Vietnamese journal running headers/footers and post-bibliography blocks.
         """
         lines = text.splitlines()
         counts = Counter(line.strip() for line in lines if line.strip())
+        has_bracket_refs = any(re.match(r"^\s*\[\d+\]", ln) for ln in lines)
 
         # Pattern to match running headers with page numbers
         # e.g. "EMOTIONAL INTELLIGENCE AND HEART RATE VARIABILITY... 28"
         running_header_re = re.compile(r"^[\w\s]+?\s{3,}\d{1,3}\s*$")
         running_head_prefix_re = re.compile(r"^\s*Running\s+head\s*:.*$", re.IGNORECASE)
         allcaps_header_page_re = re.compile(r"^[A-Z0-9\s,'\-:]{4,70}\s+\d{1,3}\s*$")
+        vn_journal_furniture_re = re.compile(
+            r"^(?:"
+            r"Jos\.hueuni\.edu\.vn"
+            r"|Tập\s+\d+\s*,\s*Số\s+[0-9A-Za-z]+\s*,\s*(?:19|20)\d{2}"
+            r"|TRƯỜNG\s+ĐẠI\s+HỌC\s+LUẬT\s*,\s*ĐẠI\s+HỌC\s+HUẾ"
+            r"|Khoa\s+học\s+Kiểm\s+sát"
+            r"|Số\s+\d{1,3}\s*[-–]\s*(?:tháng\s+\d{1,2}\s*/\s*)?(?:19|20)\d{2}(?:\s+\d{1,3})?"
+            r"|Tạp\s+chí\s+Quản\s+lý\s+nhà\s+nước\s*[-–]\s*Số\s+\d+.*"
+            r"|Tạp\s+chí\s+Kinh\s+tế\s*[-–]\s*Luật\s*&\s*Ngân\s+hàng.*"
+            r"|Năm\s+thứ\s+\d+.*Tạp\s+chí\s+Kinh\s+tế\s*[-–]\s*Luật\s*&\s*Ngân\s+hàng.*"
+            r"|NHÀ\s+NƯỚC\s+VÀ\s+PHÁP\s+LUẬT"
+            r"|Nghiên\s+cứu\s*[-–]\s*Trao\s+đổi"
+            r"|vấn\s+đề\s+lý\s+luận\s+từ\s+thực\s+tiễn\s+phát\s+triển\s+và\s+hội\s+nhập"
+            r"|TAÏP\s+CHÍ\s+COÂNG\s+THÖÔNG"
+            r"|Soá\s+\d+\s*/\s*(?:19|20)\d{2}"
+            r")\s*$",
+            re.IGNORECASE,
+        )
+        post_bib_stop_re = re.compile(
+            r"^\s*(?:Ngày\s+nhận\s+bài|ABSTRACT|SUMMARY|TÓM\s+TẮT|Thông\s+tin\s+tác\s+giả|Author\s+information)\s*:",
+            re.IGNORECASE,
+        )
 
         cleaned: list[str] = []
-        for line in lines:
+        for idx_ln, line in enumerate(lines):
             stripped = line.strip()
             if not stripped:
                 cleaned.append("")
                 continue
+            # Stop if post-bibliography metadata / English abstract block begins
+            if post_bib_stop_re.match(stripped) and len(cleaned) >= 2:
+                break
+            # In a bracket-numbered bibliography ([1]..[N]), a bare 2-digit number line
+            # near the bottom of the page (e.g. "31" followed by footnote text) marks bottom footnotes
+            if (
+                has_bracket_refs
+                and re.fullmatch(r"\d{2}", stripped)
+                and int(stripped) >= 15
+                and any(re.match(r"^\s*\[\d+\]", c_ln) for c_ln in cleaned)
+            ):
+                break
             # Skip standalone page numbers
             if re.fullmatch(r"\d{1,4}", stripped):
                 continue
             # Skip bibliography header lines
             if _BIB_HEADER_LINE_RE.match(stripped):
+                continue
+            # Skip Vietnamese journal running headers/footers
+            if vn_journal_furniture_re.match(stripped):
                 continue
             # Skip running headers with page numbers (TITLE...  28 or Running head: ...)
             if (
@@ -882,17 +1051,23 @@ class ReferenceListParser:
         # Normalize: replace newlines with spaces (wrapped lines) and repair line-wrapped URLs
         entry = entry.replace("\n", " ").replace("  ", " ")
         entry = entry.replace("\u2018\u2018", "\u201c").replace("\u2019\u2019", "\u201d")
+        entry = re.sub(r"\s*\[trans\s*:[^\]]*\]?\s*$", "", entry, flags=re.IGNORECASE).strip()
         entry = re.sub(r"\b(https?)\s*:\s*//\s*", r"\1://", entry, flags=re.IGNORECASE)
         entry = re.sub(r"\.(p)\s+(df)\b", r".\1\2", entry, flags=re.IGNORECASE)
         for _ in range(3):
             entry = re.sub(r"(https?://\S*[/_\-~])\s+([a-z0-9_\-~])", r"\1\2", entry)
             entry = re.sub(r"(https?://\S*\.)\s+([a-z0-9_\-~])", r"\1\2", entry)
 
-        # FIX: Extract numeric_index first if entry starts with [N] prefix
+        # FIX: Extract numeric_index first if entry starts with [N], (N), or N. prefix
         numeric_index = None
-        idx_match = re.match(r"^\[\s*(\d+)\s*\]", entry)
+        idx_match = re.match(
+            r"^\s*(?:\[\s*(?P<b_idx>\d+)\s*\]|\(\s*(?P<p_idx>\d{1,3})\s*\)|(?P<d_idx>\d{1,3})\s*[\.\)]\s+)",
+            entry,
+        )
         if idx_match:
-            numeric_index = int(idx_match.group(1))
+            idx_str = idx_match.group("b_idx") or idx_match.group("p_idx") or idx_match.group("d_idx")
+            if idx_str:
+                numeric_index = int(idx_str)
 
         # TDTU §2.6.1 Vietnamese legal document entry
         legal_citation = parse_vn_legal_reference(entry)
@@ -902,6 +1077,12 @@ class ReferenceListParser:
             if numeric_index and legal_citation.numeric_index is None:
                 legal_citation.numeric_index = numeric_index
             return legal_citation
+
+        # Vietnamese traditional humanities/law entry (e.g. "[1] Đỗ Văn Đại, Title, Nxb. Hồng Đức, 2023"
+        # or "8. Giáo dục liêm chính... https://..., ngày 30/8/2024.")
+        vn_trad_citation = self._parse_vn_traditional_entry(entry, order_index, page_num, numeric_index)
+        if vn_trad_citation is not None:
+            return vn_trad_citation
 
         # Scriptural / Bible edition entry (e.g. "The Bible. ESV ed., Crossway, 2022.",
         # "English Standard Version Bible. Crossway Bibles, 2016.",
@@ -1051,6 +1232,164 @@ class ReferenceListParser:
         return None
 
     # -- per-style parsers --
+
+    def _parse_vn_traditional_entry(
+        self,
+        entry: str,
+        order_index: int,
+        page_num: int,
+        numeric_index: int | None = None,
+    ) -> Citation | None:
+        """Parse Vietnamese traditional humanities/law reference entries where Year is at the end
+        or omitted (e.g., '[1] Đỗ Văn Đại, Title, Nxb. Hồng Đức, 2023', '8. Title. https://..., ngày 30/8/2024')."""
+        if not _VN_DIACRITIC_RE.search(entry):
+            return None
+        # Do not intercept APA entries that have (Year) right after the author block
+        if re.search(
+            r"^\s*(?:\[\s*\d+\s*\]|\d{1,3}\s*[\.\)])?\s*[^()]{2,95}\(\s*(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?:18|19|20)\d{2}[a-z]?(?:\s*[,–\-/]\s*[^)]*)?\s*\)",
+            entry,
+        ):
+            return None
+
+        cleaned = re.sub(r"^\s*(?:\[\s*\d+\s*\]|\d{1,3}\s*[\.\)])\s*", "", entry).strip()
+        if not cleaned:
+            return None
+
+        style = CitationStyle.IEEE if re.match(r"^\s*\[\s*\d+\s*\]", entry) else CitationStyle.APA
+        doi_m = _DOI_RE.search(cleaned)
+        doi = doi_m.group(0).rstrip(".,;") if doi_m else None
+        url_m = re.search(r"(https?://[^\s,;)\]]+)", cleaned, re.IGNORECASE)
+        url = url_m.group(1).rstrip(".,;") if url_m else None
+        year_matches = re.findall(r"\b((?:18|19|20)\d{2})\b", cleaned)
+        year = year_matches[-1] if year_matches else None
+
+        # Subcase A: Quoted title (e.g. '[3] Trương Đắc Linh và Nguyễn Mạnh Hùng, “Giới thiệu Hiến pháp mới”, Tạp chí...')
+        q_m = re.match(
+            r"^(?:(?P<authors>[^\"\u201c\u2018]{2,95}?)\s*[.,:-]\s*)?[\"\u201c\u2018](?P<title>[^\"\u201d\u2019]{5,})[\"\u201d\u2019]\s*[.,;-]?\s*(?P<venue>.*)$",
+            cleaned,
+        )
+        if q_m:
+            raw_auth = (q_m.group("authors") or "").strip()
+            raw_auth = re.sub(r"^(?:Bài\s+viết|Bài)\s*$", "", raw_auth, flags=re.IGNORECASE).strip()
+            raw_auth = re.sub(r"\s*\(chủ\s+biên\)", "", raw_auth, flags=re.IGNORECASE).strip()
+            title = q_m.group("title").strip().rstrip(".,;")
+            venue = (q_m.group("venue") or "").strip().rstrip(".,;")
+            # Check if author is at the very end after ' - ' (e.g. 'Bài “Title” - Banking Magazine số 7, tháng 4/2025 - Lê Thị Giang')
+            if not raw_auth and " - " in venue:
+                v_parts = [vp.strip() for vp in venue.rsplit(" - ", 1)]
+                if len(v_parts) == 2 and 2 <= len(v_parts[1].split()) <= 5:
+                    venue, raw_auth = v_parts[0], v_parts[1]
+            return Citation(
+                raw_text=entry.strip(),
+                citation_type=CitationType.REFERENCE_LIST,
+                style=style,
+                page_num=page_num,
+                order_index=order_index,
+                numeric_index=numeric_index,
+                matched_pattern="vn_traditional_entry",
+                authors=parse_authors(raw_auth) if raw_auth else [],
+                title=title,
+                title_normalized=_normalize_title(title),
+                year=year,
+                venue=venue or None,
+                doi=doi,
+                url=url,
+                confidence=0.85,
+            )
+
+        # Subcase B: Unquoted title before Nxb / NXB / Tạp chí / Luận văn / Luận án / Trường Đại học
+        v_m = re.search(
+            r",\s*(?P<venue>(?:Nxb\.?|NXB|Nhà\s+xuất\s+bản|Tạp\s+chí|Luận\s+văn|Luận\s+án|Khóa\s+luận|Kỷ\s+yếu|Hội\s+thảo|Tài\s+liệu\s+hội\s+thảo)\b.+)$",
+            cleaned,
+            re.IGNORECASE,
+        )
+        if v_m:
+            before_v = cleaned[: v_m.start()].strip()
+            venue = v_m.group("venue").strip().rstrip(".,;")
+            if "," in before_v:
+                # Split author(s) from title: if '(chủ biên)' is present, split right after it;
+                # otherwise split at the comma before 'Giáo trình'/'Những'/'Một số'/'Pháp luật'/'Bàn về'/'Bảo vệ'/'Vấn đề' or first comma.
+                cb_m = re.search(r"\(chủ\s+biên\)\s*,\s*", before_v, re.IGNORECASE)
+                if cb_m:
+                    raw_auth = before_v[: cb_m.start()].strip()
+                    title = before_v[cb_m.end() :].strip()
+                else:
+                    parts = [p.strip() for p in before_v.split(",") if p.strip()]
+                    if len(parts) >= 3 and all(2 <= len(p.split()) <= 5 for p in parts[:-1]):
+                        raw_auth = ", ".join(parts[:-1])
+                        title = parts[-1]
+                    else:
+                        raw_auth, title = parts[0], ", ".join(parts[1:])
+                return Citation(
+                    raw_text=entry.strip(),
+                    citation_type=CitationType.REFERENCE_LIST,
+                    style=style,
+                    page_num=page_num,
+                    order_index=order_index,
+                    numeric_index=numeric_index,
+                    matched_pattern="vn_traditional_entry",
+                    authors=parse_authors(raw_auth) if raw_auth else [],
+                    title=title.rstrip(".,;"),
+                    title_normalized=_normalize_title(title),
+                    year=year,
+                    venue=venue,
+                    doi=doi,
+                    url=url,
+                    confidence=0.85,
+                )
+
+        # Subcase C: Vietnamese web/news reference with URL (e.g. '8. Giáo dục liêm chính... https://..., ngày 30/8/2024.')
+        if url_m:
+            before_url = cleaned[: url_m.start()].strip()
+            before_url = re.sub(
+                r"[,;.]?\s*(?:xem\s+tại|truy\s+cập\s+(?:tại|từ)|nguồn|available\s+at|retrieved\s+from)\s*:?\s*$",
+                "",
+                before_url,
+                flags=re.IGNORECASE,
+            ).strip().rstrip(".,;:")
+            if len(before_url) >= 8:
+                raw_auth = ""
+                title = before_url
+                if "," in before_url:
+                    first_seg, rest_seg = before_url.split(",", 1)
+                    if 2 <= len(first_seg.strip().split()) <= 4 and not re.search(r"\b(?:pháp\s+luật|giáo\s+dục|nghiên\s+cứu|thông\s+báo|báo\s+cáo|quy\s+định)\b", first_seg, re.I):
+                        raw_auth = first_seg.strip()
+                        title = rest_seg.strip()
+                return Citation(
+                    raw_text=entry.strip(),
+                    citation_type=CitationType.REFERENCE_LIST,
+                    style=style,
+                    page_num=page_num,
+                    order_index=order_index,
+                    numeric_index=numeric_index,
+                    matched_pattern="vn_traditional_entry",
+                    authors=parse_authors(raw_auth) if raw_auth else [],
+                    title=title,
+                    title_normalized=_normalize_title(title),
+                    year=year,
+                    url=url,
+                    confidence=0.80,
+                )
+
+        # Subcase D: Numbered Vietnamese report/document item without year or with year in title
+        if numeric_index is not None and len(cleaned) >= 20:
+            return Citation(
+                raw_text=entry.strip(),
+                citation_type=CitationType.REFERENCE_LIST,
+                style=style,
+                page_num=page_num,
+                order_index=order_index,
+                numeric_index=numeric_index,
+                matched_pattern="vn_traditional_entry",
+                title=cleaned.rstrip(".,;"),
+                title_normalized=_normalize_title(cleaned),
+                year=year,
+                doi=doi,
+                url=url,
+                confidence=0.75,
+            )
+
+        return None
 
     def _parse_unquoted_book_entry(
         self, entry: str, order_index: int, page_num: int
@@ -1287,9 +1626,9 @@ class ReferenceListParser:
         year = year_m.group(1) if year_m else None
         year_suffix = year_m.group(2) if year_m and year_m.group(2) else None
 
-        # Extract authors: everything after [N] up to first recognizable year/doi
+        # Extract authors: everything after [N] / (N) / N. up to first recognizable year/doi
         # Pattern: [N] Authors, "Title" OR just Authors (year) until next [N]
-        after_index = re.sub(r"^\[\s*\d+\s*\]\s*", "", text).strip()
+        after_index = re.sub(r"^\s*(?:\[\s*\d+\s*\]|\(\s*\d{1,3}\s*\)|\d{1,3}\s*[\.\)])\s*", "", text).strip()
 
         # Remove common metadata patterns that confuse title extraction
         # "vol. N", "no. N", "pp. N-N", "pp. N", "p. N", "Chapter N"

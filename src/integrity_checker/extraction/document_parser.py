@@ -360,6 +360,12 @@ class DocumentParser:
             body_citations = self._extract_chicago_footnote_citations(
                 sections, text_doc, body_citations, references
             )
+            body_citations = self._extract_vn_legal_and_footnote_citations(
+                sections, text_doc, body_citations, references
+            )
+            body_citations = self._extract_attached_superscript_citations(
+                sections, text_doc, body_citations, references
+            )
 
         # 3.4 Appendix citations (chỉ track, không analyse)
         appendix_citations = self._extract_appendix_citations(sections)
@@ -411,6 +417,24 @@ class DocumentParser:
                 citations.extend(self._citation_extractor.extract_from_document(doc))
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Body citation extraction failed: %s", exc)
+
+        # Also extract body citations from the top half of a page where the
+        # Bibliography header starts mid-page (below the conclusion paragraph).
+        for section in sections:
+            if section.section_type != SectionType.BIBLIOGRAPHY:
+                continue
+            pre_body = (section.metadata or {}).get("pre_header_body_text")
+            pre_pnum = (section.metadata or {}).get("pre_header_page_num") or section.start_page
+            if pre_body:
+                try:
+                    pre_doc = Document(
+                        file_path="",
+                        num_pages=pre_pnum,
+                        pages=[Page(page_num=pre_pnum, text=pre_body, has_text_layer=True)],
+                    )
+                    citations.extend(self._citation_extractor.extract_from_document(pre_doc))
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Pre-header body citation extraction failed: %s", exc)
         return citations
 
     def _extract_mla_reference_guided_citations(
@@ -811,6 +835,299 @@ class DocumentParser:
         ]
         return valid_existing + chicago_cits
 
+    def _extract_vn_legal_and_footnote_citations(
+        self,
+        sections: list[DocumentSection],
+        source_doc: Document,
+        existing_body: list[Citation],
+        references: list[Citation],
+    ) -> list[Citation]:
+        """Extract in-text Vietnamese legal citations (cited by law name/code in prose)
+        and Vietnamese law-journal footnote citations."""
+        has_vn_legal = any(r.matched_pattern == "vn_legal_document" for r in references)
+        has_vn_trad = any(r.matched_pattern == "vn_traditional_entry" for r in references)
+        has_vn_bib = any(
+            "tài liệu tham khảo" in (s.text or "").lower()
+            for s in sections
+            if s.section_type == SectionType.BIBLIOGRAPHY
+        )
+        if not (has_vn_legal or has_vn_trad or has_vn_bib):
+            return existing_body
+
+        by_page = {p.page_num: p for p in source_doc.pages}
+        body_page_texts: dict[int, str] = {}
+        for section in sections:
+            if section.section_type == SectionType.BODY:
+                for n in sorted(by_page):
+                    if section.start_page <= n <= section.end_page and by_page[n].text:
+                        body_page_texts.setdefault(n, by_page[n].text)
+            elif section.section_type == SectionType.BIBLIOGRAPHY:
+                pre_body = (section.metadata or {}).get("pre_header_body_text")
+                pre_pnum = (section.metadata or {}).get("pre_header_page_num") or section.start_page
+                if pre_body and pre_pnum:
+                    body_page_texts[pre_pnum] = (body_page_texts.get(pre_pnum, "") + "\n" + pre_body).strip()
+
+        if not body_page_texts:
+            return existing_body
+
+        _GENERIC_VN_AGENCY_RE = re.compile(
+            r"^(?:quốc\s+hội|chính\s+phủ|thủ\s+tướng(?:\s+chính\s+phủ)?|bộ\s+chính\s+trị"
+            r"|ban\s+chấp\s+hành\s+trung\s+ương|đảng\s+cộng\s+sản\s+việt\s+nam"
+            r"|tòa\s+án\s+nhân\s+dân(?:\s+tối\s+cao|\s+cấp\s+cao)?|viện\s+kiểm\s+sát\s+nhân\s+dân(?:\s+tối\s+cao)?"
+            r"|thanh\s+tra\s+chính\s+phủ|văn\s+phòng\s+quốc\s+hội|ủy\s+ban\s+thường\s+vụ\s+quốc\s+hội"
+            r"|bộ\s+[\wà-ỹ\s]+|ủy\s+ban\s+[\wà-ỹ\s]+|tổng\s+cục\s+[\wà-ỹ\s]+|ngân\s+hàng\s+nhà\s+nước(?:\s+việt\s+nam)?)$",
+            re.IGNORECASE,
+        )
+
+        existing_raw_by_page: dict[int, set[str]] = {}
+        for c in existing_body:
+            p = c.page_num or 0
+            existing_raw_by_page.setdefault(p, set()).add((c.raw_text or "").strip().lower())
+
+        added: list[Citation] = []
+
+        for ref in references:
+            ref_yr = str(ref.year) if ref.year else None
+            if ref.matched_pattern == "vn_legal_document":
+                # Collect non-agency legal document names and codes from ref.authors
+                legal_terms: list[str] = []
+                for a in ref.authors or []:
+                    a_raw = (getattr(a, "raw", None) or getattr(a, "last_name", None) or str(a)).strip()
+                    if not a_raw or len(a_raw) < 3 or _GENERIC_VN_AGENCY_RE.match(a_raw):
+                        continue
+                    if a_raw not in legal_terms:
+                        legal_terms.append(a_raw)
+
+                if not legal_terms:
+                    continue
+
+                for p_num, p_text in sorted(body_page_texts.items()):
+                    p_flat = re.sub(r"\s+", " ", p_text)
+                    p_low = p_flat.lower()
+                    page_existing = existing_raw_by_page.setdefault(p_num, set())
+                    # Skip if an existing citation on this page already mentions one of the legal_terms
+                    if any(
+                        any(t.lower() in ex_raw for t in legal_terms)
+                        for ex_raw in page_existing
+                    ):
+                        continue
+
+                    matched_term: Optional[str] = None
+                    for term in legal_terms:
+                        has_doc_code = bool(re.search(r"\d+/\d+|\d+\s*-[A-ZĐ]{2,}|\d+/[A-ZĐ]{2,}", term, re.I))
+                        if has_doc_code:
+                            # Match code with optional "số", interchangeable NQ/TW <-> NQ/TƯ, and optional hyphen in QĐ-TTg
+                            code_pat = re.sub(r"\bsố\s+", r"(?:số\\s+)?", re.escape(term), flags=re.I)
+                            code_pat = re.sub(r"NQ/(?:TW|TƯ)", r"NQ/(?:TW|TƯ)", code_pat, flags=re.I)
+                            code_pat = re.sub(r"QĐ\\-?TTg", r"QĐ-?TTg", code_pat, flags=re.I)
+                            if re.search(code_pat, p_flat, re.IGNORECASE):
+                                matched_term = term
+                                break
+                        elif ref_yr:
+                            # Match "Luật X năm 2020" or "Luật X (2020)" or "Luật X 2020"
+                            yr_pat = rf"\b{re.escape(term)}\s*(?:năm\s+|\(\s*|,\s*)?{re.escape(ref_yr)}\b"
+                            if re.search(yr_pat, p_flat, re.IGNORECASE):
+                                matched_term = term
+                                break
+                            # Also match standalone law name if it is not followed by a conflicting year
+                            if len(term) >= 8 and re.search(rf"\b{re.escape(term)}\b(?!\s*(?:năm\s+|\(\s*)?(?:19|20)\d{{2}})", p_flat, re.IGNORECASE):
+                                matched_term = term
+                                break
+                        else:
+                            if len(term) >= 8 and re.search(rf"\b{re.escape(term)}\b", p_flat, re.IGNORECASE):
+                                matched_term = term
+                                break
+
+                    if matched_term:
+                        raw_cit = f"({matched_term}, {ref_yr})" if ref_yr else f"({matched_term})"
+                        if raw_cit.lower() not in page_existing:
+                            added.append(
+                                Citation(
+                                    raw_text=raw_cit,
+                                    citation_type=CitationType.IN_TEXT,
+                                    style=CitationStyle.APA,
+                                    page_num=p_num,
+                                    authors=[matched_term],
+                                    year=ref_yr,
+                                    title=ref.title,
+                                    title_normalized=ref.title_normalized,
+                                    matched_pattern="vn_legal_intext_guided",
+                                    confidence=0.90,
+                                )
+                            )
+                            page_existing.add(raw_cit.lower())
+
+            elif has_vn_trad or len(existing_body) <= 2:
+                # For Vietnamese footnote-style articles, match bibliography author/title in page text/footnotes
+                first_raw = ""
+                if ref.authors:
+                    a0 = ref.authors[0]
+                    first_raw = (getattr(a0, "raw", None) or getattr(a0, "last_name", None) or str(a0)).strip()
+                title_snip = (ref.title or "").strip()
+                title_prefix = title_snip[:32].strip().lower() if len(title_snip) >= 16 else ""
+                url_snip = (ref.url or "").strip().lower()[:35] if ref.url and len(ref.url) >= 18 else ""
+
+                for p_num, p_text in sorted(body_page_texts.items()):
+                    p_flat = re.sub(r"\s+", " ", p_text)
+                    p_low = p_flat.lower()
+                    page_existing = existing_raw_by_page.setdefault(p_num, set())
+                    auth_hit = False
+                    if first_raw and len(first_raw) >= 4:
+                        auth_cand = first_raw.split(",")[0].strip() if "," in first_raw else first_raw
+                        if len(auth_cand) >= 4 and re.search(rf"\b{re.escape(auth_cand.lower())}\b", p_low):
+                            auth_hit = True
+                    title_hit = bool(title_prefix and title_prefix in p_low)
+                    url_hit = bool(url_snip and url_snip in p_low)
+
+                    if auth_hit or title_hit or url_hit:
+                        disp_auth = first_raw or (title_snip[:35] if title_snip else "")
+                        if not disp_auth:
+                            continue
+                        if any(disp_auth.lower() in ex_raw for ex_raw in page_existing):
+                            continue
+                        raw_cit = f"({disp_auth}, {ref_yr})" if ref_yr else f"({disp_auth})"
+                        if raw_cit.lower() not in page_existing:
+                            added.append(
+                                Citation(
+                                    raw_text=raw_cit,
+                                    citation_type=CitationType.IN_TEXT,
+                                    style=CitationStyle.APA,
+                                    page_num=p_num,
+                                    authors=[disp_auth],
+                                    year=ref_yr,
+                                    title=ref.title,
+                                    title_normalized=ref.title_normalized,
+                                    matched_pattern="vn_footnote_guided",
+                                    confidence=0.88,
+                                )
+                            )
+                            page_existing.add(raw_cit.lower())
+
+        return existing_body + added
+
+    def _extract_attached_superscript_citations(
+        self,
+        sections: list[DocumentSection],
+        source_doc: Document,
+        existing_body: list[Citation],
+        references: list[Citation],
+    ) -> list[Citation]:
+        """Extract superscript numeric citations flattened by PDF text extraction
+        (e.g. 'motility1–9.', 'pathway10.', 'manner14, 15.', 'sepsis.1,2' in Nature/AMA/ACS)."""
+        numbered_refs = [r for r in references if r.numeric_index is not None]
+        if len(numbered_refs) < 3 or len(numbered_refs) < len(references) // 2:
+            return existing_body
+        existing_numeric_count = sum(1 for c in existing_body if c.citation_type == CitationType.NUMERIC)
+        if existing_numeric_count >= 5:
+            return existing_body
+
+        max_ref_num = max((r.numeric_index or 0) for r in numbered_refs)
+        if max_ref_num < 3:
+            return existing_body
+
+        by_page = {p.page_num: p for p in source_doc.pages}
+        body_page_texts: dict[int, str] = {}
+        for section in sections:
+            if section.section_type == SectionType.BODY:
+                for n in sorted(by_page):
+                    if section.start_page <= n <= section.end_page and by_page[n].text:
+                        body_page_texts.setdefault(n, by_page[n].text)
+            elif section.section_type == SectionType.BIBLIOGRAPHY:
+                pre_body = (section.metadata or {}).get("pre_header_body_text")
+                pre_pnum = (section.metadata or {}).get("pre_header_page_num") or section.start_page
+                if pre_body and pre_pnum:
+                    body_page_texts[pre_pnum] = (body_page_texts.get(pre_pnum, "") + "\n" + pre_body).strip()
+
+        if not body_page_texts:
+            return existing_body
+
+        _EXCLUDED_WORDS = {
+            "table", "tables", "figure", "figures", "scheme", "schemes", "chart", "charts",
+            "model", "models", "step", "steps", "phase", "phases", "stage", "stages",
+            "type", "types", "group", "groups", "case", "cases", "part", "parts",
+            "page", "pages", "line", "lines", "item", "items", "rule", "rules",
+            "test", "tests", "task", "tasks", "user", "users", "node", "nodes",
+            "layer", "layers", "block", "blocks", "level", "levels", "class", "classes",
+            "grade", "grades", "year", "years", "week", "weeks", "month", "months",
+            "appendix", "supplement", "note", "notes", "version", "chapter", "chapters",
+            "section", "sections", "cohort", "cluster", "factor", "component", "channel",
+            "sample", "subject", "patient", "person", "trial", "visit", "cycle", "round",
+            "wave", "tier", "zone", "area", "site", "room", "lane", "port", "slot",
+            "core", "mode", "state", "axis", "band", "peak", "form", "code", "file",
+            "list", "tree", "grid", "mesh", "cell", "gene", "exon", "intron", "codon",
+            "allele", "strain", "clone", "virus", "phage", "motif", "domain", "chain",
+            "helix", "sheet", "loop", "turn", "fold", "unit", "ring", "bond", "atom",
+            "mpeg", "utf", "int", "uint", "float", "base", "sha", "resnet", "vgg",
+            "gpt", "llama", "bert", "http", "https", "html", "xxxx",
+        }
+
+        sup_re = re.compile(
+            r"(?<![A-Za-z0-9\-/_])(?P<word>[a-z]{4,})(?P<punct>[.,])?(?P<nums>[1-9]\d{0,2}(?:\s*[,–\-]\s*[1-9]\d{0,2})*)(?=[.,;:\s)\]]|$)"
+        )
+
+        dominant_style = CitationStyle.NATURE
+        style_counts: dict[CitationStyle, int] = {}
+        for r in numbered_refs:
+            if r.style and r.style != CitationStyle.UNKNOWN:
+                style_counts[r.style] = style_counts.get(r.style, 0) + 1
+        if style_counts:
+            dominant_style = max(style_counts.items(), key=lambda kv: kv[1])[0]
+
+        candidates: list[Citation] = []
+        has_multi_or_range = False
+
+        for p_num, p_text in sorted(body_page_texts.items()):
+            for m in sup_re.finditer(p_text):
+                word = m.group("word").lower()
+                if word in _EXCLUDED_WORDS:
+                    continue
+                nums_raw = re.sub(r"\s+", "", m.group("nums"))
+                # Parse all numbers and ranges in nums_raw
+                tokens = [t for t in nums_raw.split(",") if t]
+                if not tokens:
+                    continue
+                valid_tokens = True
+                prev_val = 0
+                for tok in tokens:
+                    if "–" in tok or "-" in tok:
+                        sep = "–" if "–" in tok else "-"
+                        parts = tok.split(sep)
+                        if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
+                            valid_tokens = False
+                            break
+                        a, b = int(parts[0]), int(parts[1])
+                        if not (1 <= a < b <= max_ref_num and (b - a) <= 25):
+                            valid_tokens = False
+                            break
+                        prev_val = b
+                    else:
+                        if not tok.isdigit():
+                            valid_tokens = False
+                            break
+                        v = int(tok)
+                        if not (1 <= v <= max_ref_num) or (prev_val > 0 and v <= prev_val):
+                            valid_tokens = False
+                            break
+                        prev_val = v
+                if not valid_tokens:
+                    continue
+                if len(tokens) > 1 or "–" in nums_raw or "-" in nums_raw:
+                    has_multi_or_range = True
+                candidates.append(
+                    Citation(
+                        raw_text=f"[{nums_raw}]",
+                        citation_type=CitationType.NUMERIC,
+                        style=dominant_style,
+                        page_num=p_num,
+                        matched_pattern="attached_superscript_numeric",
+                        confidence=0.88,
+                    )
+                )
+
+        if len(candidates) >= 3 or (has_multi_or_range and len(candidates) >= 1):
+            return existing_body + candidates
+        return existing_body
+
     def _extract_references(
         self,
         sections: list[DocumentSection],
@@ -921,8 +1238,44 @@ class DocumentParser:
         # Lấy references từ regex (secondary/supplemental)
         regex_refs = self._extract_references_from_sections(sections)
 
-        # Merge: GROBID primary + regex supplemental
-        merged_refs = self._merge_reference_lists(grobid_refs, regex_refs)
+        # For Vietnamese bibliographies (containing 'tài liệu tham khảo' or Vietnamese legal/traditional
+        # entries), regex_refs preserves exact Vietnamese names, titles, legal document codes, and
+        # sequential numbering without GROBID's body-footnote bleed or [trans: ...] English duplication.
+        is_vietnamese_bib = bool(
+            regex_refs
+            and len(bib_text_norm.strip()) >= 40
+            and (
+                "tài liệu tham khảo" in bib_text_norm
+                or any(
+                    r.matched_pattern in ("vn_legal_document", "vn_traditional_entry")
+                    for r in regex_refs
+                )
+            )
+        )
+        if is_vietnamese_bib:
+            for r in regex_refs:
+                if r.title and r.authors and r.year:
+                    continue
+                r_raw_low = (r.raw_text or "").lower()
+                for g in grobid_refs:
+                    g_title = (g.title or "").strip()
+                    if g_title and len(g_title) >= 8 and g_title.lower() in r_raw_low:
+                        if not r.title or r.title.startswith(","):
+                            r.title = g_title
+                            r.title_normalized = g.title_normalized
+                        if not r.authors and g.authors:
+                            r.authors = g.authors
+                        if not r.year and g.year:
+                            r.year = g.year
+                        if not r.doi and g.doi:
+                            r.doi = g.doi
+                        if not r.url and g.url:
+                            r.url = g.url
+                        break
+            merged_refs = regex_refs
+        else:
+            # Merge: GROBID primary + regex supplemental
+            merged_refs = self._merge_reference_lists(grobid_refs, regex_refs)
 
         # FIX v1.11: Filter out fake/non-citation entries from merged references
         filtered_refs = []
