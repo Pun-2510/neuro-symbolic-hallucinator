@@ -13,6 +13,7 @@ import { EssayActionBar } from './essay/EssayActionBar';
 import { OverrideControls } from '@/components/OverrideControls';
 import { CitationGraphView, EvidenceGraph } from '@/components/CitationGraph';
 import { UpgradeModal } from '@/components/UpgradeModal';
+import { BibliographyRemediationModal } from '@/components/BibliographyRemediationModal';
 import { useEssayReport, useOverrideVerdict } from '@/hooks/useEssayReport';
 import { isUrlResource } from '@/lib/verdictExplanation';
 import { useRole } from '@/hooks/useRole';
@@ -30,6 +31,7 @@ import {
   ExternalLink,
   GitBranch,
   Lock,
+  Sparkles,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -177,6 +179,24 @@ const RULE_CATALOG: Record<
     nameVi: 'Xác thực định dạng Văn bản Pháp luật / Quy phạm',
     condition: 'IF is_legal_statutory_reference == TRUE THEN VERIFIED',
     status: 'passed',
+  },
+  'R-VN-LEGAL-VERIFIED': {
+    nameEn: 'Vietnamese Statutory Code & Authority Verified',
+    nameVi: 'Xác thực Số hiệu, Năm ban hành & Thẩm quyền Văn bản Pháp luật VN',
+    condition: 'IF statute_code_match == TRUE AND issuing_authority_match == TRUE THEN VERIFIED',
+    status: 'passed',
+  },
+  'R-VN-LEGAL-SUPERSEDED': {
+    nameEn: 'Vietnamese Statute Verified (Superseded / Expired Notice)',
+    nameVi: 'Cảnh báo hiệu lực: Văn bản Pháp luật đã hết hiệu lực / được thay thế',
+    condition: 'IF statute_in_registry == TRUE AND is_superseded == TRUE THEN WARN_SUPERSEDED',
+    status: 'warning',
+  },
+  'R-VN-LEGAL-MISMATCH': {
+    nameEn: 'Vietnamese Statutory Number / Year / Authority Mismatch',
+    nameVi: 'Sai lệch Số hiệu, Năm ban hành hoặc Cơ quan ban hành Văn bản Pháp luật VN',
+    condition: 'IF statute_year_conflict == TRUE OR authority_conflict == TRUE THEN METADATA_ERROR',
+    status: 'failed',
   },
   'R-BOOK-EDITION-VERIFIED': {
     nameEn: 'Canonical Book / Monograph Edition Verified',
@@ -1337,6 +1357,7 @@ export function EssayPage() {
   const [workspaceMode, setWorkspaceMode] = useState<'debugger' | 'graph'>('debugger');
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [lockedFeatureName, setLockedFeatureName] = useState<string>('');
+  const [remediationOpen, setRemediationOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1602,6 +1623,33 @@ export function EssayPage() {
                   )}
                 </button>
               </div>
+
+              <button
+                type="button"
+                data-testid="open-remediation-studio-btn"
+                onClick={() => {
+                  if (!canViewDeepTrace) {
+                    setLockedFeatureName(
+                      lang === 'vi'
+                        ? '1-Click Chuẩn hóa & Sửa lỗi Danh mục Tài liệu Tham khảo (BibTeX / RIS / APA / IEEE / TDTU)'
+                        : '1-Click Bibliography Auto-Remediation & Export Studio (BibTeX / RIS / APA / IEEE / TDTU)'
+                    );
+                    setUpgradeOpen(true);
+                    return;
+                  }
+                  setRemediationOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-[11px] font-mono font-semibold shadow-2xs transition-all"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                <span>{lang === 'vi' ? '1-Click Auto-Fix & BibTeX' : '1-Click Auto-Fix & BibTeX'}</span>
+                {!canViewDeepTrace && (
+                  <span className="ml-0.5 inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-white/20 text-white text-[9px] font-mono font-bold">
+                    <Lock className="h-2.5 w-2.5 text-amber-300" />
+                    PRO
+                  </span>
+                )}
+              </button>
 
               <Badge
                 variant="outline"
@@ -2338,6 +2386,14 @@ export function EssayPage() {
         open={upgradeOpen}
         onOpenChange={setUpgradeOpen}
         featureName={lockedFeatureName}
+      />
+
+      <BibliographyRemediationModal
+        open={remediationOpen}
+        essayId={report.essay_id}
+        filename={report.filename}
+        lang={lang}
+        onClose={() => setRemediationOpen(false)}
       />
     </div>
   );

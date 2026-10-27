@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from integrity_checker.api.deps import get_current_user, get_db, get_pipeline, require_admin
@@ -673,3 +674,180 @@ def delete_essay(
     db.commit()
 
     return {"message": f"Essay {essay_id} deleted"}
+
+
+@router.get("/{essay_id}/page-preview/{page_num}")
+def get_essay_page_preview(
+    essay_id: int,
+    page_num: int,
+    highlight: str | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Render an interactive PNG page preview with bounding-box citation highlighting (Sprint 3.3)."""
+    import fitz
+
+    repo = Repository(db)
+    essay = repo.get_essay(essay_id)
+    if not essay:
+        raise HTTPException(status_code=404, detail="Essay not found")
+
+    if not repo.can_user_access_essay(current_user, essay):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    pdf_path = _get_persisted_upload_path(essay_id, ext=".pdf")
+    if not pdf_path.is_file() and essay.filename:
+        for candidate_dir in (
+            PROJECT_ROOT / "data" / "demo",
+            PROJECT_ROOT / "data" / "essays",
+            PROJECT_ROOT / "style_corpora",
+        ):
+            if candidate_dir.is_dir():
+                matches = list(candidate_dir.rglob(Path(essay.filename).name))
+                if matches and matches[0].suffix.lower() == ".pdf":
+                    pdf_path = matches[0]
+                    break
+
+    if pdf_path.is_file():
+        doc = fitz.open(str(pdf_path))
+        try:
+            target_idx = max(0, min(len(doc) - 1, page_num - 1))
+            page = doc[target_idx]
+            if highlight and highlight.strip():
+                q = highlight.strip()
+                # Strip leading [N] if full reference string
+                q_clean = q
+                rects = page.search_for(q_clean[:65])
+                if not rects and len(q_clean) > 25:
+                    rects = page.search_for(q_clean[:32])
+                if not rects:
+                    # Try first token / author surname + year
+                    import re as _re
+
+                    m_tok = _re.search(r"[A-Za-zÀ-ỹ]{4,}", q_clean)
+                    if m_tok:
+                        rects = page.search_for(m_tok.group(0))
+                if rects:
+                    shape = page.new_shape()
+                    for r in rects[:12]:
+                        padded = fitz.Rect(r.x0 - 2, r.y0 - 1.5, r.x1 + 2, r.y1 + 1.5)
+                        shape.draw_rect(padded)
+                    shape.finish(
+                        color=(0.31, 0.27, 0.90),
+                        fill=(0.99, 0.88, 0.28),
+                        fill_opacity=0.36,
+                        width=1.4,
+                    )
+                    shape.commit()
+            pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
+            png_bytes = pix.tobytes("png")
+        finally:
+            doc.close()
+        return Response(
+            content=png_bytes,
+            media_type="image/png",
+            headers={"Cache-Control": "private, max-age=120"},
+        )
+
+    # Dynamic high-DPI virtual page preview for .docx or synthetic/seeded essays without raw PDF on disk
+    doc = fitz.open()
+    try:
+        page = doc.new_page(width=595, height=842)
+        # Header banner
+        shape = page.new_shape()
+        shape.draw_rect(fitz.Rect(36, 32, 559, 82))
+        shape.finish(color=(0.82, 0.85, 0.92), fill=(0.96, 0.97, 0.99), width=1.0)
+        shape.commit()
+
+        page.insert_text(
+            fitz.Point(48, 54),
+            f"CITRA Document Inspector  |  {essay.filename}",
+            fontsize=11,
+            fontname="helv",
+            color=(0.12, 0.16, 0.28),
+        )
+        page.insert_text(
+            fitz.Point(48, 70),
+            f"Virtual Page Reconstruction — Page {max(1, page_num)} of {max(1, essay.num_pages or 1)}",
+            fontsize=8.5,
+            color=(0.38, 0.43, 0.54),
+        )
+
+        citations = repo.get_citations(essay_id)
+        verdicts = repo.get_verdicts(essay_id)
+        page_cits = [c for c in citations if (c.page_num or 1) == page_num] or citations[:8]
+
+        y = 110.0
+        for idx, c in enumerate(page_cits[:8], start=1):
+            ctx = (getattr(c, "context", None) or c.raw_text or "").strip()
+            block_text = f"[{idx}] {ctx[:260]}"
+            is_hl = bool(
+                highlight
+                and (
+                    highlight.strip().lower() in ctx.lower()
+                    or highlight.strip().lower() in (c.raw_text or "").lower()
+                )
+            )
+            box = fitz.Rect(42, y - 6, 553, y + 66)
+            sh = page.new_shape()
+            sh.draw_rect(box)
+            if is_hl:
+                sh.finish(
+                    color=(0.31, 0.27, 0.90),
+                    fill=(0.99, 0.92, 0.45),
+                    fill_opacity=0.42,
+                    width=1.8,
+                )
+            else:
+                sh.finish(
+                    color=(0.88, 0.90, 0.94),
+                    fill=(0.99, 0.99, 1.0),
+                    fill_opacity=0.9,
+                    width=0.8,
+                )
+            sh.commit()
+            page.insert_textbox(
+                fitz.Rect(50, y, 545, y + 62),
+                block_text,
+                fontsize=9.2,
+                color=(0.10, 0.12, 0.18),
+            )
+            y += 80.0
+            if y > 740:
+                break
+
+        if not page_cits and verdicts:
+            for idx, v in enumerate(verdicts[:7], start=1):
+                txt = f"[{idx}] ({v.label.upper()}) {v.citation_raw[:220]}"
+                is_hl = bool(highlight and highlight.strip().lower() in v.citation_raw.lower())
+                box = fitz.Rect(42, y - 6, 553, y + 58)
+                sh = page.new_shape()
+                sh.draw_rect(box)
+                if is_hl:
+                    sh.finish(
+                        color=(0.31, 0.27, 0.90),
+                        fill=(0.99, 0.92, 0.45),
+                        fill_opacity=0.42,
+                        width=1.8,
+                    )
+                else:
+                    sh.finish(color=(0.88, 0.90, 0.94), fill=(0.99, 0.99, 1.0), width=0.8)
+                sh.commit()
+                page.insert_textbox(
+                    fitz.Rect(50, y, 545, y + 54),
+                    txt,
+                    fontsize=9.2,
+                    color=(0.10, 0.12, 0.18),
+                )
+                y += 72.0
+
+        pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
+        png_bytes = pix.tobytes("png")
+    finally:
+        doc.close()
+
+    return Response(
+        content=png_bytes,
+        media_type="image/png",
+        headers={"Cache-Control": "private, max-age=120"},
+    )

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { type Verdict, type Citation } from '@/api/client';
+import { api, type Verdict, type Citation } from '@/api/client';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import { MappingStatusBadge } from '@/components/MappingStatusBadge';
 import { getVerdictExplanation, isUrlResource } from '@/lib/verdictExplanation';
@@ -23,6 +23,9 @@ import {
   Filter,
   Brain,
   Sparkles,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -500,6 +503,11 @@ export function DocumentInspectorPage() {
   const [selectedCitation, setSelectedCitation] = useState<InlineCitation | null>(null);
   const [selectedVerdict, setSelectedVerdict] = useState<Verdict | null>(null);
   const [filterLabel, setFilterLabel] = useState<string>('all');
+  const [docViewMode, setDocViewMode] = useState<'stream' | 'pdf'>('stream');
+  const [previewPage, setPreviewPage] = useState<number>(1);
+  const [previewHighlight, setPreviewHighlight] = useState<string>('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState<boolean>(false);
 
   const numericId = id ? parseInt(id, 10) : null;
   const { report, error } = useEssayPolling(
@@ -530,8 +538,41 @@ export function DocumentInspectorPage() {
         (v) => v.citation_id === selectedCitation.id
       );
       setSelectedVerdict(verdict || null);
+      if (selectedCitation.page && selectedCitation.page > 0) {
+        setPreviewPage(selectedCitation.page);
+      }
+      setPreviewHighlight(selectedCitation.raw || '');
     }
   }, [selectedCitation, report]);
+
+  useEffect(() => {
+    if (docViewMode !== 'pdf' || !numericId || Number.isNaN(numericId)) return;
+    let active = true;
+    let currentObjUrl: string | null = null;
+    setPreviewLoading(true);
+    api
+      .fetchEssayPagePreviewUrl(numericId, previewPage, previewHighlight || undefined)
+      .then((url) => {
+        if (active) {
+          currentObjUrl = url;
+          setPreviewUrl(url);
+        } else {
+          window.URL.revokeObjectURL(url);
+        }
+      })
+      .catch(() => {
+        if (active) setPreviewUrl(null);
+      })
+      .finally(() => {
+        if (active) setPreviewLoading(false);
+      });
+    return () => {
+      active = false;
+      if (currentObjUrl) {
+        window.URL.revokeObjectURL(currentObjUrl);
+      }
+    };
+  }, [docViewMode, numericId, previewPage, previewHighlight]);
 
   const statusCounts = {
     verified: inlineCitations.filter((c) => c.label === 'verified' || c.label === 'resource').length,
@@ -711,68 +752,177 @@ export function DocumentInspectorPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-200/80 dark:divide-slate-800">
           {/* Document panel */}
           <div className="lg:col-span-7 min-w-0 p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/80">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/80">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                 <h3 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
                   Document View
                 </h3>
               </div>
-              <span className="text-[11px] font-mono text-slate-400">
-                Inline Context Stream
-              </span>
-            </div>
 
-            <div className="prose prose-slate dark:prose-invert max-w-none">
-              <div className="space-y-4 text-sm leading-relaxed max-h-[540px] overflow-y-auto pr-2">
-                {filteredCitations.length === 0 ? (
-                  <p className="text-slate-500 dark:text-slate-400 italic py-8 text-center font-mono text-xs">
-                    No citations match the current filter.
-                  </p>
-                ) : (
-                  filteredCitations.map((citation, idx) => (
-                    <div
-                      key={citation.id}
-                      className={`group relative rounded-xl p-3.5 border transition-colors ${
-                        selectedCitation?.id === citation.id
-                          ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-700'
-                          : 'bg-slate-50/60 dark:bg-slate-800/30 border-slate-200/70 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 shrink-0 pt-0.5 select-none">
-                          p{citation.page}:{String(idx + 1).padStart(2, '0')}
-                        </span>
-                        <p className="flex-1 min-w-0 text-slate-700 dark:text-slate-300 font-serif leading-relaxed break-words [overflow-wrap:anywhere]">
-                          {citation.context ? (
-                            <>
-                              <ContextWithHighlight
-                                context={citation.context}
-                                marker={citation.raw}
-                              />{' '}
-                              <InlineCitationMarker
-                                citation={citation}
-                                onClick={() => setSelectedCitation(citation)}
-                              />
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-slate-500 dark:text-slate-400 italic font-sans text-xs">
-                                [No surrounding text extracted]
-                              </span>{' '}
-                              <InlineCitationMarker
-                                citation={citation}
-                                onClick={() => setSelectedCitation(citation)}
-                              />
-                            </>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                )}
+              <div className="flex items-center gap-2">
+                <div
+                  role="group"
+                  aria-label="Document Preview Mode"
+                  className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700"
+                >
+                  <button
+                    type="button"
+                    data-testid="toggle-stream-view"
+                    onClick={() => setDocViewMode('stream')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-semibold transition-all ${
+                      docViewMode === 'stream'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Context Stream
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="toggle-pdf-page-preview"
+                    onClick={() => setDocViewMode('pdf')}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-mono font-semibold transition-all ${
+                      docViewMode === 'pdf'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Eye className="h-3 w-3 text-indigo-500" />
+                    <span>PDF Page Preview</span>
+                  </button>
+                </div>
               </div>
             </div>
+
+            {docViewMode === 'pdf' ? (
+              <div className="space-y-3" data-testid="pdf-page-preview-pane">
+                {/* Page Switcher & Active Highlight Banner */}
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={previewPage <= 1}
+                      onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
+                      className="p-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:border-indigo-400 transition-colors"
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-200">
+                      Page {previewPage} / {Math.max(1, report.num_pages || 1)}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={previewPage >= Math.max(1, report.num_pages || 1)}
+                      onClick={() =>
+                        setPreviewPage((p) =>
+                          Math.min(Math.max(1, report.num_pages || 1), p + 1)
+                        )
+                      }
+                      className="p-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:border-indigo-400 transition-colors"
+                      aria-label="Next page"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  {previewHighlight ? (
+                    <div className="flex items-center gap-1.5 text-[11px] font-mono text-indigo-700 dark:text-indigo-300 bg-indigo-50/90 dark:bg-indigo-950/70 px-2.5 py-1 rounded-lg border border-indigo-200/80 dark:border-indigo-800 max-w-xs truncate">
+                      <Sparkles className="h-3 w-3 shrink-0 text-amber-500" />
+                      <span className="truncate">Highlight: {previewHighlight}</span>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] font-mono text-slate-400">
+                      Click any citation on the right to highlight its bounding box
+                    </span>
+                  )}
+                </div>
+
+                {/* Rendered Page Image */}
+                <div className="relative rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-950 min-h-[480px] max-h-[560px] overflow-y-auto flex items-start justify-center p-3">
+                  {previewLoading ? (
+                    <div className="flex flex-col items-center justify-center py-24 gap-2">
+                      <Loader2 className="h-7 w-7 animate-spin text-indigo-600 dark:text-indigo-400" />
+                      <span className="text-xs font-mono text-slate-500">
+                        Rendering page {previewPage} with bounding-box overlay...
+                      </span>
+                    </div>
+                  ) : previewUrl ? (
+                    <img
+                      src={previewUrl}
+                      alt={`Page ${previewPage} preview`}
+                      data-testid="pdf-page-preview-img"
+                      className="w-full h-auto rounded-lg shadow-md border border-slate-200/90 dark:border-slate-800 bg-white"
+                    />
+                  ) : (
+                    <div className="py-20 text-center text-xs font-mono text-slate-500">
+                      Unable to render page preview.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="prose prose-slate dark:prose-invert max-w-none">
+                <div className="space-y-4 text-sm leading-relaxed max-h-[540px] overflow-y-auto pr-2">
+                  {filteredCitations.length === 0 ? (
+                    <p className="text-slate-500 dark:text-slate-400 italic py-8 text-center font-mono text-xs">
+                      No citations match the current filter.
+                    </p>
+                  ) : (
+                    filteredCitations.map((citation, idx) => (
+                      <div
+                        key={citation.id}
+                        className={`group relative rounded-xl p-3.5 border transition-colors ${
+                          selectedCitation?.id === citation.id
+                            ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-700'
+                            : 'bg-slate-50/60 dark:bg-slate-800/30 border-slate-200/70 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreviewPage(citation.page || 1);
+                              setPreviewHighlight(citation.raw || '');
+                              setDocViewMode('pdf');
+                            }}
+                            title="Click to inspect bounding box on PDF page"
+                            className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 pt-0.5 select-none"
+                          >
+                            p{citation.page}:{String(idx + 1).padStart(2, '0')}
+                          </button>
+                          <p className="flex-1 min-w-0 text-slate-700 dark:text-slate-300 font-serif leading-relaxed break-words [overflow-wrap:anywhere]">
+                            {citation.context ? (
+                              <>
+                                <ContextWithHighlight
+                                  context={citation.context}
+                                  marker={citation.raw}
+                                />{' '}
+                                <InlineCitationMarker
+                                  citation={citation}
+                                  onClick={() => setSelectedCitation(citation)}
+                                />
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-slate-500 dark:text-slate-400 italic font-sans text-xs">
+                                  [No surrounding text extracted]
+                                </span>{' '}
+                                <InlineCitationMarker
+                                  citation={citation}
+                                  onClick={() => setSelectedCitation(citation)}
+                                />
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Citation list panel */}

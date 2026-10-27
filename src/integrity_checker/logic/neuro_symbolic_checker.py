@@ -22,6 +22,7 @@ from integrity_checker.models.validation import CitationVerdict, MatchFeatures, 
 from integrity_checker.matching.features import FeatureCalculator
 from integrity_checker.logic.calibration import HybridMLScorer
 from integrity_checker.logic.rules import SymbolicRules, _is_fake_url
+from integrity_checker.logic.vn_legal_verifier import verify_vn_legal_citation
 from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
 
 if TYPE_CHECKING:
@@ -241,17 +242,33 @@ class NeuroSymbolicChecker:
                     mismatched_fields=[],
                 )
 
-        # --- Check 3: Vietnamese legal documents (TDTU §2.6.1) ---
+        # --- Check 3: Vietnamese legal documents (TDTU §2.6.1 & Sprint 3.2 Legal Verifier) ---
         if citation.matched_pattern == "vn_legal_document" or is_vn_legal_reference(raw_text):
             logger.debug(f"Vietnamese legal document detected: raw='{raw_text[:80]}'")
+            legal_res = verify_vn_legal_citation(
+                raw_text=raw_text,
+                extracted_year=str(citation.year) if citation.year else None,
+                extracted_venue=citation.venue,
+            )
+            if not legal_res.is_valid:
+                return CitationVerdict(
+                    citation=citation,
+                    label=ValidationLabel.METADATA_ERROR,
+                    confidence=0.90,
+                    matched_source=source,
+                    features=MatchFeatures(),
+                    reasoning=legal_res.reasoning,
+                    triggered_rules=legal_res.triggered_rules,
+                    mismatched_fields=legal_res.mismatched_fields,
+                )
             return CitationVerdict(
                 citation=citation,
                 label=ValidationLabel.RESOURCE,
                 confidence=0.95,
                 matched_source=source,
                 features=MatchFeatures(),
-                reasoning=f"Vietnamese legal document detected: {raw_text[:60]}... (statutory/regulatory source)",
-                triggered_rules=["R-LEGAL-DOCUMENT"],
+                reasoning=legal_res.reasoning,
+                triggered_rules=legal_res.triggered_rules,
                 mismatched_fields=[],
             )
 

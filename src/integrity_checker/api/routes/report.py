@@ -30,6 +30,7 @@ from integrity_checker.billing.plans import get_user_plan_policy
 from integrity_checker.config import get_settings
 from integrity_checker.db.models import User
 from integrity_checker.db.repository import Repository
+from integrity_checker.export.bibliography_formatter import build_remediated_bibliography
 from integrity_checker.export.docx_exporter import export_report_to_docx
 from integrity_checker.pipeline.integrity_pipeline import _serialize_citation_link
 
@@ -86,6 +87,36 @@ def get_report(
     if format == "docx":
         return _docx_response(essay.filename, essay, verdicts)
     raise HTTPException(status_code=400, detail=f"Unsupported format: {format}")
+
+
+@router.get("/{essay_id}/remediate")
+def remediate_bibliography(
+    essay_id: int,
+    style: str = "apa",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Generate 1-Click Auto-Remediated Bibliography in APA, IEEE, TDTU, BibTeX, or RIS (Pro / Ultra / Teacher / Admin)."""
+    repo = Repository(db)
+    essay = repo.get_essay(essay_id)
+    if not essay:
+        raise HTTPException(status_code=404, detail="Essay not found")
+
+    if not repo.can_user_access_essay(current_user, essay):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    policy = get_user_plan_policy(current_user)
+    if policy.tier == "basic" and current_user.role == "user":
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                "1-Click Bibliography Auto-Remediation & BibTeX/RIS Studio is a Pro / Ultra feature. "
+                f"Your current plan is {policy.name}. Please upgrade to unlock automated reference repair."
+            ),
+        )
+
+    verdicts = repo.get_verdicts(essay_id)
+    return build_remediated_bibliography(essay_id=essay_id, verdicts=verdicts, style=style)
 
 
 def _deserialize_citation_link_json(json_str: str | None) -> dict[str, Any] | None:

@@ -699,6 +699,41 @@ export interface AuditLogEntry {
 
 // --- Endpoints ---
 
+export interface RemediatedBibliographyEntry {
+  index: number;
+  verdict_id: string;
+  label: string;
+  source_used: string | null;
+  original_raw: string;
+  remediated_text: string;
+  apa: string;
+  ieee: string;
+  tdtu: string;
+  bibtex: string;
+  ris: string;
+  diff_fields: string[];
+  was_modified: boolean;
+  canonical_metadata: {
+    title: string;
+    authors: string[];
+    year: string;
+    venue: string;
+    doi: string;
+    url: string;
+  };
+}
+
+export interface RemediatedBibliographyResponse {
+  essay_id: number;
+  style: 'apa' | 'ieee' | 'tdtu' | 'bibtex' | 'ris';
+  total_entries: number;
+  remediated_count: number;
+  entries: RemediatedBibliographyEntry[];
+  combined_text: string;
+  combined_bibtex: string;
+  combined_ris: string;
+}
+
 export const api = {
   health: () => request<HealthResponse>('/health'),
 
@@ -878,6 +913,34 @@ export const api = {
 
   downloadReport: (id: number, format: 'json' | 'csv' | 'pdf' | 'docx' = 'json') =>
     `${BASE_URL}/essays/${id}/report?format=${format}`,
+
+  getRemediatedBibliography: (
+    id: number,
+    style: 'apa' | 'ieee' | 'tdtu' | 'bibtex' | 'ris' = 'apa',
+  ) =>
+    request<RemediatedBibliographyResponse>(
+      `/essays/${id}/remediate?style=${encodeURIComponent(style)}`,
+    ),
+
+  fetchEssayPagePreviewUrl: async (
+    id: number,
+    pageNum: number,
+    highlight?: string,
+  ): Promise<string> => {
+    const token = localStorage.getItem('token');
+    const qs = highlight ? `?highlight=${encodeURIComponent(highlight)}` : '';
+    const resp = await fetch(
+      `${BASE_URL}/essays/${id}/page-preview/${Math.max(1, pageNum)}${qs}`,
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      },
+    );
+    if (!resp.ok) {
+      throw new Error(`API ${resp.status}: ${await resp.text()}`);
+    }
+    const blob = await resp.blob();
+    return window.URL.createObjectURL(blob);
+  },
 
   downloadReportFile: async (
     id: number,
