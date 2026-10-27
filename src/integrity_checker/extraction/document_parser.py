@@ -634,7 +634,8 @@ class DocumentParser:
         """Extract Chicago Notes & Bibliography bottom-of-page footnotes and linkable citations."""
         import unicodedata
 
-        if len(existing_body) >= 20 or sum(1 for c in existing_body if c.citation_type == CitationType.NUMERIC) >= 3:
+        has_numbered_refs = sum(1 for r in references if r.numeric_index is not None) >= 3
+        if has_numbered_refs and sum(1 for c in existing_body if c.citation_type == CitationType.NUMERIC) >= 3:
             return existing_body
 
         def _fold(s: str) -> str:
@@ -662,10 +663,16 @@ class DocumentParser:
         surname_counts: dict[str, int] = {}
         for idx, ref in enumerate(references):
             first_raw = ""
+            clean_last = ""
             if ref.authors:
                 a0 = ref.authors[0]
                 first_raw = (getattr(a0, "raw", None) or getattr(a0, "last_name", None) or str(a0)).strip()
-            surname = first_raw.split(",", 1)[0].strip() if first_raw else ""
+                clean_last = (getattr(a0, "last_name", None) or "").strip()
+            if clean_last and "," not in clean_last:
+                surname = clean_last
+            else:
+                surname = first_raw.split(",", 1)[0].strip() if first_raw else ""
+                surname = re.sub(r"\s+[A-Z\.]{1,5}$", "", surname).strip()
             given = first_raw.split(",", 1)[1].strip() if "," in first_raw else ""
             sn_fold = _fold(surname)
             gv_fold = _fold(given.split()[0].rstrip(".")) if given else ""
@@ -741,7 +748,20 @@ class DocumentParser:
             if curr_num is not None and curr_lines:
                 fn_blocks.append((p_num, curr_num, " ".join(curr_lines)))
 
-        if not (has_ibid or has_pub_city >= 2 or len(fn_blocks) >= 5):
+        # Check how many existing_body citations already match a bibliography author
+        existing_matched_count = sum(
+            1
+            for c in existing_body
+            if c.citation_type != CitationType.NUMERIC
+            and any(
+                prof["sn_fold"] and len(prof["sn_fold"]) >= 3 and prof["sn_fold"] in _fold(c.raw_text)
+                for prof in ref_profiles
+            )
+        )
+        if existing_matched_count >= 10:
+            return existing_body
+
+        if not (has_ibid or has_pub_city >= 2 or len(fn_blocks) >= 5 or (len(references) >= 5 and existing_matched_count <= 5)):
             return existing_body
 
         def _match_fn_text(fn_txt: str) -> list[dict]:

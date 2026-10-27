@@ -21,7 +21,7 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # Header / footer keywords để phát hiện reference section
 _REFERENCE_HEADERS = re.compile(
-    r"^\s*(?:\d+\.?\s+)?(references?|bibliography|works?\s+cited"
+    r"^\s*(?:\d+\.?\s+)?(references?|reference\s+list|bibliography|works?\s+cited|literature(?:\s+cited)?|cited\s+literature"
     r"|danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?|tài\s+liệu\s+tham\s+khảo)\s*[:.]?\s*$",
     re.IGNORECASE | re.MULTILINE,
 )

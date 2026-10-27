@@ -107,6 +107,28 @@ _VN_EN_ACADEMIC_BRIDGE: tuple[tuple[str, str], ...] = (
     ("rủi ro tín dụng", "credit risk financial default"),
     ("gian lận", "fraud detection anomaly"),
     ("thương mại điện tử", "e-commerce online shopping"),
+    ("quyền sở hữu trí tuệ", "intellectual property rights patent copyright trademark"),
+    ("trách nhiệm hình sự", "criminal liability penal code prosecution"),
+    ("hợp đồng thương mại", "commercial contract breach dispute arbitration"),
+    ("bảo vệ dữ liệu cá nhân", "personal data protection privacy GDPR cybersecurity"),
+    ("quản trị doanh nghiệp", "corporate governance board of directors shareholders"),
+    ("phát triển bền vững", "sustainable development ESG green economy environmental"),
+    ("chuyển đổi số", "digital transformation digitalization e-government"),
+    ("chuỗi cung ứng", "supply chain logistics inventory optimization"),
+    ("chính sách tiền tệ", "monetary policy central bank inflation interest rate"),
+    ("lạm phát", "inflation consumer price index macroeconomic"),
+    ("đầu tư trực tiếp nước ngoài", "foreign direct investment FDI capital inflows"),
+    ("năng lượng tái tạo", "renewable energy solar wind power grid"),
+    ("biến đổi khí hậu", "climate change global warming carbon emissions"),
+    ("đa dạng sinh học", "biodiversity conservation ecosystem species habitat"),
+    ("kháng kháng sinh", "antibiotic resistance antimicrobial bacterial infection"),
+    ("vắc-xin", "vaccine immunization antibody clinical efficacy"),
+    ("tâm lý học nhận thức", "cognitive psychology executive function perception"),
+    ("rối loạn lo âu", "anxiety disorder psychological stress mental health"),
+    ("giáo dục đại học", "higher education university pedagogy student learning"),
+    ("an toàn thông tin", "information security cybersecurity intrusion detection"),
+    ("hợp đồng thông minh", "smart contract blockchain decentralized ledger"),
+    ("trí tuệ nhân tạo tạo sinh", "generative artificial intelligence GenAI LLM"),
 )
 
 # Canonical Zero-Shot Neural Intent Prototypes (SciCite / ACL-ARC taxonomy)
@@ -141,20 +163,21 @@ _RESULT_CUES_RE = re.compile(
 _NEGATION_CUES_RE = re.compile(
     r"\b(?:not|never|no\s+longer|fails?\s+to|cannot|ineffective|insufficient|weak|"
     r"worse\s+than|unreliable|impossible|evaded\s+by|lack\s+of|useless|incapable|"
-    r"không\s+thể|không\s+hiệu\s+quả|thất\s+bại|kém\s+hơn|vô\s+dụng)\b",
+    r"contrary\s+to|disproves?|refutes?|invalidates?|"
+    r"không\s+thể|không\s+hiệu\s+quả|thất\s+bại|kém\s+hơn|vô\s+dụng|bác\s+bỏ|trái\s+ngược)\b",
     re.IGNORECASE,
 )
 _STRONG_POSITIVE_CLAIM_RE = re.compile(
     r"\b(?:always\s+correct|completely\s+solves|100%\s+accurate|guarantees|perfectly|"
     r"never\s+fails|eliminates\s+all|surprisingly\s+effective|highly\s+effective|"
     r"superior\s+in\s+quality|significantly\s+outperforms|"
-    r"hoàn\s+toàn\s+chính\s+xác|luôn\s+đúng|rất\s+hiệu\s+quả)\b",
+    r"hoàn\s+toàn\s+chính\s+xác|luôn\s+đúng|rất\s+hiệu\s+quả|tối\s+ưu\s+tuyệt\s+đối)\b",
     re.IGNORECASE,
 )
 _DIRECT_REFUTATION_RE = re.compile(
     r"\b(?:completely\s+ineffective|fails?\s+to\s+\w+|useless|does\s+not\s+work|"
-    r"cannot\s+improve|worse\s+than\s+random|incapable\s+of|"
-    r"hoàn\s+toàn\s+thất\s+bại|không\s+có\s+tác\s+dụng|hoàn\s+toàn\s+vô\s+dụng)\b",
+    r"cannot\s+improve|worse\s+than\s+random|incapable\s+of|no\s+significant\s+effect|"
+    r"hoàn\s+toàn\s+thất\s+bại|không\s+có\s+tác\s+dụng|hoàn\s+toàn\s+vô\s+dụng|không\s+mang\s+lại\s+hiệu\s+quả)\b",
     re.IGNORECASE,
 )
 _POSITIVE_EVIDENCE_RE = re.compile(

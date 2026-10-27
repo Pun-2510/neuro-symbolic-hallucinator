@@ -40,6 +40,8 @@ _DB_CACHE_LOCK = threading.Lock()
 _INITIALIZED_DB_INODES: dict[str, int] = {}
 _STATS_CACHE: dict[str, tuple[float, int, int, int, dict[str, Any]]] = {}
 _STATS_CACHE_TTL_SECONDS = 3600.0
+_QUERY_CACHE: dict[tuple[Any, ...], Any] = {}
+_QUERY_CACHE_MAX_SIZE = 2048
 _MUTATION_VERSION = 0
 
 
@@ -47,6 +49,7 @@ def _bump_mutation_version() -> None:
     global _MUTATION_VERSION
     with _DB_CACHE_LOCK:
         _MUTATION_VERSION += 1
+        _QUERY_CACHE.clear()
 
 
 def _title_key(title: str | None) -> str:
@@ -294,6 +297,26 @@ class LocalDatabase:
 
     # ==================== Lookup Methods ====================
 
+    def _cache_key(self, method: str, *args: Any) -> tuple[Any, ...]:
+        try:
+            st = self.db_path.stat()
+            file_sig = (st.st_ino, st.st_mtime_ns, st.st_size)
+        except OSError:
+            file_sig = (0, 0, 0)
+        return (str(self.db_path), file_sig, _MUTATION_VERSION, method, *args)
+
+    def _cache_get(self, key: tuple[Any, ...]) -> tuple[bool, Any]:
+        with _DB_CACHE_LOCK:
+            if key in _QUERY_CACHE:
+                return True, copy.deepcopy(_QUERY_CACHE[key])
+        return False, None
+
+    def _cache_set(self, key: tuple[Any, ...], value: Any) -> None:
+        with _DB_CACHE_LOCK:
+            if len(_QUERY_CACHE) >= _QUERY_CACHE_MAX_SIZE:
+                _QUERY_CACHE.clear()
+            _QUERY_CACHE[key] = copy.deepcopy(value)
+
     def find_by_doi(self, doi: str | None) -> Paper | None:
         """Find paper by DOI.
 
@@ -310,11 +333,18 @@ class LocalDatabase:
         if not doi:
             return None
 
+        key = self._cache_key("find_by_doi", doi.casefold())
+        hit, cached = self._cache_get(key)
+        if hit:
+            return cached
+
         with self._get_conn() as conn:
             row = conn.execute(
                 "SELECT * FROM papers WHERE doi = ? COLLATE NOCASE", (doi,)
             ).fetchone()
-            return Paper.from_dict(dict(row)) if row else None
+            res = Paper.from_dict(dict(row)) if row else None
+        self._cache_set(key, res)
+        return res
 
     def find_by_arxiv_id(self, arxiv_id: str | None) -> Paper | None:
         """Find paper by arXiv ID.
@@ -332,11 +362,18 @@ class LocalDatabase:
         if not arxiv_id:
             return None
 
+        key = self._cache_key("find_by_arxiv_id", arxiv_id.casefold())
+        hit, cached = self._cache_get(key)
+        if hit:
+            return cached
+
         with self._get_conn() as conn:
             row = conn.execute(
                 "SELECT * FROM papers WHERE arxiv_id = ? COLLATE NOCASE", (arxiv_id,)
             ).fetchone()
-            return Paper.from_dict(dict(row)) if row else None
+            res = Paper.from_dict(dict(row)) if row else None
+        self._cache_set(key, res)
+        return res
 
     def search_by_title(
         self,
@@ -356,10 +393,21 @@ class LocalDatabase:
         Returns:
             List of matching papers
         """
+        tokens = title_tokens(title)
+        if not tokens:
+            return []
+        key = self._cache_key(
+            "search_by_title",
+            tuple(tokens),
+            limit,
+            year,
+            (author or "").casefold(),
+        )
+        hit, cached = self._cache_get(key)
+        if hit:
+            return cached
+
         with self._get_conn() as conn:
-            tokens = title_tokens(title)
-            if not tokens:
-                return []
             # Match all meaningful words instead of the raw title string.
             # This tolerates terminal punctuation and Unicode dash variants.
             fts_query = " AND ".join(f'"{token}"' for token in tokens)
@@ -407,7 +455,9 @@ class LocalDatabase:
                 """
                 rows = conn.execute(query, (fts_query, limit)).fetchall()
 
-            return [Paper.from_dict(dict(row)) for row in rows]
+            res = [Paper.from_dict(dict(row)) for row in rows]
+        self._cache_set(key, res)
+        return res
 
     def fuzzy_search(
         self,

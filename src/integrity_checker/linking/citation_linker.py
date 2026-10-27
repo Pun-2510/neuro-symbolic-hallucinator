@@ -40,18 +40,18 @@ from integrity_checker.models.validation import CitationLink, MappingMethod
 logger = logging.getLogger(__name__)
 
 # Regex cho in-text APA / Harvard / Chicago / CSE pattern:
-# (Author, Year) / (Author Year) / (Author A và Author B, Year) / (Author, Year, tr. 15) / (Author 2020, 25) / (Author, 2020: 25) / (Author, n.d.)
+# (Author, Year) / (Author Year) / [Author, Year] / [Author Year] / (Author, Year, tr. 15) / (Author 2020, 25) / (Author, 2020: 25) / (Author, n.d.)
 _APA_YEAR_RE = re.compile(
-    r"\([\"\u201c\u201d'\u2018\u2019]?([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'\u2019\u2018.\s,&\-\u2013\u2014\[\]:]*?)(?:,[\"\u201d\u2019']?\s*|\s+)((?:19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)"
-    r"(?:\s*[,:]\s*(?:pp?\.?|tr\.?|trang)?\s*\d+(?:\s*[-–]\s*\d+)?)?\)",
+    r"[\(\[][\"\u201c\u201d'\u2018\u2019]?([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'\u2019\u2018.\s,&\-\u2013\u2014\[\]:]*?)(?:,[\"\u201d\u2019']?\s*|\s+)((?:18|19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)"
+    r"(?:\s*[,:]\s*(?:pp?\.?|tr\.?|trang|с\.?|p\.?)?\s*\d+(?:\s*[-–]\s*\d+)?)?[\)\]]",
     re.IGNORECASE,
 )
-# Regex cho MLA in-text author-page: (Smith 25), (Smith and Doe 42), (Smith et al. 105),
+# Regex cho MLA / Chicago in-text author-page: (Smith 25), [Cole, p. 247], (Smith and Doe 42), (Smith et al. 105),
 # (L'Engle 72-73), (Longman III 57), (Lewis XXII), (Mulvey et al. 17, 19), (Smith et al.)
 _MLA_AUTHOR_PAGE_RE = re.compile(
-    r"^\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?)(?:,\s*pp?\.?\s*|\s+)(?!(?:19|20)\d{2}\b)(?:\d{1,4}(?:[-–]\d{1,4})?(?:,\s*\d{1,4}(?:[-–]\d{1,4})?)*|[IVXLCDMivxlcdm]{1,7})\)$"
-    r"|^\(([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?\s+et\s+a?l\.)\)$"
-    r"|^([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?)\s+\(pp?\.?\s*\d{1,4}(?:[-–]\d{1,4})?\)$"
+    r"^[\(\[]([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?)(?:,\s*(?:pp?\.?|tr\.?|с\.?)\s*|\s+)(?!(?:18|19|20)\d{2}\b)(?:\d{1,4}(?:[-–]\d{1,4})?(?:,\s*\d{1,4}(?:[-–]\d{1,4})?)*|[IVXLCDMivxlcdm]{1,7})[\)\]]$"
+    r"|^[\(\[]([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?\s+et\s+a?l\.)[\)\]]$"
+    r"|^([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ'\u2019.\s,&\-]*?)\s+[\(\[](?:pp?\.?|tr\.?|с\.?)\s*\d{1,4}(?:[-–]\d{1,4})?[\)\]]$"
 )
 # Regex cho Author et al. / và cộng sự (Year) or Author et al. Year format
 _APA_ETAL_YEAR_RE = re.compile(
@@ -141,25 +141,60 @@ class CitationLinker:
         bib_by_author_year = self._index_by_author_year(bib_citations)
         bib_by_author_year_suffix = self._index_by_author_year_suffix(bib_citations)
 
+        # Learn corporate acronym definitions introduced in body citations
+        # e.g. "(National Institute of Mental Health [NIMH], 2022)" -> map ("nimh", "2022") to same bib
+        for cit in body_citations:
+            acr_m = re.search(
+                r"([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ\s,&\-]{5,80}?)\s*\[([A-ZĐ]{2,12})\]",
+                cit.raw_text or "",
+            )
+            if acr_m:
+                full_org = self._fold_author_key(acr_m.group(1).strip(" ()[].,"))
+                acr_key = acr_m.group(2).strip().lower()
+                if full_org and acr_key:
+                    for (k_auth, k_yr), k_bibs in list(bib_by_author_year.items()):
+                        if k_auth == full_org or full_org in k_auth:
+                            for kb in k_bibs:
+                                if kb not in bib_by_author_year.setdefault((acr_key, k_yr), []):
+                                    bib_by_author_year[(acr_key, k_yr)].append(kb)
+
         # Track which bib entries are matched (by index) — each entry is
         # matched when at least one occurrence resolves to it; multiple
         # occurrences (and multiple indices inside one "[9, 10]") may point
         # at the same entry, which is valid.
         bib_matched: set[int] = set()
+        prev_matched_links: Optional[list[CitationLink]] = None
 
         for i, cit in enumerate(body_citations):
             occ_id = cit.reference_id or f"occ-{i:04d}"
 
-            # Try match methods in priority order.  One occurrence may resolve
-            # to several references at once ("[9, 10]" cites both 9 and 10), so
-            # this returns a list.
-            links = self._try_match(
-                cit, occ_id, bib_by_doi, bib_by_index,
-                bib_by_author_year, bib_by_author_year_suffix,
-                bib_citations
-            )
+            # Support sequential Ibid. / Id. footnote inheritance
+            if (
+                prev_matched_links
+                and re.match(r"^[\(\[]?\s*(?:ibid\.?|id\.?)\b", (cit.raw_text or "").strip(), re.IGNORECASE)
+            ):
+                links = [
+                    CitationLink(
+                        occurrence_id=occ_id,
+                        reference_id=prev_matched_links[0].reference_id,
+                        status=CitationMappingStatus.MATCHED,
+                        confidence=prev_matched_links[0].confidence,
+                        method=prev_matched_links[0].method,
+                    )
+                ]
+            else:
+                # Try match methods in priority order.  One occurrence may resolve
+                # to several references at once ("[9, 10]" cites both 9 and 10), so
+                # this returns a list.
+                links = self._try_match(
+                    cit, occ_id, bib_by_doi, bib_by_index,
+                    bib_by_author_year, bib_by_author_year_suffix,
+                    bib_citations
+                )
 
             if links:
+                if any(l.status == CitationMappingStatus.MATCHED for l in links):
+                    prev_matched_links = [l for l in links if l.status == CitationMappingStatus.MATCHED]
                 for link in links:
                     # Populate evidence['raw'] so downstream lookups can find
                     # this link by the in-text citation's raw_text (the pipeline
@@ -328,12 +363,12 @@ class CitationLinker:
                 # Splitting removes the outer closing parenthesis from every
                 # component except the last one.  Parse each component as a
                 # standalone APA key and repair PDF line-break hyphenation.
-                part = re.sub(r"(?<=\w)-\s+(?=\w)", "", part).strip().strip("()")
+                part = re.sub(r"(?<=\w)-\s+(?=\w)", "", part).strip().strip("()[]")
                 if not part:
                     continue
                 sec_part_m = _SECONDARY_CITATION_RE.search(part)
                 if sec_part_m:
-                    part = sec_part_m.group(1).strip().strip("()")
+                    part = sec_part_m.group(1).strip().strip("()[]")
                 part = f"({part})"
                 author_part, year_part, suffix_part = self._extract_author_year(part)
                 if not author_part or not year_part:

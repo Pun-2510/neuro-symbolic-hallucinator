@@ -189,8 +189,19 @@ _MLA_BOOK_AUTHOR_HEAD_R = (
     r"|(?:The\s+)?(?:English\s+Standard\s+Version|ESV(?:\s+Study)?|King\s+James|New\s+International\s+Version|NIV|NKJV|NASB|Holy)\s+Bible[.,]"
     r"|[\-\u2013\u2014_]{3,}\.)\s+(?=[A-Z0-9\"\u201c])"
 )
+_CSE_AUTHOR_HEAD_R = (
+    rf"(?:(?:van|de|der|den|von|le|la|du|di|da|el|al)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+\s+[A-Z]{{1,4}}\.?"
+    rf"(?:(?:\s*,\s*|\s+(?:&|and|và)\s+)(?:(?:van|de|der|den|von|le|la|du|di|da|el|al)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+\s+[A-Z]{{1,4}}\.?(?:\s+Jr\.?)?)*"
+    r"(?:\s*,?\s*(?:et\s+al\.?|and\s+(?:\d+\s+)?others?))?"
+    r"\s*\(\s*(?:18|19|20)\d{2}[a-z]?\s*\)"
+)
+_NAMEYEAR_DOT_AUTHOR_HEAD_R = (
+    rf"(?:Anonymous\.|(?:(?:van|de|der|den|von|le|la|du|di|da)\s+)*{_UPPER_VN_R}[A-Za-zÀ-ỹ'\u2019\-]+,\s+"
+    rf"(?:{_UPPER_VN_R}[A-Za-zÀ-ỹ.\s,&;\u00a0'\u2019\-]{{0,90}}?|\s*et\s+al\.)\.)"
+    r"\s+(?:18|19|20)\d{2}[a-z]?(?:\s*\[(?:18|19|20)\d{2}\])?\.\s+(?=[A-ZÀ-Ý\"\u201c\u2018])"
+)
 _INLINE_ENTRY_START_RE = re.compile(
-    rf"(?:{_PERSONAL_AUTHOR_HEAD_R}|{_VN_FULLNAME_AUTHOR_HEAD_R}|{_DATED_WEB_AUTHOR_HEAD_R}|{_CORP_AUTHOR_HEAD_R}|{_LEGAL_HEAD_R})"
+    rf"(?:{_PERSONAL_AUTHOR_HEAD_R}|{_CSE_AUTHOR_HEAD_R}|{_NAMEYEAR_DOT_AUTHOR_HEAD_R}|{_VN_FULLNAME_AUTHOR_HEAD_R}|{_DATED_WEB_AUTHOR_HEAD_R}|{_CORP_AUTHOR_HEAD_R}|{_LEGAL_HEAD_R})"
 )
 _MLA_INLINE_SPLIT_RE = re.compile(
     rf"(?:(?<=\b(?:19|20)\d{{2}}\.)|(?<=ProQuest Ebook Central\.)|(?<=Google Scholar\.))\s+(?={_MLA_BOOK_AUTHOR_HEAD_R})"
@@ -202,7 +213,8 @@ _MLA_INLINE_SPLIT_RE = re.compile(
 _URL_BOUNDARY_RE = re.compile(
     r"(?:(?:https?://|www\.|doi\.org/)\S+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|org|edu|gov|net)/\S+)"
     r"(?:"
-    r"\s+Accessed\s+\d{1,2}\s+[A-Za-z.]+\s+(?:19|20)\d{2}\.?"
+    r"\s+Accessed\s+(?:\d{1,2}\s+)?[A-Za-z.]+\s+(?:19|20)\d{2}\.?"
+    r"|\s*\(\s*accessed\s+(?:\d{1,2}\s+)?[A-Za-z.]+\s+(?:19|20)\d{2}\s*\)\.?"
     r"|\s*(?:[,;.]\s*)?(?:\[|\()?\s*(?:truy\s+cập\s+(?:lần\s+cuối\s+)?(?:ngày\s+)?|ngày\s+(?:truy\s+cập\s*:?\s*)?|accessed\s+(?:on\s+)?)?\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*(?:19|20)\d{2}(?:\]|\))?\.?"
     r")?",
     re.IGNORECASE,
@@ -422,9 +434,9 @@ class ReferenceListParser:
                 logger.debug(f"Skipping fake entry: {entry[:50]}...")
                 continue
 
-            # Support Chicago/MLA 3-em dash (———.) author inheritance from preceding entry
+            # Support Chicago/MLA 3-em dash (———.) or font-omitted dash leading period (. "Title") author inheritance
             dash_m = re.match(
-                r"^\s*(?:[\u2014\u2013\u2012―—–_-]{2,})\.?\s+(?P<rest>.+)$",
+                r"^\s*(?:[\u2014\u2013\u2012―—–_-]{2,}\.?|\.)\s+(?P<rest>[\"\u201c\u2018A-ZÀ-Ý].+)$",
                 entry,
                 flags=re.DOTALL,
             )
@@ -481,13 +493,14 @@ class ReferenceListParser:
             return []
 
         # 2. IEEE entries (each on separate line)
-        if re.search(r"^\s*\[\d+\]", text, flags=re.MULTILINE):
+        ieee_line_nums = [int(n) for n in re.findall(r"^\s*\[(\d{1,3})\]", text, flags=re.MULTILINE)]
+        if len(ieee_line_nums) >= 2 or (len(ieee_line_nums) == 1 and ieee_line_nums[0] == 1):
             entries: list[str] = []
             for line in text.splitlines():
                 line = line.strip()
                 if not line:
                     continue
-                if re.match(r"^\[\d+\]", line):
+                if re.match(r"^\[\d{1,3}\]", line):
                     if entries and entries[-1]:
                         pass
                     entries.append(line)
@@ -543,7 +556,7 @@ class ReferenceListParser:
         """
         lines = text.splitlines()
         num_line_re = re.compile(
-            r"^\s*(?:(?:\((?P<pnum>\d{1,3})\)|(?P<num>\d{1,3})\s*[\.\)])(?:\s+(?P<rest>\S.*))?|(?P<tnum>\d{1,3})[\t\u2002\u2003]+\s*(?P<trest>[A-ZÀ-Ý]\S.*))$"
+            r"^\s*(?:(?:\((?P<pnum>\d{1,3})\)|(?P<num>\d{1,3})\s*[\.\)])(?:\s+(?P<rest>\S.*)|(?P<nospace_rest>[A-ZÀ-ÝĂÂĐÊÔƠƯ][A-Za-zÀ-ỹ'\u2019\-]+,\s*\S.*))?|(?P<tnum>\d{1,3})[\t\u2002\u2003]+\s*(?P<trest>[A-ZÀ-Ý]\S.*))$"
         )
         found_nums: list[int] = []
         expected = 1
@@ -572,13 +585,14 @@ class ReferenceListParser:
                 next_n = start_num + 1
                 while True:
                     inline_m = re.search(
-                        rf"(?:(?<=[.;])\s+|\s+)(?={next_n}\s*[\.\)]\s+[A-ZÀ-ÝĂÂĐÊÔƠƯ\"\u201c])",
+                        rf"(?:(?<=[.;])\s+|\s+)(?={next_n}\s*[\.\)](?:\s+[A-ZÀ-ÝĂÂĐÊÔƠƯ\"\u201c]|[A-ZÀ-ÝĂÂĐÊÔƠƯ][A-Za-zÀ-ỹ'\u2019\-]+,))",
                         curr,
                     )
                     if not inline_m:
                         break
                     first_part = curr[:inline_m.start()].strip()
                     curr = curr[inline_m.end():].strip()
+                    curr = re.sub(r"^(\d{1,3})\.([A-ZÀ-ÝĂÂĐÊÔƠƯ])", r"\1. \2", curr)
                     if len(first_part) > 15 or is_vn_legal_reference(first_part):
                         out_list.append(first_part)
                     next_n += 1
@@ -616,7 +630,12 @@ class ReferenceListParser:
                     in_unnumbered_section = False
                     if curr_entry:
                         _flush_numbered_chunk(curr_entry, curr_num, entries)
-                    rest_part = (m.group("rest") or m.group("trest") or "").strip()
+                    rest_part = (
+                        m.group("rest")
+                        or m.group("nospace_rest")
+                        or m.group("trest")
+                        or ""
+                    ).strip()
                     curr_entry = f"{n}. {rest_part}".strip()
                     curr_num = n
                     expected = n + 1
@@ -658,11 +677,15 @@ class ReferenceListParser:
         # Split at: ] followed by space and capital letter (start of next entry)
         # But be careful not to split inside quotes
 
-        # Find all [N] positions (excluding 4-digit years like [2020])
-        bracket_pattern = re.compile(r'\[(?!19\d{2}\]|20\d{2}\])\d+\]')
+        # Find all 1-3 digit [N] positions (excluding 4-digit calendar years like [2020] or [5706])
+        bracket_pattern = re.compile(r'\[(\d{1,3})\]')
         matches = list(bracket_pattern.finditer(text))
 
         if len(matches) < 2:
+            return []
+
+        nums = [int(m.group(1)) for m in matches]
+        if nums[0] != 1 and not any(nums[i + 1] == nums[i] + 1 for i in range(len(nums) - 1)):
             return []
 
         # Build entries by splitting at [N] positions
@@ -853,6 +876,21 @@ class ReferenceListParser:
             last_chunk = flat[start:].strip()
             if len(last_chunk) > 20 or is_vn_legal_reference(last_chunk):
                 url_chunks.append(last_chunk)
+        elif "\n" in text:
+            # When there are no URLs/DOIs at all, preserve line-break boundaries first
+            # before splitting any remaining multi-entry lines inline.
+            fb_chunks = self._split_by_year_fallback(text)
+            if len(fb_chunks) >= 2:
+                expanded_fb: list[str] = []
+                for fbc in fb_chunks:
+                    sub_fb = self._split_inline_entries(fbc)
+                    if sub_fb:
+                        expanded_fb.extend(sub_fb)
+                    elif len(fbc) > 20 or is_vn_legal_reference(fbc):
+                        expanded_fb.append(fbc)
+                if len(expanded_fb) >= 2:
+                    return expanded_fb
+            url_chunks = [flat]
         else:
             url_chunks = [flat]
 
@@ -913,7 +951,7 @@ class ReferenceListParser:
             re.IGNORECASE,
         )
         post_bib_stop_re = re.compile(
-            r"^\s*(?:Ngày\s+nhận\s+bài|ABSTRACT|SUMMARY|TÓM\s+TẮT|Thông\s+tin\s+tác\s+giả|Author\s+information)\s*:",
+            r"^\s*(?:Ngày\s+nhận\s+bài|ABSTRACT|SUMMARY|TÓM\s+TẮT|Thông\s+tin\s+tác\s+giả|Author\s+information)\s*(?::|$)",
             re.IGNORECASE,
         )
 
@@ -935,8 +973,8 @@ class ReferenceListParser:
                 and any(re.match(r"^\s*\[\d+\]", c_ln) for c_ln in cleaned)
             ):
                 break
-            # Skip standalone page numbers
-            if re.fullmatch(r"\d{1,4}", stripped):
+            # Skip standalone page numbers or PDF font encoding bullet '®'
+            if re.fullmatch(r"(?:\d{1,4}|\[\d{3,4}\]|®)", stripped):
                 continue
             # Skip bibliography header lines
             if _BIB_HEADER_LINE_RE.match(stripped):
@@ -959,6 +997,8 @@ class ReferenceListParser:
                 and "http" not in stripped.lower()
             ):
                 continue
+            # Strip HTML-to-PDF hyperlink anchor artifact "return to text"
+            line = re.sub(r"\s+\breturn\s+to\s+text\b\s*$", ".", line, flags=re.IGNORECASE)
             cleaned.append(line)
         return "\n".join(cleaned)
 
@@ -1009,14 +1049,14 @@ class ReferenceListParser:
                     entries.append(current.strip())
                     current = ""
             elif re.match(
-                r"^(?:\d+\s*[\.\)]\s*)?(?:[A-ZÀ-ÝĂÂĐÊÔƠƯĨŨẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ][a-zA-ZÀ-ỹ]|[\u2014\u2013\u2012―—–_-]{2,}\.)",
+                r"^(?:\d+\s*[\.\)]\s*)?(?:[A-ZÀ-ÝĂÂĐÊÔƠƯĨŨẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ][a-zA-ZÀ-ỹ]|[\u2014\u2013\u2012―—–_-]{2,}\.|\.\s+[\"\u201c\u2018A-ZÀ-Ý])",
                 stripped,
             ) and (
                 not current
                 or bool(re.match(r"^(?:\d+\s*[\.\)]\s+|[\u2014\u2013\u2012―—–_-]{2,}\.)", stripped))
                 or (
                     bool(re.search(r'(?:[.)"\u201d]|https?://\S+|doi\.org/\S+)\s*$', current, re.IGNORECASE))
-                    and bool(re.search(r"(?:19|20)\d{2}|\bn\.?d\.?\b|https?://", current, re.IGNORECASE))
+                    and bool(re.search(r"(?:18|19|20)\d{2}|\bn\.?d\.?\b|https?://", current, re.IGNORECASE))
                 )
             ):
                 # Line starts with uppercase or numbered legal item - new entry
@@ -1049,9 +1089,15 @@ class ReferenceListParser:
             5. Fallback to _parse_fallback_entry if numeric_index available
         """
         # Normalize: replace newlines with spaces (wrapped lines) and repair line-wrapped URLs
-        entry = entry.replace("\n", " ").replace("  ", " ")
+        entry = entry.replace("\n", " ").replace("\xad", "").replace("  ", " ")
         entry = entry.replace("\u2018\u2018", "\u201c").replace("\u2019\u2019", "\u201d")
         entry = re.sub(r"\s*\[trans\s*:[^\]]*\]?\s*$", "", entry, flags=re.IGNORECASE).strip()
+        # Strip Slavic/European Harvard key prefix (e.g. "Ewing 2002 – Ewing E.T. (2002) ...")
+        entry = re.sub(
+            r"^\s*[A-ZÀ-Ý][A-Za-zÀ-ỹ'\u2019\-]+(?:\s+[A-ZÀ-Ý][A-Za-zÀ-ỹ'\u2019\-]+)?\s+(?:18|19|20)\d{2}[a-z]?\s*[–—-]\s+(?=[A-ZÀ-Ý])",
+            "",
+            entry,
+        )
         entry = re.sub(r"\b(https?)\s*:\s*//\s*", r"\1://", entry, flags=re.IGNORECASE)
         entry = re.sub(r"\.(p)\s+(df)\b", r".\1\2", entry, flags=re.IGNORECASE)
         for _ in range(3):

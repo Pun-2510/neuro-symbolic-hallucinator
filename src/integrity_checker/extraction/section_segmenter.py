@@ -211,8 +211,8 @@ class SectionSegmenter:
             if self._page_has_bibliography_header(page)
         ]
         if bib_candidates:
-            # In long documents (>= 15 pages), ignore early TOC/front-matter false hits
-            if doc.num_pages >= 15 and len(bib_candidates) > 1:
+            # Ignore early TOC / table column header false hits when multiple candidates exist
+            if len(bib_candidates) > 1:
                 later = [p for p in bib_candidates if p > doc.num_pages * 0.35]
                 biblio_start = later[-1] if later else bib_candidates[-1]
             else:
@@ -333,11 +333,17 @@ class SectionSegmenter:
     @staticmethod
     def _find_bibliography_header_line_idx(page: Page) -> int | None:
         """Return 0-indexed line number of bibliography header on `page`, or None."""
-        for idx, line in enumerate(page.text.splitlines()):
+        lines = page.text.splitlines()
+        for idx, line in enumerate(lines):
             stripped = line.strip()
             if not stripped or stripped.islower():
                 continue
             if _BIBLIOGRAPHY_HEADERS.match(stripped):
+                # Ignore singular "Reference" column header inside a Table block
+                if re.fullmatch(r"reference\s*[:.]?", stripped, re.IGNORECASE):
+                    prev_window = "\n".join(lines[max(0, idx - 12) : idx])
+                    if re.search(r"\b(?:table|bảng)\s+\d+", prev_window, re.IGNORECASE):
+                        continue
                 return idx
         return None
 

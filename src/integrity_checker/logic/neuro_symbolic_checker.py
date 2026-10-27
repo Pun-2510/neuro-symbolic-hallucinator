@@ -10,6 +10,7 @@ alignment giữa đoạn văn được trích dẫn và paper nguồn.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Optional
 
 from integrity_checker.config import get_settings
@@ -27,6 +28,83 @@ if TYPE_CHECKING:
     from integrity_checker.linking.statuses import CitationMappingStatus, StyleProfile
 
 logger = get_logger(__name__)
+
+# Precompiled module-level web/non-scholarly resource patterns (avoid re-compiling per citation)
+_WEB_RESOURCE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # Company, "Product/Service Name," Company
+    re.compile(
+        r'^(Google|Microsoft|Amazon|Apple|Facebook|Meta|Twitter|GitHub|IBM|Intel|'
+        r'Nvidia|Adobe|Atlassian|Oracle|Salesforce|'
+        r'OpenAI|Anthropic|Hugging\s*Face|Replicate|Cohere),?\s*["“]',
+        re.IGNORECASE,
+    ),
+    # "Product/Service Name," Organization (title-first pattern)
+    re.compile(
+        r'^["“](YouTube\s*Data\s*API|Google\s*API|AWS\s*SDK|'
+        r'Rest\s*API|GraphQL|Webhook|Twilio|Stripe|OpenAI|Anthropic)\b',
+        re.IGNORECASE,
+    ),
+    # Developer/Documentation keyword sau citation
+    re.compile(
+        r'(Google\s+for\s+Developers|Developer\s+Documentation|'
+        r'API\s+Reference|API\s+Documentation|REST\s+API\s+Documentation|'
+        r'Academic\s+Graph\s+API|Getting\s+Started|REST\s+API|'
+        r'The\s+DOI\s+Handbook)\s*[.,]',
+        re.IGNORECASE,
+    ),
+    # Web portal / online documentation / archive with explicit URL and no DOI
+    re.compile(
+        r'\b(ACL\s+Anthology|Crossref\s+REST\s+API|Semantic\s+Scholar\s+(?:Academic\s+Graph\s+API|Open\s+Research\s+Corpus)|'
+        r'OpenAlex\s*:\s*An\s+open\s+catalogue|Handbook\s+of\s+the\s+DOI\s+Resolution\s+System|'
+        r'The\s+DOI\s+Handbook)\b.*?(?:\bRe-?\s*trieved\s+from\s+)?https?://',
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r'https?://(?:www\.)?who\.int/(?:news-room|fact-sheets)/',
+        re.IGNORECASE,
+    ),
+    # Company name + API/SDK/Tool keyword (short form từ GROBID)
+    re.compile(
+        r'^(Google|Amazon|Microsoft|GitHub|IBM|Intel|Nvidia)\s+'
+        r'(YouTube|Maps|AWS|Vertex|TensorFlow|BERT|Cloud|Compute|S3|'
+        r'Data\s*API|API|SDK|Tool)\b',
+        re.IGNORECASE,
+    ),
+    # Common API/SDK patterns: "X API v3" hoặc "X Data API"
+    re.compile(
+        r'^(Google\s+YouTube\s+Data\s*API|YouTube\s+Data\s*API|'
+        r'Google\s+API|Vertex\s+AI|Google\s+Cloud)',
+        re.IGNORECASE,
+    ),
+    # Product/API documentation anywhere in citation
+    re.compile(
+        r'\b(YouTube\s+Data\s*API\s+v\d+|Google\s+for\s+Developers)\b',
+        re.IGNORECASE,
+    ),
+    # Computer software / GitHub repository without academic venue
+    re.compile(
+        r'(\[Computer\s+software\]|\bGitHub\.\s*Retrieved\b)',
+        re.IGNORECASE,
+    ),
+    # Classical / scriptural / public-domain / dictionary reference works
+    re.compile(
+        r'\b(The\s+Bible|ESV\s+ed\.|Project\s+Gutenberg|gutenberg\.org|'
+        r'Dictionary\.com|Merriam-Webster|Encyclop(?:ae|e)dia\s+Britannica)\b',
+        re.IGNORECASE,
+    ),
+    # Non-scholarly consumer / book-review / blog / magazine / media web domains & paths
+    re.compile(
+        r'(?:goodreads\.com|barnesandnoble\.com|blogspot\.com|wordpress\.com|substack\.com|'
+        r'pbs\.org|popsugar\.com|publishersweekly\.com|eviemagazine\.com|swooon\.com|'
+        r'fightthenewdrug\.org|publicsquaremag\.org|wheatley\.byu\.edu|'
+        r'clarendonhousebooks\.com|shamelessbookdeals\.com|sexandpsychology\.com|'
+        r'libbylife\.com|beforewegoblog\.com|thebooknookchronicles\.com|'
+        r'peanutblossombookclub\.com|prettylittlememoirs\.com|beachreadsandbubbly\.com|'
+        r'bookishgoblin\.com|estapinto\.com|amysuto\.com|penguinrandomhouse\.com/the-read-down|'
+        r'/book-blog/|/book-review|spicy-chapters|#BookTok)',
+        re.IGNORECASE,
+    ),
+)
 
 
 class NeuroSymbolicChecker:
@@ -141,91 +219,12 @@ class NeuroSymbolicChecker:
             )
 
         # --- Check 2: Web resource/API citations (không bắt đầu bằng URL) ---
-        # Ví dụ: "Google, 'YouTube Data API v3,' Google for Developers."
-        # Hoặc: "Google YouTube Data API v3" (GROBID short form)
-        # Nhận diện: organization name + product/service name + developer/API keyword
-        web_resource_patterns = [
-            # Company, "Product/Service Name," Company
-            re.compile(
-                r'^(Google|Microsoft|Amazon|Apple|Facebook|Meta|Twitter|GitHub|IBM|Intel|'
-                r'Nvidia|Adobe|Atlassian|Oracle|Salesforce|'
-                r'OpenAI|Anthropic|Hugging\s*Face|Replicate|Cohere),?\s*["“]',
-                re.IGNORECASE
-            ),
-            # "Product/Service Name," Organization (title-first pattern)
-            re.compile(
-                r'^["“](YouTube\s*Data\s*API|Google\s*API|AWS\s*SDK|'
-                r'Rest\s*API|GraphQL|Webhook|Twilio|Stripe|OpenAI|Anthropic)\b',
-                re.IGNORECASE
-            ),
-            # Developer/Documentation keyword sau citation
-            re.compile(
-                r'(Google\s+for\s+Developers|Developer\s+Documentation|'
-                r'API\s+Reference|API\s+Documentation|REST\s+API\s+Documentation|'
-                r'Academic\s+Graph\s+API|Getting\s+Started|REST\s+API|'
-                r'The\s+DOI\s+Handbook)\s*[.,]',
-                re.IGNORECASE
-            ),
-            # Web portal / online documentation / archive with explicit URL and no DOI
-            re.compile(
-                r'\b(ACL\s+Anthology|Crossref\s+REST\s+API|Semantic\s+Scholar\s+(?:Academic\s+Graph\s+API|Open\s+Research\s+Corpus)|'
-                r'OpenAlex\s*:\s*An\s+open\s+catalogue|Handbook\s+of\s+the\s+DOI\s+Resolution\s+System|'
-                r'The\s+DOI\s+Handbook)\b.*?(?:\bRe-?\s*trieved\s+from\s+)?https?://',
-                re.IGNORECASE
-            ),
-            re.compile(
-                r'https?://(?:www\.)?who\.int/(?:news-room|fact-sheets)/',
-                re.IGNORECASE
-            ),
-            # Company name + API/SDK/Tool keyword (short form từ GROBID)
-            # Ví dụ: "Google YouTube Data API v3", "Google Maps API", "AWS SDK"
-            re.compile(
-                r'^(Google|Amazon|Microsoft|GitHub|IBM|Intel|Nvidia)\s+'
-                r'(YouTube|Maps|AWS|Vertex|TensorFlow|BERT|Cloud|Compute|S3|'
-                r'Data\s*API|API|SDK|Tool)\b',
-                re.IGNORECASE
-            ),
-            # Common API/SDK patterns: "X API v3" hoặc "X Data API"
-            re.compile(
-                r'^(Google\s+YouTube\s+Data\s*API|YouTube\s+Data\s*API|'
-                r'Google\s+API|Vertex\s+AI|Google\s+Cloud)',
-                re.IGNORECASE
-            ),
-            # Product/API documentation anywhere in citation (e.g., "Google. (2024). YouTube Data API v3. Google for Developers.")
-            re.compile(
-                r'\b(YouTube\s+Data\s*API\s+v\d+|Google\s+for\s+Developers)\b',
-                re.IGNORECASE
-            ),
-            # Computer software / GitHub repository without academic venue
-            re.compile(
-                r'(\[Computer\s+software\]|\bGitHub\.\s*Retrieved\b)',
-                re.IGNORECASE
-            ),
-            # Classical / scriptural / public-domain / dictionary reference works
-            re.compile(
-                r'\b(The\s+Bible|ESV\s+ed\.|Project\s+Gutenberg|gutenberg\.org|'
-                r'Dictionary\.com|Merriam-Webster|Encyclop(?:ae|e)dia\s+Britannica)\b',
-                re.IGNORECASE
-            ),
-            # Non-scholarly consumer / book-review / blog / magazine / media web domains & paths
-            re.compile(
-                r'(?:goodreads\.com|barnesandnoble\.com|blogspot\.com|wordpress\.com|substack\.com|'
-                r'pbs\.org|popsugar\.com|publishersweekly\.com|eviemagazine\.com|swooon\.com|'
-                r'fightthenewdrug\.org|publicsquaremag\.org|wheatley\.byu\.edu|'
-                r'clarendonhousebooks\.com|shamelessbookdeals\.com|sexandpsychology\.com|'
-                r'libbylife\.com|beforewegoblog\.com|thebooknookchronicles\.com|'
-                r'peanutblossombookclub\.com|prettylittlememoirs\.com|beachreadsandbubbly\.com|'
-                r'bookishgoblin\.com|estapinto\.com|amysuto\.com|penguinrandomhouse\.com/the-read-down|'
-                r'/book-blog/|/book-review|spicy-chapters|#BookTok)',
-                re.IGNORECASE
-            ),
-        ]
         check_resource_str = " ".join(
             part
             for part in (raw_text, citation.title or "", citation.url or "", citation.venue or "")
             if part
         )
-        for pattern in web_resource_patterns:
+        for pattern in _WEB_RESOURCE_PATTERNS:
             if not citation.doi and pattern.search(check_resource_str):
                 logger.debug(
                     f"Web resource/API detected: raw='{raw_text[:80]}' "
