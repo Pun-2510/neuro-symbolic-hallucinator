@@ -958,7 +958,11 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
             fn_tok = fn.lower().strip(".,; ")
             if (not sn_tok or sn_tok in _DEGREE_TOKENS) and (not fn_tok or fn_tok in _DEGREE_TOKENS):
                 continue
-            if not fn and " " in sn and raw_ref_text and re.match(r"^(?:III|II|IV|Jr\.?|Sr\.?),\s+" + re.escape(sn), raw_ref_text):
+            if sn_tok in ("iii", "ii", "iv", "jr", "sr") and " " in fn:
+                parts_fn = fn.split()
+                sn = parts_fn[-1]
+                fn = " ".join(parts_fn[:-1])
+            elif not fn and " " in sn and raw_ref_text and re.match(r"^(?:III|II|IV|Jr\.?|Sr\.?),\s+" + re.escape(sn), raw_ref_text):
                 parts_sn = sn.split()
                 sn = parts_sn[-1]
                 fn = " ".join(parts_sn[:-1])

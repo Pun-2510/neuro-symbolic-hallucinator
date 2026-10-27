@@ -176,7 +176,7 @@ _LEGAL_HEAD_R = (
 )
 _MLA_BOOK_AUTHOR_HEAD_R = (
     rf"(?:{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s+{_UPPER_VN_R}[A-Za-zÀ-ỹ.\s'\u2019\-]{{1,35}}?(?:,\s*et\s+al\.|\.)"
-    r"|(?:Homer|Aeschylus|Euripides|Herodotus|Sophocles|Plato|Aristotle|Virgil|Ovid|Seneca|Epictetus)\."
+    r"|(?:Homer|Aeschylus|Euripides|Herodotus|Sophocles|Plato|Aristotle|Virgil|Ovid|Seneca|Epictetus|Augustine|Aquinas|Cicero|Plutarch|Thucydides|Tacitus|Dante|Boethius)\."
     r"|(?:The\s+)?(?:English\s+Standard\s+Version|ESV(?:\s+Study)?|King\s+James|New\s+International\s+Version|NIV|NKJV|NASB|Holy)\s+Bible[.,]"
     r"|[\-\u2013\u2014_]{3,}\.)\s+(?=[A-Z0-9\"\u201c])"
 )
@@ -409,7 +409,24 @@ class ReferenceListParser:
             if _is_fake_entry(entry):
                 logger.debug(f"Skipping fake entry: {entry[:50]}...")
                 continue
-            citation = self._parse_entry(entry, order_index=idx, page_num=start)
+
+            # Support Chicago/MLA 3-em dash (———.) author inheritance from preceding entry
+            dash_m = re.match(
+                r"^\s*(?:[\u2014\u2013\u2012―—–_-]{2,})\.?\s+(?P<rest>.+)$",
+                entry,
+                flags=re.DOTALL,
+            )
+            if dash_m and citations and citations[-1].authors:
+                prev_authors = list(citations[-1].authors)
+                lead_author = str(prev_authors[0]).rstrip(".")
+                synth_entry = f"{lead_author}. {dash_m.group('rest').strip()}"
+                citation = self._parse_entry(synth_entry, order_index=idx, page_num=start)
+                if citation:
+                    citation.raw_text = entry.strip()
+                    citation.authors = prev_authors
+            else:
+                citation = self._parse_entry(entry, order_index=idx, page_num=start)
+
             if citation:
                 # FIX v1.11: Double-check parsed citation is not fake
                 # Some entries pass _is_fake_entry but get parsed anyway
@@ -686,6 +703,11 @@ class ReferenceListParser:
             r"\1\2",
             flat,
         )
+        flat = re.sub(
+            r"\b(10\.\d{4,9}/[A-Za-z0-9._;()/-]+\.)\s+(\d+[A-Za-z0-9._;()/-]*)",
+            r"\1\2",
+            flat,
+        )
 
         # Step 3: Split at every URL/DOI terminator.
         matches = list(_URL_BOUNDARY_RE.finditer(flat))
@@ -738,6 +760,8 @@ class ReferenceListParser:
         # Pattern to match running headers with page numbers
         # e.g. "EMOTIONAL INTELLIGENCE AND HEART RATE VARIABILITY... 28"
         running_header_re = re.compile(r"^[\w\s]+?\s{3,}\d{1,3}\s*$")
+        running_head_prefix_re = re.compile(r"^\s*Running\s+head\s*:.*$", re.IGNORECASE)
+        allcaps_header_page_re = re.compile(r"^[A-Z0-9\s,'\-:]{4,70}\s+\d{1,3}\s*$")
 
         cleaned: list[str] = []
         for line in lines:
@@ -751,8 +775,12 @@ class ReferenceListParser:
             # Skip bibliography header lines
             if _BIB_HEADER_LINE_RE.match(stripped):
                 continue
-            # Skip running headers with page numbers (TITLE...  28)
-            if running_header_re.match(stripped):
+            # Skip running headers with page numbers (TITLE...  28 or Running head: ...)
+            if (
+                running_header_re.match(stripped)
+                or running_head_prefix_re.match(stripped)
+                or allcaps_header_page_re.match(stripped)
+            ):
                 continue
             # Skip short repeated lines without year/URL (typical running headers)
             if (
@@ -775,10 +803,26 @@ class ReferenceListParser:
         # Split by blank lines first (paragraph-style)
         parts = re.split(r"\n\s*\n", text)
         if len(parts) >= 2:
+            expanded_parts: list[str] = []
+            for p in parts:
+                p_strip = p.strip()
+                if not p_strip:
+                    continue
+                # If a paragraph chunk spans a page break and glues two complete entries
+                # separated by a newline (where the first line ends with ", YYYY." or a URL),
+                # split them cleanly.
+                sub_lines = [ln.strip() for ln in p_strip.splitlines() if ln.strip()]
+                if len(sub_lines) >= 2 and all(
+                    re.search(r"(?:,\s*(?:19|20)\d{2}\.?|https?://\S+)\s*$", ln)
+                    for ln in sub_lines
+                ):
+                    expanded_parts.extend(sub_lines)
+                else:
+                    expanded_parts.append(p_strip)
             result = [
-                p.strip()
-                for p in parts
-                if len(p.strip()) > 20 or is_vn_legal_reference(p.strip())
+                p
+                for p in expanded_parts
+                if len(p) > 20 or is_vn_legal_reference(p)
             ]
             if len(result) >= 2:
                 return result
@@ -796,8 +840,15 @@ class ReferenceListParser:
                     entries.append(current.strip())
                     current = ""
             elif re.match(
-                r"^(?:\d+\s*[\.\)]\s*)?[A-ZÀ-ÝĂÂĐÊÔƠƯĨŨẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ][a-zA-ZÀ-ỹ]",
+                r"^(?:\d+\s*[\.\)]\s*)?(?:[A-ZÀ-ÝĂÂĐÊÔƠƯĨŨẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ][a-zA-ZÀ-ỹ]|[\u2014\u2013\u2012―—–_-]{2,}\.)",
                 stripped,
+            ) and (
+                not current
+                or bool(re.match(r"^(?:\d+\s*[\.\)]\s+|[\u2014\u2013\u2012―—–_-]{2,}\.)", stripped))
+                or (
+                    bool(re.search(r'(?:[.)"\u201d]|https?://\S+|doi\.org/\S+)\s*$', current, re.IGNORECASE))
+                    and bool(re.search(r"(?:19|20)\d{2}|\bn\.?d\.?\b|https?://", current, re.IGNORECASE))
+                )
             ):
                 # Line starts with uppercase or numbered legal item - new entry
                 if current:

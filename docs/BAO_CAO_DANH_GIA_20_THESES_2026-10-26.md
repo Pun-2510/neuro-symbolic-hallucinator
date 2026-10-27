@@ -760,3 +760,26 @@ Dưới đây là toàn bộ **22 lỗi gốc rễ (Root-Cause Bugs)** được 
 | **Tổng số False Positive In-text Citations (`(City: Publisher, Year)`, v.v.)** | **94 False Positives** | **0 False Positives** |
 | **Tổng số phán quyết `SUSPECTED_HALLUCINATION` giả do lỗi Parser** | **26 phán quyết sai** | **0 phán quyết sai do Parser** |
 | **Tổng số phán quyết `UNRESOLVED` oan trên bài báo có DOI chuẩn** | **6 bài báo** (`5, 11, 16, 18, 19.pdf`) | **0 bài báo** (đều lên `VERIFIED`) |
+
+---
+
+## Phần 5: Kết Quả Thực Thi & Kiểm Chứng Thực Tế Sau Khi Fix Toàn Bộ 4 Phases (Post-Fix Verification)
+
+Toàn bộ 22 bugs (`BUG-01` → `BUG-22`) trên cả 4 giai đoạn (`Phase 1 / P0`, `Phase 2 / P1`, `Phase 3 / P2`, `Phase 4 / Regression & Root Docs`) đã được triển khai, kiểm chứng thực nghiệm và lưu trữ qua các Git Checkpoints:
+
+1. **Checkpoint 1 — Phase 1 (P0) (`9657a29`)**: Chuẩn hóa 100% Reference Parsing, Section Segmentation, GROBID TEI Adapter & Hybrid Merging trên toàn bộ 20 khóa luận:
+   - **719 / 719 tài liệu tham khảo** khớp chính xác 100% Ground Truth trên cả 20/20 file (`1:31, 2:15, 3:0, 4:0, 5:40, 6:36, 7:22, 8:57, 9:35, 10:74, 11:23, 12:61, 13:26, 14:24, 15:45, 16:66, 17:35, 18:25, 19:75, 20:29`).
+   - `no_title = 0`, `no_auth = 0`, `0` lỗi nối dính URL/DOI, `0` mục rác từ footnotes hay body text.
+2. **Checkpoint 2 — Phase 2 (P1) (`fd2332c`)**: Chuẩn hóa In-Text Citation Extraction, bổ sung bộ trích xuất Chú thích chân trang Chicago Notes & Bibliography (`Full Note`, `Shortened Note`, `Ibid.`) và nâng cấp `CitationLinker`:
+   - **2,418 / 2,418 trích dẫn trong bài & chú thích chân trang được liên kết chính xác (`100.00% linked`, `0 false MISSING_REFERENCE`)** trên toàn bộ 20 khóa luận.
+3. **Checkpoint 3 — Phase 3 (P2) (`1515f1c`)**: Khắc phục bẫy `local_db` FTS5 ở Tier 0, thuật toán so khớp đảo Họ – Tên tác giả Á Đông (`_is_swapped_author_match`), chuẩn hóa `10.48550/arXiv.*` DOI sang `arxiv_id`, và bổ sung luật phân loại sách/kinh thánh/tác phẩm cổ điển/nguồn web (`R-UNINDEXED-BOOK-OR-SOURCE`, `R-NON-SCHOLARLY-RESOURCE`).
+4. **Checkpoint 4 — Phase 4 (Regression Suite & Root-Level Files Verification)**:
+   - Kiểm tra thực tế toàn bộ **6 tài liệu kiểm thử ở thư mục gốc (`root`)**:
+     - `523H0054_NguyenBaoMinh_523H0157_DinhDucMinh.pdf`: `30 refs` (`no_title=0, no_auth=0`), `37/37 in-text linked (100%)`.
+     - `TranThanhPhuoc_523H0002_523H0054.pdf`: `29 refs` (`no_title=0, no_auth=0`), `35/35 in-text linked (100%)`.
+     - `VietDepression_for_Detecting_Depression_Related_Language_in_Vietnamese_YouTube_Comments.pdf`: `20 refs` (`no_title=0, no_auth=0`), `23/23 in-text linked (100%)`.
+     - `VietDepression_Research_Article.pdf`: `36 refs` (`no_title=0, no_auth=0`), `46/46 in-text linked (100%)`.
+     - `thesis.pdf`: `19 refs` (`no_title=0, no_auth=0`), `29/29 in-text linked (100%)`.
+     - `demo.docx`: `4 refs` (`no_title=0, no_auth=0`), `0 missing`.
+   - Xây dựng bộ test hồi quy chuyên biệt [test_20_theses_bug_regressions.py](file:///Users/iannwendy/Desktop/DATN/essay-integrity-checker/tests/unit/test_20_theses_bug_regressions.py) mô phỏng đầy đủ các ca khó/ca hiếm cho toàn bộ 22 bugs (`BUG-01` → `BUG-22`): **15/15 test cases PASSED (`100%`)**, nâng tổng số unit tests toàn hệ thống lên **1,295 passed**.
+

@@ -102,8 +102,9 @@ _MLA_BOOK = CompiledPattern.create(
     name="mla_book",
     pattern=(
         r"^"
-        r"(?P<authors>[A-ZÀ-Ý][^\"“\n]+?,\s+[A-ZÀ-Ý][^\"“\n]*?)\.\s+"  # Author Last, First.
+        r"(?P<authors>[A-ZÀ-Ý][^\"“\n]+?,\s+[A-ZÀ-Ý][^\"“\n]*?|[A-ZÀ-Ý][a-zA-ZÀ-ÿ'-]{2,})\.\s+"  # Author Last, First. or Mononym.
         r"(?P<title>[^\"“:\n]+?)\.\s+"  # Title (unquoted, no Place: Publisher colon)
+        r"(?:(?:Translated|Edited|Compiled)\s+by\s+[^,]+,\s+)?"  # Optional translator/editor
         r"(?P<publisher_year>[^.:\n]+?,\s*(?:19|20)\d{2})\.?"  # Publisher, Year.
         r"(?:\s*(?P<rest>.*))?"
         r"$"
