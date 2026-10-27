@@ -21,6 +21,10 @@ def export_report_to_docx(
     num_resource: int,
     verdicts: list[dict],
     generated_at: str | None = None,
+    *,
+    cis_components: dict[str, float] | None = None,
+    linking_summary: dict[str, int] | None = None,
+    style_profile: dict | None = None,
 ) -> bytes:
     """Generate a DOCX report from analysis results.
 
@@ -75,6 +79,54 @@ def export_report_to_docx(
 
     doc.add_paragraph("(Score represents percentage of citations that passed integrity verification)")
 
+    if style_profile and isinstance(style_profile, dict) and style_profile.get("style"):
+        sp_para = doc.add_paragraph()
+        sp_para.add_run("Detected Citation Style: ").bold = True
+        conf_pct = float(style_profile.get("confidence", 0.0) or 0.0) * 100.0
+        sp_para.add_run(f"{style_profile.get('style')} ({conf_pct:.0f}% confidence)")
+
+    if cis_components and isinstance(cis_components, dict):
+        doc.add_heading("5-Component CIS Formula Breakdown", level=2)
+        comp_table = doc.add_table(rows=1, cols=3)
+        comp_table.style = "Table Grid"
+        comp_hdr = comp_table.rows[0].cells
+        comp_hdr[0].text = "CIS Component"
+        comp_hdr[1].text = "Weight"
+        comp_hdr[2].text = "Score"
+        for cell in comp_hdr:
+            for paragraph in cell.paragraphs:
+                for run in paragraph.runs:
+                    run.font.bold = True
+
+        comp_rows = [
+            ("Verified Ratio (Layer 2)", "35%", float(cis_components.get("verified_ratio", 0.0) or 0.0)),
+            ("Metadata Accuracy (Author/Year/Title)", "25%", float(cis_components.get("metadata_accuracy", 0.0) or 0.0)),
+            ("In-Text ↔ Bibliography Consistency (Layer 1)", "20%", float(cis_components.get("in_text_bib_consistency", 0.0) or 0.0)),
+            ("Citation Style Consistency", "10%", float(cis_components.get("format_consistency", 0.0) or 0.0)),
+            ("Identifier Validity (DOI / CrossRef)", "10%", float(cis_components.get("identifier_validity", 0.0) or 0.0)),
+        ]
+        for label_txt, weight_txt, val in comp_rows:
+            r_cells = comp_table.add_row().cells
+            r_cells[0].text = label_txt
+            r_cells[1].text = weight_txt
+            r_cells[2].text = f"{val * 100.0:.1f}%"
+
+    if linking_summary and isinstance(linking_summary, dict):
+        doc.add_heading("Layer 1: In-Text ↔ Bibliography Linking Summary", level=2)
+        link_table = doc.add_table(rows=1, cols=2)
+        link_table.style = "Table Grid"
+        lh = link_table.rows[0].cells
+        lh[0].text = "Mapping Status"
+        lh[1].text = "Count"
+        for cell in lh:
+            for paragraph in cell.paragraphs:
+                for run in paragraph.runs:
+                    run.font.bold = True
+        for k, v_cnt in linking_summary.items():
+            rc = link_table.add_row().cells
+            rc[0].text = k.replace("_", " ").title()
+            rc[1].text = str(v_cnt)
+
     # Summary Statistics
     doc.add_heading("Summary Statistics", level=1)
 
@@ -125,10 +177,60 @@ def export_report_to_docx(
         # Data rows
         for v in verdicts:
             row_cells = table.add_row().cells
-            row_cells[0].text = v.get("citation_raw", "")[:100] + ("..." if len(v.get("citation_raw", "")) > 100 else "")
-            row_cells[1].text = v.get("citation_type", "unknown")
-            row_cells[2].text = v.get("label", "UNKNOWN")
-            row_cells[3].text = f"{v.get('confidence', 0):.2f}"
+            raw_cit = str(v.get("citation_raw", "") or "")
+            mismatched = v.get("mismatched_fields") or []
+            rules = v.get("triggered_rules") or []
+            details_suffix = ""
+            if rules or mismatched:
+                parts = []
+                if rules:
+                    parts.append(f"Rules: {', '.join(str(r) for r in rules)}")
+                if mismatched:
+                    parts.append(f"Mismatched: {', '.join(str(m) for m in mismatched)}")
+                details_suffix = f"\n[{' | '.join(parts)}]"
+            row_cells[0].text = raw_cit + details_suffix
+            row_cells[1].text = str(v.get("mapping_status") or v.get("citation_type", "unknown"))
+            row_cells[2].text = str(v.get("label", "UNKNOWN")).upper()
+            row_cells[3].text = f"{float(v.get('confidence', 0) or 0):.2f}"
+
+        # Deep Neuro-Symbolic Evidence & Remediation Section for Flagged / Detailed Verdicts
+        detailed_items = [
+            v
+            for v in verdicts
+            if v.get("reasoning")
+            or v.get("triggered_rules")
+            or v.get("mismatched_fields")
+            or (v.get("features") or {}).get("best_evidence_sentence")
+        ]
+        if detailed_items:
+            doc.add_heading("Neuro-Symbolic Diagnostic Trace & Evidence", level=1)
+            for idx, v in enumerate(detailed_items, 1):
+                p = doc.add_paragraph()
+                r_num = p.add_run(f"[{idx}] {v.get('citation_raw', '')}\n")
+                r_num.bold = True
+                lbl_str = str(v.get("label", "UNKNOWN")).upper()
+                map_str = str(v.get("mapping_status", "matched"))
+                p.add_run(
+                    f"Verdict: {lbl_str} (Confidence: {float(v.get('confidence', 0) or 0):.2f}) | Layer-1 Mapping: {map_str}\n"
+                )
+                rules = v.get("triggered_rules") or []
+                if rules:
+                    p.add_run(f"Triggered Symbolic Rules: {', '.join(str(r) for r in rules)}\n")
+                mismatched = v.get("mismatched_fields") or []
+                if mismatched:
+                    p.add_run(f"Mismatched Metadata Fields: {', '.join(str(m) for m in mismatched)}\n")
+                if v.get("reasoning"):
+                    p.add_run(f"Diagnostic Reasoning: {v.get('reasoning')}\n")
+                feats = v.get("features") if isinstance(v.get("features"), dict) else {}
+                ev_sent = feats.get("best_evidence_sentence")
+                if ev_sent:
+                    p.add_run(f"SBERT Best Evidence Sentence: \"{ev_sent}\"\n")
+                intent = feats.get("citation_intent")
+                stance = feats.get("citation_stance")
+                if intent or stance:
+                    p.add_run(
+                        f"Discourse Analysis: Intent={intent or 'background'}, Stance={stance or 'neutral'}\n"
+                    )
 
     else:
         doc.add_paragraph("No citation verdicts available.")

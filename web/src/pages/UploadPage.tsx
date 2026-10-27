@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -14,10 +14,13 @@ import {
   CheckCircle2,
   ArrowRight,
   Sparkles,
+  GraduationCap,
+  KeyRound,
 } from 'lucide-react';
-import { api } from '../api/client';
+import { api, type Class } from '../api/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
+import { useToast } from '@/contexts/ToastContext';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -30,17 +33,25 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
    Academic Source Verification Workspace
    ============================================================ */
 
-const ACCEPTED_EXTENSIONS = ['.pdf'];
-const ACCEPTED_MIME = { 'application/pdf': ['.pdf'] };
+const ACCEPTED_EXTENSIONS = ['.pdf', '.docx'];
+const ACCEPTED_MIME = {
+  'application/pdf': ['.pdf'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+};
 
 export function UploadPage() {
   const { t, i18n } = useTranslation();
   const { refreshUser } = useAuth();
+  const toast = useToast();
   const { isUser, isTeacher, isAdmin, planTier, isBasic, quota } = useRole();
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [enrolledClasses, setEnrolledClasses] = useState<Class[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const [joinCodeInput, setJoinCodeInput] = useState('');
+  const [joiningClass, setJoiningClass] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState<{
     title?: string;
@@ -50,6 +61,42 @@ export function UploadPage() {
   const navigate = useNavigate();
 
   const lang = i18n.language?.startsWith('vi') ? 'vi' : 'en';
+
+  useEffect(() => {
+    api
+      .listEnrolledClasses()
+      .then((list) => setEnrolledClasses(list))
+      .catch(() => setEnrolledClasses([]));
+  }, []);
+
+  const handleJoinClass = async () => {
+    const code = joinCodeInput.trim().toUpperCase();
+    if (!code) return;
+    setJoiningClass(true);
+    try {
+      const joined = await api.joinClassByCode(code);
+      setEnrolledClasses((prev) =>
+        prev.some((c) => c.id === joined.id) ? prev : [joined, ...prev]
+      );
+      setSelectedClassId(joined.id);
+      setJoinCodeInput('');
+      toast.success(
+        lang === 'vi'
+          ? `Đã tham gia lớp học "${joined.name}" thành công!`
+          : `Successfully enrolled in "${joined.name}"!`
+      );
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : lang === 'vi'
+            ? 'Mã tham gia lớp không hợp lệ'
+            : 'Invalid class join code'
+      );
+    } finally {
+      setJoiningClass(false);
+    }
+  };
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -139,7 +186,7 @@ export function UploadPage() {
     setUploading(true);
     setError(null);
     try {
-      const response = await api.uploadEssay(file);
+      const response = await api.uploadEssay(file, selectedClassId);
       await refreshUser();
       navigate(`/verification/processing/${response.essay_id}`);
     } catch (e) {
@@ -302,18 +349,103 @@ export function UploadPage() {
             </div>
             <Separator orientation="vertical" className="h-4" />
             <span className="font-mono text-xs text-slate-600 dark:text-slate-300 font-medium">
-              manuscript_ingest.pdf
+              manuscript_ingest.pdf / .docx
             </span>
           </div>
-          <Badge
-            variant="outline"
-            className="font-mono text-[11px] bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400"
-          >
-            {t('upload.maxSize')}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="outline"
+              className="font-mono text-[10px] bg-indigo-50/80 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+            >
+              PDF + DOCX
+            </Badge>
+            <Badge
+              variant="outline"
+              className="font-mono text-[11px] bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400"
+            >
+              {t('upload.maxSize')}
+            </Badge>
+          </div>
         </div>
 
         <div className="p-4 sm:p-8">
+          {/* Cohort / Class Enrollment & Assignment Bar */}
+          <div className="mb-5 p-3.5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shrink-0">
+                <GraduationCap className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-slate-900 dark:text-white">
+                  {lang === 'vi'
+                    ? 'Nộp bài vào Lớp học / Học phần (Tùy chọn)'
+                    : 'Submit to Cohort / Class (Optional)'}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  {lang === 'vi'
+                    ? 'Chọn lớp đã tham gia hoặc nhập mã CITRA-XXXX từ giảng viên'
+                    : 'Select an enrolled class or enter a CITRA-XXXX join code from your instructor'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {enrolledClasses.length > 0 && (
+                <select
+                  aria-label="Select class"
+                  data-testid="upload-class-select"
+                  value={selectedClassId ?? ''}
+                  onChange={(e) =>
+                    setSelectedClassId(e.target.value ? Number(e.target.value) : null)
+                  }
+                  className="h-9 px-3 rounded-xl text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                >
+                  <option value="">
+                    {lang === 'vi' ? '— Kiểm tra cá nhân (Không gán lớp) —' : '— Personal Check (No Class) —'}
+                  </option>
+                  {enrolledClasses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.join_code ? `(${c.join_code})` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {isUser && (
+                <div className="flex items-center gap-1.5">
+                  <div className="relative">
+                    <KeyRound className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      data-testid="join-class-code-input"
+                      value={joinCodeInput}
+                      onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
+                      placeholder="CITRA-XXXX"
+                      maxLength={16}
+                      className="h-9 w-32 pl-8 pr-2.5 rounded-xl text-xs font-mono uppercase bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    data-testid="join-class-submit-btn"
+                    disabled={!joinCodeInput.trim() || joiningClass}
+                    onClick={handleJoinClass}
+                    className="h-9 rounded-xl text-xs font-semibold"
+                  >
+                    {joiningClass ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : lang === 'vi' ? (
+                      'Tham gia lớp'
+                    ) : (
+                      'Join Class'
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
           {/* Interactive Dropzone */}
           <div
             onDragEnter={handleDrag}
@@ -358,7 +490,11 @@ export function UploadPage() {
                       </span>
                     </div>
                     <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB · application/pdf{!isUser ? ' · GROBID TEI' : ''}
+                      {(file.size / 1024 / 1024).toFixed(2)} MB ·{' '}
+                      {file.name.toLowerCase().endsWith('.docx')
+                        ? 'application/vnd.openxmlformats (.docx)'
+                        : 'application/pdf'}{' '}
+                      {!isUser ? ' · GROBID / XML' : ''}
                     </p>
                   </div>
                 </div>
@@ -384,7 +520,7 @@ export function UploadPage() {
                   {t('upload.dropDocument')}
                 </p>
                 <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mb-4">
-                  {t('upload.pdfOnly')} · APA, IEEE, MLA, Chicago, Harvard
+                  PDF &amp; DOCX · APA, IEEE, MLA, Chicago, Harvard, Vancouver
                 </p>
                 <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-indigo-600 dark:text-indigo-400 shadow-2xs">
                   {t('upload.orBrowse')}

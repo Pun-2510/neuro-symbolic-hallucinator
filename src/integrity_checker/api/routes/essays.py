@@ -25,8 +25,13 @@ router = APIRouter()
 UPLOADS_DIR = PROJECT_ROOT / "data" / "essays" / "uploads"
 
 
-def _get_persisted_upload_path(essay_id: int) -> Path:
-    """Return persistent path on disk for an uploaded essay PDF."""
+def _get_persisted_upload_path(essay_id: int, ext: str | None = None) -> Path:
+    """Return persistent path on disk for an uploaded essay PDF or DOCX."""
+    if ext in (".pdf", ".docx"):
+        return UPLOADS_DIR / f"{essay_id}{ext}"
+    docx_candidate = UPLOADS_DIR / f"{essay_id}.docx"
+    if docx_candidate.is_file():
+        return docx_candidate
     return UPLOADS_DIR / f"{essay_id}.pdf"
 
 
@@ -207,11 +212,13 @@ def _sanitize_upload_filename(raw_name: str) -> str:
     """Strip path traversal components and control characters from uploaded filename."""
     base = Path(raw_name.replace("\\", "/")).name
     cleaned = "".join(ch for ch in base if ch >= " " and ch != "\x7f").strip()
+    lower = cleaned.lower()
+    ext = ".docx" if lower.endswith(".docx") else ".pdf"
     if not cleaned or cleaned.startswith("."):
-        cleaned = f"essay{cleaned}" if cleaned.endswith(".pdf") else "document.pdf"
+        cleaned = f"essay{cleaned}" if lower.endswith((".pdf", ".docx")) else f"document{ext}"
     if len(cleaned) > 200:
-        stem = cleaned[:-4][:196]
-        cleaned = f"{stem}.pdf"
+        stem = cleaned[: -len(ext)][: 200 - len(ext)]
+        cleaned = f"{stem}{ext}"
     return cleaned
 
 
@@ -247,13 +254,16 @@ async def upload_essay(
     db: Session = Depends(get_db),
     pipeline: IntegrityPipeline = Depends(get_pipeline),
 ) -> EssayUploadResponse:
-    """Upload PDF → save → return essay_id immediately.
+    """Upload PDF or DOCX → save → return essay_id immediately.
 
     The actual analysis runs in the background and the ProcessingScreen
     polls ``GET /essays/{id}/status`` for live progress.
     """
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files allowed")
+    raw_filename = (file.filename or "").strip()
+    lower_name = raw_filename.lower()
+    if not raw_filename or not lower_name.endswith((".pdf", ".docx")):
+        raise HTTPException(status_code=400, detail="Only PDF and DOCX files allowed")
+    upload_ext = ".docx" if lower_name.endswith(".docx") else ".pdf"
 
     ensure_user_quota_current(current_user)
     policy = get_user_plan_policy(current_user)
@@ -267,13 +277,20 @@ async def upload_essay(
         else policy.max_file_size_bytes
     )
 
-    safe_filename = _sanitize_upload_filename(file.filename)
+    safe_filename = _sanitize_upload_filename(raw_filename)
     content = await _read_pdf_upload_bounded(file, max_bytes=effective_max_bytes)
 
     if not content:
-        raise HTTPException(status_code=400, detail="Uploaded PDF file is empty")
-    if b"%PDF-" not in content[:1024]:
-        raise HTTPException(status_code=400, detail="Invalid PDF file: missing %PDF- header")
+        raise HTTPException(status_code=400, detail="Uploaded document file is empty")
+    if upload_ext == ".pdf":
+        if b"%PDF-" not in content[:1024]:
+            raise HTTPException(status_code=400, detail="Invalid PDF file: missing %PDF- header")
+    else:
+        if not content.startswith(b"PK\x03\x04"):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid DOCX file: missing OOXML PK archive header",
+            )
 
     # Enforce monthly upload quota for the user's subscription tier
     used_uploads = int(current_user.monthly_uploads_used or 0)
@@ -286,15 +303,16 @@ async def upload_essay(
             ),
         )
 
-    # Enforce per-document PDF page limit if readable by PyMuPDF
+    # Enforce per-document page limit if readable by PyMuPDF
     detected_pages = 0
-    try:
-        import fitz
+    if upload_ext == ".pdf":
+        try:
+            import fitz
 
-        with fitz.open(stream=content, filetype="pdf") as pdf_doc:
-            detected_pages = len(pdf_doc)
-    except Exception:
-        detected_pages = 0
+            with fitz.open(stream=content, filetype="pdf") as pdf_doc:
+                detected_pages = len(pdf_doc)
+        except Exception:
+            detected_pages = 0
 
     if detected_pages > policy.max_pages_per_pdf:
         raise HTTPException(
@@ -328,13 +346,13 @@ async def upload_essay(
     repo.commit()
 
     if is_test_runtime():
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=upload_ext) as tmp:
             tmp.write(content)
             tmp_path = tmp.name
         cleanup_file = True
     else:
         UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-        persisted_path = _get_persisted_upload_path(essay.id)
+        persisted_path = _get_persisted_upload_path(essay.id, ext=upload_ext)
         persisted_path.write_bytes(content)
         tmp_path = str(persisted_path)
         cleanup_file = False
@@ -646,9 +664,10 @@ def delete_essay(
     if current_user.role != "admin" and essay.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Clean up progress tracker and persisted PDF
+    # Clean up progress tracker and persisted PDF / DOCX
     get_tracker().clear(essay_id)
-    _get_persisted_upload_path(essay_id).unlink(missing_ok=True)
+    _get_persisted_upload_path(essay_id, ext=".pdf").unlink(missing_ok=True)
+    _get_persisted_upload_path(essay_id, ext=".docx").unlink(missing_ok=True)
 
     db.delete(essay)
     db.commit()

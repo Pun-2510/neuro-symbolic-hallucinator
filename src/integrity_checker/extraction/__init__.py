@@ -15,6 +15,7 @@ Bao gồm:
 from integrity_checker.extraction.base import BasePDFParser, Document
 from integrity_checker.extraction.citation_extractor import CitationExtractor
 from integrity_checker.extraction.document_parser import DocumentParser, ParsedDocument
+from integrity_checker.extraction.docx_parser import DocxParser
 from integrity_checker.extraction.mupdf_parser import MuPdfParser
 from integrity_checker.extraction.pdfplumber_parser import PdfPlumberParser
 from integrity_checker.extraction.reference_parser import ReferenceListParser
@@ -60,6 +61,7 @@ from integrity_checker.extraction.text_preprocessor import TextPreprocessor
 __all__ = [
     "BasePDFParser",
     "Document",
+    "DocxParser",
     "MuPdfParser",
     "PdfPlumberParser",
     "TextPreprocessor",

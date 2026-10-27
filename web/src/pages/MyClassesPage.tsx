@@ -234,6 +234,14 @@ export function MyClassesPage() {
                         <FileCheck className="inline h-3 w-3 mr-1 text-indigo-500" />
                         {c.essay_count} {lang === 'vi' ? 'bài' : t('teacher.submissions').toLowerCase()}
                       </Badge>
+                      {c.join_code && (
+                        <Badge
+                          variant="outline"
+                          className="font-mono font-semibold text-xs bg-indigo-50/90 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+                        >
+                          CODE: {c.join_code}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>

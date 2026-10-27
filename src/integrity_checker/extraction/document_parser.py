@@ -31,6 +31,7 @@ from integrity_checker.extraction.grobid_parser import (
     parse_tei,
 )
 from integrity_checker.extraction.grobid_service import get_grobid_manager
+from integrity_checker.extraction.docx_parser import DocxParser
 from integrity_checker.extraction.mupdf_parser import MuPdfParser
 from integrity_checker.extraction.reference_parser import ReferenceListParser
 from integrity_checker.extraction.section_segmenter import (
@@ -133,6 +134,7 @@ class DocumentParser:
         config: Settings | None = None,
         *,
         mupdf_parser: MuPdfParser | None = None,
+        docx_parser: DocxParser | None = None,
         grobid_post_fn=None,
     ) -> None:
         """Khởi tạo DocumentParser.
@@ -140,10 +142,12 @@ class DocumentParser:
         Args:
             config: Settings instance; mặc định lấy từ ``get_settings()``.
             mupdf_parser: optional MuPdfParser instance (cho test injection).
+            docx_parser: optional DocxParser instance (cho .docx files).
             grobid_post_fn: optional HTTP POST callable (cho test injection).
         """
         self.config = config or get_settings()
         self._mupdf_parser = mupdf_parser or MuPdfParser()
+        self._docx_parser = docx_parser or DocxParser()
         self._grobid_post_fn = grobid_post_fn
         self._section_segmenter = SectionSegmenter()
         # Preserve every in-text occurrence for report counts.  The pipeline
@@ -168,12 +172,16 @@ class DocumentParser:
         warnings: list[str] = []
         parser_used = "unknown"
         grobid_status = "unknown"
+        is_docx = self._is_docx_file(pdf_path)
 
-        # 1. PyMuPDF (always)
+        # 1. Native DOCX or PyMuPDF (always)
         try:
             text_doc = self._load_pdf_text(pdf_path)
+            if is_docx:
+                parser_used = "docx"
+                grobid_status = "disabled"
         except Exception as exc:  # noqa: BLE001
-            logger.warning("PyMuPDF parse failed: %s", exc)
+            logger.warning("Document parse failed: %s", exc)
             warnings.append(f"PyMuPDF failed: {exc}")
             text_doc = Document(
                 file_path=pdf_path,
@@ -186,7 +194,8 @@ class DocumentParser:
 
         total_chars = sum(len((p.text or "").strip()) for p in (text_doc.pages or []))
         is_scanned_empty_pdf = bool(
-            text_doc.num_pages > 0
+            not is_docx
+            and text_doc.num_pages > 0
             and total_chars == 0
             and self._grobid_post_fn is None
         )
@@ -197,18 +206,23 @@ class DocumentParser:
             parser_used = "regex"
             grobid_status = "unavailable"
 
-        # 2. GROBID (optional)
+        # 2. GROBID (optional, skipped for native .docx XML)
         grobid_out: Optional[GrobidOutput] = None
 
         # Try to use GrobidServiceManager for better integration
         grobid_manager = None
-        if not is_scanned_empty_pdf and use_service_manager and self.config.extraction.grobid.enabled:
+        if (
+            not is_docx
+            and not is_scanned_empty_pdf
+            and use_service_manager
+            and self.config.extraction.grobid.enabled
+        ):
             try:
                 grobid_manager = get_grobid_manager()
             except Exception as exc:
                 logger.debug("GrobidServiceManager not available: %s", exc)
 
-        if not is_scanned_empty_pdf and self.config.extraction.grobid.enabled:
+        if not is_docx and not is_scanned_empty_pdf and self.config.extraction.grobid.enabled:
             try:
                 # Check if GROBID is available (via service manager)
                 grobid_available = (
@@ -266,6 +280,9 @@ class DocumentParser:
                 grobid_out = None
                 parser_used = "regex"
                 grobid_status = "error"
+        elif is_docx:
+            parser_used = "docx"
+            grobid_status = "disabled"
         else:
             warnings.append("GROBID disabled in config")
             parser_used = "regex"
@@ -278,10 +295,26 @@ class DocumentParser:
         parsed.grobid_status = grobid_status
         return parsed
 
-    # ---------- Step 1: PyMuPDF ----------
+    # ---------- Step 1: PyMuPDF / DOCX ----------
+
+    def _is_docx_file(self, file_path: str) -> bool:
+        """Detect .docx files via extension or ZIP magic header."""
+        if str(file_path).lower().endswith(".docx"):
+            return True
+        try:
+            p = Path(file_path)
+            if p.is_file():
+                with p.open("rb") as f:
+                    header = f.read(4)
+                return header == b"PK\x03\x04"
+        except Exception:  # noqa: BLE001
+            pass
+        return False
 
     def _load_pdf_text(self, pdf_path: str) -> Document:
-        """Load PDF qua PyMuPDF → Document (text + pages + metadata)."""
+        """Load PDF qua PyMuPDF hoặc .docx qua DocxParser → Document."""
+        if self._is_docx_file(pdf_path):
+            return self._docx_parser.parse(pdf_path)
         return self._mupdf_parser.parse(pdf_path)
 
     # ---------- Step 2: GROBID ----------

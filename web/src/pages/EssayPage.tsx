@@ -11,6 +11,8 @@ import {
 import { EssayHeader } from './essay/EssayHeader';
 import { EssayActionBar } from './essay/EssayActionBar';
 import { OverrideControls } from '@/components/OverrideControls';
+import { CitationGraphView, EvidenceGraph } from '@/components/CitationGraph';
+import { UpgradeModal } from '@/components/UpgradeModal';
 import { useEssayReport, useOverrideVerdict } from '@/hooks/useEssayReport';
 import { isUrlResource } from '@/lib/verdictExplanation';
 import { useRole } from '@/hooks/useRole';
@@ -26,6 +28,8 @@ import {
   ArrowUpRight,
   Search,
   ExternalLink,
+  GitBranch,
+  Lock,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -1312,7 +1316,9 @@ function enrichVerdictItem(
 
 export function EssayPage() {
   const { t, i18n } = useTranslation();
-  const { isUser } = useRole();
+  const { isUser, has } = useRole();
+  const canViewDeepTrace = has('view_logic_trace');
+  const canOverride = has('override_verdict');
   const lang: 'vi' | 'en' = i18n.language?.startsWith('en') ? 'en' : 'vi';
 
   const { id } = useParams<{ id: string }>();
@@ -1328,6 +1334,9 @@ export function EssayPage() {
   const [selectedCitationId, setSelectedCitationId] = useState<string | null>(null);
   const [filterLabel, setFilterLabel] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [workspaceMode, setWorkspaceMode] = useState<'debugger' | 'graph'>('debugger');
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [lockedFeatureName, setLockedFeatureName] = useState<string>('');
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1543,8 +1552,57 @@ export function EssayPage() {
               </div>
             </div>
 
-            {/* Right Status Bar in Chrome */}
-            <div className="flex items-center gap-2.5 shrink-0">
+            {/* Right Status Bar & Workspace Mode Switcher in Chrome */}
+            <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+              <div
+                role="group"
+                aria-label="Workspace View Mode"
+                className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700"
+              >
+                <button
+                  type="button"
+                  data-testid="mode-debugger-btn"
+                  onClick={() => setWorkspaceMode('debugger')}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-semibold transition-all ${
+                    workspaceMode === 'debugger'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {lang === 'vi' ? 'Split-Pane IDE' : 'Split-Pane IDE'}
+                </button>
+                <button
+                  type="button"
+                  data-testid="mode-graph-btn"
+                  onClick={() => {
+                    if (!canViewDeepTrace) {
+                      setLockedFeatureName(
+                        lang === 'vi'
+                          ? 'Đồ thị Mạng lưới Trích dẫn & Bằng chứng (Citation & Evidence Graph)'
+                          : 'Interactive Citation & Evidence Network Graph'
+                      );
+                      setUpgradeOpen(true);
+                      return;
+                    }
+                    setWorkspaceMode('graph');
+                  }}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-mono font-semibold transition-all ${
+                    workspaceMode === 'graph'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <GitBranch className="h-3 w-3 text-violet-500" />
+                  <span>{lang === 'vi' ? 'Đồ thị Trích dẫn' : 'Citation Graph'}</span>
+                  {!canViewDeepTrace && (
+                    <span className="ml-0.5 inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[9px] font-mono font-bold">
+                      <Lock className="h-2.5 w-2.5 text-amber-500" />
+                      PRO
+                    </span>
+                  )}
+                </button>
+              </div>
+
               <Badge
                 variant="outline"
                 className="font-mono text-[11px] bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
@@ -1568,10 +1626,17 @@ export function EssayPage() {
             <div className="p-12 text-center bg-white dark:bg-slate-950">
               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
                 {lang === 'vi'
-                  ? 'Không phát hiện trích dẫn nào trong tài liệu PDF này.'
-                  : 'No citations were extracted from this PDF document.'}
+                  ? 'Không phát hiện trích dẫn nào trong tài liệu này.'
+                  : 'No citations were extracted from this document.'}
               </p>
             </div>
+          ) : workspaceMode === 'graph' && canViewDeepTrace ? (
+            <CitationGraphView
+              verdicts={report.verdicts}
+              linkingSummary={report.linking_summary}
+              onSelect={(v) => setSelectedCitationId(v.citation_id)}
+              onOverride={canOverride ? handleOverride : undefined}
+            />
           ) : (
             /* Split-Pane Debugger Body */
             <div className="grid lg:grid-cols-12">
@@ -1792,8 +1857,8 @@ export function EssayPage() {
                       </div>
                     </div>
 
-                    {/* Explanation Callout — Teacher & Admin only */}
-                    {!isUser && (
+                    {/* Explanation Callout — Pro/Ultra, Teacher & Admin */}
+                    {canViewDeepTrace && (
                       <div className="my-4 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3">
                         <Scale className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
                         <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
@@ -1807,26 +1872,94 @@ export function EssayPage() {
                       </div>
                     )}
 
-                    {/* Inspector Tabs: Metadata Diff (All) | Symbolic Rules & Sources (Teacher/Admin only) */}
+                    {/* Inspector Tabs: Metadata Diff (All) | Symbolic Rules, Sources & Evidence Graph (Pro/Ultra/Teacher/Admin) */}
                     <Tabs defaultValue="diff" className="w-full mt-4">
-                      {!isUser && (
-                        <TabsList className="w-full justify-start bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-auto flex-wrap sm:flex-nowrap gap-1">
-                          <TabsTrigger value="diff" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
-                            {lang === 'vi' ? '1. Đối chiếu Metadata' : '1. Metadata Diff'}
-                          </TabsTrigger>
-                          <TabsTrigger value="rules" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
-                            {lang === 'vi'
-                              ? `2. Luật Suy diễn (${activeItem.rules.length})`
-                              : `2. Symbolic Rules (${activeItem.rules.length})`}
-                          </TabsTrigger>
-                          <TabsTrigger value="sources" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
-                            {lang === 'vi' ? '3. Nguồn Truy hồi' : '3. Source Retrieval'}
-                          </TabsTrigger>
-                        </TabsList>
-                      )}
+                      <TabsList className="w-full justify-start bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-auto flex-wrap sm:flex-nowrap gap-1">
+                        <TabsTrigger value="diff" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
+                          {lang === 'vi' ? '1. Đối chiếu Metadata' : '1. Metadata Diff'}
+                        </TabsTrigger>
+                        {canViewDeepTrace ? (
+                          <>
+                            <TabsTrigger value="rules" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
+                              {lang === 'vi'
+                                ? `2. Luật Suy diễn (${activeItem.rules.length})`
+                                : `2. Symbolic Rules (${activeItem.rules.length})`}
+                            </TabsTrigger>
+                            <TabsTrigger value="sources" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
+                              {lang === 'vi' ? '3. Nguồn Truy hồi' : '3. Source Retrieval'}
+                            </TabsTrigger>
+                            <TabsTrigger
+                              value="graph"
+                              data-testid="inspector-tab-graph"
+                              className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px] gap-1"
+                            >
+                              <GitBranch className="h-3 w-3 text-violet-500" />
+                              <span>{lang === 'vi' ? '4. Đồ thị Bằng chứng' : '4. Evidence Graph'}</span>
+                            </TabsTrigger>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLockedFeatureName(
+                                  lang === 'vi'
+                                    ? 'Tập Luật Suy diễn Hình thức (23 Symbolic Rules)'
+                                    : '23 Deterministic Symbolic Rules Trace'
+                                );
+                                setUpgradeOpen(true);
+                              }}
+                              className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px] rounded-lg text-slate-500 hover:text-indigo-600 cursor-pointer"
+                            >
+                              <Lock className="h-3 w-3 text-amber-500" />
+                              <span>{lang === 'vi' ? '2. Luật Suy diễn' : '2. Symbolic Rules'}</span>
+                              <span className="px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[9px] font-bold">
+                                PRO
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLockedFeatureName(
+                                  lang === 'vi'
+                                    ? 'Đối chiếu Liên hợp 8 CSDL Học thuật (Federated Source Retrieval)'
+                                    : 'Federated 8-Registry Source Retrieval'
+                                );
+                                setUpgradeOpen(true);
+                              }}
+                              className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px] rounded-lg text-slate-500 hover:text-indigo-600 cursor-pointer"
+                            >
+                              <Lock className="h-3 w-3 text-amber-500" />
+                              <span>{lang === 'vi' ? '3. Nguồn Truy hồi' : '3. Source Retrieval'}</span>
+                              <span className="px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[9px] font-bold">
+                                PRO
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              data-testid="locked-evidence-graph-tab"
+                              onClick={() => {
+                                setLockedFeatureName(
+                                  lang === 'vi'
+                                    ? 'Đồ thị Bằng chứng Neuro-Symbolic (Evidence DAG)'
+                                    : 'Interactive Neuro-Symbolic Evidence Graph'
+                                );
+                                setUpgradeOpen(true);
+                              }}
+                              className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px] rounded-lg text-slate-500 hover:text-indigo-600 cursor-pointer"
+                            >
+                              <Lock className="h-3 w-3 text-amber-500" />
+                              <span>{lang === 'vi' ? '4. Đồ thị Bằng chứng' : '4. Evidence Graph'}</span>
+                              <span className="px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[9px] font-bold">
+                                PRO
+                              </span>
+                            </button>
+                          </>
+                        )}
+                      </TabsList>
 
                       {/* TAB 1: Side-by-side Metadata Diff */}
-                      <TabsContent value="diff" className={isUser ? 'mt-0' : 'mt-4'}>
+                      <TabsContent value="diff" className="mt-4">
                         <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                           <table className="w-full block sm:table sm:table-fixed text-left border-collapse">
                             <thead className="hidden sm:table-header-group">
@@ -2146,26 +2279,42 @@ export function EssayPage() {
                           ))}
                         </div>
                       </TabsContent>
+
+                      {/* TAB 4: Interactive Neuro-Symbolic Evidence Graph */}
+                      <TabsContent value="graph" className="mt-4">
+                        <EvidenceGraph verdict={activeItem.verdict} />
+                      </TabsContent>
                     </Tabs>
                   </div>
 
-                  {/* Inspector Footer Bar with Instructor Override & Full Logic Trace Link — Teacher & Admin only */}
-                  {!isUser && (
+                  {/* Inspector Footer Bar with Instructor Override & Full Logic Trace Link */}
+                  {canViewDeepTrace && (
                     <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
-                      <div className="flex items-center gap-3 flex-wrap">
+                      {canOverride ? (
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                            <span>
+                              {lang === 'vi'
+                                ? 'Giảng viên có thể Ghi đè nhãn (Override Verdict) kèm lý do kiểm toán.'
+                                : 'Instructors can Override Verdicts with mandatory audit logging.'}
+                            </span>
+                          </div>
+                          <OverrideControls
+                            verdict={activeItem.verdict}
+                            onOverride={(req) => handleOverride(activeItem.verdict, req)}
+                          />
+                        </div>
+                      ) : (
                         <div className="flex items-center gap-2">
-                          <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                          <GitBranch className="h-4 w-4 text-violet-500" />
                           <span>
                             {lang === 'vi'
-                              ? 'Giảng viên có thể Ghi đè nhãn (Override Verdict) kèm lý do kiểm toán.'
-                              : 'Instructors can Override Verdicts with mandatory audit logging.'}
+                              ? 'Đã mở khóa toàn bộ Trace Neuro-Symbolic & Đồ thị Bằng chứng (Gói Pro / Ultra).'
+                              : 'Full Neuro-Symbolic Trace & Evidence Graph unlocked (Pro / Ultra Plan).'}
                           </span>
                         </div>
-                        <OverrideControls
-                          verdict={activeItem.verdict}
-                          onOverride={(req) => handleOverride(activeItem.verdict, req)}
-                        />
-                      </div>
+                      )}
 
                       <Link
                         to={`/verification/report/${report.essay_id}/trace`}
@@ -2184,6 +2333,12 @@ export function EssayPage() {
           )}
         </div>
       </section>
+
+      <UpgradeModal
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        featureName={lockedFeatureName}
+      />
     </div>
   );
 }

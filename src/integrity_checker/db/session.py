@@ -133,6 +133,26 @@ def _run_inline_migrations(engine: Engine) -> None:
                 "ALTER TABLE essays ADD COLUMN class_id INTEGER REFERENCES classes(id)"
             )
 
+        # --- classes (v2.3 — student self-enrollment join_code) ---
+        class_cols = _col_names("classes")
+        if class_cols and "join_code" not in class_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE classes ADD COLUMN join_code VARCHAR(20)"
+            )
+            conn.exec_driver_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_classes_join_code ON classes(join_code) WHERE join_code IS NOT NULL"
+            )
+        if class_cols:
+            rows = conn.exec_driver_sql(
+                "SELECT id FROM classes WHERE join_code IS NULL OR join_code = ''"
+            ).fetchall()
+            for (cid,) in rows:
+                code = f"CITRA-{1000 + int(cid):04d}"
+                conn.exec_driver_sql(
+                    "UPDATE classes SET join_code = ? WHERE id = ?",
+                    (code, cid),
+                )
+
         # --- users (v1.10 account management) ---
         user_cols = _col_names("users")
         if "email" not in user_cols:

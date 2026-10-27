@@ -504,6 +504,34 @@ def _pdf_response(filename: str, essay, verdicts: list) -> StreamingResponse:
     missing_ref = sum(1 for v in verdicts if v.mapping_status == "missing_reference")
     mismatched = sum(1 for v in verdicts if v.mapping_status == "in_text_mismatch")
 
+    cis_score_val = None
+    cis_comps: dict[str, float] = {}
+    if essay.cis_json:
+        try:
+            parsed_cis = json.loads(essay.cis_json)
+            if isinstance(parsed_cis, dict):
+                cis_score_val = parsed_cis.get("score")
+                cis_comps = parsed_cis.get("components") or {}
+        except Exception:
+            pass
+    if cis_score_val is not None:
+        elements.append(
+            Paragraph(
+                f"<b>Citation Integrity Score (CIS):</b> {float(cis_score_val):.1f} / 100",
+                heading_style,
+            )
+        )
+        if cis_comps:
+            comp_str = (
+                f"Verified Ratio: {float(cis_comps.get('verified_ratio', 0))*100:.0f}% | "
+                f"Metadata Accuracy: {float(cis_comps.get('metadata_accuracy', 0))*100:.0f}% | "
+                f"Layer-1 Consistency: {float(cis_comps.get('in_text_bib_consistency', 0))*100:.0f}% | "
+                f"Format Consistency: {float(cis_comps.get('format_consistency', 0))*100:.0f}% | "
+                f"DOI Validity: {float(cis_comps.get('identifier_validity', 0))*100:.0f}%"
+            )
+            elements.append(Paragraph(escape(comp_str), body_style))
+        elements.append(Spacer(1, 0.3 * cm))
+
     elements.append(Paragraph("Summary", heading_style))
 
     summary_data = [
@@ -616,23 +644,38 @@ def _docx_response(filename: str, essay, verdicts: list) -> StreamingResponse:
 
     # Get CIS score from essay
     cis_score = 0.0
+    cis_components = None
+    style_profile = None
     if essay.cis_json:
         try:
             cis_dict = json.loads(essay.cis_json)
             cis_score = cis_dict.get("score", 0.0)
+            cis_components = cis_dict.get("components")
+        except (json.JSONDecodeError, TypeError):
+            pass
+    if essay.style_profile_json:
+        try:
+            style_profile = json.loads(essay.style_profile_json)
         except (json.JSONDecodeError, TypeError):
             pass
 
+    linking_summary: dict[str, int] = {}
     # Build verdict list
     verdict_list = []
     for v in verdicts:
         features_dict = json.loads(v.features or "{}")
+        m_status = v.mapping_status or "matched"
+        linking_summary[m_status] = linking_summary.get(m_status, 0) + 1
         verdict_list.append({
             "citation_raw": v.citation_raw,
             "citation_type": getattr(v, "citation_type", None) or "reference_list",
+            "mapping_status": m_status,
             "label": v.label,
             "confidence": v.confidence,
             "reasoning": v.reasoning,
+            "triggered_rules": json.loads(v.triggered_rules or "[]"),
+            "mismatched_fields": json.loads(v.mismatched_fields or "[]"),
+            "features": features_dict,
             "matched_sources": features_dict.get("matched_sources", []),
         })
 
@@ -647,6 +690,9 @@ def _docx_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         num_resource=resource,
         verdicts=verdict_list,
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        cis_components=cis_components,
+        linking_summary=linking_summary,
+        style_profile=style_profile,
     )
 
     return StreamingResponse(

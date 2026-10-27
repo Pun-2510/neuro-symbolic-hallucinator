@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { type Verdict } from '@/api/client';
 import { RuleInspector } from '@/components/RuleInspector';
+import { EvidenceGraph } from '@/components/CitationGraph';
 import { VerdictBadge } from '@/components/VerdictBadge';
 import {
   getSearchStepDescription,
@@ -505,6 +506,7 @@ function VerdictTrace({
   defaultExpanded?: boolean;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [traceViewMode, setTraceViewMode] = useState<'linear' | 'dag'>('linear');
   const steps = buildTraceSteps(verdict, lang);
   const urlStatus = verdict.url_status ?? verdict.features?.url_status;
   const urlCode = verdict.url_status_code ?? verdict.features?.url_status_code;
@@ -571,23 +573,58 @@ function VerdictTrace({
           <NeuralAlignmentPanel verdict={verdict} lang={lang} />
 
           <div>
-            <h5 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
-              {lang === 'vi'
-                ? 'Chuỗi Suy diễn Neuro-Symbolic 5 Bước'
-                : 'How the result was reached (5-Stage Trace)'}
-            </h5>
-            <div>
-              {steps.map((step, idx) => (
-                <TraceStepCard
-                  key={step.id}
-                  step={step}
-                  isLast={idx === steps.length - 1}
-                />
-              ))}
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h5 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {lang === 'vi'
+                  ? 'Chuỗi Suy diễn Neuro-Symbolic 5 Bước & Đồ thị Bằng chứng'
+                  : 'How the result was reached (5-Stage Trace & Evidence DAG)'}
+              </h5>
+              <div className="inline-flex items-center p-0.5 rounded-lg bg-slate-200/70 dark:bg-slate-900 border border-slate-300/70 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setTraceViewMode('linear')}
+                  className={`px-2.5 py-1 rounded-md text-[10px] font-mono font-semibold transition-all ${
+                    traceViewMode === 'linear'
+                      ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  {lang === 'vi' ? '5-Stage Pipeline' : '5-Stage Pipeline'}
+                </button>
+                <button
+                  type="button"
+                  data-testid={`trace-dag-btn-${index}`}
+                  onClick={() => setTraceViewMode('dag')}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-mono font-semibold transition-all ${
+                    traceViewMode === 'dag'
+                      ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <GitBranch className="h-3 w-3 text-violet-500" />
+                  <span>{lang === 'vi' ? 'Đồ thị Bằng chứng (DAG)' : 'Evidence Graph (DAG)'}</span>
+                </button>
+              </div>
             </div>
+
+            {traceViewMode === 'dag' ? (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
+                <EvidenceGraph verdict={verdict} />
+              </div>
+            ) : (
+              <div>
+                {steps.map((step, idx) => (
+                  <TraceStepCard
+                    key={step.id}
+                    step={step}
+                    isLast={idx === steps.length - 1}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
-          {verdict.triggered_rules.length > 0 && (
+          {verdict.triggered_rules.length > 0 && traceViewMode === 'linear' && (
             <div>
               <h5 className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                 {lang === 'vi'

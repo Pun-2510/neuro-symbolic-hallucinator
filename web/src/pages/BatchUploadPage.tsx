@@ -32,7 +32,7 @@ import { Separator } from '@/components/ui/separator';
    Upload multiple PDFs for concurrent analysis
    ============================================================ */
 
-const ACCEPTED_EXTENSIONS = ['.pdf'];
+const ACCEPTED_EXTENSIONS = ['.pdf', '.docx'];
 
 type FileStatus = 'pending' | 'uploading' | 'processing' | 'completed' | 'failed';
 
@@ -574,7 +574,7 @@ export function BatchUploadPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf"
+              accept=".pdf,.docx"
               multiple
               onChange={handleFileInput}
               className="hidden"

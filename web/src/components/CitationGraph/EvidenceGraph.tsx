@@ -1,7 +1,22 @@
 import { useState, useMemo } from 'react';
-import { Layers, ListChecks } from 'lucide-react';
+import {
+  Layers,
+  ListChecks,
+  Database,
+  Brain,
+  Scale,
+  ShieldCheck,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  ArrowRight,
+  Sparkles,
+} from 'lucide-react';
 import type { Verdict } from '@/api/client';
-import { getFieldDisplayName, getRuleDisplayName, getVerdictExplanation } from '@/lib/verdictExplanation';
+import {
+  getFieldDisplayName,
+  getRuleDisplayName,
+  getVerdictExplanation,
+} from '@/lib/verdictExplanation';
 import { EvidenceGraphNode } from './EvidenceGraphNode';
 import type { GraphNode } from './types';
 import { SOURCE_CONFIG } from './types';
@@ -19,8 +34,25 @@ interface CandidateInfo {
   url?: string;
 }
 
-const EXTERNAL_DBS = ['crossref', 'openalex', 'dblp', 'arxiv', 'openlibrary', 'europepmc'];
-const SOURCE_FLOW_ORDER = ['local_db', 'known_papers', 'crossref', 'openalex', 'dblp', 'arxiv', 'openlibrary', 'europepmc', 'serpapi'];
+const EXTERNAL_DBS = [
+  'crossref',
+  'openalex',
+  'dblp',
+  'arxiv',
+  'openlibrary',
+  'europepmc',
+];
+const SOURCE_FLOW_ORDER = [
+  'local_db',
+  'known_papers',
+  'crossref',
+  'openalex',
+  'dblp',
+  'arxiv',
+  'openlibrary',
+  'europepmc',
+  'serpapi',
+];
 
 /**
  * Build the hierarchical evidence graph for a single verdict.
@@ -29,7 +61,6 @@ const SOURCE_FLOW_ORDER = ['local_db', 'known_papers', 'crossref', 'openalex', '
 export function buildEvidenceGraph(
   verdict: Verdict,
 ): { graph: GraphNode; isLocalOnly: boolean } {
-  // Group matched sources by database
   const sourcesByDatabase: Record<string, CandidateInfo[]> = {};
   for (const source of verdict.matched_sources ?? []) {
     const dbKey = source.source.toLowerCase();
@@ -46,14 +77,19 @@ export function buildEvidenceGraph(
     }
   }
 
-  const queriedExternalDbs = EXTERNAL_DBS.filter((key) => sourcesByDatabase[key]);
+  const queriedExternalDbs = EXTERNAL_DBS.filter(
+    (key) => sourcesByDatabase[key],
+  );
 
   const databasesWithResults = Object.entries(sourcesByDatabase)
     .filter(([, candidates]) => candidates.length > 0)
     .sort(([a], [b]) => {
       const ai = SOURCE_FLOW_ORDER.indexOf(a);
       const bi = SOURCE_FLOW_ORDER.indexOf(b);
-      return (ai === -1 ? SOURCE_FLOW_ORDER.length : ai) - (bi === -1 ? SOURCE_FLOW_ORDER.length : bi);
+      return (
+        (ai === -1 ? SOURCE_FLOW_ORDER.length : ai) -
+        (bi === -1 ? SOURCE_FLOW_ORDER.length : bi)
+      );
     });
 
   const databasesWithoutResults: [string, CandidateInfo[]][] =
@@ -63,6 +99,81 @@ export function buildEvidenceGraph(
 
   const isLocalOnly =
     databasesWithResults.length > 0 && queriedExternalDbs.length === 0;
+
+  // Build optional child nodes under Semantic Matching when features exist
+  const similarityChildren: GraphNode[] = [];
+  const f = verdict.features;
+  if (f) {
+    if (f.title_sim_fuzzy !== undefined || f.title_sim_semantic !== undefined) {
+      const fuzzyPct = Math.round((f.title_sim_fuzzy ?? 0) * 100);
+      const semPct = Math.round((f.title_sim_semantic ?? 0) * 100);
+      const bestTitle = Math.max(f.title_sim_fuzzy ?? 0, f.title_sim_semantic ?? 0);
+      similarityChildren.push({
+        id: 'sim-title',
+        label: 'Title Lexical & Neural Match',
+        type: 'similarity',
+        status: bestTitle >= 0.85 ? 'success' : bestTitle >= 0.55 ? 'warning' : 'error',
+        detail: `RapidFuzz=${fuzzyPct}% · Sentence-BERT=${semPct}%`,
+      });
+    }
+    if (f.author_jaccard !== undefined || f.year_distance !== undefined) {
+      const authPct = Math.round((f.author_jaccard ?? 0) * 100);
+      const yrDist = f.year_distance ?? 0;
+      similarityChildren.push({
+        id: 'sim-meta',
+        label: 'Author & Publication Year Alignment',
+        type: 'similarity',
+        status:
+          (f.author_jaccard ?? 0) >= 0.65 && yrDist <= 1
+            ? 'success'
+            : (f.author_jaccard ?? 0) >= 0.4
+              ? 'warning'
+              : 'error',
+        detail: `Author Jaccard=${authPct}% · Year Δ=${yrDist} yr(s)`,
+      });
+    }
+    if (
+      (f.content_alignment_score !== undefined && f.content_alignment_score > 0) ||
+      f.best_evidence_sentence
+    ) {
+      const alignPct = Math.round((f.content_alignment_score ?? 0) * 100);
+      similarityChildren.push({
+        id: 'sim-evidence',
+        label: `Sentence-BERT Abstract Evidence (${alignPct}%)`,
+        type: 'similarity',
+        status:
+          (f.content_alignment_score ?? 0) >= 0.5
+            ? 'success'
+            : (f.content_alignment_score ?? 0) >= 0.35
+              ? 'warning'
+              : 'error',
+        detail: f.best_evidence_sentence
+          ? `Matched Abstract Sentence: "${f.best_evidence_sentence.slice(0, 140)}${f.best_evidence_sentence.length > 140 ? '...' : ''}"`
+          : `Context-to-Source semantic alignment score: ${alignPct}%`,
+      });
+    }
+    if (f.citation_intent || f.stance_label || f.cross_lingual_detected) {
+      const stance = f.stance_label || 'supported';
+      similarityChildren.push({
+        id: 'sim-intent-stance',
+        label: 'Citation Intent & Claim Stance Polarity',
+        type: 'similarity',
+        status:
+          stance === 'contradiction_risk'
+            ? 'error'
+            : stance === 'partially_supported'
+              ? 'warning'
+              : 'success',
+        detail: [
+          f.citation_intent ? `Intent: ${f.citation_intent.toUpperCase()}` : null,
+          `Stance: ${stance.toUpperCase()}`,
+          f.cross_lingual_detected ? 'Bridge: VI ↔ EN Cross-Lingual Active' : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      });
+    }
+  }
 
   const graph: GraphNode = {
     id: 'reference',
@@ -75,7 +186,9 @@ export function buildEvidenceGraph(
         id: 'sources',
         label: 'Academic Databases',
         type: 'source',
-        status: (databasesWithResults.length > 0 ? 'success' : 'no_match') as GraphNode['status'],
+        status: (
+          databasesWithResults.length > 0 ? 'success' : 'no_match'
+        ) as GraphNode['status'],
         detail: isLocalOnly
           ? 'Local database cache hit — no external APIs queried'
           : `${databasesWithResults.length} sources queried`,
@@ -90,17 +203,29 @@ export function buildEvidenceGraph(
               detail: c.matched
                 ? `The ${(c.fields || []).map(getFieldDisplayName).join(', ') || 'available details'} match the citation.`
                 : 'No match found',
-              matchedSource: { source: db, matched_fields: c.fields || [], checked_at: '' },
-              children: c.matched && c.url
-                ? [{
-                    id: `${db}-${idx}-link`,
-                    label: 'View Publication',
-                    type: 'candidate' as const,
-                    status: 'success' as GraphNode['status'],
-                    detail: c.url,
-                    matchedSource: { source: db, matched_fields: c.fields || [], checked_at: '', url: c.url },
-                  }]
-                : undefined,
+              matchedSource: {
+                source: db,
+                matched_fields: c.fields || [],
+                checked_at: '',
+              },
+              children:
+                c.matched && c.url
+                  ? [
+                      {
+                        id: `${db}-${idx}-link`,
+                        label: 'View Publication',
+                        type: 'candidate' as const,
+                        status: 'success' as GraphNode['status'],
+                        detail: c.url,
+                        matchedSource: {
+                          source: db,
+                          matched_fields: c.fields || [],
+                          checked_at: '',
+                          url: c.url,
+                        },
+                      },
+                    ]
+                  : undefined,
             }));
           }),
           ...databasesWithoutResults.map(([db]) => {
@@ -119,44 +244,57 @@ export function buildEvidenceGraph(
         id: 'similarity',
         label: 'Semantic Matching',
         type: 'similarity',
-        status: (verdict.confidence >= 0.7 ? 'success' : verdict.confidence >= 0.4 ? 'warning' : 'error') as GraphNode['status'],
+        status: (verdict.confidence >= 0.7
+          ? 'success'
+          : verdict.confidence >= 0.4
+            ? 'warning'
+            : 'error') as GraphNode['status'],
         detail: `Best match: ${(verdict.confidence * 100).toFixed(0)}%`,
+        children: similarityChildren.length > 0 ? similarityChildren : undefined,
       },
       {
         id: 'rules',
         label: 'Verification Rules',
         type: 'rules',
-        status: (verdict.triggered_rules.length > 0 ? 'warning' : 'success') as GraphNode['status'],
-        detail: verdict.triggered_rules.length > 0
-          ? verdict.triggered_rules.map(getRuleDisplayName).join('. ')
-          : 'No additional warnings were raised.',
-        children: verdict.triggered_rules.length > 0
-          ? [
-              {
-                id: 'rules-list',
-                label: `${verdict.triggered_rules.length} rules triggered`,
-                type: 'rules' as const,
-                status: 'warning' as GraphNode['status'],
-                detail: getVerdictExplanation(verdict),
-              },
-              ...verdict.mismatched_fields.map((field, idx) => ({
-                id: `mismatch-${idx}`,
-                label: `${getFieldDisplayName(field).replace(/^the /, '')} needs review`,
-                type: 'rules' as const,
-                status: 'error' as GraphNode['status'],
-                detail: 'This detail differs from the publication record we found.',
-              })),
-            ]
-          : undefined,
+        status: (
+          verdict.triggered_rules.length > 0 ? 'warning' : 'success'
+        ) as GraphNode['status'],
+        detail:
+          verdict.triggered_rules.length > 0
+            ? verdict.triggered_rules.map(getRuleDisplayName).join('. ')
+            : 'No additional warnings were raised.',
+        children:
+          verdict.triggered_rules.length > 0
+            ? [
+                {
+                  id: 'rules-list',
+                  label: `${verdict.triggered_rules.length} rules triggered`,
+                  type: 'rules' as const,
+                  status: 'warning' as GraphNode['status'],
+                  detail: getVerdictExplanation(verdict),
+                },
+                ...verdict.mismatched_fields.map((field, idx) => ({
+                  id: `mismatch-${idx}`,
+                  label: `${getFieldDisplayName(field).replace(/^the /, '')} needs review`,
+                  type: 'rules' as const,
+                  status: 'error' as GraphNode['status'],
+                  detail:
+                    'This detail differs from the publication record we found.',
+                })),
+              ]
+            : undefined,
       },
       {
         id: 'verdict',
         label: verdict.label.toUpperCase().replace('_', ' '),
         type: 'verdict',
-        status: (verdict.label === 'verified' ? 'success'
-          : verdict.label === 'metadata_error' ? 'warning'
-          : verdict.label === 'suspected_hallucination' ? 'error'
-          : 'neutral') as GraphNode['status'],
+        status: (verdict.label === 'verified'
+          ? 'success'
+          : verdict.label === 'metadata_error'
+            ? 'warning'
+            : verdict.label === 'suspected_hallucination'
+              ? 'error'
+              : 'neutral') as GraphNode['status'],
         detail: getVerdictExplanation(verdict),
       },
     ],
@@ -165,9 +303,22 @@ export function buildEvidenceGraph(
   return { graph, isLocalOnly };
 }
 
+function collectAllNodeIds(node: GraphNode, out: string[] = []): string[] {
+  out.push(node.id);
+  for (const child of node.children ?? []) {
+    collectAllNodeIds(child, out);
+  }
+  return out;
+}
+
 export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(
-    new Set(['reference', 'sources', 'rules'])
+    new Set(['reference', 'sources', 'similarity', 'rules']),
+  );
+
+  const { graph: graphData, isLocalOnly } = useMemo(
+    () => buildEvidenceGraph(verdict),
+    [verdict],
   );
 
   const toggleExpand = (id: string) => {
@@ -182,58 +333,165 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
     });
   };
 
-  const { graph: graphData } = useMemo(
-    () => buildEvidenceGraph(verdict),
-    [verdict]
+  const expandAll = () => {
+    setExpandedNodes(new Set(collectAllNodeIds(graphData)));
+  };
+
+  const collapseAll = () => {
+    setExpandedNodes(new Set(['reference']));
+  };
+
+  const verdictConfig =
+    VERDICT_CONFIG[verdict.label] ?? VERDICT_CONFIG.unresolved;
+  const Icon = verdictConfig.icon;
+  const matchedSourcesCount = (verdict.matched_sources ?? []).filter(
+    (s) => s.matched_fields && s.matched_fields.length > 0,
+  ).length;
+  const neuralPct = Math.round(
+    (verdict.features?.content_alignment_score ||
+      verdict.features?.title_sim_semantic ||
+      verdict.confidence ||
+      0) * 100,
   );
 
-  const verdictConfig = VERDICT_CONFIG[verdict.label] ?? VERDICT_CONFIG.unresolved;
-  const Icon = verdictConfig.icon;
-
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4" data-testid="evidence-graph-container">
+      {/* Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${verdictConfig.bgColor}`}>
-            <Layers className={`h-5 w-5 ${verdictConfig.color}`} />
+          <div className={`p-2.5 rounded-xl border ${verdictConfig.bgColor} ${verdictConfig.borderColor}`}>
+            <Layers className={`h-4 w-4 ${verdictConfig.color}`} />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              Evidence Graph
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                Neuro-Symbolic Evidence Graph
+              </h3>
+              <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800 text-[10px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
+                DAG TRACE
+              </span>
+            </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Click nodes to expand details
+              Interactive decision tree from federated retrieval to calibrated verdict
             </p>
           </div>
         </div>
-        {onClose && (
+
+        <div className="flex items-center gap-1.5">
           <button
-            onClick={onClose}
-            className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            type="button"
+            onClick={expandAll}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[11px] font-mono text-slate-600 dark:text-slate-300 hover:border-indigo-400 transition-colors"
           >
-            Close
+            <ChevronsUpDown className="h-3 w-3" />
+            <span>Expand All</span>
           </button>
-        )}
+          <button
+            type="button"
+            onClick={collapseAll}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[11px] font-mono text-slate-600 dark:text-slate-300 hover:border-indigo-400 transition-colors"
+          >
+            <ChevronsDownUp className="h-3 w-3" />
+            <span>Collapse</span>
+          </button>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-2.5 py-1 rounded-lg text-xs font-mono text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              Close
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Verdict summary */}
-      <div className={`p-4 rounded-lg border ${verdictConfig.bgColor} ${verdictConfig.borderColor}`}>
-        <div className="flex items-center gap-2 mb-2">
-          <Icon className={`h-5 w-5 ${verdictConfig.color}`} />
-          <span className={`font-bold text-sm ${verdictConfig.color}`}>
-            {verdictConfig.label}
-          </span>
+      {/* 4-Stage Visual Pipeline Flow Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-xl bg-slate-100/80 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-slate-400">
+              <Database className="h-3 w-3 text-blue-500 shrink-0" />
+              <span>1. Retrieval</span>
+            </div>
+            <p className="text-xs font-bold font-mono text-slate-900 dark:text-white mt-0.5 truncate">
+              {isLocalOnly
+                ? 'Local FTS5 Hit'
+                : `${matchedSourcesCount} DB Match(es)`}
+            </p>
+          </div>
+          <ArrowRight className="h-3.5 w-3.5 text-slate-300 dark:text-slate-700 hidden sm:block shrink-0" />
         </div>
-        <p className="text-sm text-slate-700 dark:text-slate-300">
+
+        <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-slate-400">
+              <Brain className="h-3 w-3 text-violet-500 shrink-0" />
+              <span>2. SBERT Neural</span>
+            </div>
+            <p className="text-xs font-bold font-mono text-slate-900 dark:text-white mt-0.5 truncate">
+              Sim: {neuralPct}%
+              {verdict.features?.citation_intent
+                ? ` · ${verdict.features.citation_intent}`
+                : ''}
+            </p>
+          </div>
+          <ArrowRight className="h-3.5 w-3.5 text-slate-300 dark:text-slate-700 hidden sm:block shrink-0" />
+        </div>
+
+        <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-slate-400">
+              <Scale className="h-3 w-3 text-amber-500 shrink-0" />
+              <span>3. Symbolic</span>
+            </div>
+            <p className="text-xs font-bold font-mono text-slate-900 dark:text-white mt-0.5 truncate">
+              {verdict.triggered_rules.length} Rule(s) Fired
+            </p>
+          </div>
+          <ArrowRight className="h-3.5 w-3.5 text-slate-300 dark:text-slate-700 hidden sm:block shrink-0" />
+        </div>
+
+        <div className={`flex items-center justify-between p-2.5 rounded-lg border ${verdictConfig.bgColor} ${verdictConfig.borderColor}`}>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400">
+              <ShieldCheck className={`h-3 w-3 shrink-0 ${verdictConfig.color}`} />
+              <span>4. Platt Verdict</span>
+            </div>
+            <p className={`text-xs font-bold font-mono mt-0.5 truncate ${verdictConfig.color}`}>
+              {verdictConfig.label} ({Math.round(verdict.confidence * 100)}%)
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Verdict Summary Banner */}
+      <div
+        className={`p-3.5 rounded-xl border ${verdictConfig.bgColor} ${verdictConfig.borderColor}`}
+      >
+        <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Icon className={`h-4 w-4 ${verdictConfig.color}`} />
+            <span className={`font-bold text-xs font-mono ${verdictConfig.color}`}>
+              {verdictConfig.label}
+            </span>
+          </div>
+          {verdict.features?.cross_lingual_detected && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-100 dark:bg-violet-950/90 text-violet-700 dark:text-violet-300 text-[10px] font-mono font-semibold">
+              <Sparkles className="h-3 w-3" />
+              VI ↔ EN Cross-Lingual Bridge
+            </span>
+          )}
+        </div>
+        <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
           {getVerdictExplanation(verdict)}
         </p>
         {verdict.triggered_rules.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
+          <div className="flex flex-wrap gap-1.5 mt-2.5">
             {verdict.triggered_rules.map((rule) => (
               <span
                 key={rule}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 rounded text-xs font-mono"
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/80 dark:bg-slate-900/80 border border-amber-300/80 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-md text-[11px] font-mono font-semibold"
               >
                 <ListChecks className="h-3 w-3" />
                 {rule}
@@ -243,8 +501,8 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
         )}
       </div>
 
-      {/* Graph */}
-      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-900 overflow-x-auto">
+      {/* Interactive Hierarchical DAG Tree */}
+      <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-white dark:bg-slate-950 overflow-x-auto shadow-2xs">
         <div className="min-w-fit">
           <EvidenceGraphNode
             node={graphData}
@@ -256,53 +514,42 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950" />
-          <span>Match found</span>
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400 px-1">
+        <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950" />
+            <span>Verified / Match</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950" />
+            <span>Rule Trigger / Warning</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950" />
+            <span>Mismatch / Hallucination Risk</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800" />
+            <span>Not Indexed</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800" />
-          <span>No match</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950" />
-          <span>Warning</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950" />
-          <span>Error/Issue</span>
-        </div>
-      </div>
 
-      {/* Mismatched fields */}
-      {verdict.mismatched_fields.length > 0 && (
-        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
-          <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2">
-            Mismatched Fields
-          </h4>
-          <div className="flex flex-wrap gap-2">
+        {verdict.mismatched_fields.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-mono text-[11px] uppercase text-red-600 dark:text-red-400 font-semibold">
+              Mismatched:
+            </span>
             {verdict.mismatched_fields.map((field) => (
               <span
                 key={field}
-                className="px-2 py-1 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded text-xs border border-red-200 dark:border-red-800"
+                className="px-2 py-0.5 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded text-[11px] font-mono border border-red-200 dark:border-red-800"
               >
                 {field}
               </span>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Raw source details */}
-      <details className="group">
-        <summary className="text-xs text-slate-500 dark:text-slate-400 cursor-pointer hover:text-slate-700 dark:hover:text-slate-300">
-          View raw source data ({verdict.matched_sources.length} sources)
-        </summary>
-        <pre className="mt-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs overflow-x-auto">
-          {JSON.stringify(verdict.matched_sources, null, 2)}
-        </pre>
-      </details>
+        )}
+      </div>
     </div>
   );
 }

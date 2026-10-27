@@ -592,11 +592,41 @@ export interface Class {
   id: number;
   name: string;
   description: string | null;
+  join_code?: string | null;
   teacher_id: number;
   teacher_username: string;
   created_at: string;
   student_count: number;
   essay_count: number;
+}
+
+export interface SharedHallucinationItem {
+  citation_raw: string;
+  label: string;
+  student_count: number;
+  occurrence_count: number;
+  students: string[];
+  essay_ids: number[];
+  is_shared: boolean;
+}
+
+export interface TriggeredRuleStat {
+  rule_id: string;
+  count: number;
+}
+
+export interface ClassAnalytics {
+  class_id: number;
+  class_name: string;
+  join_code?: string | null;
+  total_students: number;
+  total_essays: number;
+  avg_cis: number;
+  recency_5yr_ratio: number;
+  cis_distribution: Record<string, number>;
+  verdict_breakdown: Record<string, number>;
+  top_triggered_rules: TriggeredRuleStat[];
+  shared_hallucinations: SharedHallucinationItem[];
 }
 
 export interface ClassCreate {
@@ -754,6 +784,24 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
+  regenerateClassCode: (classId: number) =>
+    request<Class>(`/teacher/classes/${classId}/regenerate-code`, {
+      method: 'POST',
+    }),
+  listEnrolledClasses: () => request<Class[]>('/teacher/enrolled-classes'),
+  joinClassByCode: (joinCode: string) =>
+    authRequest<Class>('/teacher/classes/join', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(localStorage.getItem('token')
+          ? { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          : {}),
+      },
+      body: JSON.stringify({ join_code: joinCode }),
+    }),
+  getClassAnalytics: (classId: number) =>
+    request<ClassAnalytics>(`/teacher/classes/${classId}/analytics`),
   listAvailableStudents: () =>
     request<ClassStudent[]>('/teacher/students'),
   listClassStudents: (classId: number) =>

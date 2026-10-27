@@ -981,12 +981,34 @@ class Repository:
         self.session.flush()
         return count
 
-    # -- Classes (v1.15 — Phase 3) --
+    # -- Classes (v1.15 — Phase 3 + v2.3 join_code) --
+
+    def _generate_join_code(self) -> str:
+        """Generate a unique human-friendly join code like CITRA-4F8K."""
+        import secrets
+
+        alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        for _ in range(30):
+            suffix = "".join(secrets.choice(alphabet) for _ in range(4))
+            candidate = f"CITRA-{suffix}"
+            if not self.get_class_by_join_code(candidate):
+                return candidate
+        return f"CITRA-{secrets.token_hex(3).upper()}"
 
     def create_class(
-        self, name: str, teacher_id: int, description: str | None = None,
+        self,
+        name: str,
+        teacher_id: int,
+        description: str | None = None,
+        join_code: str | None = None,
     ) -> Class:
-        cls = Class(name=name, teacher_id=teacher_id, description=description)
+        code = (join_code or "").strip().upper() or self._generate_join_code()
+        cls = Class(
+            name=name,
+            teacher_id=teacher_id,
+            description=description,
+            join_code=code,
+        )
         self.session.add(cls)
         self.session.flush()
         return cls
@@ -996,6 +1018,24 @@ class Repository:
 
     def get_class_by_name(self, name: str) -> Class | None:
         return self.session.query(Class).filter(Class.name == name).first()
+
+    def get_class_by_join_code(self, join_code: str) -> Class | None:
+        normalized = (join_code or "").strip().upper()
+        if not normalized:
+            return None
+        return (
+            self.session.query(Class)
+            .filter(func.upper(Class.join_code) == normalized)
+            .first()
+        )
+
+    def regenerate_class_join_code(self, class_id: int) -> Class | None:
+        cls = self.get_class(class_id)
+        if not cls:
+            return None
+        cls.join_code = self._generate_join_code()
+        self.session.flush()
+        return cls
 
     def list_all_classes(self) -> list[Class]:
         return list(self.session.query(Class).order_by(Class.created_at.desc()).all())
