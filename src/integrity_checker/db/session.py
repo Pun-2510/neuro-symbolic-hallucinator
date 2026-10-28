@@ -195,6 +195,13 @@ def _run_inline_migrations(engine: Engine) -> None:
             conn.exec_driver_sql(
                 "ALTER TABLE users ADD COLUMN auth_provider VARCHAR(30) DEFAULT 'local'"
             )
+        if "username_customized" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN username_customized INTEGER DEFAULT 1"
+            )
+            conn.exec_driver_sql(
+                "UPDATE users SET username_customized = 0 WHERE auth_provider = 'google'"
+            )
 
         # --- users (v2.2 — Premium Subscription & Quota fields) ---
         if "plan_tier" not in user_cols:

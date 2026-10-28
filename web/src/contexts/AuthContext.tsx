@@ -177,13 +177,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshUser = async () => {
-    if (!token) return;
+    const activeToken = localStorage.getItem('token') || token;
+    if (!activeToken) return;
     try {
       const res = await fetch(`${API_BASE}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${activeToken}` },
       });
       if (res.ok) {
         const userData: User = await res.json();
+        setToken(activeToken);
         setUser(userData);
       }
     } catch {

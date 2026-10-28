@@ -24,6 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRole, type UserCapability, type UserRole } from '@/hooks/useRole';
 import { ThemeToggle, useTheme } from '@/contexts/ThemeContext';
 import { HelpModal } from './HelpModal';
+import { GoogleOnboardingModal } from './GoogleOnboardingModal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 
@@ -508,6 +509,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Help Modal */}
       <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
+
+      {/* First-Time Google Account Onboarding Modal */}
+      <GoogleOnboardingModal />
     </div>
   );
 }

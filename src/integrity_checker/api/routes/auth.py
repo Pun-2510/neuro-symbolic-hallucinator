@@ -259,6 +259,12 @@ def _ensure_utc(dt: datetime) -> datetime:
 
 def _to_response_dict(user: User) -> dict:
     sub = get_user_subscription_summary(user)
+    provider = getattr(user, "auth_provider", None) or "local"
+    google_linked = bool(getattr(user, "google_id", None)) or ("google" in provider)
+    username_customized = bool(getattr(user, "username_customized", True))
+    has_password = "local" in provider
+    can_set_username = google_linked and not username_customized
+    needs_onboarding = (provider == "google") and not username_customized
     return {
         "id": user.id,
         "username": user.username,
@@ -267,8 +273,11 @@ def _to_response_dict(user: User) -> dict:
         "role": user.role,
         "is_active": bool(user.is_active),
         "email_verified": bool(getattr(user, "email_verified", True)),
-        "auth_provider": getattr(user, "auth_provider", None) or "local",
-        "google_linked": bool(getattr(user, "google_id", None)),
+        "auth_provider": provider,
+        "google_linked": google_linked,
+        "has_password": has_password,
+        "can_set_username": can_set_username,
+        "needs_onboarding": needs_onboarding,
         "avatar_url": user.avatar_path,
         "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
         "created_at": user.created_at.isoformat() if user.created_at else None,
@@ -659,7 +668,21 @@ def google_login(request: GoogleLoginRequest, db=Depends(get_db)):
             email_verified=True,
             google_id=google_id,
             auth_provider="google",
+            username_customized=False,
         )
+        # Issue a 24-hour initial password setup token and email the link to the user's Google email
+        setup_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+        setup_token, _ = repo.create_auth_token(user.id, "password_reset", setup_expires)
+        try:
+            get_email_service().send_google_welcome_email(
+                to_email=email,
+                username=username,
+                full_name=user.full_name,
+                raw_token=setup_token,
+                lang="vi",
+            )
+        except Exception as exc:
+            logger.warning("Failed to dispatch Google welcome/password setup email to %s: %s", email, exc)
 
     _login_rate_limiter.reset("google_auth_endpoint")
     _login_rate_limiter.reset(rate_key)

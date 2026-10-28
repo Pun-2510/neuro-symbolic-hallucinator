@@ -539,9 +539,12 @@ class Repository:
         google_id: str | None = None,
         auth_provider: str = "local",
         avatar_path: str | None = None,
+        username_customized: bool | None = None,
     ) -> User:
         if can_override_verdicts is None:
             can_override_verdicts = role in ("admin", "teacher")
+        if username_customized is None:
+            username_customized = auth_provider != "google"
         resolved_tier = plan_tier or default_plan_for_role(role)
         user = User(
             username=username,
@@ -557,6 +560,7 @@ class Repository:
             plan_tier=resolved_tier,
             google_id=google_id,
             auth_provider=auth_provider,
+            username_customized=1 if username_customized else 0,
         )
         self.session.add(user)
         self.session.flush()
@@ -579,7 +583,13 @@ class Repository:
                 # Skip None values to keep partial-update semantics
                 continue
             if (
-                key in ("is_active", "can_override_verdicts", "email_verified", "cancel_at_period_end")
+                key in (
+                    "is_active",
+                    "can_override_verdicts",
+                    "email_verified",
+                    "cancel_at_period_end",
+                    "username_customized",
+                )
                 and isinstance(value, bool)
             ):
                 value = 1 if value else 0

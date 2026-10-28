@@ -615,5 +615,99 @@ class TestGoogleOAuthFlow:
         assert r_avatar.status_code == 200
         assert r_avatar.json()["user"]["avatar_url"] is None
 
+    def test_google_user_first_time_username_and_password_setup_flows(self, monkeypatch):
+        client = TestClient(app)
+        email_svc = get_email_service()
+        email_svc.clear_outbox()
+
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-onboarding-001",
+                "email": "wendyxsausage@example.com",
+                "email_verified": True,
+                "name": "Nguyễn Bảo Minh",
+            },
+        )
+
+        # 1. First Google login creates user, sends welcome + password setup email, and enables onboarding
+        g_resp = client.post(
+            "/api/auth/google",
+            json={"access_token": "valid_tok"},
+        )
+        assert g_resp.status_code == 200
+        token = g_resp.json()["token"]
+        user = g_resp.json()["user"]
+        assert user["username"] == "wendyxsausage"
+        assert user["has_password"] is False
+        assert user["can_set_username"] is True
+        assert user["needs_onboarding"] is True
+
+        # Welcome email with password setup token was dispatched automatically
+        assert len(email_svc.outbox) == 1
+        welcome_mail = email_svc.outbox[-1]
+        assert welcome_mail.template_type == "google_welcome"
+        assert welcome_mail.token is not None
+
+        # 2. User sets custom username for the first time via PATCH /api/users/me
+        patch_resp = client.patch(
+            "/api/users/me",
+            json={"username": "baominh_scholar"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert patch_resp.status_code == 200, patch_resp.text
+        updated = patch_resp.json()
+        assert updated["username"] == "baominh_scholar"
+        assert updated["can_set_username"] is False
+        assert updated["needs_onboarding"] is False
+
+        # Attempting to change username a second time is rejected
+        second_patch = client.patch(
+            "/api/users/me",
+            json={"username": "another_handle"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert second_patch.status_code == 400
+
+        # 3. User can also request a fresh password setup email link from Profile page
+        email_svc.clear_outbox()
+        mail_req = client.post(
+            "/api/users/me/password-setup-email",
+            json={"lang": "vi"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert mail_req.status_code == 200
+        assert len(email_svc.outbox) == 1
+        assert email_svc.outbox[-1].token is not None
+
+        # 4. User sets initial password directly via POST /api/users/me/password WITHOUT current_password
+        pw_resp = client.post(
+            "/api/users/me/password",
+            json={"new_password": "InitialGooglePass123!"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert pw_resp.status_code == 200, pw_resp.text
+        new_session_token = pw_resp.json()["token"]
+        assert new_session_token
+
+        # Verify profile now shows has_password=True and auth_provider="local,google"
+        me_after = client.get(
+            "/api/users/me",
+            headers={"Authorization": f"Bearer {new_session_token}"},
+        )
+        assert me_after.status_code == 200
+        assert me_after.json()["has_password"] is True
+        assert me_after.json()["auth_provider"] == "local,google"
+
+        # 5. User can now sign in with their custom username + new password!
+        local_login = client.post(
+            "/api/auth/login",
+            json={"username": "baominh_scholar", "password": "InitialGooglePass123!"},
+        )
+        assert local_login.status_code == 200
+        assert local_login.json()["user"]["username"] == "baominh_scholar"
+
+
 
 

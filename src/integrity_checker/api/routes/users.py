@@ -7,17 +7,31 @@ to view/update their own profile, upload avatar, change password.
 
 from __future__ import annotations
 
+import logging
+import re
+from datetime import datetime, timedelta, timezone
+
 import bcrypt
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 
 from integrity_checker.api.deps import get_current_user, get_db, require_admin
+from integrity_checker.api.routes.auth import (
+    _create_token,
+    _ensure_utc,
+    _get_hardcoded_users,
+)
 from integrity_checker.api.services.avatar_service import get_avatar_service
+from integrity_checker.api.services.email_service import get_email_service
 from integrity_checker.billing.plans import PLAN_TIERS, get_user_subscription_summary
+from integrity_checker.config import get_settings, is_test_runtime
 from integrity_checker.db.models import VALID_USER_ROLES, User
 from integrity_checker.db.repository import Repository
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 
 
 # ---------- Schemas ----------
@@ -50,15 +64,26 @@ class UserUpdate(BaseModel):
 
 
 class UserSelfUpdate(BaseModel):
-    """Self-service profile update — username + role + is_active are NOT user-editable."""
+    """Self-service profile update — allows one-time username setup for Google accounts."""
 
+    username: str | None = Field(default=None, min_length=3, max_length=50)
     email: EmailStr | None = None
     full_name: str | None = Field(default=None, max_length=120)
+    complete_onboarding: bool | None = None
 
 
 class PasswordChange(BaseModel):
-    current_password: str
+    current_password: str | None = None
     new_password: str = Field(min_length=6, max_length=128)
+
+
+class PasswordSetupEmailRequest(BaseModel):
+    lang: str = "vi"
+
+
+class PasswordChangeResponse(BaseModel):
+    message: str
+    token: str | None = None
 
 
 class UserResponse(BaseModel):
@@ -70,6 +95,9 @@ class UserResponse(BaseModel):
     is_active: bool
     auth_provider: str = "local"
     google_linked: bool = False
+    has_password: bool = True
+    can_set_username: bool = False
+    needs_onboarding: bool = False
     avatar_url: str | None
     last_login_at: str | None
     created_at: str | None
@@ -103,6 +131,12 @@ def _verify_password(password: str, hashed: str) -> bool:
 
 def _to_response(user: User) -> UserResponse:
     sub = get_user_subscription_summary(user)
+    provider = getattr(user, "auth_provider", None) or "local"
+    google_linked = bool(getattr(user, "google_id", None)) or ("google" in provider)
+    username_customized = bool(getattr(user, "username_customized", True))
+    has_password = "local" in provider
+    can_set_username = google_linked and not username_customized
+    needs_onboarding = (provider == "google") and not username_customized
     return UserResponse(
         id=user.id,
         username=user.username,
@@ -110,8 +144,11 @@ def _to_response(user: User) -> UserResponse:
         full_name=user.full_name,
         role=user.role,
         is_active=bool(user.is_active),
-        auth_provider=getattr(user, "auth_provider", None) or "local",
-        google_linked=bool(getattr(user, "google_id", None)),
+        auth_provider=provider,
+        google_linked=google_linked,
+        has_password=has_password,
+        can_set_username=can_set_username,
+        needs_onboarding=needs_onboarding,
         avatar_url=user.avatar_path,
         last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
         created_at=user.created_at.isoformat() if user.created_at else None,
@@ -317,10 +354,38 @@ def update_me(
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    """Update own email and/or full name."""
+    """Update own profile (and allow one-time username customization for Google accounts)."""
     repo = Repository(db)
 
     update_data: dict = {}
+    provider = getattr(current_user, "auth_provider", None) or "local"
+    google_linked = bool(getattr(current_user, "google_id", None)) or ("google" in provider)
+    can_set_username = google_linked and not bool(getattr(current_user, "username_customized", True))
+
+    if request.username is not None:
+        new_username = request.username.strip()
+        if len(new_username) < 3 or len(new_username) > 50 or not _USERNAME_RE.match(new_username):
+            raise HTTPException(
+                status_code=400,
+                detail="Username must be 3-50 characters and contain only letters, numbers, dots, underscores, or hyphens.",
+            )
+        if new_username != current_user.username:
+            if not can_set_username:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Username cannot be changed after initial setup.",
+                )
+            dup_user = repo.get_user_by_username(new_username)
+            if (dup_user and dup_user.id != current_user.id) or new_username in _get_hardcoded_users():
+                raise HTTPException(status_code=400, detail="Username already exists")
+            update_data["username"] = new_username
+            update_data["username_customized"] = True
+        elif can_set_username:
+            update_data["username_customized"] = True
+
+    if request.complete_onboarding:
+        update_data["username_customized"] = True
+
     if request.email is not None and request.email != current_user.email:
         dup = repo.get_user_by_email(request.email)
         if dup and dup.id != current_user.id:
@@ -399,22 +464,113 @@ def delete_my_avatar(
     return _to_response(user)
 
 
-@router.post("/me/password", response_model=MessageResponse)
+@router.post("/me/password", response_model=PasswordChangeResponse)
 def change_my_password(
     request: PasswordChange,
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    """Change current user's password (requires current password)."""
-    if not _verify_password(request.current_password, current_user.password_hash):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    """Change or set current user's password.
 
-    if request.new_password == request.current_password:
-        raise HTTPException(status_code=400, detail="New password must be different from current")
+    - If the user already has a local password (`has_password=True`), `current_password` is required.
+    - If the user signed in via Google only (`auth_provider=='google'`), `current_password` is not required
+      for setting their initial password, and `auth_provider` is upgraded to `'local,google'`.
+    """
+    provider = getattr(current_user, "auth_provider", None) or "local"
+    has_password = "local" in provider
+
+    if has_password:
+        if not request.current_password or not _verify_password(
+            request.current_password, current_user.password_hash
+        ):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+        if request.new_password == request.current_password:
+            raise HTTPException(
+                status_code=400, detail="New password must be different from current"
+            )
 
     repo = Repository(db)
-    repo.update_user(current_user.id, password_hash=_hash_password(request.new_password))
+    update_fields: dict = {"password_hash": _hash_password(request.new_password)}
+    if not has_password:
+        update_fields["auth_provider"] = (
+            "local,google" if "google" in provider else "local"
+        )
+    updated_user = repo.update_user(current_user.id, **update_fields) or current_user
     repo.delete_user_sessions(current_user.id)
-    repo.session.flush()  # Ensure the hash is written before commit
+    new_token, expires_at = _create_token(updated_user)
+    repo.create_session(current_user.id, new_token, expires_at)
+    repo.session.flush()
     repo.commit()
-    return MessageResponse(message="Password changed successfully")
+    return PasswordChangeResponse(
+        message="Password changed successfully",
+        token=new_token,
+    )
+
+
+@router.post("/me/password-setup-email", response_model=MessageResponse)
+def send_my_password_setup_email(
+    request: PasswordSetupEmailRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Send a password setup / reset link to the current authenticated user's email address."""
+    if not current_user.email:
+        raise HTTPException(
+            status_code=400,
+            detail="Your account does not have an email address configured.",
+        )
+
+    lang = request.lang if request else "vi"
+    repo = Repository(db)
+    now = datetime.now(timezone.utc)
+    if not is_test_runtime():
+        latest = repo.get_latest_auth_token_for_user(current_user.id, "password_reset")
+        if latest and (now - _ensure_utc(latest.created_at)).total_seconds() < 30:
+            raise HTTPException(
+                status_code=429,
+                detail="Please wait 30 seconds before requesting another password setup email.",
+            )
+
+    provider = getattr(current_user, "auth_provider", None) or "local"
+    is_initial_google = "local" not in provider
+    settings = get_settings()
+    expires_at = (
+        now + timedelta(hours=24)
+        if is_initial_google
+        else now + timedelta(minutes=settings.auth.reset_expire_minutes)
+    )
+    raw_token, _ = repo.create_auth_token(current_user.id, "password_reset", expires_at)
+    repo.commit()
+
+    try:
+        if is_initial_google:
+            get_email_service().send_google_welcome_email(
+                to_email=current_user.email,
+                username=current_user.username,
+                full_name=current_user.full_name,
+                raw_token=raw_token,
+                lang=lang,
+            )
+        else:
+            get_email_service().send_password_reset_email(
+                to_email=current_user.email,
+                username=current_user.username,
+                full_name=current_user.full_name,
+                raw_token=raw_token,
+                lang=lang,
+            )
+    except Exception as exc:
+        logger.error(
+            "Failed to dispatch password setup email to %s: %s",
+            current_user.email,
+            exc,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to send password setup email. Please try again.",
+        )
+
+    return MessageResponse(
+        message=f"A password setup link has been sent to {current_user.email}."
+    )

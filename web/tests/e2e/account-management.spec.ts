@@ -363,6 +363,53 @@ test.describe('Profile Page', () => {
     await expect(page.getByText(/admin/i).first()).toBeVisible();
     await expect(page.getByText(/member since/i)).toBeVisible();
   });
+
+  test('allows first-time Google user to customize username and set initial password without current password', async ({ page }) => {
+    const googleUser = {
+      ...MOCK_USERS[1],
+      username: 'wendyxsausage',
+      email: 'wendyxsausage@gmail.com',
+      full_name: 'Nguyễn Bảo Minh',
+      auth_provider: 'google',
+      google_linked: true,
+      has_password: false,
+      can_set_username: true,
+      needs_onboarding: true,
+    };
+
+    await page.route('**/api/auth/me', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(googleUser),
+      });
+    });
+
+    await page.route('**/api/users/me/password-setup-email', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Sent' }),
+      });
+    });
+
+    await page.goto('/profile');
+    await waitForAuth(page);
+
+    // Editable username field is shown
+    const usernameInput = page.getByTestId('profile-username-input');
+    await expect(usernameInput).toBeVisible();
+    await expect(usernameInput).toHaveValue('wendyxsausage');
+
+    // Current password input is NOT shown for Google user without local password
+    await expect(page.getByPlaceholder(/current password/i)).toHaveCount(0);
+
+    // Send password setup link to email button is visible and works
+    const sendEmailBtn = page.getByTestId('send-password-setup-email-btn');
+    await expect(sendEmailBtn).toBeVisible();
+    await sendEmailBtn.click();
+    await expect(page.getByText(/wendyxsausage@gmail\.com/i).first()).toBeVisible();
+  });
 });
 
 // ---------------------------------------------------------------------------

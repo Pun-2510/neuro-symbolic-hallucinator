@@ -682,6 +682,122 @@ class EmailService:
             force_smtp=force_smtp,
         )
 
+    def send_google_welcome_email(
+        self,
+        *,
+        to_email: str,
+        username: str,
+        full_name: str | None,
+        raw_token: str,
+        lang: str = "vi",
+        force_smtp: bool = False,
+    ) -> SentEmailMessage:
+        """Build and send a welcome + initial password setup HTML email for new Google OAuth users."""
+        settings = get_settings()
+        frontend_url = settings.email.frontend_url.rstrip("/")
+        action_url = f"{frontend_url}/reset-password?token={raw_token}"
+        display_name = full_name.strip() if full_name and full_name.strip() else username
+        is_vi = lang.lower().startswith("vi")
+        timestamp_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+        if is_vi:
+            subject = "[CITRA] Chào mừng bạn đến với CITRA — Thiết lập mật khẩu & tên đăng nhập"
+            badge_label = "TÀI KHOẢN GOOGLE · INITIAL PASSWORD SETUP"
+            headline = "Chào mừng bạn đến với Không gian CITRA"
+            subtitle = "Tài khoản của bạn đã được khởi tạo thành công qua Google OAuth 2.0."
+            greeting_html = f"Xin chào <strong>{html.escape(display_name)}</strong>,"
+            body_html = (
+                "<p style=\"margin: 0 0 12px 0;\">"
+                "Cảm ơn bạn đã đăng nhập vào <strong>CITRA</strong> bằng tài khoản Google. "
+                "Bạn có thể tuỳ chỉnh <strong>tên đăng nhập (@username)</strong> cho lần đầu tiên ngay trong trang "
+                "<strong>Hồ sơ cá nhân</strong> trên hệ thống."
+                "</p>"
+                "<p style=\"margin: 0 0 12px 0;\">"
+                "Nếu bạn muốn đăng nhập song song bằng cả <strong>Tên đăng nhập / Email và Mật khẩu</strong> "
+                "(bên cạnh nút Tiếp tục với Google), hãy nhấn vào nút bên dưới để thiết lập mật khẩu lần đầu cho tài khoản của bạn:"
+                "</p>"
+            )
+            cta_label = "Thiết lập Mật khẩu Lần đầu"
+            expire_badge = "HIỆU LỰC 24 GIỜ"
+            meta_rows = [
+                ("Tên đăng nhập hiện tại", f"@{username}"),
+                ("Email Google liên kết", to_email),
+                ("Phương thức xác thực", "Google OAuth 2.0"),
+                ("Thời điểm khởi tạo", timestamp_str),
+            ]
+            security_notice = (
+                "Liên kết thiết lập mật khẩu này có hiệu lực trong 24 giờ và chỉ sử dụng 1 lần. "
+                "Bạn cũng có thể đặt mật khẩu trực tiếp trong trang Hồ sơ cá nhân bất cứ lúc nào mà không cần mật khẩu cũ."
+            )
+            text_body = (
+                f"Xin chào {display_name},\n\n"
+                f"Chào mừng bạn đến với CITRA (Tên đăng nhập: @{username}).\n"
+                "Bạn có thể đặt lại tên đăng nhập lần đầu trong trang Hồ sơ cá nhân hoặc thiết lập mật khẩu đăng nhập qua liên kết dưới đây (hiệu lực 24 giờ):\n"
+                f"{action_url}\n\n"
+                "— CITRA Academic Source Verification Workspace"
+            )
+        else:
+            subject = "[CITRA] Welcome to CITRA — Set Up Your Password & Username"
+            badge_label = "GOOGLE OAUTH 2.0 · INITIAL PASSWORD SETUP"
+            headline = "Welcome to your CITRA Workspace"
+            subtitle = "Your account has been created via Google Sign-In."
+            greeting_html = f"Hello <strong>{html.escape(display_name)}</strong>,"
+            body_html = (
+                "<p style=\"margin: 0 0 12px 0;\">"
+                "Thank you for signing in to <strong>CITRA</strong> with Google. "
+                "You can customize your <strong>@username</strong> for the first time directly on your "
+                "<strong>Profile</strong> page."
+                "</p>"
+                "<p style=\"margin: 0 0 12px 0;\">"
+                "If you would also like to sign in using your <strong>Username / Email and a Password</strong> "
+                "(in addition to Google Sign-In), click the button below to set your initial password:"
+                "</p>"
+            )
+            cta_label = "Set Initial Password"
+            expire_badge = "VALID FOR 24H"
+            meta_rows = [
+                ("Current Username", f"@{username}"),
+                ("Linked Google Email", to_email),
+                ("Auth Method", "Google OAuth 2.0"),
+                ("Created At", timestamp_str),
+            ]
+            security_notice = (
+                "This initial password setup link is valid for 24 hours and can only be used once. "
+                "You can also set your password anytime directly on your Profile page without needing a current password."
+            )
+            text_body = (
+                f"Hello {display_name},\n\n"
+                f"Welcome to CITRA (Username: @{username}).\n"
+                "You can customize your username on your Profile page, or set an initial password using the link below (valid for 24 hours):\n"
+                f"{action_url}\n\n"
+                "— CITRA Academic Source Verification Workspace"
+            )
+
+        html_body = _render_scholarly_email_shell(
+            lang=lang,
+            badge_label=badge_label,
+            headline=headline,
+            subtitle=subtitle,
+            greeting_html=greeting_html,
+            body_html=body_html,
+            cta_label=cta_label,
+            cta_url=action_url,
+            meta_rows=meta_rows,
+            security_notice=security_notice,
+            expire_badge=expire_badge,
+        )
+
+        return self.send_raw_email(
+            to_email=to_email,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+            template_type="google_welcome",
+            action_url=action_url,
+            token=raw_token,
+            force_smtp=force_smtp,
+        )
+
 
 _email_service_singleton = EmailService()
 

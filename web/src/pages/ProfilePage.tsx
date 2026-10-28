@@ -9,6 +9,8 @@ import {
   ShieldCheck,
   Terminal,
   UserCheck,
+  Mail,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AvatarUpload } from '@/components/AvatarUpload';
@@ -25,23 +27,32 @@ export function ProfilePage() {
   const lang = i18n.language?.startsWith('vi') ? 'vi' : 'en';
   const { user: authUser, refreshUser } = useAuth();
 
+  const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState(false);
 
-  // Password change
+  // Password change / initial password setup
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [emailLinkSending, setEmailLinkSending] = useState(false);
+
+  const canSetUsername = Boolean(authUser?.can_set_username);
+  const hasPassword =
+    authUser?.has_password !== undefined
+      ? authUser.has_password
+      : authUser?.auth_provider !== 'google';
 
   // Init from auth user
   useEffect(() => {
     if (authUser) {
+      setUsername(authUser.username ?? '');
       setFullName(authUser.full_name ?? '');
       setEmail(authUser.email ?? '');
     }
@@ -51,13 +62,32 @@ export function ProfilePage() {
     e.preventDefault();
     setProfileError('');
     setProfileSuccess(false);
+
+    const trimmedUsername = username.trim();
+    if (canSetUsername) {
+      if (
+        trimmedUsername.length < 3 ||
+        trimmedUsername.length > 50 ||
+        !/^[a-zA-Z0-9._-]+$/.test(trimmedUsername)
+      ) {
+        setProfileError(
+          lang === 'vi'
+            ? 'Tên đăng nhập phải từ 3–50 ký tự và chỉ chứa chữ cái, chữ số, dấu chấm (.), gạch dưới (_) hoặc gạch ngang (-).'
+            : 'Username must be 3–50 characters and contain only letters, numbers, dots, underscores, or hyphens.'
+        );
+        return;
+      }
+    }
+
     setProfileLoading(true);
     try {
       const updated = await api.updateMe({
+        ...(canSetUsername ? { username: trimmedUsername } : {}),
         full_name: fullName || undefined,
         email: email || undefined,
       });
       await refreshUser();
+      setUsername(updated.username ?? '');
       setFullName(updated.full_name ?? '');
       setEmail(updated.email ?? '');
       setProfileSuccess(true);
@@ -82,7 +112,7 @@ export function ProfilePage() {
       setPasswordError(t('profile.passwordMismatchError'));
       return;
     }
-    if (newPassword === currentPassword) {
+    if (hasPassword && newPassword === currentPassword) {
       setPasswordError(t('profile.passwordSameError'));
       return;
     }
@@ -90,20 +120,51 @@ export function ProfilePage() {
     setPasswordLoading(true);
     try {
       await api.changeMyPassword({
-        current_password: currentPassword,
+        ...(hasPassword ? { current_password: currentPassword } : {}),
         new_password: newPassword,
       });
-      setPasswordSuccess(t('profile.passwordChangedSuccess'));
+      await refreshUser();
+      setPasswordSuccess(
+        hasPassword
+          ? t('profile.passwordChangedSuccess')
+          : lang === 'vi'
+            ? 'Thiết lập mật khẩu thành công! Giờ đây bạn có thể đăng nhập bằng cả Google hoặc Tên đăng nhập + Mật khẩu.'
+            : 'Password set successfully! You can now sign in with either Google or Username + Password.'
+      );
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setTimeout(() => setPasswordSuccess(''), 5000);
+      setTimeout(() => setPasswordSuccess(''), 6000);
     } catch (err) {
       setPasswordError(
         err instanceof Error ? err.message : t('profile.passwordChangeFailed')
       );
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  const handleSendPasswordSetupEmail = async () => {
+    setPasswordError('');
+    setPasswordSuccess('');
+    setEmailLinkSending(true);
+    try {
+      await api.sendPasswordSetupEmail(lang);
+      setPasswordSuccess(
+        lang === 'vi'
+          ? `Đã gửi liên kết đặt mật khẩu tới ${authUser?.email}! Vui lòng kiểm tra hộp thư Gmail của bạn.`
+          : `Password setup link sent to ${authUser?.email}! Please check your email inbox.`
+      );
+    } catch (err) {
+      setPasswordError(
+        err instanceof Error
+          ? err.message
+          : lang === 'vi'
+            ? 'Không thể gửi email thiết lập mật khẩu. Vui lòng thử lại.'
+            : 'Could not send password setup email. Please try again.'
+      );
+    } finally {
+      setEmailLinkSending(false);
     }
   };
 
@@ -238,17 +299,53 @@ export function ProfilePage() {
             {/* Profile form */}
             <div className="flex-1 space-y-4 min-w-0">
               <div>
-                <Label className="input-label">{t('profile.username')}</Label>
-                <Input
-                  type="text"
-                  value={authUser?.username ?? ''}
-                  readOnly
-                  disabled
-                  className="opacity-60 cursor-not-allowed mt-1.5 rounded-xl font-mono"
-                />
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {t('profile.usernameReadonly')}
-                </p>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <Label className="input-label">{t('profile.username')}</Label>
+                  {canSetUsername && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 text-[11px] font-mono font-medium text-indigo-700 dark:text-indigo-300">
+                      <Sparkles className="h-3 w-3" />
+                      {lang === 'vi'
+                        ? 'Tài khoản Google · Đặt username lần đầu'
+                        : 'Google Account · First-time username setup'}
+                    </span>
+                  )}
+                </div>
+                {canSetUsername ? (
+                  <>
+                    <div className="relative mt-1.5">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-sm select-none">
+                        @
+                      </span>
+                      <Input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        maxLength={50}
+                        className="pl-8 rounded-xl font-mono"
+                        placeholder="your_username"
+                        data-testid="profile-username-input"
+                      />
+                    </div>
+                    <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">
+                      {lang === 'vi'
+                        ? 'Bạn có thể đặt tên đăng nhập (username) 1 lần cho tài khoản Google của mình, sau đó nhấn Lưu thay đổi.'
+                        : 'You can customize your username once for your Google account, then click Save Changes.'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Input
+                      type="text"
+                      value={authUser?.username ?? ''}
+                      readOnly
+                      disabled
+                      className="opacity-60 cursor-not-allowed mt-1.5 rounded-xl font-mono"
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {t('profile.usernameReadonly')}
+                    </p>
+                  </>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -367,18 +464,36 @@ export function ProfilePage() {
               </Alert>
             )}
 
-            <div>
-              <Label className="input-label">{t('profile.currentPassword')}</Label>
-              <Input
-                type="password"
-                autoComplete="current-password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                required
-                className="mt-1.5 rounded-xl"
-                placeholder={t('profile.currentPasswordPlaceholder')}
-              />
-            </div>
+            {!hasPassword ? (
+              <div className="rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/70 p-3.5 text-xs sm:text-sm text-indigo-900 dark:text-indigo-200 leading-relaxed">
+                {lang === 'vi' ? (
+                  <>
+                    Tài khoản của bạn đăng nhập qua <strong>Google</strong> và chưa có mật khẩu riêng. Bạn có thể{' '}
+                    <strong>thiết lập mật khẩu lần đầu trực tiếp bên dưới</strong> (không cần mật khẩu hiện tại) hoặc{' '}
+                    <strong>nhận liên kết đặt mật khẩu qua email Google</strong> của bạn.
+                  </>
+                ) : (
+                  <>
+                    Your account was created via <strong>Google Sign-In</strong> and does not have a local password yet. You can{' '}
+                    <strong>set your initial password directly below</strong> (no current password required) or{' '}
+                    <strong>send a password setup link to your Google email</strong>.
+                  </>
+                )}
+              </div>
+            ) : (
+              <div>
+                <Label className="input-label">{t('profile.currentPassword')}</Label>
+                <Input
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                  className="mt-1.5 rounded-xl"
+                  placeholder={t('profile.currentPasswordPlaceholder')}
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -410,7 +525,7 @@ export function ProfilePage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
               <Button
                 type="submit"
                 variant="secondary"
@@ -425,10 +540,39 @@ export function ProfilePage() {
                 ) : (
                   <>
                     <Lock className="h-3.5 w-3.5" />
-                    {t('profile.updatePassword')}
+                    {hasPassword
+                      ? t('profile.updatePassword')
+                      : lang === 'vi'
+                        ? 'Thiết lập mật khẩu'
+                        : 'Set Password'}
                   </>
                 )}
               </Button>
+
+              {authUser?.email && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSendPasswordSetupEmail}
+                  disabled={emailLinkSending}
+                  className="gap-2 rounded-xl text-xs sm:text-sm"
+                  data-testid="send-password-setup-email-btn"
+                >
+                  {emailLinkSending ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      {lang === 'vi' ? 'Đang gửi email...' : 'Sending email...'}
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-3.5 w-3.5" />
+                      {lang === 'vi'
+                        ? 'Gửi link đặt mật khẩu qua Email'
+                        : 'Send password setup link to email'}
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </form>
         </div>

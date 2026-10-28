@@ -515,6 +515,9 @@ export interface User {
   is_active: boolean;
   auth_provider?: string;
   google_linked?: boolean;
+  has_password?: boolean;
+  can_set_username?: boolean;
+  needs_onboarding?: boolean;
   avatar_url: string | null;
   last_login_at: string | null;
   created_at: string | null;
@@ -563,12 +566,14 @@ export interface UserUpdate {
 }
 
 export interface UserSelfUpdate {
+  username?: string | null;
   email?: string | null;
   full_name?: string | null;
+  complete_onboarding?: boolean | null;
 }
 
 export interface PasswordChange {
-  current_password: string;
+  current_password?: string | null;
   new_password: string;
 }
 
@@ -837,11 +842,25 @@ export const api = {
     return request<User>('/users/me/avatar', { method: 'POST', body: fd });
   },
   deleteMyAvatar: () => request<User>('/users/me/avatar', { method: 'DELETE' }),
-  changeMyPassword: (data: PasswordChange) =>
-    request<{ message: string }>('/users/me/password', {
+  changeMyPassword: async (data: PasswordChange) => {
+    const res = await request<{ message: string; token?: string | null }>(
+      '/users/me/password',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      },
+    );
+    if (res?.token) {
+      localStorage.setItem('token', res.token);
+    }
+    return res;
+  },
+  sendPasswordSetupEmail: (lang: string = 'vi') =>
+    request<{ message: string }>('/users/me/password-setup-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ lang }),
     }),
 
   // Teacher (v1.15 / Phase 3) — requires teacher or admin role
