@@ -326,19 +326,25 @@ class NeuroSymbolicChecker:
             and not is_dead_url_early
             and RetrievalOrchestrator.is_web_or_legal_resource(citation)
         ):
-            http_note = (
-                f" (HTTP {getattr(source, 'url_status_code', None) or 200} OK)"
-                if getattr(source, "url_status", None) in ("alive", "restricted_alive")
-                else ""
-            )
+            url_stat = getattr(source, "url_status", None)
+            archive_url = getattr(source, "archive_url", None)
+            if url_stat == "archived_alive":
+                http_note = f" (Wayback Machine snapshot: {archive_url or 'archive.org'})"
+                res_rules = ["R-WAYBACK-ARCHIVED", "R-WEB-RESOURCE"]
+            elif url_stat in ("alive", "restricted_alive"):
+                http_note = f" (HTTP {getattr(source, 'url_status_code', None) or 200} OK)"
+                res_rules = ["R-WEB-RESOURCE"]
+            else:
+                http_note = ""
+                res_rules = ["R-WEB-RESOURCE"]
             return CitationVerdict(
                 citation=citation,
                 label=ValidationLabel.RESOURCE,
-                confidence=0.95,
+                confidence=0.95 if url_stat != "archived_alive" else 0.90,
                 matched_source=source,
                 features=MatchFeatures(),
                 reasoning=f"Web/documentation resource detected{http_note}: {raw_text[:70]}... (non-scholarly URL resource)",
-                triggered_rules=["R-WEB-RESOURCE"],
+                triggered_rules=res_rules,
                 mismatched_fields=[],
             )
 
@@ -423,6 +429,8 @@ class NeuroSymbolicChecker:
                             api_exhausted=source.api_exhausted,
                             url_status=source.url_status,
                             url_status_code=source.url_status_code,
+                            archive_url=getattr(source, "archive_url", None),
+                            is_retracted=getattr(source, "is_retracted", False),
                         )
                         features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
 
@@ -453,6 +461,8 @@ class NeuroSymbolicChecker:
                         api_exhausted=source.api_exhausted,
                         url_status=source.url_status,
                         url_status_code=source.url_status_code,
+                        archive_url=getattr(source, "archive_url", None),
+                        is_retracted=getattr(source, "is_retracted", False),
                     )
                     features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
                     known_rules = ["R-KNOWN-PAPER"]
@@ -494,6 +504,8 @@ class NeuroSymbolicChecker:
                     api_exhausted=source.api_exhausted,
                     url_status=source.url_status,
                     url_status_code=source.url_status_code,
+                    archive_url=getattr(source, "archive_url", None),
+                    is_retracted=getattr(source, "is_retracted", False),
                 )
                 features = self.feature_calculator.compute(citation, enhanced_source, citation_context)
                 known_rules = ["R-KNOWN-PAPER"]
@@ -594,7 +606,7 @@ class NeuroSymbolicChecker:
         verdict: CitationVerdict,
         source: SourceResult,
     ) -> CitationVerdict:
-        """If scholarly record is verified/matched but the cited URL is dead, flag domain_exception."""
+        """Post-process verdict for dead-link domain exceptions, Wayback archives, and retractions."""
         if (
             getattr(source, "url_status", None) == "dead_link"
             and verdict.label in (ValidationLabel.VERIFIED, ValidationLabel.METADATA_ERROR)
@@ -609,6 +621,32 @@ class NeuroSymbolicChecker:
             verdict.reasoning += (
                 " [Link check: Cited URL is dead/unreachable, but scholarly record exists in academic registries.]"
             )
+
+        if getattr(source, "url_status", None) == "archived_alive":
+            if "R-WAYBACK-ARCHIVED" not in verdict.triggered_rules:
+                verdict.triggered_rules.append("R-WAYBACK-ARCHIVED")
+            archive_url = getattr(source, "archive_url", None)
+            if archive_url and "[Web Archive:" not in verdict.reasoning and "Wayback Machine" not in verdict.reasoning:
+                verdict.reasoning += (
+                    f" [Web Archive: Original URL experienced link rot, verified via Wayback Machine snapshot: {archive_url}]"
+                )
+
+        is_retracted = bool(
+            getattr(source, "is_retracted", False)
+            or (hasattr(source, "has_retracted_candidate") and source.has_retracted_candidate())
+        )
+        if is_retracted:
+            if hasattr(source, "is_retracted"):
+                source.is_retracted = True
+            if "R-RETRACTED-PAPER" not in verdict.triggered_rules:
+                verdict.triggered_rules.append("R-RETRACTED-PAPER")
+            if "retracted" not in verdict.mismatched_fields:
+                verdict.mismatched_fields.append("retracted")
+            if "[RETRACTION WARNING:" not in verdict.reasoning:
+                verdict.reasoning += (
+                    " [RETRACTION WARNING: This publication has been officially RETRACTED in scholarly registries "
+                    "(Retraction Watch / OpenAlex / Crossref).]"
+                )
         return verdict
 
     def _enhance_reasoning_with_neural(

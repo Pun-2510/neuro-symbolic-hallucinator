@@ -209,6 +209,11 @@ class Repository:
                         "occurrence_alignments": getattr(v.features, "occurrence_alignments", []) if v.features else [],
                         "url_status": getattr(v.matched_source, "url_status", None) if getattr(v, "matched_source", None) else None,
                         "url_status_code": getattr(v.matched_source, "url_status_code", None) if getattr(v, "matched_source", None) else None,
+                        "archive_url": getattr(v.matched_source, "archive_url", None) if getattr(v, "matched_source", None) else None,
+                        "is_retracted": bool(
+                            (getattr(v.matched_source, "is_retracted", False) if getattr(v, "matched_source", None) else False)
+                            or ("R-RETRACTED-PAPER" in (getattr(v, "triggered_rules", None) or []))
+                        ),
                         "checked_url": getattr(v.citation, "url", None) if getattr(v, "citation", None) else None,
                         "matched_sources": _serialize_matched_sources(getattr(v, "matched_source", None)),
                         "citation_link": (

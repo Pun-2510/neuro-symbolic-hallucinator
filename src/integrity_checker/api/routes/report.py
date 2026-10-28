@@ -347,6 +347,11 @@ def _json_response(
             "features": features_dict,
             "url_status": features_dict.get("url_status"),
             "url_status_code": features_dict.get("url_status_code"),
+            "archive_url": features_dict.get("archive_url"),
+            "is_retracted": bool(
+                features_dict.get("is_retracted", False)
+                or ("R-RETRACTED-PAPER" in json.loads(v.triggered_rules or "[]"))
+            ),
             "matched_sources": matched_sources,
             # Override
             "is_overridden": bool(v.is_overridden),

@@ -181,10 +181,20 @@ class AnalysisReport:
                         "occurrence_alignments": getattr(v.features, "occurrence_alignments", []) if v.features else [],
                         "url_status": getattr(v.matched_source, "url_status", None) if v.matched_source else None,
                         "url_status_code": getattr(v.matched_source, "url_status_code", None) if v.matched_source else None,
+                        "archive_url": getattr(v.matched_source, "archive_url", None) if v.matched_source else None,
+                        "is_retracted": bool(
+                            getattr(v.matched_source, "is_retracted", False)
+                            or ("R-RETRACTED-PAPER" in (v.triggered_rules or []))
+                        ),
                         "checked_url": getattr(v.citation, "url", None) if v.citation else None,
                     },
                     "url_status": getattr(v.matched_source, "url_status", None) if v.matched_source else None,
                     "url_status_code": getattr(v.matched_source, "url_status_code", None) if v.matched_source else None,
+                    "archive_url": getattr(v.matched_source, "archive_url", None) if v.matched_source else None,
+                    "is_retracted": bool(
+                        getattr(v.matched_source, "is_retracted", False)
+                        or ("R-RETRACTED-PAPER" in (v.triggered_rules or []))
+                    ),
                     "domain_exception": getattr(v, "domain_exception", False),
                     # NEW v1.3: Provenance tracking
                     "provenance": {
@@ -235,6 +245,8 @@ class AnalysisReport:
             citation_link = _deserialize_citation_link(raw_verdict.get("citation_link"))
             url_status = raw_verdict.get("url_status") or feature_data.get("url_status")
             url_status_code = raw_verdict.get("url_status_code") or feature_data.get("url_status_code")
+            archive_url = raw_verdict.get("archive_url") or feature_data.get("archive_url")
+            is_retracted = bool(raw_verdict.get("is_retracted") or feature_data.get("is_retracted", False))
 
             verdict = CitationVerdict(
                 citation=citation,
@@ -271,6 +283,8 @@ class AnalysisReport:
                     raw_verdict.get("matched_sources"),
                     url_status=url_status,
                     url_status_code=url_status_code,
+                    archive_url=archive_url,
+                    is_retracted=is_retracted,
                 ),
             )
             verdicts.append(verdict)
@@ -2004,6 +2018,8 @@ def _deserialize_matched_sources(
     payload: Any,
     url_status: str | None = None,
     url_status_code: int | None = None,
+    archive_url: str | None = None,
+    is_retracted: bool = False,
 ) -> SourceResult | None:
     """Rebuild a minimal SourceResult from a list of MatchedSource dicts.
 
@@ -2031,7 +2047,7 @@ def _deserialize_matched_sources(
         )
         if name not in succeeded:
             succeeded.append(name)
-    if not candidates and url_status is None:
+    if not candidates and url_status is None and archive_url is None and not is_retracted:
         return None
     return SourceResult(
         citation_raw="",
@@ -2040,6 +2056,8 @@ def _deserialize_matched_sources(
         sources_succeeded=list(succeeded),
         url_status=url_status,
         url_status_code=url_status_code,
+        archive_url=archive_url,
+        is_retracted=is_retracted,
     )
 
 
