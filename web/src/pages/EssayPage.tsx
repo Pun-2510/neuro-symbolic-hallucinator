@@ -463,10 +463,14 @@ function formatShortInText(
   return (stripped || rawText).slice(0, 42);
 }
 
-function getVerdictBadgeVisuals(label: ValidationLabel): {
+function getVerdictBadgeVisuals(
+  label: ValidationLabel,
+  triggeredRules?: string[]
+): {
   text: string;
   badgeClass: string;
 } {
+  const isLegal = (triggeredRules ?? []).some((r) => r.includes('LEGAL'));
   switch (label) {
     case 'verified':
       return {
@@ -476,7 +480,7 @@ function getVerdictBadgeVisuals(label: ValidationLabel): {
       };
     case 'metadata_error':
       return {
-        text: '⚠ METADATA_ERROR',
+        text: isLegal ? '⚠ LEGAL_METADATA_ERROR' : '⚠ METADATA_ERROR',
         badgeClass:
           'verdict-badge-metadata-error bg-amber-100/90 text-amber-800 border border-amber-300 dark:bg-amber-950/90 dark:text-amber-300 dark:border-amber-700 font-bold',
       };
@@ -488,7 +492,7 @@ function getVerdictBadgeVisuals(label: ValidationLabel): {
       };
     case 'resource':
       return {
-        text: '↗ URL_RESOURCE',
+        text: isLegal ? '⚖ VN_LEGAL_STATUTE' : '↗ URL_RESOURCE',
         badgeClass:
           'bg-violet-100/90 text-violet-800 border border-violet-300 dark:bg-violet-950/90 dark:text-violet-300 dark:border-violet-700 font-bold',
       };
@@ -1295,7 +1299,10 @@ function enrichVerdictItem(
     }
   });
 
-  const verdictVisual = getVerdictBadgeVisuals(verdict.label);
+  const verdictVisual = getVerdictBadgeVisuals(
+    verdict.label,
+    verdict.triggered_rules
+  );
   const mappingVisual = getMappingBadgeVisuals(verdict.mapping_status);
   const linkBadge = getLinkBadgeVisuals(verdict, lang);
 
@@ -1554,8 +1561,8 @@ export function EssayPage() {
         {/* IDE Window Container */}
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950 shadow-xl overflow-hidden">
           {/* Top Window Chrome Bar */}
-          <div className="px-4 sm:px-6 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="px-4 sm:px-6 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-[200px] flex-1">
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="w-3 h-3 rounded-full bg-red-400/80 inline-block" />
                 <span className="w-3 h-3 rounded-full bg-amber-400/80 inline-block" />
@@ -1567,7 +1574,7 @@ export function EssayPage() {
                 <span className="font-semibold truncate" title={report.filename}>
                   {report.filename}
                 </span>
-                <span className="hidden sm:inline text-slate-400 shrink-0">
+                <span className="hidden md:inline text-slate-400 shrink-0">
                   ({report.num_pages} pages · {report.verdicts.length} citations)
                 </span>
               </div>
@@ -1922,27 +1929,27 @@ export function EssayPage() {
 
                     {/* Inspector Tabs: Metadata Diff (All) | Symbolic Rules, Sources & Evidence Graph (Pro/Ultra/Teacher/Admin) */}
                     <Tabs defaultValue="diff" className="w-full mt-4">
-                      <TabsList className="w-full justify-start bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-auto flex-wrap sm:flex-nowrap gap-1">
-                        <TabsTrigger value="diff" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
+                      <TabsList className="grid grid-cols-2 xl:grid-cols-4 w-full bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-auto gap-1">
+                        <TabsTrigger value="diff" className="w-full text-[11px] sm:text-xs font-mono py-1.5 px-2 truncate">
                           {lang === 'vi' ? '1. Đối chiếu Metadata' : '1. Metadata Diff'}
                         </TabsTrigger>
                         {canViewDeepTrace ? (
                           <>
-                            <TabsTrigger value="rules" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
+                            <TabsTrigger value="rules" className="w-full text-[11px] sm:text-xs font-mono py-1.5 px-2 truncate">
                               {lang === 'vi'
                                 ? `2. Luật Suy diễn (${activeItem.rules.length})`
                                 : `2. Symbolic Rules (${activeItem.rules.length})`}
                             </TabsTrigger>
-                            <TabsTrigger value="sources" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
+                            <TabsTrigger value="sources" className="w-full text-[11px] sm:text-xs font-mono py-1.5 px-2 truncate">
                               {lang === 'vi' ? '3. Nguồn Truy hồi' : '3. Source Retrieval'}
                             </TabsTrigger>
                             <TabsTrigger
                               value="graph"
                               data-testid="inspector-tab-graph"
-                              className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px] gap-1"
+                              className="w-full text-[11px] sm:text-xs font-mono py-1.5 px-2 gap-1 truncate"
                             >
-                              <GitBranch className="h-3 w-3 text-violet-500" />
-                              <span>{lang === 'vi' ? '4. Đồ thị Bằng chứng' : '4. Evidence Graph'}</span>
+                              <GitBranch className="h-3 w-3 shrink-0 text-violet-500" />
+                              <span className="truncate">{lang === 'vi' ? '4. Đồ thị Bằng chứng' : '4. Evidence Graph'}</span>
                             </TabsTrigger>
                           </>
                         ) : (
@@ -1957,11 +1964,11 @@ export function EssayPage() {
                                 );
                                 setUpgradeOpen(true);
                               }}
-                              className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px] rounded-lg text-slate-500 hover:text-indigo-600 cursor-pointer"
+                              className="w-full inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 rounded-lg text-slate-500 hover:text-indigo-600 cursor-pointer truncate"
                             >
-                              <Lock className="h-3 w-3 text-amber-500" />
-                              <span>{lang === 'vi' ? '2. Luật Suy diễn' : '2. Symbolic Rules'}</span>
-                              <span className="px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[9px] font-bold">
+                              <Lock className="h-3 w-3 shrink-0 text-amber-500" />
+                              <span className="truncate">{lang === 'vi' ? '2. Luật Suy diễn' : '2. Symbolic Rules'}</span>
+                              <span className="px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[9px] font-bold shrink-0">
                                 PRO
                               </span>
                             </button>
@@ -1975,11 +1982,11 @@ export function EssayPage() {
                                 );
                                 setUpgradeOpen(true);
                               }}
-                              className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px] rounded-lg text-slate-500 hover:text-indigo-600 cursor-pointer"
+                              className="w-full inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 rounded-lg text-slate-500 hover:text-indigo-600 cursor-pointer truncate"
                             >
-                              <Lock className="h-3 w-3 text-amber-500" />
-                              <span>{lang === 'vi' ? '3. Nguồn Truy hồi' : '3. Source Retrieval'}</span>
-                              <span className="px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[9px] font-bold">
+                              <Lock className="h-3 w-3 shrink-0 text-amber-500" />
+                              <span className="truncate">{lang === 'vi' ? '3. Nguồn Truy hồi' : '3. Source Retrieval'}</span>
+                              <span className="px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[9px] font-bold shrink-0">
                                 PRO
                               </span>
                             </button>
@@ -1994,11 +2001,11 @@ export function EssayPage() {
                                 );
                                 setUpgradeOpen(true);
                               }}
-                              className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px] rounded-lg text-slate-500 hover:text-indigo-600 cursor-pointer"
+                              className="w-full inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 rounded-lg text-slate-500 hover:text-indigo-600 cursor-pointer truncate"
                             >
-                              <Lock className="h-3 w-3 text-amber-500" />
-                              <span>{lang === 'vi' ? '4. Đồ thị Bằng chứng' : '4. Evidence Graph'}</span>
-                              <span className="px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[9px] font-bold">
+                              <Lock className="h-3 w-3 shrink-0 text-amber-500" />
+                              <span className="truncate">{lang === 'vi' ? '4. Đồ thị Bằng chứng' : '4. Evidence Graph'}</span>
+                              <span className="px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[9px] font-bold shrink-0">
                                 PRO
                               </span>
                             </button>

@@ -340,28 +340,28 @@ export function UploadPage() {
       {/* Main IDE Dropzone Container */}
       <Card className="p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
         {/* Top Window Chrome */}
-        <div className="px-4 sm:px-6 py-3.5 bg-slate-50/80 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
+        <div className="px-4 sm:px-6 py-3.5 bg-slate-50/80 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <span className="w-2.5 h-2.5 rounded-full bg-red-400/80 inline-block" />
               <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80 inline-block" />
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80 inline-block" />
             </div>
-            <Separator orientation="vertical" className="h-4" />
-            <span className="font-mono text-xs text-slate-600 dark:text-slate-300 font-medium">
+            <Separator orientation="vertical" className="h-4 shrink-0" />
+            <span className="font-mono text-xs text-slate-600 dark:text-slate-300 font-medium truncate">
               manuscript_ingest.pdf / .docx
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge
               variant="outline"
-              className="font-mono text-[10px] bg-indigo-50/80 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+              className="font-mono text-[10px] whitespace-nowrap shrink-0 bg-indigo-50/80 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
             >
               PDF + DOCX
             </Badge>
             <Badge
               variant="outline"
-              className="font-mono text-[11px] bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400"
+              className="font-mono text-[11px] whitespace-nowrap shrink-0 bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400"
             >
               {t('upload.maxSize')}
             </Badge>
@@ -389,7 +389,7 @@ export function UploadPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
               {enrolledClasses.length > 0 && (
                 <select
                   aria-label="Select class"
@@ -398,7 +398,7 @@ export function UploadPage() {
                   onChange={(e) =>
                     setSelectedClassId(e.target.value ? Number(e.target.value) : null)
                   }
-                  className="h-9 px-3 rounded-xl text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                  className="h-9 px-3 rounded-xl text-xs font-mono w-full sm:w-auto max-w-full truncate bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
                 >
                   <option value="">
                     {lang === 'vi' ? '— Kiểm tra cá nhân (Không gán lớp) —' : '— Personal Check (No Class) —'}
