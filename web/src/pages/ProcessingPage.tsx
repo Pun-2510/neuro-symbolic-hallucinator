@@ -493,7 +493,21 @@ export function ProcessingPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {(['crossref', 'openalex', 'dblp', 'arxiv', 'openlibrary', 'europepmc'] as const).map((db) => (
+            {([
+              'crossref',
+              'openalex',
+              'datacite',
+              'doaj',
+              'openaire_hal',
+              'ncbi_biorxiv',
+              'dblp',
+              'arxiv',
+              'openlibrary',
+              'europepmc',
+              'huggingface',
+              'tech_standard',
+              'doi_ra',
+            ] as const).map((db) => (
               <SourceTile
                 key={db}
                 name={db}
@@ -571,10 +585,17 @@ function SourceTile({
   const displayNameMap: Record<string, string> = {
     crossref: 'Crossref',
     openalex: 'OpenAlex',
+    datacite: 'DataCite (Zenodo/OSF)',
+    doaj: 'DOAJ Open Access',
+    openaire_hal: 'OpenAIRE / HAL',
+    ncbi_biorxiv: 'NCBI / bioRxiv',
     dblp: 'DBLP (CS/AI)',
     arxiv: 'arXiv Preprints',
     openlibrary: 'OpenLibrary / Books',
     europepmc: 'Europe PMC',
+    huggingface: 'Hugging Face Hub',
+    tech_standard: 'IETF RFC / PyPI',
+    doi_ra: 'Global DOI RA',
     local_db: 'Local ACL FTS5',
   };
   const displayName =

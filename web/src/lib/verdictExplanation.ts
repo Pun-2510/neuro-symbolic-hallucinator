@@ -29,6 +29,7 @@ const FIELD_LABELS: Record<string, string> = {
   venue: 'the venue',
   url: 'the link',
   retracted: 'the retraction status (RETRACTED PAPER)',
+  retracted_paper: 'the retraction status (RETRACTED PAPER)',
 };
 
 const RULE_LABELS: Record<string, string> = {

@@ -1658,8 +1658,8 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
                     </div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
                       {lang === 'vi'
-                        ? 'Xác thực sự tồn tại và độ khớp metadata trên 7 nguồn dữ liệu học thuật.'
-                        : 'Cross-validates existence and field-level accuracy across 7 scholarly indexes.'}
+                        ? 'Xác thực sự tồn tại, trạng thái thu hồi (Retraction Watch) và độ khớp metadata trên 15+ nguồn dữ liệu học thuật & kỹ thuật.'
+                        : 'Cross-validates existence, retraction status, and field-level accuracy across 15+ scholarly & technical indexes.'}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       <span className="verdict-badge verdict-badge-verified text-[10px] px-2.5 py-0.5 font-mono">
@@ -1776,6 +1776,13 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
                     meta: 'CS/AI conferences, preprints & ISBN multi-edition books',
                     badge: 'DBLP · ARXIV · BOOKS',
                     badgeClass: 'source-badge-dblp',
+                  },
+                  {
+                    name: 'DataCite, DOAJ, HAL, NCBI, HF & IETF RFC',
+                    meta: 'Zenodo datasets, OA journals, theses, bioRxiv, AI models, RFCs & Wayback Machine',
+                    badge: '+9 FREE APIS',
+                    badgeClass:
+                      'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
                   },
                 ].map((src) => (
                   <div
@@ -1928,9 +1935,9 @@ function PipelineSection({ lang }: { lang: Lang }) {
           {
             step: '03',
             icon: Database,
-            tech: 'FTS5 + 9 APIs + VN Legal Registry',
+            tech: 'FTS5 + 15+ APIs + VN Legal Registry',
             title: 'Truy hồi Đa Nguồn & Pháp luật VN',
-            desc: 'Tra cứu trên 127K bài báo ACL nội bộ, 9 API học thuật quốc tế (Semantic Scholar, Crossref, OpenAlex, PubMed, arXiv...) và Cơ sở dữ liệu Văn bản Pháp luật Việt Nam.',
+            desc: 'Tra cứu trên 127K bài báo ACL nội bộ, 15+ API học thuật & kỹ thuật quốc tế (Crossref, OpenAlex, DataCite/Zenodo, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, Hugging Face, IETF RFC, Wayback Machine...) và CSDL Pháp luật VN.',
           },
           {
             step: '04',
@@ -1958,9 +1965,9 @@ function PipelineSection({ lang }: { lang: Lang }) {
           {
             step: '03',
             icon: Database,
-            tech: 'FTS5 + 9 APIs + VN Legal Registry',
+            tech: 'FTS5 + 15+ APIs + VN Legal Registry',
             title: 'Federated & Statutory Retrieval',
-            desc: 'Queries 127K+ local ACL Anthology papers, 9 global scholarly APIs, and the built-in Vietnamese Legal Statute & Vigencia Registry.',
+            desc: 'Queries 127K+ local ACL Anthology papers, 15+ global scholarly & technical APIs (DataCite, DOAJ, HAL, NCBI/bioRxiv, Hugging Face, IETF RFC, Wayback...), and the Vietnamese Legal Statute Registry.',
           },
           {
             step: '04',

@@ -732,6 +732,8 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
     venue: 'nơi công bố',
     doi: 'mã DOI',
     url: 'đường dẫn URL',
+    retracted: 'trạng thái thu hồi bài báo (Retracted)',
+    retracted_paper: 'trạng thái thu hồi bài báo (Retracted)',
   };
   const fieldMapEn: Record<string, string> = {
     title: 'title',
@@ -741,6 +743,8 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
     venue: 'venue',
     doi: 'DOI',
     url: 'URL',
+    retracted: 'retraction status (Retracted)',
+    retracted_paper: 'retraction status (Retracted)',
   };
 
   const sources = [
@@ -871,7 +875,7 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
           : 'siêu dữ liệu (năm xuất bản / tiêu đề)';
       mainText = `Tìm thấy công trình học thuật tương ứng${srcStr}, nhưng phát hiện sai lệch ở trường: ${errFldStr}. Vui lòng đối chiếu và hiệu đính lại theo bản ghi gốc.${telemetrySuffix}`;
     } else if (verdict.label === 'suspected_hallucination') {
-      mainText = `Không tìm thấy bất kỳ công trình học thuật nào khớp với trích dẫn này trên hệ thống cơ sở dữ liệu học thuật (Local ACL FTS5, Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, Europe PMC). Nghi ngờ trích dẫn suy diễn (hallucination) hoặc thông tin không có thật.${telemetrySuffix}`;
+      mainText = `Không tìm thấy bất kỳ công trình học thuật nào khớp với trích dẫn này trên hệ thống 15+ cơ sở dữ liệu học thuật & kỹ thuật (Local ACL FTS5, Crossref, OpenAlex, DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, DBLP, arXiv, OpenLibrary, Europe PMC, Hugging Face, IETF RFC, Global DOI RA). Nghi ngờ trích dẫn suy diễn (hallucination) hoặc thông tin không có thật.${telemetrySuffix}`;
     } else {
       const srcStr =
         sources.length > 0
@@ -948,7 +952,7 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
         : 'metadata fields (year / title)';
     mainTextEn = `Found a corresponding publication${srcStr}, but detected discrepancies in: ${errFldStr}. Please review against the canonical record.${telemetrySuffixEn}`;
   } else if (verdict.label === 'suspected_hallucination') {
-    mainTextEn = `No matching publication was found across all scholarly databases (Local ACL FTS5, Crossref, OpenAlex, DBLP, arXiv, OpenLibrary, Europe PMC). Suspected hallucinated or fabricated reference.${telemetrySuffixEn}`;
+    mainTextEn = `No matching publication was found across all 15+ scholarly & technical databases (Local ACL FTS5, Crossref, OpenAlex, DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, DBLP, arXiv, OpenLibrary, Europe PMC, Hugging Face, IETF RFC, Global DOI RA). Suspected hallucinated or fabricated reference.${telemetrySuffixEn}`;
   } else {
     mainTextEn =
       sources.length > 0
@@ -1353,10 +1357,17 @@ function enrichVerdictItem(
     { key: 'local', label: 'Local ACL / Known Papers (SQLite FTS5)', matchTokens: ['local', 'known', 'acl'] },
     { key: 'crossref', label: 'Crossref REST API', matchTokens: ['crossref'] },
     { key: 'openalex', label: 'OpenAlex Scholarly Graph', matchTokens: ['openalex'] },
+    { key: 'datacite', label: 'DataCite (Zenodo / Figshare / OSF)', matchTokens: ['datacite', 'zenodo', 'figshare'] },
+    { key: 'doaj', label: 'DOAJ (Directory of Open Access Journals)', matchTokens: ['doaj'] },
+    { key: 'openaire_hal', label: 'OpenAIRE Graph / HAL Open Science', matchTokens: ['openaire', 'hal'] },
+    { key: 'ncbi_biorxiv', label: 'NCBI Entrez / bioRxiv / medRxiv', matchTokens: ['ncbi', 'biorxiv', 'medrxiv'] },
     { key: 'dblp', label: 'DBLP Computer Science Bibliography', matchTokens: ['dblp'] },
     { key: 'arxiv', label: 'arXiv Preprint Repository', matchTokens: ['arxiv'] },
     { key: 'openlibrary', label: 'OpenLibrary / Google Books', matchTokens: ['openlibrary', 'google_books'] },
     { key: 'europepmc', label: 'Europe PMC / PubMed', matchTokens: ['europepmc', 'pubmed'] },
+    { key: 'huggingface', label: 'Hugging Face Hub (Models / Datasets / Papers)', matchTokens: ['huggingface'] },
+    { key: 'tech_standard', label: 'IETF Datatracker RFC / PyPI', matchTokens: ['tech_standard', 'rfc', 'pypi'] },
+    { key: 'doi_ra', label: 'Global DOI Registration Agency (CSL-JSON)', matchTokens: ['doi_ra', 'jalc', 'cnki', 'medra'] },
   ];
 
   const usedSourceIndices = new Set<number>();

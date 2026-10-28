@@ -95,10 +95,17 @@ function SourceIcon({ source }: { source: string }) {
   const lower = source.toLowerCase();
   if (lower.includes('crossref')) return <span className="text-[11px] font-mono font-bold">CR</span>;
   if (lower.includes('openalex')) return <span className="text-[11px] font-mono font-bold">OA</span>;
+  if (lower.includes('datacite')) return <span className="text-[11px] font-mono font-bold">DC</span>;
+  if (lower.includes('doaj')) return <span className="text-[11px] font-mono font-bold">DJ</span>;
+  if (lower.includes('openaire') || lower.includes('hal')) return <span className="text-[11px] font-mono font-bold">HL</span>;
+  if (lower.includes('ncbi') || lower.includes('biorxiv')) return <span className="text-[11px] font-mono font-bold">NC</span>;
   if (lower.includes('dblp')) return <span className="text-[11px] font-mono font-bold">DB</span>;
   if (lower.includes('arxiv')) return <span className="text-[11px] font-mono font-bold">AX</span>;
   if (lower.includes('openlibrary')) return <span className="text-[11px] font-mono font-bold">OL</span>;
   if (lower.includes('europepmc')) return <span className="text-[11px] font-mono font-bold">PM</span>;
+  if (lower.includes('huggingface')) return <span className="text-[11px] font-mono font-bold">HF</span>;
+  if (lower.includes('tech_standard') || lower.includes('rfc')) return <span className="text-[11px] font-mono font-bold">RF</span>;
+  if (lower.includes('doi_ra')) return <span className="text-[11px] font-mono font-bold">RA</span>;
   return <Database className="h-3.5 w-3.5" />;
 }
 
