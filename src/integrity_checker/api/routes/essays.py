@@ -773,19 +773,30 @@ def get_essay_page_preview(
             color=(0.38, 0.43, 0.54),
         )
 
+        import html as _html
+        import re as _re
+
         citations = repo.get_citations(essay_id)
         verdicts = repo.get_verdicts(essay_id)
         page_cits = [c for c in citations if (c.page_num or 1) == page_num] or citations[:8]
+
+        hl_q = (highlight or "").strip().lower()
+        hl_tok = ""
+        if hl_q:
+            m_tok = _re.search(r"[a-zA-ZÀ-ỹ]{4,}", hl_q)
+            if m_tok:
+                hl_tok = m_tok.group(0).lower()
 
         y = 110.0
         for idx, c in enumerate(page_cits[:8], start=1):
             ctx = (getattr(c, "context", None) or c.raw_text or "").strip()
             block_text = f"[{idx}] {ctx[:260]}"
+            ctx_low = f"{ctx} {c.raw_text or ''}".lower()
             is_hl = bool(
-                highlight
+                hl_q
                 and (
-                    highlight.strip().lower() in ctx.lower()
-                    or highlight.strip().lower() in (c.raw_text or "").lower()
+                    hl_q in ctx_low
+                    or (hl_tok and len(hl_tok) >= 4 and hl_tok in ctx_low)
                 )
             )
             box = fitz.Rect(42, y - 6, 553, y + 66)
@@ -806,11 +817,9 @@ def get_essay_page_preview(
                     width=0.8,
                 )
             sh.commit()
-            page.insert_textbox(
+            page.insert_htmlbox(
                 fitz.Rect(50, y, 545, y + 62),
-                block_text,
-                fontsize=9.2,
-                color=(0.10, 0.12, 0.18),
+                f'<div style="font-family: sans-serif; font-size: 9pt; color: #191f2e; line-height: 1.35;">{_html.escape(block_text)}</div>',
             )
             y += 80.0
             if y > 740:
@@ -819,7 +828,14 @@ def get_essay_page_preview(
         if not page_cits and verdicts:
             for idx, v in enumerate(verdicts[:7], start=1):
                 txt = f"[{idx}] ({v.label.upper()}) {v.citation_raw[:220]}"
-                is_hl = bool(highlight and highlight.strip().lower() in v.citation_raw.lower())
+                v_low = v.citation_raw.lower()
+                is_hl = bool(
+                    hl_q
+                    and (
+                        hl_q in v_low
+                        or (hl_tok and len(hl_tok) >= 4 and hl_tok in v_low)
+                    )
+                )
                 box = fitz.Rect(42, y - 6, 553, y + 58)
                 sh = page.new_shape()
                 sh.draw_rect(box)
@@ -833,11 +849,9 @@ def get_essay_page_preview(
                 else:
                     sh.finish(color=(0.88, 0.90, 0.94), fill=(0.99, 0.99, 1.0), width=0.8)
                 sh.commit()
-                page.insert_textbox(
+                page.insert_htmlbox(
                     fitz.Rect(50, y, 545, y + 54),
-                    txt,
-                    fontsize=9.2,
-                    color=(0.10, 0.12, 0.18),
+                    f'<div style="font-family: sans-serif; font-size: 9pt; color: #191f2e; line-height: 1.35;">{_html.escape(txt)}</div>',
                 )
                 y += 72.0
 

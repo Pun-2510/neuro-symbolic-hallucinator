@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   api,
   type RemediatedBibliographyResponse,
@@ -104,9 +105,9 @@ export function BibliographyRemediationModal({
       : data.entries
     : [];
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 backdrop-blur-xs p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/65 backdrop-blur-xs p-3 sm:p-4"
       onClick={onClose}
       data-testid="bibliography-remediation-modal"
     >
@@ -342,6 +343,7 @@ export function BibliographyRemediationModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

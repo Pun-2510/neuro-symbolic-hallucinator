@@ -118,11 +118,23 @@ def _normalize_author_list(raw_authors: Any) -> list[str]:
     return [a for a in items if a]
 
 
+_CORPORATE_AUTHOR_RE = re.compile(
+    r"^(?:quốc\s+hội|chính\s+phủ|thủ\s+tướng(?:\s+chính\s+phủ)?|"
+    r"bộ\s+[\wÀ-ỹ\s]+|ủy\s+ban[\wÀ-ỹ\s]*|tòa\s+án[\wÀ-ỹ\s]*|"
+    r"viện\s+kiểm\s+sát[\wÀ-ỹ\s]*|ngân\s+hàng\s+nhà\s+nước|"
+    r"world\s+health\s+organization|united\s+nations|european\s+commission|"
+    r"ministry\s+of\s+[\w\s]+|national\s+institute[\w\s]*)\b",
+    re.IGNORECASE,
+)
+
+
 def _split_surname_initials(author_str: str) -> tuple[str, str]:
     """Return (Surname, Initials_With_Dots) for a single author string."""
     s = _clean_text(author_str).strip(".,;")
     if not s:
         return ("Unknown", "")
+    if _CORPORATE_AUTHOR_RE.search(s):
+        return (s, "")
     if "," in s:
         parts = [p.strip() for p in s.split(",", 1)]
         surname = parts[0]
@@ -343,7 +355,19 @@ def build_remediated_bibliography(
             else v.get("mismatched_fields", [])
         )
         if isinstance(mismatched_raw, str):
-            mismatched_fields = [f.strip() for f in mismatched_raw.split(",") if f.strip()]
+            s_raw = mismatched_raw.strip()
+            if s_raw.startswith("["):
+                try:
+                    parsed_mf = json.loads(s_raw)
+                    mismatched_fields = (
+                        [str(f).strip() for f in parsed_mf if str(f).strip()]
+                        if isinstance(parsed_mf, list)
+                        else []
+                    )
+                except (json.JSONDecodeError, TypeError):
+                    mismatched_fields = []
+            else:
+                mismatched_fields = [f.strip() for f in s_raw.split(",") if f.strip()]
         elif isinstance(mismatched_raw, list):
             mismatched_fields = [str(f).strip() for f in mismatched_raw if str(f).strip()]
         else:
@@ -366,16 +390,18 @@ def build_remediated_bibliography(
         source_used: str | None = None
 
         # Choose the highest-confidence found source candidate
+        # Note: persisted VerdictRecord.features['matched_sources'] entries only contain
+        # already-matched candidates and may omit the boolean 'found' key.
         found_candidates = [
             s for s in matched_sources
-            if isinstance(s, dict) and s.get("found") and s.get("title")
+            if isinstance(s, dict) and s.get("found", True) is not False and s.get("title")
         ]
         if found_candidates:
             best = max(
                 found_candidates,
                 key=lambda s: float(s.get("score") or s.get("confidence") or 0.0),
             )
-            source_used = str(best.get("source_name") or "scholarly_db")
+            source_used = str(best.get("source_name") or best.get("source") or "scholarly_db")
 
             cand_title = _clean_text(best.get("title"))
             cand_authors = _normalize_author_list(best.get("authors"))

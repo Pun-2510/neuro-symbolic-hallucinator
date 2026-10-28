@@ -238,14 +238,21 @@ def _extract_author_signature(
 ) -> tuple[str, list[str], set[str]]:
     """Extract (primary_last_name, full_word_tokens, initial_letters) for East-Asian/swapped matching."""
     primary = _author_to_last_name(author, fold_diacritics=fold_diacritics)
-    if isinstance(author, Author):
-        raw_parts = [
-            author.last_name or "",
-            getattr(author, "first_name", "") or "",
-            getattr(author, "middle_name", "") or "",
-            getattr(author, "initials", "") or "",
-        ]
-        raw_str = " ".join(p for p in raw_parts if p)
+    if isinstance(author, Author) or hasattr(author, "last_name"):
+        raw_attr = getattr(author, "raw", "") or ""
+        if isinstance(raw_attr, str) and raw_attr.strip():
+            raw_str = raw_attr
+        else:
+            raw_parts: list[str] = []
+            for attr_name in ("last_name", "first_name", "middle_name", "full_first_names", "initials"):
+                val = getattr(author, attr_name, None)
+                if not val:
+                    continue
+                if isinstance(val, (list, tuple, set)):
+                    raw_parts.extend(str(item) for item in val if item)
+                else:
+                    raw_parts.append(str(val))
+            raw_str = " ".join(raw_parts)
     else:
         raw_str = str(author or "")
 

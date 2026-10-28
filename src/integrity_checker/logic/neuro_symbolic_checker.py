@@ -250,13 +250,54 @@ class NeuroSymbolicChecker:
                 extracted_year=str(citation.year) if citation.year else None,
                 extracted_venue=citation.venue,
             )
+            if legal_res.canonical_name or legal_res.canonical_code:
+                canon_year = None
+                if legal_res.canonical_code:
+                    ym = re.search(r"\b(19\d{2}|20\d{2})\b", legal_res.canonical_code)
+                    if ym:
+                        canon_year = ym.group(1)
+                if not canon_year and legal_res.is_valid and citation.year:
+                    canon_year = str(citation.year)
+                canon_title = (
+                    f"{legal_res.canonical_name} ({legal_res.canonical_code})"
+                    if legal_res.canonical_name
+                    and legal_res.canonical_code
+                    and legal_res.canonical_code not in legal_res.canonical_name
+                    else (legal_res.canonical_name or citation.title or raw_text)
+                )
+                legal_cand = SourceCandidate(
+                    source_name="vn_legal_registry",
+                    found=True,
+                    title=canon_title,
+                    authors=(
+                        [legal_res.canonical_authority]
+                        if legal_res.canonical_authority
+                        else (citation.authors or [])
+                    ),
+                    year=canon_year,
+                    venue="Hệ thống Pháp luật Việt Nam (VBQPPL)",
+                    score=0.95,
+                    confidence=0.95,
+                    cached=True,
+                )
+                source.candidates.insert(0, legal_cand)
+                if "vn_legal_registry" not in source.sources_queried:
+                    source.sources_queried.insert(0, "vn_legal_registry")
+                if "vn_legal_registry" not in source.sources_succeeded:
+                    source.sources_succeeded.insert(0, "vn_legal_registry")
+            legal_features = MatchFeatures(
+                title_sim_fuzzy=0.95 if "title" not in legal_res.mismatched_fields else 0.50,
+                author_jaccard=0.95 if "authors" not in legal_res.mismatched_fields else 0.40,
+                year_distance=0 if "year" not in legal_res.mismatched_fields else 1,
+                source_consensus=1 if (legal_res.canonical_name or legal_res.canonical_code) else 0,
+            )
             if not legal_res.is_valid:
                 return CitationVerdict(
                     citation=citation,
                     label=ValidationLabel.METADATA_ERROR,
                     confidence=0.90,
                     matched_source=source,
-                    features=MatchFeatures(),
+                    features=legal_features,
                     reasoning=legal_res.reasoning,
                     triggered_rules=legal_res.triggered_rules,
                     mismatched_fields=legal_res.mismatched_fields,
@@ -266,7 +307,7 @@ class NeuroSymbolicChecker:
                 label=ValidationLabel.RESOURCE,
                 confidence=0.95,
                 matched_source=source,
-                features=MatchFeatures(),
+                features=legal_features,
                 reasoning=legal_res.reasoning,
                 triggered_rules=legal_res.triggered_rules,
                 mismatched_fields=[],

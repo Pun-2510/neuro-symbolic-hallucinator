@@ -180,6 +180,12 @@ const RULE_CATALOG: Record<
     condition: 'IF is_legal_statutory_reference == TRUE THEN VERIFIED',
     status: 'passed',
   },
+  'R-LEGAL-DOCUMENT': {
+    nameEn: 'Vietnamese Statutory / Regulatory Document Classification',
+    nameVi: 'Phân loại Văn bản Quy phạm Pháp luật Việt Nam (TDTU §2.6.1)',
+    condition: 'IF matched_pattern == "vn_legal_document" THEN ROUTE_VN_LEGAL_VERIFIER',
+    status: 'passed',
+  },
   'R-VN-LEGAL-VERIFIED': {
     nameEn: 'Vietnamese Statutory Code & Authority Verified',
     nameVi: 'Xác thực Số hiệu, Năm ban hành & Thẩm quyền Văn bản Pháp luật VN',
@@ -622,9 +628,21 @@ function getLinkBadgeVisuals(
 }
 
 function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
+  const isLegalStatute = (verdict.triggered_rules ?? []).some((r) =>
+    r.includes('LEGAL')
+  );
+  if (isLegalStatute && verdict.reasoning) {
+    return verdict.override_note
+      ? lang === 'vi'
+        ? `[Ghi đè bởi Giảng viên: ${verdict.override_note}] — ${verdict.reasoning}`
+        : `[Teacher Override: ${verdict.override_note}] — ${verdict.reasoning}`
+      : verdict.reasoning;
+  }
+
   const sourceMapVi: Record<string, string> = {
     local_db: 'Thư viện học thuật nội bộ (ACL / SQLite FTS5)',
     known_papers: 'CSDL công trình kinh điển (Known Papers)',
+    vn_legal_registry: 'Hệ thống Văn bản Quy phạm Pháp luật Việt Nam',
     crossref: 'Crossref',
     openalex: 'OpenAlex',
     dblp: 'DBLP',
@@ -973,10 +991,13 @@ function enrichVerdictItem(
     }
   }
 
+  const isLegalRule = (verdict.triggered_rules ?? []).some((r) =>
+    r.includes('LEGAL')
+  );
   const hasCanonicalRecord =
     Boolean(bestSource) &&
     verdict.label !== 'suspected_hallucination' &&
-    verdict.label !== 'resource' &&
+    (verdict.label !== 'resource' || isLegalRule) &&
     (bestSource?.confidence ?? verdict.confidence) >= 0.25;
 
   const retrievedMeta: MetadataFields | null = hasCanonicalRecord && bestSource
@@ -1574,14 +1595,14 @@ export function EssayPage() {
                 <span className="font-semibold truncate" title={report.filename}>
                   {report.filename}
                 </span>
-                <span className="hidden md:inline text-slate-400 shrink-0">
+                <span className="hidden 2xl:inline text-slate-400 shrink-0">
                   ({report.num_pages} pages · {report.verdicts.length} citations)
                 </span>
               </div>
             </div>
 
             {/* Right Status Bar & Workspace Mode Switcher in Chrome */}
-            <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+            <div className="flex items-center gap-2 flex-wrap min-w-0 max-w-full">
               <div
                 role="group"
                 aria-label="Workspace View Mode"
@@ -1929,7 +1950,7 @@ export function EssayPage() {
 
                     {/* Inspector Tabs: Metadata Diff (All) | Symbolic Rules, Sources & Evidence Graph (Pro/Ultra/Teacher/Admin) */}
                     <Tabs defaultValue="diff" className="w-full mt-4">
-                      <TabsList className="grid grid-cols-2 xl:grid-cols-4 w-full bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-auto gap-1">
+                      <TabsList className="grid grid-cols-2 w-full bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-auto gap-1">
                         <TabsTrigger value="diff" className="w-full text-[11px] sm:text-xs font-mono py-1.5 px-2 truncate">
                           {lang === 'vi' ? '1. Đối chiếu Metadata' : '1. Metadata Diff'}
                         </TabsTrigger>

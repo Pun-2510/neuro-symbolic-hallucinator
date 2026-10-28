@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, type Verdict, type Citation } from '@/api/client';
@@ -255,9 +256,9 @@ function CitationPopup({
 }) {
   const status = getInlineStatusBadge(citation.label);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-[100] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -493,7 +494,8 @@ function CitationPopup({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -945,9 +947,17 @@ export function DocumentInspectorPage() {
                 return (
                   <button
                     key={citation.id}
-                    onClick={() => setSelectedCitation(citation)}
+                    data-testid={`page-citation-item-${index}`}
+                    onClick={() => {
+                      setPreviewPage(citation.page || 1);
+                      setPreviewHighlight(citation.raw || '');
+                      if (docViewMode !== 'pdf') {
+                        setSelectedCitation(citation);
+                      }
+                    }}
                     className={`w-full text-left p-3.5 rounded-xl border transition-all ${
-                      selectedCitation?.id === citation.id
+                      selectedCitation?.id === citation.id ||
+                      (docViewMode === 'pdf' && previewHighlight === citation.raw)
                         ? 'bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 shadow-2xs'
                         : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700'
                     }`}
