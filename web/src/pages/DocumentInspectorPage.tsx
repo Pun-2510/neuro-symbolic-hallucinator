@@ -64,26 +64,55 @@ interface InlineCitation {
 function ContextWithHighlight({
   context,
   marker,
+  label,
 }: {
   context: string;
   marker: string;
+  label?: string;
 }) {
   if (!context) return null;
   const lowerContext = context.toLowerCase();
-  const lowerMarker = marker.toLowerCase();
-  const idx = lowerContext.indexOf(lowerMarker);
+  const isFlaggedRed =
+    label === 'suspected_hallucination' || label === 'metadata_error';
+  const markClass = isFlaggedRed
+    ? 'bg-transparent text-red-600 dark:text-red-400 font-bold'
+    : 'bg-amber-200/80 dark:bg-amber-900/60 text-inherit rounded px-1 py-0.5 font-medium';
+
+  let idx = lowerContext.indexOf(marker.toLowerCase());
+  let matchLen = marker.length;
+
   if (idx === -1) {
-    return <>{context}</>;
+    // Try bracket number [N] from marker
+    const numMatch = marker.match(/^\s*(\[\d+\])/);
+    if (numMatch) {
+      idx = lowerContext.indexOf(numMatch[1].toLowerCase());
+      matchLen = numMatch[1].length;
+    }
+  }
+  if (idx === -1) {
+    // Try first author surname (>= 4 letters)
+    const cleanMarker = marker.replace(/^\s*(?:\[\d+\]|\d+[.)])\s*/, '');
+    const tokMatch = cleanMarker.match(/[A-Za-zÀ-ỹ]{4,}/);
+    if (tokMatch) {
+      idx = lowerContext.indexOf(tokMatch[0].toLowerCase());
+      matchLen = tokMatch[0].length;
+    }
+  }
+
+  if (idx === -1) {
+    return (
+      <span className={isFlaggedRed ? 'text-red-600 dark:text-red-400 font-medium' : undefined}>
+        {context}
+      </span>
+    );
   }
   const before = context.slice(0, idx);
-  const match = context.slice(idx, idx + marker.length);
-  const after = context.slice(idx + marker.length);
+  const match = context.slice(idx, idx + matchLen);
+  const after = context.slice(idx + matchLen);
   return (
     <>
       {before}
-      <mark className="bg-amber-200/80 dark:bg-amber-900/60 text-inherit rounded px-1 py-0.5 font-medium">
-        {match}
-      </mark>
+      <mark className={markClass}>{match}</mark>
       {after}
     </>
   );
@@ -227,14 +256,18 @@ function InlineCitationMarker({
   onClick?: () => void;
 }) {
   const status = getInlineStatusBadge(citation.label);
-  const underlineColor =
-    UNDERLINE_COLORS[citation.label as keyof typeof UNDERLINE_COLORS] ||
-    UNDERLINE_COLORS.unresolved;
+  const isFlaggedRed =
+    citation.label === 'suspected_hallucination' ||
+    citation.label === 'metadata_error';
 
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border-b-2 ${underlineColor} ${status.bg} hover:opacity-85 transition-all text-xs font-mono font-medium shadow-2xs`}
+      className={`inline-flex items-center gap-1 hover:opacity-85 transition-all text-xs font-mono font-semibold ${
+        isFlaggedRed
+          ? 'text-red-600 dark:text-red-400 underline decoration-red-500/70'
+          : `${status.text} underline`
+      }`}
       title={`[${citation.label}] ${citation.raw}`}
     >
       <span className="max-w-[160px] truncate">{citation.raw}</span>
@@ -872,55 +905,66 @@ export function DocumentInspectorPage() {
                       No citations match the current filter.
                     </p>
                   ) : (
-                    filteredCitations.map((citation, idx) => (
-                      <div
-                        key={citation.id}
-                        className={`group relative rounded-xl p-3.5 border transition-colors ${
-                          selectedCitation?.id === citation.id
-                            ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-700'
-                            : 'bg-slate-50/60 dark:bg-slate-800/30 border-slate-200/70 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPreviewPage(citation.page || 1);
-                              setPreviewHighlight(citation.raw || '');
-                              setDocViewMode('pdf');
-                            }}
-                            title="Click to inspect bounding box on PDF page"
-                            className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 pt-0.5 select-none"
-                          >
-                            p{citation.page}:{String(idx + 1).padStart(2, '0')}
-                          </button>
-                          <p className="flex-1 min-w-0 text-slate-700 dark:text-slate-300 font-serif leading-relaxed break-words [overflow-wrap:anywhere]">
-                            {citation.context ? (
-                              <>
-                                <ContextWithHighlight
-                                  context={citation.context}
-                                  marker={citation.raw}
-                                />{' '}
-                                <InlineCitationMarker
-                                  citation={citation}
-                                  onClick={() => setSelectedCitation(citation)}
-                                />
-                              </>
-                            ) : (
-                              <>
-                                <span className="text-slate-500 dark:text-slate-400 italic font-sans text-xs">
-                                  [No surrounding text extracted]
-                                </span>{' '}
-                                <InlineCitationMarker
-                                  citation={citation}
-                                  onClick={() => setSelectedCitation(citation)}
-                                />
-                              </>
-                            )}
-                          </p>
+                    filteredCitations.map((citation, idx) => {
+                      const isFlaggedRed =
+                        citation.label === 'suspected_hallucination' ||
+                        citation.label === 'metadata_error';
+                      return (
+                        <div
+                          key={citation.id}
+                          data-verdict-label={citation.label}
+                          className={`group relative rounded-xl p-3.5 border transition-colors ${
+                            selectedCitation?.id === citation.id
+                              ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-700'
+                              : 'bg-slate-50/60 dark:bg-slate-800/30 border-slate-200/70 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPreviewPage(citation.page || 1);
+                                setPreviewHighlight(citation.raw || '');
+                                setDocViewMode('pdf');
+                              }}
+                              title="Click to inspect bounding box on PDF page"
+                              className={`text-[11px] font-mono hover:underline shrink-0 pt-0.5 select-none font-bold ${
+                                isFlaggedRed
+                                  ? 'text-red-600 dark:text-red-400'
+                                  : 'text-indigo-600 dark:text-indigo-400'
+                              }`}
+                            >
+                              p{citation.page}:{String(idx + 1).padStart(2, '0')}
+                            </button>
+                            <p className="flex-1 min-w-0 text-slate-700 dark:text-slate-300 font-serif leading-relaxed break-words [overflow-wrap:anywhere]">
+                              {citation.context ? (
+                                <>
+                                  <ContextWithHighlight
+                                    context={citation.context}
+                                    marker={citation.raw}
+                                    label={citation.label}
+                                  />{' '}
+                                  <InlineCitationMarker
+                                    citation={citation}
+                                    onClick={() => setSelectedCitation(citation)}
+                                  />
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-slate-500 dark:text-slate-400 italic font-sans text-xs">
+                                    [No surrounding text extracted]
+                                  </span>{' '}
+                                  <InlineCitationMarker
+                                    citation={citation}
+                                    onClick={() => setSelectedCitation(citation)}
+                                  />
+                                </>
+                              )}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -944,10 +988,17 @@ export function DocumentInspectorPage() {
             <div className="space-y-2.5 max-h-[540px] overflow-y-auto pr-1">
               {filteredCitations.map((citation, index) => {
                 const status = getInlineStatusBadge(citation.label);
+                const isFlaggedRed =
+                  citation.label === 'suspected_hallucination' ||
+                  citation.label === 'metadata_error';
+                const isSelected =
+                  selectedCitation?.id === citation.id ||
+                  (docViewMode === 'pdf' && previewHighlight === citation.raw);
                 return (
                   <button
                     key={citation.id}
                     data-testid={`page-citation-item-${index}`}
+                    data-verdict-label={citation.label}
                     onClick={() => {
                       setPreviewPage(citation.page || 1);
                       setPreviewHighlight(citation.raw || '');
@@ -956,18 +1007,29 @@ export function DocumentInspectorPage() {
                       }
                     }}
                     className={`w-full text-left p-3.5 rounded-xl border transition-all ${
-                      selectedCitation?.id === citation.id ||
-                      (docViewMode === 'pdf' && previewHighlight === citation.raw)
+                      isSelected
                         ? 'bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 shadow-2xs'
                         : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700'
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <span className="text-xs font-mono font-semibold text-slate-400 dark:text-slate-500 shrink-0 pt-0.5">
+                      <span
+                        className={`text-xs font-mono font-bold shrink-0 pt-0.5 ${
+                          isFlaggedRed
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
                         [{String(index + 1).padStart(2, '0')}]
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-serif text-slate-800 dark:text-slate-200 line-clamp-2 break-words [overflow-wrap:anywhere]">
+                        <p
+                          className={`text-sm font-serif line-clamp-2 break-words [overflow-wrap:anywhere] ${
+                            isFlaggedRed
+                              ? 'text-red-600 dark:text-red-400 font-medium'
+                              : 'text-slate-800 dark:text-slate-200'
+                          }`}
+                        >
                           {citation.raw.replace(/^\[\d+\]\s*/, '')}
                         </p>
                         <div className="flex items-center gap-2 mt-2 flex-wrap">

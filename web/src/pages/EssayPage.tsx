@@ -1781,12 +1781,16 @@ export function EssayPage() {
                     {filteredItems.map((cit) => {
                       const isSelected =
                         activeItem?.verdict.citation_id === cit.verdict.citation_id;
+                      const isFlaggedRed =
+                        cit.verdict.label === 'suspected_hallucination' ||
+                        cit.verdict.label === 'metadata_error';
                       return (
                         <button
                           key={cit.verdict.citation_id}
                           type="button"
                           role="option"
                           aria-selected={isSelected}
+                          data-verdict-label={cit.verdict.label}
                           onClick={() => setSelectedCitationId(cit.verdict.citation_id)}
                           className={`w-full text-left p-3.5 rounded-xl border transition-all duration-150 ${
                             isSelected
@@ -1796,10 +1800,22 @@ export function EssayPage() {
                         >
                           <div className="flex items-center justify-between gap-2 mb-1.5">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 shrink-0">
+                              <span
+                                className={`font-mono text-xs font-bold px-2 py-0.5 rounded shrink-0 bg-slate-100 dark:bg-slate-800 ${
+                                  isFlaggedRed
+                                    ? 'text-red-600 dark:text-red-400'
+                                    : 'text-slate-800 dark:text-slate-200'
+                                }`}
+                              >
                                 {cit.marker}
                               </span>
-                              <span className="font-semibold text-sm text-slate-900 dark:text-white truncate">
+                              <span
+                                className={`font-semibold text-sm truncate ${
+                                  isFlaggedRed
+                                    ? 'text-red-600 dark:text-red-400'
+                                    : 'text-slate-900 dark:text-white'
+                                }`}
+                              >
                                 {cit.inText}
                               </span>
                             </div>
@@ -1808,7 +1824,13 @@ export function EssayPage() {
                             </span>
                           </div>
 
-                          <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-1 mb-2.5 font-serif italic break-words [overflow-wrap:anywhere]">
+                          <p
+                            className={`text-xs line-clamp-1 mb-2.5 font-serif italic break-words [overflow-wrap:anywhere] ${
+                              isFlaggedRed
+                                ? 'text-red-600 dark:text-red-400 font-medium'
+                                : 'text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
                             &ldquo;{cit.citedMeta.title}&rdquo;
                           </p>
 
@@ -1852,9 +1874,16 @@ export function EssayPage() {
 
                 {/* Document Context Snippet Box */}
                 {activeItem && (
-                  <div className="mt-5 p-3.5 rounded-xl bg-slate-100/80 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
+                  <div className="mt-5 p-3.5 rounded-xl border bg-slate-100/80 dark:bg-slate-900 border-slate-200/80 dark:border-slate-800">
                     <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400 mb-1.5">
-                      <span>
+                      <span
+                        className={
+                          activeItem.verdict.label === 'suspected_hallucination' ||
+                          activeItem.verdict.label === 'metadata_error'
+                            ? 'text-red-600 dark:text-red-400 font-bold'
+                            : undefined
+                        }
+                      >
                         {isUser
                           ? lang === 'vi'
                             ? `NGỮ CẢNH TRONG BÀI (${activeItem.pageLabel})`
@@ -1865,7 +1894,14 @@ export function EssayPage() {
                     </div>
                     <p className="document-content text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-4 break-words [overflow-wrap:anywhere]">
                       {activeItem.contextBefore}
-                      <mark className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 font-semibold border-b-2 border-indigo-500">
+                      <mark
+                        className={`bg-transparent font-bold ${
+                          activeItem.verdict.label === 'suspected_hallucination' ||
+                          activeItem.verdict.label === 'metadata_error'
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-indigo-600 dark:text-indigo-400'
+                        }`}
+                      >
                         {activeItem.contextHighlight}
                       </mark>
                       {activeItem.contextAfter}
@@ -1895,7 +1931,14 @@ export function EssayPage() {
                                 : 'INSPECTING REFERENCE'}
                             </span>
                           )}
-                          <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                          <span
+                            className={`font-mono text-xs font-bold ${
+                              activeItem.verdict.label === 'suspected_hallucination' ||
+                              activeItem.verdict.label === 'metadata_error'
+                                ? 'text-red-600 dark:text-red-400'
+                                : 'text-indigo-600 dark:text-indigo-400'
+                            }`}
+                          >
                             {activeItem.marker}
                           </span>
                           {!isUser && linksOf(activeItem.verdict)[0]?.reference_id && (
@@ -1904,7 +1947,14 @@ export function EssayPage() {
                             </span>
                           )}
                         </div>
-                        <h3 className="font-display text-lg sm:text-xl font-bold text-slate-900 dark:text-white leading-snug break-words [overflow-wrap:anywhere]">
+                        <h3
+                          className={`font-display text-lg sm:text-xl font-bold leading-snug break-words [overflow-wrap:anywhere] ${
+                            activeItem.verdict.label === 'suspected_hallucination' ||
+                            activeItem.verdict.label === 'metadata_error'
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-slate-900 dark:text-white'
+                          }`}
+                        >
                           {activeItem.citedMeta.title}
                         </h3>
                       </div>
@@ -1935,9 +1985,23 @@ export function EssayPage() {
 
                     {/* Explanation Callout — Pro/Ultra, Teacher & Admin */}
                     {canViewDeepTrace && (
-                      <div className="my-4 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3">
-                        <Scale className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-                        <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                      <div className="my-4 p-3.5 rounded-xl border flex items-start gap-3 bg-slate-50 dark:bg-slate-900 border-slate-200/80 dark:border-slate-800">
+                        <Scale
+                          className={`h-4 w-4 shrink-0 mt-0.5 ${
+                            activeItem.verdict.label === 'suspected_hallucination' ||
+                            activeItem.verdict.label === 'metadata_error'
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-indigo-600 dark:text-indigo-400'
+                          }`}
+                        />
+                        <div
+                          className={`text-xs sm:text-sm leading-relaxed ${
+                            activeItem.verdict.label === 'suspected_hallucination' ||
+                            activeItem.verdict.label === 'metadata_error'
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
                           <span className="font-semibold text-slate-900 dark:text-white mr-1.5">
                             {lang === 'vi'
                               ? 'Kết luận suy diễn:'

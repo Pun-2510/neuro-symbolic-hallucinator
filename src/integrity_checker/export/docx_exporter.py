@@ -6,8 +6,19 @@ from datetime import datetime, timezone
 from io import BytesIO
 
 from docx import Document
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+
+def _set_cell_background(cell, hex_color: str) -> None:
+    """Apply background shading color (e.g. 'FEE2E2') to a python-docx table cell."""
+    try:
+        shading = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{hex_color}"/>')
+        cell._tc.get_or_add_tcPr().append(shading)
+    except Exception:
+        pass
 
 
 def export_report_to_docx(
@@ -180,6 +191,7 @@ def export_report_to_docx(
             raw_cit = str(v.get("citation_raw", "") or "")
             mismatched = v.get("mismatched_fields") or []
             rules = v.get("triggered_rules") or []
+            lbl_lower = str(v.get("label", "") or "").lower()
             details_suffix = ""
             if rules or mismatched:
                 parts = []
@@ -192,6 +204,26 @@ def export_report_to_docx(
             row_cells[1].text = str(v.get("mapping_status") or v.get("citation_type", "unknown"))
             row_cells[2].text = str(v.get("label", "UNKNOWN")).upper()
             row_cells[3].text = f"{float(v.get('confidence', 0) or 0):.2f}"
+
+            if lbl_lower == "suspected_hallucination":
+                for cell in row_cells:
+                    for paragraph in cell.paragraphs:
+                        for run in paragraph.runs:
+                            run.font.color.rgb = RGBColor(220, 38, 38)
+                            run.font.bold = True
+            elif lbl_lower == "metadata_error":
+                for cell in row_cells:
+                    for paragraph in cell.paragraphs:
+                        for run in paragraph.runs:
+                            run.font.color.rgb = RGBColor(220, 38, 38)
+                for paragraph in row_cells[2].paragraphs:
+                    for run in paragraph.runs:
+                        run.font.bold = True
+            elif lbl_lower in ("verified", "resource"):
+                for paragraph in row_cells[2].paragraphs:
+                    for run in paragraph.runs:
+                        run.font.color.rgb = RGBColor(22, 163, 74)
+                        run.font.bold = True
 
         # Deep Neuro-Symbolic Evidence & Remediation Section for Flagged / Detailed Verdicts
         detailed_items = [
@@ -206,19 +238,26 @@ def export_report_to_docx(
             doc.add_heading("Neuro-Symbolic Diagnostic Trace & Evidence", level=1)
             for idx, v in enumerate(detailed_items, 1):
                 p = doc.add_paragraph()
+                lbl_str = str(v.get("label", "UNKNOWN")).upper()
+                lbl_lower = lbl_str.lower()
                 r_num = p.add_run(f"[{idx}] {v.get('citation_raw', '')}\n")
                 r_num.bold = True
-                lbl_str = str(v.get("label", "UNKNOWN")).upper()
+                if lbl_lower in ("suspected_hallucination", "metadata_error"):
+                    r_num.font.color.rgb = RGBColor(220, 38, 38)
                 map_str = str(v.get("mapping_status", "matched"))
-                p.add_run(
+                r_verdict = p.add_run(
                     f"Verdict: {lbl_str} (Confidence: {float(v.get('confidence', 0) or 0):.2f}) | Layer-1 Mapping: {map_str}\n"
                 )
+                if lbl_lower in ("suspected_hallucination", "metadata_error"):
+                    r_verdict.font.color.rgb = RGBColor(220, 38, 38)
+                    r_verdict.bold = True
                 rules = v.get("triggered_rules") or []
                 if rules:
                     p.add_run(f"Triggered Symbolic Rules: {', '.join(str(r) for r in rules)}\n")
                 mismatched = v.get("mismatched_fields") or []
                 if mismatched:
-                    p.add_run(f"Mismatched Metadata Fields: {', '.join(str(m) for m in mismatched)}\n")
+                    r_mm = p.add_run(f"Mismatched Metadata Fields: {', '.join(str(m) for m in mismatched)}\n")
+                    r_mm.font.color.rgb = RGBColor(185, 28, 28)
                 if v.get("reasoning"):
                     p.add_run(f"Diagnostic Reasoning: {v.get('reasoning')}\n")
                 feats = v.get("features") if isinstance(v.get("features"), dict) else {}
@@ -231,6 +270,48 @@ def export_report_to_docx(
                     p.add_run(
                         f"Discourse Analysis: Intent={intent or 'background'}, Stance={stance or 'neutral'}\n"
                     )
+
+        # 1-Click Auto-Remediated Bibliography & BibTeX Section
+        try:
+            from integrity_checker.export.bibliography_formatter import build_remediated_bibliography
+
+            rem_data = build_remediated_bibliography(essay_id=0, verdicts=verdicts, style="apa")
+            rem_entries = rem_data.get("entries") or []
+            if rem_entries:
+                doc.add_heading("Auto-Remediated Bibliography & BibTeX Studio", level=1)
+                for e in rem_entries:
+                    p_rem = doc.add_paragraph()
+                    e_lbl = str(e.get("label", "")).lower()
+                    if e.get("is_hallucination") or e_lbl == "suspected_hallucination":
+                        r_warn = p_rem.add_run(
+                            f"[{e['index']}] [CẢNH BÁO ĐỎ — SUSPECTED HALLUCINATION / NGUỒN BỊA ĐẶT: CẦN LOẠI BỎ]\n"
+                        )
+                        r_warn.bold = True
+                        r_warn.font.color.rgb = RGBColor(220, 38, 38)
+                        r_orig = p_rem.add_run(f"Original in Manuscript: {e.get('original_raw', '')}\n")
+                        r_orig.font.color.rgb = RGBColor(220, 38, 38)
+                    elif e.get("is_error") or e_lbl == "metadata_error":
+                        r_fix = p_rem.add_run(
+                            f"[{e['index']}] [METADATA ERROR AUTO-REPAIRED — Repaired fields: {', '.join(e.get('diff_fields') or ['metadata'])}]\n"
+                        )
+                        r_fix.bold = True
+                        r_fix.font.color.rgb = RGBColor(185, 28, 28)
+                        r_before = p_rem.add_run(f"Before (Error): {e.get('original_raw', '')}\n")
+                        r_before.font.color.rgb = RGBColor(220, 38, 38)
+                        r_after = p_rem.add_run(f"After (Standardized APA): {e.get('apa', '')}\n")
+                        r_after.bold = True
+                        r_after.font.color.rgb = RGBColor(22, 163, 74)
+                        r_bib = p_rem.add_run(f"BibTeX:\n{e.get('bibtex', '')}")
+                        r_bib.font.size = Pt(8.5)
+                    else:
+                        r_ok = p_rem.add_run(f"[{e['index']}] [VERIFIED & STANDARDIZED]\n")
+                        r_ok.bold = True
+                        r_ok.font.color.rgb = RGBColor(22, 163, 74)
+                        p_rem.add_run(f"{e.get('apa', '')}\n")
+                        r_bib = p_rem.add_run(f"BibTeX:\n{e.get('bibtex', '')}")
+                        r_bib.font.size = Pt(8.5)
+        except Exception:
+            pass
 
     else:
         doc.add_paragraph("No citation verdicts available.")

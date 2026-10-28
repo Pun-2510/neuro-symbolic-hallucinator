@@ -116,7 +116,8 @@ def remediate_bibliography(
         )
 
     verdicts = repo.get_verdicts(essay_id)
-    return build_remediated_bibliography(essay_id=essay_id, verdicts=verdicts, style=style)
+    citations = repo.get_citations(essay_id)
+    return build_remediated_bibliography(essay_id=essay_id, verdicts=verdicts, style=style, citations=citations)
 
 
 def _deserialize_citation_link_json(json_str: str | None) -> dict[str, Any] | None:
@@ -635,16 +636,14 @@ def _pdf_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]
     for row_idx, v in enumerate(verdicts, 1):
+        raw_lbl = (v.label or "").lower()
         status_label = _format_label(v.label)
-        if status_label in ("Verified", "Valid"):
-            bg_color = colors.HexColor('#dcfce7')
-        elif status_label == "Metadata Error":
-            bg_color = colors.HexColor('#fef9c3')
-        elif status_label == "Suspected Hallucination":
-            bg_color = colors.HexColor('#fee2e2')
-        else:
-            bg_color = colors.HexColor('#f3f4f6')
-        verdict_table_styles.append(('BACKGROUND', (2, row_idx), (2, row_idx), bg_color))
+        if raw_lbl in ("verified", "resource") or status_label in ("Verified", "Valid"):
+            verdict_table_styles.append(('TEXTCOLOR', (2, row_idx), (2, row_idx), colors.HexColor('#15803d')))
+        elif raw_lbl == "metadata_error" or status_label == "Metadata Error":
+            verdict_table_styles.append(('TEXTCOLOR', (1, row_idx), (2, row_idx), colors.HexColor('#dc2626')))
+        elif raw_lbl == "suspected_hallucination" or status_label in ("Suspected", "Suspected Hallucination"):
+            verdict_table_styles.append(('TEXTCOLOR', (1, row_idx), (2, row_idx), colors.HexColor('#dc2626')))
     verdict_table.setStyle(TableStyle(verdict_table_styles))
     elements.append(verdict_table)
 

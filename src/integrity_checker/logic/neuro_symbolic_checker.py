@@ -250,7 +250,8 @@ class NeuroSymbolicChecker:
                 extracted_year=str(citation.year) if citation.year else None,
                 extracted_venue=citation.venue,
             )
-            if legal_res.canonical_name or legal_res.canonical_code:
+            is_fabricated_legal = "R-VN-LEGAL-FABRICATED" in (legal_res.triggered_rules or [])
+            if (legal_res.canonical_name or legal_res.canonical_code) and not is_fabricated_legal:
                 canon_year = None
                 if legal_res.canonical_code:
                     ym = re.search(r"\b(19\d{2}|20\d{2})\b", legal_res.canonical_code)
@@ -286,16 +287,20 @@ class NeuroSymbolicChecker:
                 if "vn_legal_registry" not in source.sources_succeeded:
                     source.sources_succeeded.insert(0, "vn_legal_registry")
             legal_features = MatchFeatures(
-                title_sim_fuzzy=0.95 if "title" not in legal_res.mismatched_fields else 0.50,
+                title_sim_fuzzy=0.10 if is_fabricated_legal else (0.95 if "title" not in legal_res.mismatched_fields else 0.50),
                 author_jaccard=0.95 if "authors" not in legal_res.mismatched_fields else 0.40,
                 year_distance=0 if "year" not in legal_res.mismatched_fields else 1,
-                source_consensus=1 if (legal_res.canonical_name or legal_res.canonical_code) else 0,
+                source_consensus=0 if is_fabricated_legal else (1 if (legal_res.canonical_name or legal_res.canonical_code) else 0),
             )
             if not legal_res.is_valid:
                 return CitationVerdict(
                     citation=citation,
-                    label=ValidationLabel.METADATA_ERROR,
-                    confidence=0.90,
+                    label=(
+                        ValidationLabel.SUSPECTED_HALLUCINATION
+                        if is_fabricated_legal
+                        else ValidationLabel.METADATA_ERROR
+                    ),
+                    confidence=0.92 if is_fabricated_legal else 0.90,
                     matched_source=source,
                     features=legal_features,
                     reasoning=legal_res.reasoning,

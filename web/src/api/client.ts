@@ -703,6 +703,10 @@ export interface RemediatedBibliographyEntry {
   index: number;
   verdict_id: string;
   label: string;
+  remediation_status?: 'verified' | 'repaired' | 'hallucination';
+  is_error?: boolean;
+  is_hallucination?: boolean;
+  reasoning?: string;
   source_used: string | null;
   original_raw: string;
   remediated_text: string;
@@ -728,6 +732,8 @@ export interface RemediatedBibliographyResponse {
   style: 'apa' | 'ieee' | 'tdtu' | 'bibtex' | 'ris';
   total_entries: number;
   remediated_count: number;
+  hallucination_count?: number;
+  error_count?: number;
   entries: RemediatedBibliographyEntry[];
   combined_text: string;
   combined_bibtex: string;

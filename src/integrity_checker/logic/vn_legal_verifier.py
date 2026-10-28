@@ -225,6 +225,41 @@ _STATUTE_REGISTRY: list[dict] = [
             "2023": "20/2023/QH15",
         },
     },
+    {
+        "pattern": re.compile(r"\bbộ\s+luật\s+hàng\s+hải\b", re.IGNORECASE),
+        "canonical_name": "Bộ luật Hàng hải Việt Nam",
+        "authority": "Quốc hội",
+        "valid_years": {"1990", "2005", "2015"},
+        "active_years": {"2015"},
+        "superseded_map": {
+            "1990": "Bộ luật Hàng hải Việt Nam 2015 (95/2015/QH13)",
+            "2005": "Bộ luật Hàng hải Việt Nam 2015 (95/2015/QH13)",
+        },
+        "codes_by_year": {
+            "2005": "40/2005/QH11",
+            "2015": "95/2015/QH13",
+        },
+    },
+    {
+        "pattern": re.compile(r"\bnghị\s+định\b.*?\bđăng\s+ký\s+doanh\s+nghiệp\b", re.IGNORECASE),
+        "canonical_name": "Nghị định về đăng ký doanh nghiệp",
+        "authority": "Chính phủ",
+        "valid_years": {"2006", "2010", "2015", "2018", "2021", "2025"},
+        "active_years": {"2021"},
+        "superseded_map": {
+            "2006": "Nghị định 01/2021/NĐ-CP về đăng ký doanh nghiệp",
+            "2010": "Nghị định 01/2021/NĐ-CP về đăng ký doanh nghiệp",
+            "2015": "Nghị định 01/2021/NĐ-CP về đăng ký doanh nghiệp",
+        },
+        "codes_by_year": {
+            "2006": "88/2006/NĐ-CP",
+            "2010": "43/2010/NĐ-CP",
+            "2015": "78/2015/NĐ-CP",
+            "2018": "108/2018/NĐ-CP",
+            "2021": "01/2021/NĐ-CP",
+            "2025": "168/2025/NĐ-CP",
+        },
+    },
 ]
 
 # Document number pattern: e.g. 91/2015/QH13, 23/2015/NĐ-CP, 200/2014/TT-BTC
@@ -302,11 +337,12 @@ def verify_vn_legal_citation(
 
         # If a specific year is matched and a code number is provided, verify the exact code number
         matched_year = primary_year if primary_year in valid_years else next(iter(cited_years & valid_years), None)
-        expected_code = codes_by_year.get(matched_year) if matched_year else None
+        canonical_year_for_code = matched_year or (sorted(entry["active_years"])[-1] if entry.get("active_years") else None)
+        expected_code = codes_by_year.get(canonical_year_for_code) if canonical_year_for_code else None
         if expected_code and code_str and expected_code.lower() != code_str.lower():
             mismatches.append("title")
             reasons.append(
-                f"Sai số hiệu văn bản: {canonical_name} năm {matched_year} có số hiệu chuẩn là {expected_code} "
+                f"Sai số hiệu văn bản: {canonical_name} năm {canonical_year_for_code} có số hiệu chuẩn là {expected_code} "
                 f"(ghi nhận: {code_str})"
             )
 
@@ -355,15 +391,61 @@ def verify_vn_legal_citation(
         )
 
     # 4. Non-registry legal document (e.g., Nghị định, Thông tư, Quyết định, Bản án)
+    # Check for fabricated / hallucinated legal codes, non-existent Bộ luật, or impossible dates
+    is_fabricated_legal = False
+
+    # 4a. Vietnam only has 6 official Codes (Bộ luật), all registered above. Any other "Bộ luật" is fabricated.
+    if re.search(r"\bbộ\s+luật\b", text_lower):
+        is_fabricated_legal = True
+        mismatches.append("title")
+        reasons.append(
+            "Văn bản có dấu hiệu bịa đặt: Pháp luật Việt Nam chỉ có 6 Bộ luật chính thức (Dân sự, Hình sự, Lao động, Tố tụng dân sự, Tố tụng hình sự, Hàng hải)"
+        )
+
+    # 4b. Check impossible calendar dates (e.g. 30/02, 31/11, 31/04)
+    full_date_m = re.search(
+        r"ngày\s+(?P<d>\d{1,2})[/-](?P<m>\d{1,2})[/-](?P<y>(?:19|20)\d{2})",
+        text,
+        re.IGNORECASE,
+    )
+    if full_date_m:
+        day_i = int(full_date_m.group("d"))
+        mon_i = int(full_date_m.group("m"))
+        if mon_i < 1 or mon_i > 12 or day_i < 1 or day_i > 31 or (mon_i == 2 and day_i > 29) or (mon_i in {4, 6, 9, 11} and day_i > 30):
+            is_fabricated_legal = True
+            mismatches.append("year")
+            reasons.append(
+                f"Ngày ban hành không tồn tại trong lịch ({full_date_m.group(0)})"
+            )
+
+    # 4c. Check impossible document code numbers (e.g. 888/2023/QH15, 777/2022/QH15, 555/2024/NĐ-CP)
+    if code_match:
+        code_num = int(code_match.group("num"))
+        if code_suffix and code_suffix.startswith("QH") and code_num > 200:
+            is_fabricated_legal = True
+            mismatches.append("title")
+            reasons.append(
+                f"Số hiệu văn bản Quốc hội ({code_str}) vượt quá phạm vi đánh số thực tế của Quốc hội và không tồn tại trong CSDL Quốc gia về VBQPPL"
+            )
+        elif code_suffix == "NĐ-CP" and code_num >= 400:
+            is_fabricated_legal = True
+            mismatches.append("title")
+            reasons.append(
+                f"Số hiệu Nghị định ({code_str}) vượt quá phạm vi đánh số thực tế của Chính phủ và không tồn tại trong CSDL Quốc gia về VBQPPL"
+            )
+
     if mismatches:
+        rules_err = ["R-LEGAL-DOCUMENT", "R-VN-LEGAL-MISMATCH"]
+        if is_fabricated_legal:
+            rules_err.append("R-VN-LEGAL-FABRICATED")
         return VNLegalVerificationResult(
             is_valid=False,
             is_verified_statute=False,
-            canonical_code=code_str,
+            canonical_code=None if is_fabricated_legal else code_str,
             canonical_authority=extracted_venue,
             mismatched_fields=list(dict.fromkeys(mismatches)),
-            triggered_rules=["R-LEGAL-DOCUMENT", "R-VN-LEGAL-MISMATCH"],
-            reasoning="Phát hiện sai lệch cấu trúc văn bản quy phạm pháp luật Việt Nam: " + "; ".join(reasons),
+            triggered_rules=rules_err,
+            reasoning="Phát hiện sai lệch / nghi vấn bịa đặt văn bản quy phạm pháp luật Việt Nam: " + "; ".join(reasons),
         )
 
     rules = ["R-LEGAL-DOCUMENT"]

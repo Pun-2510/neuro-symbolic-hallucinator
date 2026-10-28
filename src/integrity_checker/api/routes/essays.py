@@ -697,88 +697,227 @@ def get_essay_page_preview(
 
     pdf_path = _get_persisted_upload_path(essay_id, ext=".pdf")
     if not pdf_path.is_file() and essay.filename:
-        for candidate_dir in (
-            PROJECT_ROOT / "data" / "demo",
-            PROJECT_ROOT / "data" / "essays",
-            PROJECT_ROOT / "style_corpora",
+        fname_only = Path(essay.filename).name
+        direct_root = PROJECT_ROOT / fname_only
+        if direct_root.is_file() and direct_root.suffix.lower() == ".pdf":
+            pdf_path = direct_root
+        else:
+            for candidate_dir in (
+                PROJECT_ROOT / "data" / "demo",
+                PROJECT_ROOT / "data" / "essays",
+                PROJECT_ROOT / "style_corpora",
+                PROJECT_ROOT / "vn_legal_reports",
+                PROJECT_ROOT / "20-theses",
+                PROJECT_ROOT / "tdtu_github_reports",
+                PROJECT_ROOT / "TDTU-MidtermReport",
+            ):
+                if candidate_dir.is_dir():
+                    matches = list(candidate_dir.rglob(fname_only))
+                    if matches and matches[0].suffix.lower() == ".pdf":
+                        pdf_path = matches[0]
+                        break
+
+    import html as _html
+    import re as _re
+
+    citations = repo.get_citations(essay_id)
+    verdicts = repo.get_verdicts(essay_id)
+
+    def _find_rects_for_query(page_obj, q_str: str) -> list:
+        q_s = (q_str or "").strip()
+        if not q_s:
+            return []
+        q_no_num = _re.sub(r"^\s*(?:\[\d+\]|\d+[\.\)])\s*", "", q_s).strip()
+        # For bibliography entries (> 40 chars), match full text block(s) on the page so wrapped lines are included
+        if len(q_s) > 40:
+            blocks = page_obj.get_text("blocks")
+            prefix_low = q_no_num[:58].lower()
+            raw_prefix_low = q_s[:58].lower()
+            matched_block_rects = []
+            for b_i, b in enumerate(blocks):
+                b_txt = _re.sub(r"\s+", " ", (b[4] or "").strip())
+                b_txt_low = b_txt.lower()
+                b_no_num_low = _re.sub(r"^\s*(?:\[\d+\]|\d+[\.\)])\s*", "", b_txt_low).strip()
+                if len(b_no_num_low) < 22:
+                    continue
+                cmp_len = min(len(prefix_low), len(b_no_num_low))
+                raw_cmp_len = min(len(raw_prefix_low), len(b_txt_low))
+                if (prefix_low and b_no_num_low.startswith(prefix_low[:cmp_len])) or (
+                    raw_prefix_low and b_txt_low.startswith(raw_prefix_low[:raw_cmp_len])
+                ):
+                    matched_block_rects.append(fitz.Rect(b[:4]))
+                    # Check if the immediately following block is a hanging-indent continuation of this reference
+                    if b_i + 1 < len(blocks):
+                        b_next = blocks[b_i + 1]
+                        if b_next[0] > b[0] + 8 and 0 <= (b_next[1] - b[3]) <= 16:
+                            matched_block_rects.append(fitz.Rect(b_next[:4]))
+            if matched_block_rects:
+                return matched_block_rects
+        for cand_q in (
+            q_s[:68],
+            q_no_num[:60],
+            q_no_num[:34],
         ):
-            if candidate_dir.is_dir():
-                matches = list(candidate_dir.rglob(Path(essay.filename).name))
-                if matches and matches[0].suffix.lower() == ".pdf":
-                    pdf_path = matches[0]
-                    break
+            if cand_q and len(cand_q) >= 3:
+                found_r = page_obj.search_for(cand_q)
+                if found_r:
+                    return found_r
+        # Try quoted title or sentence segment
+        m_quote = _re.search(r"[\"\u201c]([^\"\u201d]{8,65})[\"\u201d]", q_no_num)
+        if m_quote:
+            found_r = page_obj.search_for(m_quote.group(1)[:48])
+            if found_r:
+                return found_r
+        # Try leading bracket number [N] if present on this page
+        m_num = _re.match(r"^\s*(\[\d+\])", q_s)
+        if m_num:
+            # Check if there is an in-text citation on this page with that [N]
+            for cit_rec in citations:
+                if (cit_rec.page_num or 1) == page_num and m_num.group(1) in (cit_rec.raw_text or ""):
+                    ctx_s = (getattr(cit_rec, "context", None) or "").strip()
+                    if ctx_s:
+                        found_r = page_obj.search_for(ctx_s[:48])
+                        if found_r:
+                            return found_r
+                    found_r = page_obj.search_for(m_num.group(1))
+                    if found_r:
+                        return found_r
+        # Try first author surname / distinctive token (>= 4 chars) only for short in-text queries
+        if len(q_s) <= 40:
+            m_tok = _re.search(r"[A-Za-zÀ-ỹ]{4,}", q_no_num)
+            if m_tok and m_tok.group(0).lower() not in {"luật", "nghị", "định", "quốc", "chính", "thông", "quyết"}:
+                found_r = page_obj.search_for(m_tok.group(0))
+                if found_r:
+                    return found_r
+        return []
 
     if pdf_path.is_file():
+        import numpy as _np
+
         doc = fitz.open(str(pdf_path))
         try:
             target_idx = max(0, min(len(doc) - 1, page_num - 1))
             page = doc[target_idx]
+
+            # 1. Collect all text regions for suspected_hallucination & metadata_error citations on this page
+            # so we ONLY color the text glyphs in RED ("chỉ tô đỏ text thôi, không đóng khung xung quanh")
+            all_red_text_rects: list[fitz.Rect] = []
+            ref_records_sorted = sorted(
+                [c for c in citations if getattr(c, "citation_type", "") == "reference_list"],
+                key=lambda c: c.id,
+            )
+            ref_link_by_raw = {
+                (r.raw_text or "").strip(): f"ref-{i + 1:04d}"
+                for i, r in enumerate(ref_records_sorted)
+            }
+            for v_idx, v in enumerate(verdicts, start=1):
+                v_lbl = (v.label or "").lower()
+                if v_lbl not in ("suspected_hallucination", "metadata_error"):
+                    continue
+                err_rects = _find_rects_for_query(page, v.citation_raw or "")
+                ref_tag = ref_link_by_raw.get((v.citation_raw or "").strip())
+                if ref_tag:
+                    for cit_rec in citations:
+                        if getattr(cit_rec, "citation_type", "") == "reference_list":
+                            continue
+                        if (cit_rec.page_num or 1) != (target_idx + 1):
+                            continue
+                        link_json_s = getattr(cit_rec, "citation_link_json", None) or ""
+                        if ref_tag in link_json_s:
+                            raw_in_text = (cit_rec.raw_text or "").strip()
+                            if raw_in_text:
+                                err_rects.extend(_find_rects_for_query(page, raw_in_text))
+                all_red_text_rects.extend(err_rects[:14])
+
+            # 2. Check the active query selected by the user
+            active_non_err_rects: list[fitz.Rect] = []
             if highlight and highlight.strip():
                 q = highlight.strip()
-                # Strip leading [N] if full reference string
-                q_clean = q
-                rects = page.search_for(q_clean[:65])
-                if not rects and len(q_clean) > 25:
-                    rects = page.search_for(q_clean[:32])
-                if not rects:
-                    # Try first token / author surname + year
-                    import re as _re
-
-                    m_tok = _re.search(r"[A-Za-zÀ-ỹ]{4,}", q_clean)
-                    if m_tok:
-                        rects = page.search_for(m_tok.group(0))
+                rects = _find_rects_for_query(page, q)
+                is_active_err = False
+                q_low = q.lower()
+                for v in verdicts:
+                    v_raw_low = (v.citation_raw or "").lower()
+                    if (q_low in v_raw_low or v_raw_low[:35] in q_low) and (v.label or "").lower() in (
+                        "suspected_hallucination",
+                        "metadata_error",
+                    ):
+                        is_active_err = True
+                        break
                 if rects:
-                    shape = page.new_shape()
-                    for r in rects[:12]:
-                        padded = fitz.Rect(r.x0 - 2, r.y0 - 1.5, r.x1 + 2, r.y1 + 1.5)
-                        shape.draw_rect(padded)
-                    shape.finish(
-                        color=(0.31, 0.27, 0.90),
-                        fill=(0.99, 0.88, 0.28),
-                        fill_opacity=0.36,
-                        width=1.4,
-                    )
-                    shape.commit()
-            pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
-            png_bytes = pix.tobytes("png")
+                    if is_active_err:
+                        all_red_text_rects.extend(rects[:12])
+                    else:
+                        active_non_err_rects.extend(rects[:12])
+
+            scale = 1.5
+            pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
+            if all_red_text_rects or active_non_err_rects:
+                arr = _np.frombuffer(pix.samples, dtype=_np.uint8).reshape(pix.height, pix.width, 3).copy()
+                # Recolor ONLY the text pixels inside all_red_text_rects to red (#dc2626) without any box/border
+                for r in all_red_text_rects:
+                    x0 = max(0, int((r.x0 - 1.5) * scale))
+                    y0 = max(0, int((r.y0 - 1.5) * scale))
+                    x1 = min(pix.width, int((r.x1 + 1.5) * scale))
+                    y1 = min(pix.height, int((r.y1 + 1.5) * scale))
+                    if x1 <= x0 or y1 <= y0:
+                        continue
+                    roi = arr[y0:y1, x0:x1].astype(_np.float32)
+                    darkness = _np.clip((255.0 - roi.mean(axis=2)) / 255.0, 0.0, 1.0)
+                    mask = darkness > 0.06
+                    if _np.any(mask):
+                        # Map dark text pixels smoothly to vivid red RGB(220, 38, 38) while keeping white background pure white
+                        boosted = _np.clip(darkness * 1.15, 0.0, 1.0)
+                        roi[:, :, 0] = _np.where(mask, 255.0 - boosted * (255.0 - 220.0), roi[:, :, 0])
+                        roi[:, :, 1] = _np.where(mask, 255.0 - boosted * (255.0 - 28.0), roi[:, :, 1])
+                        roi[:, :, 2] = _np.where(mask, 255.0 - boosted * (255.0 - 28.0), roi[:, :, 2])
+                        arr[y0:y1, x0:x1] = _np.clip(roi, 0, 255).astype(_np.uint8)
+                # Recolor active non-error query text to indigo RGB(67, 56, 202) without any box/border
+                for r in active_non_err_rects:
+                    x0 = max(0, int((r.x0 - 1.5) * scale))
+                    y0 = max(0, int((r.y0 - 1.5) * scale))
+                    x1 = min(pix.width, int((r.x1 + 1.5) * scale))
+                    y1 = min(pix.height, int((r.y1 + 1.5) * scale))
+                    if x1 <= x0 or y1 <= y0:
+                        continue
+                    roi = arr[y0:y1, x0:x1].astype(_np.float32)
+                    darkness = _np.clip((255.0 - roi.mean(axis=2)) / 255.0, 0.0, 1.0)
+                    mask = darkness > 0.06
+                    if _np.any(mask):
+                        boosted = _np.clip(darkness * 1.15, 0.0, 1.0)
+                        roi[:, :, 0] = _np.where(mask, 255.0 - boosted * (255.0 - 67.0), roi[:, :, 0])
+                        roi[:, :, 1] = _np.where(mask, 255.0 - boosted * (255.0 - 56.0), roi[:, :, 1])
+                        roi[:, :, 2] = _np.where(mask, 255.0 - boosted * (255.0 - 202.0), roi[:, :, 2])
+                        arr[y0:y1, x0:x1] = _np.clip(roi, 0, 255).astype(_np.uint8)
+                recolored_pix = fitz.Pixmap(fitz.csRGB, pix.width, pix.height, arr.tobytes(), False)
+                png_bytes = recolored_pix.tobytes("png")
+            else:
+                png_bytes = pix.tobytes("png")
         finally:
             doc.close()
         return Response(
             content=png_bytes,
             media_type="image/png",
-            headers={"Cache-Control": "private, max-age=120"},
+            headers={"Cache-Control": "no-store"},
         )
 
     # Dynamic high-DPI virtual page preview for .docx or synthetic/seeded essays without raw PDF on disk
     doc = fitz.open()
     try:
         page = doc.new_page(width=595, height=842)
-        # Header banner
-        shape = page.new_shape()
-        shape.draw_rect(fitz.Rect(36, 32, 559, 82))
-        shape.finish(color=(0.82, 0.85, 0.92), fill=(0.96, 0.97, 0.99), width=1.0)
-        shape.commit()
-
         page.insert_text(
-            fitz.Point(48, 54),
+            fitz.Point(48, 52),
             f"CITRA Document Inspector  |  {essay.filename}",
             fontsize=11,
             fontname="helv",
             color=(0.12, 0.16, 0.28),
         )
         page.insert_text(
-            fitz.Point(48, 70),
-            f"Virtual Page Reconstruction — Page {max(1, page_num)} of {max(1, essay.num_pages or 1)}",
+            fitz.Point(48, 68),
+            f"Virtual Page Reconstruction — Page {max(1, page_num)} of {max(1, essay.num_pages or 1)} (Red Text = Flagged Errors & Hallucinations)",
             fontsize=8.5,
             color=(0.38, 0.43, 0.54),
         )
-
-        import html as _html
-        import re as _re
-
-        citations = repo.get_citations(essay_id)
-        verdicts = repo.get_verdicts(essay_id)
-        page_cits = [c for c in citations if (c.page_num or 1) == page_num] or citations[:8]
 
         hl_q = (highlight or "").strip().lower()
         hl_tok = ""
@@ -787,73 +926,49 @@ def get_essay_page_preview(
             if m_tok:
                 hl_tok = m_tok.group(0).lower()
 
-        y = 110.0
-        for idx, c in enumerate(page_cits[:8], start=1):
-            ctx = (getattr(c, "context", None) or c.raw_text or "").strip()
-            block_text = f"[{idx}] {ctx[:260]}"
-            ctx_low = f"{ctx} {c.raw_text or ''}".lower()
-            is_hl = bool(
-                hl_q
-                and (
-                    hl_q in ctx_low
-                    or (hl_tok and len(hl_tok) >= 4 and hl_tok in ctx_low)
-                )
-            )
-            box = fitz.Rect(42, y - 6, 553, y + 66)
-            sh = page.new_shape()
-            sh.draw_rect(box)
-            if is_hl:
-                sh.finish(
-                    color=(0.31, 0.27, 0.90),
-                    fill=(0.99, 0.92, 0.45),
-                    fill_opacity=0.42,
-                    width=1.8,
-                )
-            else:
-                sh.finish(
-                    color=(0.88, 0.90, 0.94),
-                    fill=(0.99, 0.99, 1.0),
-                    fill_opacity=0.9,
-                    width=0.8,
-                )
-            sh.commit()
-            page.insert_htmlbox(
-                fitz.Rect(50, y, 545, y + 62),
-                f'<div style="font-family: sans-serif; font-size: 9pt; color: #191f2e; line-height: 1.35;">{_html.escape(block_text)}</div>',
-            )
-            y += 80.0
-            if y > 740:
+        # Render verdicts and citations cleanly with text-only red coloring for errors & hallucinations
+        y = 96.0
+        items_to_draw: list[tuple[str, str, str]] = []
+        for v_idx, v in enumerate(verdicts, start=1):
+            if len(items_to_draw) >= 8:
                 break
+            v_lbl = (v.label or "unresolved").lower()
+            v_raw = (v.citation_raw or "").strip()
+            items_to_draw.append((v_raw[:240], v_lbl, v_raw.lower()))
+        if not items_to_draw:
+            for idx, c in enumerate(citations[:8], start=1):
+                ctx = (getattr(c, "context", None) or c.raw_text or "").strip()
+                items_to_draw.append((f"[{idx}] {ctx[:220]}", "verified", ctx.lower()))
 
-        if not page_cits and verdicts:
-            for idx, v in enumerate(verdicts[:7], start=1):
-                txt = f"[{idx}] ({v.label.upper()}) {v.citation_raw[:220]}"
-                v_low = v.citation_raw.lower()
-                is_hl = bool(
-                    hl_q
-                    and (
-                        hl_q in v_low
-                        or (hl_tok and len(hl_tok) >= 4 and hl_tok in v_low)
-                    )
-                )
-                box = fitz.Rect(42, y - 6, 553, y + 58)
-                sh = page.new_shape()
-                sh.draw_rect(box)
-                if is_hl:
-                    sh.finish(
-                        color=(0.31, 0.27, 0.90),
-                        fill=(0.99, 0.92, 0.45),
-                        fill_opacity=0.42,
-                        width=1.8,
-                    )
-                else:
-                    sh.finish(color=(0.88, 0.90, 0.94), fill=(0.99, 0.99, 1.0), width=0.8)
-                sh.commit()
-                page.insert_htmlbox(
-                    fitz.Rect(50, y, 545, y + 54),
-                    f'<div style="font-family: sans-serif; font-size: 9pt; color: #191f2e; line-height: 1.35;">{_html.escape(txt)}</div>',
-                )
-                y += 72.0
+        for block_text, item_lbl, match_low in items_to_draw[:8]:
+            is_halluc = item_lbl == "suspected_hallucination"
+            is_meta_err = item_lbl == "metadata_error"
+
+            # Only color the text in red — do NOT draw any box or border frame around it
+            if is_halluc:
+                badge_html = '<span style="color: #dc2626; font-weight: bold;">[NGUỒN BỊA ĐẶT / SUSPECTED HALLUCINATION]</span> '
+                text_color = "#dc2626"
+                font_weight = "600"
+            elif is_meta_err:
+                badge_html = '<span style="color: #dc2626; font-weight: bold;">[LỖI METADATA / METADATA ERROR]</span> '
+                text_color = "#dc2626"
+                font_weight = "600"
+            elif item_lbl in ("verified", "resource"):
+                badge_html = '<span style="color: #15803d; font-weight: bold;">[VERIFIED]</span> '
+                text_color = "#1e293b"
+                font_weight = "normal"
+            else:
+                badge_html = f'<span style="color: #475569; font-weight: bold;">[{_html.escape(item_lbl.upper())}]</span> '
+                text_color = "#1e293b"
+                font_weight = "normal"
+
+            page.insert_htmlbox(
+                fitz.Rect(48, y, 548, y + 66),
+                f'<div style="font-family: serif; font-size: 9.2pt; color: {text_color}; font-weight: {font_weight}; line-height: 1.4;">{badge_html}{_html.escape(block_text)}</div>',
+            )
+            y += 74.0
+            if y > 755:
+                break
 
         pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
         png_bytes = pix.tobytes("png")
