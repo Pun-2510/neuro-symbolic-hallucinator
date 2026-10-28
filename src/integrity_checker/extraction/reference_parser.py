@@ -735,11 +735,18 @@ class ReferenceListParser:
             compound_prefixes = {
                 "pre", "self", "multi", "cross", "neuro", "non", "semi",
                 "fine", "zero", "few", "real", "open", "high", "low", "tf",
+                "scikit", "class", "rule", "tree", "graph", "attention", "bert",
+                "deep", "machine", "data", "text", "word", "sentence", "token",
+                "aspect", "domain", "task", "user", "item", "time", "long", "short",
+                "large", "small", "state", "end", "co", "sub", "inter", "intra",
+                "meta", "post", "bi", "uni", "auto", "hyper", "over", "under",
             }
             compound_roots = {
                 "training", "trained", "tuning", "tuned", "supervised", "symbolic",
                 "lingual", "modal", "task", "attention", "shot", "time", "source",
-                "level", "scale", "idf", "based", "centric", "driven",
+                "level", "scale", "idf", "based", "centric", "driven", "learn",
+                "learning", "aware", "free", "specific", "independent", "dependent",
+                "oriented", "guided", "related", "labeled", "labelled", "term",
             }
             if nxt_s[0].isupper() or (
                 prefix.lower() in compound_prefixes and nxt_word in compound_roots
@@ -1103,7 +1110,13 @@ class ReferenceListParser:
             4. Fallback to legacy patterns (_parse_apa_entry, _parse_ieee_entry, etc.)
             5. Fallback to _parse_fallback_entry if numeric_index available
         """
-        # Normalize: replace newlines with spaces (wrapped lines) and repair line-wrapped URLs
+        # Normalize: join wrapped lines (preserving compound hyphens and de-hyphenating line breaks)
+        if "\n" in entry:
+            joined = ""
+            for ln in entry.splitlines():
+                if ln.strip():
+                    joined = self._join_wrapped_line(joined, ln.strip()) if joined else ln.strip()
+            entry = joined
         entry = entry.replace("\n", " ").replace("\xad", "").replace("  ", " ")
         entry = entry.replace("\u2018\u2018", "\u201c").replace("\u2019\u2019", "\u201d")
         entry = re.sub(r"\s*\[trans\s*:[^\]]*\]?\s*$", "", entry, flags=re.IGNORECASE).strip()
@@ -1141,7 +1154,9 @@ class ReferenceListParser:
 
         # Vietnamese traditional humanities/law entry (e.g. "[1] Đỗ Văn Đại, Title, Nxb. Hồng Đức, 2023"
         # or "8. Giáo dục liêm chính... https://..., ngày 30/8/2024.")
-        vn_trad_citation = self._parse_vn_traditional_entry(entry, order_index, page_num, numeric_index)
+        vn_trad_citation = self._parse_vn_traditional_entry(
+            entry, order_index, page_num, numeric_index, allow_fallback=False
+        )
         if vn_trad_citation is not None:
             return vn_trad_citation
 
@@ -1281,6 +1296,13 @@ class ReferenceListParser:
                 citation.numeric_index = numeric_index
             return citation
 
+        # Fallback to numbered Vietnamese traditional item if no structured format matched
+        vn_trad_fallback = self._parse_vn_traditional_entry(
+            entry, order_index, page_num, numeric_index, allow_fallback=True
+        )
+        if vn_trad_fallback is not None:
+            return vn_trad_fallback
+
         # FIX: Fallback - create citation with numeric_index if available
         # and extract whatever metadata we can from the raw entry
         if numeric_index is not None:
@@ -1300,14 +1322,16 @@ class ReferenceListParser:
         order_index: int,
         page_num: int,
         numeric_index: int | None = None,
+        allow_fallback: bool = False,
     ) -> Citation | None:
         """Parse Vietnamese traditional humanities/law reference entries where Year is at the end
         or omitted (e.g., '[1] Đỗ Văn Đại, Title, Nxb. Hồng Đức, 2023', '8. Title. https://..., ngày 30/8/2024')."""
-        if not _VN_DIACRITIC_RE.search(entry):
+        if not _STRICT_VN_DIACRITIC_RE.search(entry):
             return None
         # Do not intercept APA entries that have (Year) or (n.d.) right after the author block
         if re.search(
-            r"^\s*(?:\[\s*\d+\s*\]|\d{1,3}\s*[\.\)])?\s*[^()]{2,95}\(\s*(?:(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?:18|19|20)\d{2}[a-z]?(?:\s*[,–\-/]\s*[^)]*)?|n\.?\s*d\.?(?:-[a-z])?)\s*\)",
+            r"^\s*(?:\[\s*\d+\s*\]|\d{1,3}\s*[\.\)])?\s*[^()]{2,600}\(\s*(?:(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?:18|19|20)\d{2}[a-z]?(?:\s*[,–\-/]\s*[^)]*)?|n\.?\s*d\.?(?:-[a-z])?)\s*\)"
+            r"|\(\s*(?:(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?:18|19|20)\d{2}[a-z]?(?:\s*[,–\-/]\s*[^)]*)?|n\.?\s*d\.?(?:-[a-z])?)\s*\)\s*[.,:]\s+\S",
             entry,
             re.IGNORECASE,
         ):
@@ -1434,7 +1458,7 @@ class ReferenceListParser:
                 )
 
         # Subcase D: Numbered Vietnamese report/document item without year or with year in title
-        if numeric_index is not None and len(cleaned) >= 20:
+        if allow_fallback and numeric_index is not None and len(cleaned) >= 20:
             return Citation(
                 raw_text=entry.strip(),
                 citation_type=CitationType.REFERENCE_LIST,
@@ -1944,6 +1968,11 @@ for _group_idx, _chars in enumerate(_VN_ALPHABET_GROUPS):
 
 _VN_DIACRITIC_RE = re.compile(
     r"[àáảãạăằắẳẵặâầấẩẫậđèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]",
+    re.IGNORECASE,
+)
+
+_STRICT_VN_DIACRITIC_RE = re.compile(
+    r"[ăằắẳẵặấầẩẫậđềếểễệồốổỗộơờớởỡợưừứửữựảạẻẽẹỉĩịỏọủũụỳỷỹỵ]",
     re.IGNORECASE,
 )
 

@@ -1313,11 +1313,17 @@ class DocumentParser:
                 for g in grobid_refs:
                     g_title = (g.title or "").strip()
                     if g_title and len(g_title) >= 8 and g_title.lower() in r_raw_low:
-                        if not r.title or r.title.startswith(","):
+                        if (
+                            not r.title
+                            or r.title.startswith(",")
+                            or (not r.authors and len(r.title) > len(g_title) + 15)
+                        ):
                             r.title = g_title
                             r.title_normalized = g.title_normalized
                         if not r.authors and g.authors:
                             r.authors = g.authors
+                        if not r.venue and g.venue:
+                            r.venue = g.venue
                         if not r.year and g.year:
                             r.year = g.year
                         if not r.doi and g.doi:
@@ -1477,13 +1483,19 @@ class DocumentParser:
                 target.raw_text = " ".join(parts)
 
             # Fix GROBID dropping main title before bracketed section tag (e.g. "Docker [IT infrastructure]"
-            # where GROBID sets title="IT infrastructure") or hallucinating Appendix code into title
+            # where GROBID sets title="IT infrastructure"), hallucinating Appendix code into title,
+            # or stripping compound hyphens across line breaks (e.g. "Scikitlearn" vs "Scikit-learn")
             if target.title and donor.title and len(donor.title.strip()) >= 5:
                 t_clean = target.title.strip()
                 d_clean = donor.title.strip()
                 if (
                     f"[{t_clean.lower()}]" in d_clean.lower()
                     or re.search(r"',\s*'", t_clean)
+                    or (
+                        d_clean.count("-") > t_clean.count("-")
+                        and re.sub(r"[\s\-–]+", "", t_clean.lower())
+                        == re.sub(r"[\s\-–]+", "", d_clean.lower())
+                    )
                 ):
                     old_t = target.title
                     target.title = donor.title

@@ -736,18 +736,28 @@ class APAFormat:
         title = match.group("title").strip()
         venue = match.group("venue").strip()
 
-        # Rejoin title if it was split at an abbreviation, middle initial, or decimal (e.g. "Tp. HCM.", "fMRI vs. SPECT", "Dr. Amen", "Daniel G. Amen", "Version 24.12")
+        # Rejoin title if it was split at an abbreviation, middle initial, decimal, or inside parentheses (e.g. "Tp. HCM.", "fMRI vs. SPECT", "Dr. Amen", "Daniel G. Amen", "Version 24.12", "(5th ed., text rev.)")
         while (
-            re.search(
-                r"(?:\b(?:Tp|TP|ThS|TS|PGS|GS|vs|Dr|Mr|Mrs|Ms|St|Jr|Sr|U\.S|U\.K|No|Vol|Ed|Fig|al|Inc|Ltd|Co|Corp|[A-Z][a-z]{2,}\s+[A-Z])|\d)$",
-                title,
+            (
+                re.search(
+                    r"\b(?:Tp|TP|ThS|TS|PGS|GS|vs|Dr|Mr|Mrs|Ms|St|Jr|Sr|U\.S|U\.K|No|Vol|Ed|ed|Fig|al|Inc|Ltd|Co|Corp|[A-Z][a-z]{2,}\s+[A-Z])$",
+                    title,
+                )
+                or (re.search(r"\d$", title) and re.match(r"^\d", venue))
+                or title.count("(") > title.count(")")
             )
             and ". " in venue
         ):
             next_part, rest_venue = venue.split(". ", 1)
             if next_part.strip().lower().startswith(("http://", "https://")):
                 break
-            title = f"{title}. {next_part.strip()}"
+            sep = (
+                "."
+                if next_part.startswith((",", ")", ";", ":"))
+                or (re.search(r"\d$", title) and re.match(r"^\d", next_part))
+                else ". "
+            )
+            title = f"{title}{sep}{next_part.strip()}"
             venue = rest_venue.strip()
 
         # Detect Title-first anonymous APA entry where the article title precedes (Year)/(n.d.)

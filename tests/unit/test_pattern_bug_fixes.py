@@ -201,3 +201,62 @@ class TestIEEEBracketsStillWork:
         nat = next(p for p in patterns if p.name == "nature_bracketed")
         assert nat.search("[1]") is not None
         assert nat.search("[24]") is not None
+
+
+class TestLongAuthorAccentedAPARegression:
+    """Regression tests for multi-author APA entries with accented initials and parenthetical editions."""
+
+    def test_pedregosa_16_authors_with_accented_initial_not_hijacked_by_vn_traditional(self):
+        """16-author APA entry with 'Duchesnay, É.' must parse as APA with title & 16 authors."""
+        from integrity_checker.extraction.reference_parser import ReferenceListParser
+        from integrity_checker.models.citation import CitationStyle
+
+        parser = ReferenceListParser()
+        raw = (
+            "[18] Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel,\n"
+            "O., Blondel, M., Prettenhofer, P., Weiss, R., Dubourg, V., Vanderplas, J., Passos,\n"
+            "A., Cournapeau, D., Brucher, M., Perrot, M., & Duchesnay, É. (2011). Scikit-\n"
+            "learn: Machine learning in Python. Journal of Machine Learning Research, 12,\n"
+            "2825–2830."
+        )
+        entries = parser._split_entries(f"References\n{raw}")
+        assert len(entries) == 1
+        cit = parser._parse_entry(entries[0], order_index=18, page_num=93)
+        assert cit is not None
+        assert cit.style == CitationStyle.APA
+        assert cit.matched_pattern == "apa_reference_entry"
+        assert cit.numeric_index == 18
+        assert cit.year == "2011"
+        assert cit.title == "Scikit-learn: Machine learning in Python"
+        assert cit.venue == "Journal of Machine Learning Research"
+        assert len(cit.authors) == 16
+        assert cit.authors[0].last_name == "pedregosa"
+        assert cit.authors[-1].last_name == "duchesnay"
+
+    def test_apa_parenthetical_edition_and_title_ending_with_digits(self):
+        """Parenthetical '(5th ed., text rev.)' stays in title and 'LIWC2015' does not glue publisher."""
+        from integrity_checker.extraction.reference_parser import ReferenceListParser
+
+        parser = ReferenceListParser()
+        dsm = (
+            "[1] American Psychiatric Association. (2022). Diagnostic and statistical manual "
+            "of mental disorders (5th ed., text rev.). American Psychiatric Association Publishing. "
+            "https://doi.org/10.1176/appi.books.9780890425787"
+        )
+        cit1 = parser._parse_entry(dsm, order_index=1, page_num=92)
+        assert cit1 is not None
+        assert cit1.title == "Diagnostic and statistical manual of mental disorders (5th ed., text rev.)"
+        assert cit1.venue == "American Psychiatric Association Publishing"
+        assert cit1.doi == "10.1176/appi.books.9780890425787"
+
+        liwc = (
+            "[19] Pennebaker, J. W., Boyd, R. L., Jordan, K., & Blackburn, K. (2015). "
+            "The development and psychometric properties of LIWC2015. The University of Texas at Austin. "
+            "https://doi.org/10.15781/T29G6Z"
+        )
+        cit19 = parser._parse_entry(liwc, order_index=19, page_num=93)
+        assert cit19 is not None
+        assert cit19.title == "The development and psychometric properties of LIWC2015"
+        assert cit19.venue == "The University of Texas at Austin"
+        assert cit19.doi == "10.15781/T29G6Z"
+
