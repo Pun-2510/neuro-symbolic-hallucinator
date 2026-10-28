@@ -202,6 +202,13 @@ def _run_inline_migrations(engine: Engine) -> None:
             conn.exec_driver_sql(
                 "UPDATE users SET username_customized = 0 WHERE auth_provider = 'google'"
             )
+        if "google_onboarded" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN google_onboarded INTEGER DEFAULT 1"
+            )
+            conn.exec_driver_sql(
+                "UPDATE users SET google_onboarded = 0, username_customized = 0, auth_provider = 'google' WHERE google_id IS NOT NULL"
+            )
 
         # --- users (v2.2 — Premium Subscription & Quota fields) ---
         if "plan_tier" not in user_cols:

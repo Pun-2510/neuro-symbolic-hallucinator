@@ -651,6 +651,29 @@ def google_login(request: GoogleLoginRequest, db=Depends(get_db)):
             updates["avatar_path"] = picture[:500]
         if updates:
             user = repo.update_user(user.id, **updates) or user
+
+        # If this Google-only account has never received an initial password setup email, send one
+        if (getattr(user, "auth_provider", None) == "google") and user.email:
+            latest_tok = repo.get_latest_auth_token_for_user(user.id, "password_reset")
+            if not latest_tok:
+                setup_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+                setup_token, _ = repo.create_auth_token(
+                    user.id, "password_reset", setup_expires
+                )
+                try:
+                    get_email_service().send_google_welcome_email(
+                        to_email=user.email,
+                        username=user.username,
+                        full_name=user.full_name,
+                        raw_token=setup_token,
+                        lang="vi",
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to dispatch Google welcome/password setup email to %s: %s",
+                        user.email,
+                        exc,
+                    )
     else:
         username = _generate_unique_google_username(repo, email, full_name)
         random_password_hash = _hash_password(secrets.token_urlsafe(32))

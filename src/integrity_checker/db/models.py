@@ -49,6 +49,7 @@ class User(Base):
     google_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     auth_provider: Mapped[str] = mapped_column(String(30), default="local")
     username_customized: Mapped[bool] = mapped_column(Integer, default=1)
+    google_onboarded: Mapped[bool] = mapped_column(Integer, default=1)
     # v2.2 — Premium Subscription & Quota fields
     plan_tier: Mapped[str] = mapped_column(String(20), default="basic")
     billing_cycle: Mapped[str | None] = mapped_column(String(20), nullable=True)
