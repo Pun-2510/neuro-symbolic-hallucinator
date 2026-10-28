@@ -49,6 +49,20 @@ function SortIcon({
   );
 }
 
+function getCardLeftAccent(v: Verdict): string {
+  if (isUrlResource(v)) return 'border-l-violet-500';
+  switch (v.label) {
+    case 'verified':
+      return 'border-l-emerald-500';
+    case 'metadata_error':
+      return 'border-l-amber-500';
+    case 'suspected_hallucination':
+      return 'border-l-red-500';
+    default:
+      return 'border-l-slate-400';
+  }
+}
+
 export function CitationGraphView({
   verdicts,
   linkingSummary: _linkingSummary,
@@ -135,32 +149,39 @@ export function CitationGraphView({
     statusFilters.size > 0 || labelFilters.size > 0 || searchQuery.length > 0;
 
   return (
-    <div className="space-y-5 p-4 sm:p-6 bg-white dark:bg-slate-950" data-testid="citation-graph-view">
+    <div
+      className="space-y-4 p-3 sm:p-5 bg-white dark:bg-slate-950 w-full min-w-0 max-w-full overflow-hidden"
+      data-testid="citation-graph-view"
+    >
       {/* Top Architecture Header & Controls */}
-      <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-200/80 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/90 border border-indigo-200/70 dark:border-indigo-800">
+      <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-3.5 sm:p-4 w-full min-w-0 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 pb-3 border-b border-slate-200/80 dark:border-slate-800">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/90 border border-indigo-200/70 dark:border-indigo-800 shrink-0">
               <GitBranch className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+            <div className="min-w-0">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
                 Two-Layer Citation &amp; Source Network Explorer
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Filter across Layer 1 (In-Text ↔ Bibliography Mapping) and Layer 2 (Scholarly Registry Verification)
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">
+                Select any citation to inspect its Neuro-Symbolic Evidence DAG
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800">
-              <Link2 className="h-3 w-3" />
-              Matched: {stats.integrityCounts.matched ?? 0}/{stats.total}
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono shrink-0">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800">
+              <Link2 className="h-3 w-3 shrink-0" />
+              <span>
+                L1 Linked: {stats.integrityCounts.matched ?? 0}/{stats.total}
+              </span>
             </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800">
-              <Database className="h-3 w-3" />
-              Verified: {stats.sourceCounts.verified ?? 0}/{stats.total}
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800">
+              <Database className="h-3 w-3 shrink-0" />
+              <span>
+                L2 Verified: {stats.sourceCounts.verified ?? 0}/{stats.total}
+              </span>
             </span>
           </div>
         </div>
@@ -186,111 +207,98 @@ export function CitationGraphView({
           <p className="text-sm italic">No citations match your filters.</p>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-12 gap-5 items-start">
-          {/* Left Column: Interactive Node Stream (5 cols) */}
-          <div className="lg:col-span-5 space-y-2 max-h-[620px] overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start w-full min-w-0">
+          {/* Left Column: Interactive Citation Node Stream (5 cols on desktop) */}
+          <div className="lg:col-span-5 space-y-2.5 lg:max-h-[680px] lg:overflow-y-auto lg:pr-1 w-full min-w-0">
             {filtered.map((v, i) => {
               const isSelected = activeVerdict?.citation_id === v.citation_id;
               return (
-                <div
-                  key={v.citation_id ?? i}
-                  onClick={() => {
-                    setActiveId(v.citation_id);
-                    onSelect(v);
-                  }}
-                  className={`border rounded-xl p-3.5 cursor-pointer transition-all ${
-                    isSelected
-                      ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/50 ring-1 ring-indigo-500/30 shadow-xs'
-                      : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300 dark:hover:border-indigo-700'
-                  } ${
-                    v.is_overridden
-                      ? 'border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/20'
-                      : ''
-                  } ${
-                    v.domain_exception
-                      ? 'border-dashed border-amber-300 dark:border-amber-700'
-                      : ''
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="shrink-0 pt-0.5">
-                      <MappingStatusBadge status={v.mapping_status} size="sm" />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className="text-xs sm:text-sm font-medium text-slate-900 dark:text-slate-100 line-clamp-2 font-serif leading-snug"
-                        title={v.citation_raw}
-                      >
-                        {v.citation_raw}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                <div key={v.citation_id ?? i} className="w-full min-w-0 space-y-2">
+                  <div
+                    onClick={() => {
+                      setActiveId(v.citation_id);
+                      onSelect(v);
+                    }}
+                    className={`w-full min-w-0 max-w-full overflow-hidden border border-l-4 rounded-xl p-3 sm:p-3.5 cursor-pointer transition-all ${getCardLeftAccent(
+                      v,
+                    )} ${
+                      isSelected
+                        ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/40 ring-1 ring-indigo-500/30 shadow-xs'
+                        : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300 dark:hover:border-indigo-700'
+                    }`}
+                  >
+                    {/* Top Row: Badges on left, Telemetry pills on right */}
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 mb-2">
+                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                        {viewMode !== 'source' && (
+                          <MappingStatusBadge status={v.mapping_status} size="sm" />
+                        )}
                         {viewMode !== 'integrity' && (
                           <VerdictBadge
                             verdict={isUrlResource(v) ? 'resource' : v.label}
                             size="sm"
                           />
                         )}
-                        {viewMode === 'combined' && (
-                          <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                            src: {(v.confidence * 100).toFixed(0)}% | link:{' '}
-                            {(v.mapping_confidence * 100).toFixed(0)}%
-                          </span>
-                        )}
-                        {v.features?.content_alignment_score !== undefined &&
-                          v.features.content_alignment_score > 0 && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-950/70 text-violet-700 dark:text-violet-300">
-                              <Brain className="h-2.5 w-2.5" />
-                              {Math.round(v.features.content_alignment_score * 100)}%
-                            </span>
-                          )}
                         {v.is_overridden && (
-                          <span className="text-[10px] font-mono font-semibold text-amber-600 dark:text-amber-400">
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
                             OVERRIDDEN
                           </span>
                         )}
                       </div>
-                    </div>
 
-                    {/* Dual Telemetry Mini Bar */}
-                    <div className="shrink-0 w-10 pt-1 hidden sm:block">
-                      <div className="flex gap-1 items-end h-7 bg-slate-100 dark:bg-slate-800 p-1 rounded">
-                        <div
-                          className="flex-1 bg-emerald-500 rounded-t"
-                          style={{
-                            height: `${Math.max(8, Math.round(v.confidence * 100))}%`,
-                          }}
-                          title={`Source Confidence: ${(v.confidence * 100).toFixed(0)}%`}
-                        />
-                        <div
-                          className="flex-1 bg-indigo-500 rounded-t"
-                          style={{
-                            height: `${Math.max(8, Math.round(v.mapping_confidence * 100))}%`,
-                          }}
-                          title={`Link Confidence: ${(v.mapping_confidence * 100).toFixed(0)}%`}
-                        />
+                      <div className="flex flex-wrap items-center gap-1 text-[10px] font-mono shrink-0">
+                        <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          src {(v.confidence * 100).toFixed(0)}%
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          link {(v.mapping_confidence * 100).toFixed(0)}%
+                        </span>
+                        {v.features?.content_alignment_score !== undefined &&
+                          v.features.content_alignment_score > 0 && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-950/70 text-violet-700 dark:text-violet-300 font-semibold">
+                              <Brain className="h-2.5 w-2.5 shrink-0" />
+                              {Math.round(v.features.content_alignment_score * 100)}%
+                            </span>
+                          )}
                       </div>
                     </div>
 
-                    {onOverride && (
-                      <div
-                        className="shrink-0"
-                        onClick={(e) => e.stopPropagation()}
+                    {/* Bottom Row: Full-width Citation Reference Text */}
+                    <div className="flex items-start justify-between gap-2 w-full min-w-0">
+                      <p
+                        className="text-xs sm:text-sm font-medium text-slate-900 dark:text-slate-100 font-serif leading-relaxed break-words [overflow-wrap:anywhere] line-clamp-2 flex-1 min-w-0"
+                        title={v.citation_raw}
                       >
-                        <OverrideControls
-                          verdict={v}
-                          onOverride={(req) => onOverride(v, req)}
-                        />
-                      </div>
-                    )}
+                        {v.citation_raw}
+                      </p>
+
+                      {onOverride && (
+                        <div
+                          className="shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <OverrideControls
+                            verdict={v}
+                            onOverride={(req) => onOverride(v, req)}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Mobile/Tablet Inline Accordion Graph (visible on < lg directly below selected card) */}
+                  {isSelected && activeVerdict && (
+                    <div className="lg:hidden rounded-2xl border border-indigo-200/90 dark:border-indigo-900/80 bg-slate-50/70 dark:bg-slate-900/60 p-3 sm:p-4 w-full min-w-0 max-w-full overflow-hidden shadow-xs">
+                      <EvidenceGraph verdict={activeVerdict} />
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
 
-          {/* Right Column: Live Interactive Evidence Graph DAG (7 cols) */}
-          <div className="lg:col-span-7 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 p-4 sm:p-5">
+          {/* Right Column: Sticky Live Evidence Graph DAG on Desktop (7 cols on lg+) */}
+          <div className="hidden lg:block lg:col-span-7 lg:sticky lg:top-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 p-4 sm:p-5 w-full min-w-0 overflow-hidden">
             {activeVerdict && <EvidenceGraph verdict={activeVerdict} />}
           </div>
         </div>

@@ -122,4 +122,12 @@ describe('buildEvidenceGraph', () => {
     const { isLocalOnly } = buildEvidenceGraph(makeVerdict());
     expect(isLocalOnly).toBe(false);
   });
+
+  it('formats matched source field list cleanly without duplicate "The the" prefix', () => {
+    const { graph } = buildEvidenceGraph(makeVerdict());
+    const sources = graph.children!.find((c) => c.id === 'sources')!;
+    const crossrefNode = sources.children![0];
+    expect(crossrefNode.detail).toBe('Matched fields: title, publication year.');
+    expect(crossrefNode.detail).not.toMatch(/the\s+the/i);
+  });
 });

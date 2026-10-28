@@ -21,40 +21,61 @@ interface EvidenceGraphNodeProps {
   expandedNodes?: Set<string>;
 }
 
-function getNodeStyles(status: GraphNode['status']): string {
+function getNodeStyles(status: GraphNode['status'], isRoot: boolean): string {
+  if (isRoot) {
+    return 'border-indigo-300/90 bg-indigo-50/70 dark:border-indigo-800 dark:bg-indigo-950/60 shadow-2xs';
+  }
   switch (status) {
     case 'success':
-      return 'border-emerald-300/90 bg-emerald-50/80 dark:border-emerald-800/80 dark:bg-emerald-950/50';
+      return 'border-emerald-200/90 bg-emerald-50/60 dark:border-emerald-800/80 dark:bg-emerald-950/40';
     case 'warning':
-      return 'border-amber-300/90 bg-amber-50/80 dark:border-amber-800/80 dark:bg-amber-950/50';
+      return 'border-amber-200/90 bg-amber-50/60 dark:border-amber-800/80 dark:bg-amber-950/40';
     case 'error':
-      return 'border-red-300/90 bg-red-50/80 dark:border-red-800/80 dark:bg-red-950/50';
+      return 'border-red-200/90 bg-red-50/60 dark:border-red-800/80 dark:bg-red-950/40';
     case 'no_match':
-      return 'border-slate-200 bg-slate-50/90 dark:border-slate-800 dark:bg-slate-900/60 opacity-75';
+      return 'border-slate-200/80 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/50 opacity-75';
     default:
-      return 'border-indigo-200/90 bg-indigo-50/70 dark:border-indigo-800/80 dark:bg-indigo-950/50';
+      return 'border-indigo-200/90 bg-indigo-50/50 dark:border-indigo-800/80 dark:bg-indigo-950/40';
   }
 }
 
-function getStatusPillStyles(status: GraphNode['status']): { text: string; className: string } {
+function getDotColor(status: GraphNode['status']): string {
+  switch (status) {
+    case 'success':
+      return 'bg-emerald-500';
+    case 'warning':
+      return 'bg-amber-500';
+    case 'error':
+      return 'bg-red-500';
+    case 'no_match':
+      return 'bg-slate-400 dark:bg-slate-600';
+    default:
+      return 'bg-indigo-500';
+  }
+}
+
+function getStatusPillStyles(status: GraphNode['status']): {
+  text: string;
+  className: string;
+} {
   switch (status) {
     case 'success':
       return {
         text: 'PASS',
         className:
-          'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+          'bg-emerald-100/90 text-emerald-800 border-emerald-300/80 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
       };
     case 'warning':
       return {
         text: 'WARN',
         className:
-          'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+          'bg-amber-100/90 text-amber-800 border-amber-300/80 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
       };
     case 'error':
       return {
         text: 'FAIL',
         className:
-          'bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
+          'bg-red-100/90 text-red-800 border-red-300/80 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
       };
     case 'no_match':
       return {
@@ -66,7 +87,7 @@ function getStatusPillStyles(status: GraphNode['status']): { text: string; class
       return {
         text: 'ROOT',
         className:
-          'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800',
+          'bg-indigo-100/90 text-indigo-800 border-indigo-300/80 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800',
       };
   }
 }
@@ -75,7 +96,9 @@ function getNodeIcon(node: GraphNode): React.ReactNode {
   if (node.iconOverride) return node.iconOverride;
   switch (node.type) {
     case 'reference':
-      return <GitBranch className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />;
+      return (
+        <GitBranch className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+      );
     case 'source':
       return <SourceIcon source={node.label} />;
     case 'candidate':
@@ -87,9 +110,13 @@ function getNodeIcon(node: GraphNode): React.ReactNode {
         <XCircle className="h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0" />
       );
     case 'similarity':
-      return <Target className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0" />;
+      return (
+        <Target className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0" />
+      );
     case 'rules':
-      return <Hash className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />;
+      return (
+        <Hash className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+      );
     case 'verdict': {
       const normalizedKey = node.label.toLowerCase().replace(/\s+/g, '_');
       const config =
@@ -106,7 +133,7 @@ function getNodeIcon(node: GraphNode): React.ReactNode {
 export function EvidenceGraphNode({
   node,
   level = 0,
-  isLast: _isLast = false,
+  isLast = false,
   onExpand,
   expandedNodes,
 }: EvidenceGraphNodeProps) {
@@ -119,86 +146,107 @@ export function EvidenceGraphNode({
       ? (node.matchedSource as { url?: string }).url
       : undefined;
   const statusPill = getStatusPillStyles(node.status);
+  const isRoot = level === 0;
 
   return (
-    <div className="relative" data-testid={`evidence-node-${node.id}`}>
-      {/* Tree connector line */}
+    <div
+      className={`relative w-full min-w-0 ${level > 0 ? 'pl-6 sm:pl-7' : ''}`}
+      data-testid={`evidence-node-${node.id}`}
+    >
+      {/* Continuous Tree Spine & Horizontal Branch Connector (always aligned regardless of card height) */}
       {level > 0 && (
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            left: `${level * 22 - 12}px`,
-            top: '-10px',
-            height: '24px',
-            width: '12px',
-          }}
-        >
-          <div className="h-full border-l-2 border-slate-300 dark:border-slate-700 rounded-bl-md" />
-          <div className="absolute bottom-0 left-0 w-3 border-b-2 border-slate-300 dark:border-slate-700" />
-        </div>
+        <>
+          {/* Vertical Spine Segment: starts at -top-2 (-8px) to touch parent card bottom border seamlessly */}
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute left-2.5 sm:left-3 -top-2 w-[2px] bg-slate-300 dark:bg-slate-700 ${
+              isLast ? 'h-[29px] rounded-bl' : '-bottom-2'
+            }`}
+          />
+          {/* Horizontal Branch Arm */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute left-2.5 sm:left-3 top-[19px] w-3.5 sm:w-4 h-[2px] bg-slate-300 dark:bg-slate-700"
+          />
+          {/* Junction Status Dot on the Card Edge */}
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute left-[19px] sm:left-[23px] top-[16px] w-2 h-2 rounded-full ring-2 ring-white dark:ring-slate-950 ${getDotColor(
+              node.status,
+            )}`}
+          />
+        </>
       )}
 
-      {/* Node card */}
+      {/* Node Card */}
       <div
-        className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 mb-1.5 transition-all ${
+        className={`w-full min-w-0 flex items-start gap-2.5 rounded-xl border px-3 py-2.5 transition-all ${
           hasChildren ? 'cursor-pointer hover:shadow-xs' : 'cursor-default'
-        } ${getNodeStyles(node.status)}`}
-        style={{ marginLeft: `${level * 22}px` }}
+        } ${getNodeStyles(node.status, isRoot)}`}
         onClick={() => hasChildren && onExpand?.(node.id)}
       >
-        {getNodeIcon(node)}
+        <div className="pt-0.5 shrink-0">{getNodeIcon(node)}</div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
-              {node.label}
-            </span>
-            <span
-              className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border ${statusPill.className}`}
-            >
-              {statusPill.text}
-            </span>
-            {hasChildren && (
-              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
-                ({node.children!.length})
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <span className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 break-words leading-snug">
+                {node.label}
               </span>
-            )}
+              <span
+                className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border shrink-0 ${statusPill.className}`}
+              >
+                {statusPill.text}
+              </span>
+              {hasChildren && (
+                <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 shrink-0">
+                  ({node.children!.length})
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              {matchedUrl && /^https?:\/\//i.test(matchedUrl) && (
+                <a
+                  href={matchedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 text-[10px] font-mono text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  title="Open canonical source record"
+                >
+                  <span>Source</span>
+                  <ExternalLink className="h-2.5 w-2.5" />
+                </a>
+              )}
+
+              {hasChildren && (
+                <span className="text-slate-500 dark:text-slate-400 shrink-0 p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5">
+                  {isExpanded ? (
+                    <ChevronDownIcon className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </span>
+              )}
+            </div>
           </div>
+
           {node.detail && (
-            <span className="text-xs text-slate-600 dark:text-slate-300 break-words leading-snug block mt-0.5">
+            <span className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 break-words [overflow-wrap:anywhere] leading-relaxed block mt-1">
               {node.detail}
             </span>
           )}
         </div>
-
-        {matchedUrl && /^https?:\/\//i.test(matchedUrl) && (
-          <a
-            href={matchedUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 text-[10px] font-mono text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
-            onClick={(e) => e.stopPropagation()}
-            title="Open canonical source record"
-          >
-            <span>Source</span>
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        )}
-
-        {hasChildren && (
-          <span className="text-slate-500 dark:text-slate-400 shrink-0 p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5">
-            {isExpanded ? (
-              <ChevronDownIcon className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </span>
-        )}
       </div>
 
-      {/* Children */}
+      {/* Children Container */}
       {hasChildren && isExpanded && (
-        <div className="relative">
+        <div
+          className={`relative mt-2 space-y-2 ${
+            isRoot ? 'ml-2 sm:ml-3' : 'ml-2 sm:ml-3.5'
+          }`}
+        >
           {node.children!.map((child, idx) => (
             <EvidenceGraphNode
               key={child.id}

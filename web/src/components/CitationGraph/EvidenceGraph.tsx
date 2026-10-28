@@ -198,38 +198,43 @@ export function buildEvidenceGraph(
         children: [
           ...databasesWithResults.flatMap(([db, candidates]) => {
             const config = SOURCE_CONFIG[db] ?? SOURCE_CONFIG.crossref;
-            return candidates.map((c, idx) => ({
-              id: `${db}-${idx}`,
-              label: config.label,
-              type: 'candidate' as const,
-              status: (c.matched ? 'success' : 'no_match') as GraphNode['status'],
-              detail: c.matched
-                ? `The ${(c.fields || []).map(getFieldDisplayName).join(', ') || 'available details'} match the citation.`
-                : 'No match found',
-              matchedSource: {
-                source: db,
-                matched_fields: c.fields || [],
-                checked_at: '',
-              },
-              children:
-                c.matched && c.url
-                  ? [
-                      {
-                        id: `${db}-${idx}-link`,
-                        label: 'View Publication',
-                        type: 'candidate' as const,
-                        status: 'success' as GraphNode['status'],
-                        detail: c.url,
-                        matchedSource: {
-                          source: db,
-                          matched_fields: c.fields || [],
-                          checked_at: '',
-                          url: c.url,
+            return candidates.map((c, idx) => {
+              const cleanedFields = (c.fields || [])
+                .map((fld) => getFieldDisplayName(fld).replace(/^the\s+/i, ''))
+                .join(', ');
+              return {
+                id: `${db}-${idx}`,
+                label: config.label,
+                type: 'candidate' as const,
+                status: (c.matched ? 'success' : 'no_match') as GraphNode['status'],
+                detail: c.matched
+                  ? `Matched fields: ${cleanedFields || 'available details'}.`
+                  : 'No match found',
+                matchedSource: {
+                  source: db,
+                  matched_fields: c.fields || [],
+                  checked_at: '',
+                },
+                children:
+                  c.matched && c.url
+                    ? [
+                        {
+                          id: `${db}-${idx}-link`,
+                          label: 'View Publication',
+                          type: 'candidate' as const,
+                          status: 'success' as GraphNode['status'],
+                          detail: c.url,
+                          matchedSource: {
+                            source: db,
+                            matched_fields: c.fields || [],
+                            checked_at: '',
+                            url: c.url,
+                          },
                         },
-                      },
-                    ]
-                  : undefined,
-            }));
+                      ]
+                    : undefined,
+              };
+            });
           }),
           ...databasesWithoutResults.map(([db]) => {
             const config = SOURCE_CONFIG[db] ?? SOURCE_CONFIG.crossref;
@@ -358,50 +363,50 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
   );
 
   return (
-    <div className="space-y-4" data-testid="evidence-graph-container">
+    <div className="space-y-3.5 w-full min-w-0 max-w-full overflow-hidden" data-testid="evidence-graph-container">
       {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-xl border ${verdictConfig.bgColor} ${verdictConfig.borderColor}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`p-2 rounded-xl border shrink-0 ${verdictConfig.bgColor} ${verdictConfig.borderColor}`}>
             <Layers className={`h-4 w-4 ${verdictConfig.color}`} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
                 Neuro-Symbolic Evidence Graph
               </h3>
-              <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800 text-[10px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
+              <span className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800 text-[9px] font-mono font-semibold text-indigo-700 dark:text-indigo-300 shrink-0">
                 DAG TRACE
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Interactive decision tree from federated retrieval to calibrated verdict
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+              Decision tree from federated retrieval to calibrated verdict
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             onClick={expandAll}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[11px] font-mono text-slate-600 dark:text-slate-300 hover:border-indigo-400 transition-colors"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[10px] sm:text-[11px] font-mono text-slate-600 dark:text-slate-300 hover:border-indigo-400 transition-colors cursor-pointer"
           >
-            <ChevronsUpDown className="h-3 w-3" />
-            <span>Expand All</span>
+            <ChevronsUpDown className="h-3 w-3 shrink-0" />
+            <span>Expand</span>
           </button>
           <button
             type="button"
             onClick={collapseAll}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[11px] font-mono text-slate-600 dark:text-slate-300 hover:border-indigo-400 transition-colors"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[10px] sm:text-[11px] font-mono text-slate-600 dark:text-slate-300 hover:border-indigo-400 transition-colors cursor-pointer"
           >
-            <ChevronsDownUp className="h-3 w-3" />
+            <ChevronsDownUp className="h-3 w-3 shrink-0" />
             <span>Collapse</span>
           </button>
           {onClose && (
             <button
               type="button"
               onClick={onClose}
-              className="px-2.5 py-1 rounded-lg text-xs font-mono text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+              className="px-2 py-1 rounded-lg text-xs font-mono text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
             >
               Close
             </button>
@@ -410,58 +415,58 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
       </div>
 
       {/* 4-Stage Visual Pipeline Flow Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-xl bg-slate-100/80 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800">
-        <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-xl bg-slate-100/80 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 min-w-0">
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-slate-400">
+            <div className="flex items-center gap-1 text-[10px] font-mono uppercase text-slate-400">
               <Database className="h-3 w-3 text-blue-500 shrink-0" />
-              <span>1. Retrieval</span>
+              <span className="truncate">1. Retrieval</span>
             </div>
-            <p className="text-xs font-bold font-mono text-slate-900 dark:text-white mt-0.5 truncate">
+            <p className="text-[11px] sm:text-xs font-bold font-mono text-slate-900 dark:text-white mt-0.5 truncate">
               {isLocalOnly
                 ? 'Local FTS5 Hit'
                 : `${matchedSourcesCount} DB Match(es)`}
             </p>
           </div>
-          <ArrowRight className="h-3.5 w-3.5 text-slate-300 dark:text-slate-700 hidden sm:block shrink-0" />
+          <ArrowRight className="h-3 w-3 text-slate-300 dark:text-slate-700 hidden sm:block shrink-0" />
         </div>
 
-        <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 min-w-0">
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-slate-400">
+            <div className="flex items-center gap-1 text-[10px] font-mono uppercase text-slate-400">
               <Brain className="h-3 w-3 text-violet-500 shrink-0" />
-              <span>2. SBERT Neural</span>
+              <span className="truncate">2. Neural</span>
             </div>
-            <p className="text-xs font-bold font-mono text-slate-900 dark:text-white mt-0.5 truncate">
+            <p className="text-[11px] sm:text-xs font-bold font-mono text-slate-900 dark:text-white mt-0.5 truncate">
               Sim: {neuralPct}%
               {verdict.features?.citation_intent
                 ? ` · ${verdict.features.citation_intent}`
                 : ''}
             </p>
           </div>
-          <ArrowRight className="h-3.5 w-3.5 text-slate-300 dark:text-slate-700 hidden sm:block shrink-0" />
+          <ArrowRight className="h-3 w-3 text-slate-300 dark:text-slate-700 hidden sm:block shrink-0" />
         </div>
 
-        <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 min-w-0">
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-slate-400">
+            <div className="flex items-center gap-1 text-[10px] font-mono uppercase text-slate-400">
               <Scale className="h-3 w-3 text-amber-500 shrink-0" />
-              <span>3. Symbolic</span>
+              <span className="truncate">3. Symbolic</span>
             </div>
-            <p className="text-xs font-bold font-mono text-slate-900 dark:text-white mt-0.5 truncate">
-              {verdict.triggered_rules.length} Rule(s) Fired
+            <p className="text-[11px] sm:text-xs font-bold font-mono text-slate-900 dark:text-white mt-0.5 truncate">
+              {verdict.triggered_rules.length} Rule(s)
             </p>
           </div>
-          <ArrowRight className="h-3.5 w-3.5 text-slate-300 dark:text-slate-700 hidden sm:block shrink-0" />
+          <ArrowRight className="h-3 w-3 text-slate-300 dark:text-slate-700 hidden sm:block shrink-0" />
         </div>
 
-        <div className={`flex items-center justify-between p-2.5 rounded-lg border ${verdictConfig.bgColor} ${verdictConfig.borderColor}`}>
+        <div className={`flex items-center justify-between p-2 rounded-lg border min-w-0 ${verdictConfig.bgColor} ${verdictConfig.borderColor}`}>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-1 text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400">
               <ShieldCheck className={`h-3 w-3 shrink-0 ${verdictConfig.color}`} />
-              <span>4. Platt Verdict</span>
+              <span className="truncate">4. Verdict</span>
             </div>
-            <p className={`text-xs font-bold font-mono mt-0.5 truncate ${verdictConfig.color}`}>
+            <p className={`text-[11px] sm:text-xs font-bold font-mono mt-0.5 truncate ${verdictConfig.color}`}>
               {verdictConfig.label} ({Math.round(verdict.confidence * 100)}%)
             </p>
           </div>
@@ -470,33 +475,33 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
 
       {/* Verdict Summary Banner */}
       <div
-        className={`p-3.5 rounded-xl border ${verdictConfig.bgColor} ${verdictConfig.borderColor}`}
+        className={`p-3 rounded-xl border w-full min-w-0 overflow-hidden ${verdictConfig.bgColor} ${verdictConfig.borderColor}`}
       >
-        <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Icon className={`h-4 w-4 ${verdictConfig.color}`} />
-            <span className={`font-bold text-xs font-mono ${verdictConfig.color}`}>
+        <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Icon className={`h-4 w-4 shrink-0 ${verdictConfig.color}`} />
+            <span className={`font-bold text-xs font-mono truncate ${verdictConfig.color}`}>
               {verdictConfig.label}
             </span>
           </div>
           {verdict.features?.cross_lingual_detected && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-100 dark:bg-violet-950/90 text-violet-700 dark:text-violet-300 text-[10px] font-mono font-semibold">
-              <Sparkles className="h-3 w-3" />
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-100 dark:bg-violet-950/90 text-violet-700 dark:text-violet-300 text-[10px] font-mono font-semibold shrink-0">
+              <Sparkles className="h-3 w-3 shrink-0" />
               VI ↔ EN Cross-Lingual Bridge
             </span>
           )}
         </div>
-        <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+        <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed break-words [overflow-wrap:anywhere]">
           {getVerdictExplanation(verdict)}
         </p>
         {verdict.triggered_rules.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2.5">
+          <div className="flex flex-wrap gap-1.5 mt-2">
             {verdict.triggered_rules.map((rule) => (
               <span
                 key={rule}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/80 dark:bg-slate-900/80 border border-amber-300/80 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-md text-[11px] font-mono font-semibold"
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/80 dark:bg-slate-900/80 border border-amber-300/80 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-md text-[10px] font-mono font-semibold break-all"
               >
-                <ListChecks className="h-3 w-3" />
+                <ListChecks className="h-3 w-3 shrink-0" />
                 {rule}
               </span>
             ))}
@@ -504,48 +509,46 @@ export function EvidenceGraph({ verdict, onClose }: EvidenceGraphProps) {
         )}
       </div>
 
-      {/* Interactive Hierarchical DAG Tree */}
-      <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-white dark:bg-slate-950 overflow-x-auto shadow-2xs">
-        <div className="min-w-fit">
-          <EvidenceGraphNode
-            node={graphData}
-            level={0}
-            onExpand={toggleExpand}
-            expandedNodes={expandedNodes}
-          />
-        </div>
+      {/* Interactive Hierarchical DAG Tree (no min-w-fit, never overflows horizontally) */}
+      <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-3 sm:p-4 bg-white dark:bg-slate-950 w-full min-w-0 max-w-full overflow-hidden shadow-2xs">
+        <EvidenceGraphNode
+          node={graphData}
+          level={0}
+          onExpand={toggleExpand}
+          expandedNodes={expandedNodes}
+        />
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400 px-1">
-        <div className="flex flex-wrap gap-3">
+      {/* Compact Legend */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 px-1">
+        <div className="flex flex-wrap gap-2.5">
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950" />
-            <span>Verified / Match</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+            <span>Match / Pass</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950" />
-            <span>Rule Trigger / Warning</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+            <span>Warning / Rule</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950" />
-            <span>Mismatch / Hallucination Risk</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
+            <span>Mismatch / Fail</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800" />
-            <span>Not Indexed</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-600 inline-block" />
+            <span>No Hit</span>
           </div>
         </div>
 
         {verdict.mismatched_fields.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-mono text-[11px] uppercase text-red-600 dark:text-red-400 font-semibold">
+            <span className="font-mono text-[10px] uppercase text-red-600 dark:text-red-400 font-semibold">
               Mismatched:
             </span>
             {verdict.mismatched_fields.map((field) => (
               <span
                 key={field}
-                className="px-2 py-0.5 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded text-[11px] font-mono border border-red-200 dark:border-red-800"
+                className="px-1.5 py-0.5 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded text-[10px] font-mono border border-red-200 dark:border-red-800"
               >
                 {field}
               </span>
