@@ -233,11 +233,60 @@ const RULE_DEFINITIONS: Record<string, Omit<Rule, "triggered">> = {
   "R-NO-CANDIDATE": {
     id: "R-NO-CANDIDATE",
     name: "No Matching Candidates",
-    description: "No candidates found across all 4 academic databases",
+    description: "No candidates found across queried scholarly & technical databases",
     conditions: [
       { field: "candidates", operator: "=", value: "0" },
     ],
     conclusion: "UNRESOLVED",
+  },
+  "R-RETRACTED-PAPER": {
+    id: "R-RETRACTED-PAPER",
+    name: "Retracted Publication Warning",
+    description: "Cited publication has been officially RETRACTED in scholarly registries (Retraction Watch / OpenAlex / Crossref)",
+    conditions: [
+      { field: "is_retracted", operator: "=", value: "true" },
+    ],
+    conclusion: "METADATA_ERROR (RETRACTED)",
+  },
+  "R-WAYBACK-ARCHIVED": {
+    id: "R-WAYBACK-ARCHIVED",
+    name: "Wayback Machine Archive Recovery",
+    description: "Original URL experienced link rot (HTTP 404/DNS), but a valid historical snapshot was verified on Internet Archive Wayback Machine",
+    conditions: [
+      { field: "url_status", operator: "=", value: "archived_alive" },
+      { field: "archive_snapshot", operator: "!=", value: "null" },
+    ],
+    conclusion: "VERIFIED (Archived Resource)",
+  },
+  "R-GLOBAL-DOI-RA-VERIFIED": {
+    id: "R-GLOBAL-DOI-RA-VERIFIED",
+    name: "Global DOI Registration Agency Verified",
+    description: "Verified via Global DOI Registration Agency (DataCite, JaLC, mEDRA, KISTI, CNKI) & CSL-JSON Content Negotiation",
+    conditions: [
+      { field: "doi_ra_status", operator: "=", value: "registered" },
+      { field: "csl_json_title_sim", operator: ">=", value: "0.85" },
+    ],
+    conclusion: "VERIFIED",
+  },
+  "R-HF-VERIFIED": {
+    id: "R-HF-VERIFIED",
+    name: "Hugging Face Hub Model / Dataset / Paper Verified",
+    description: "Verified AI model, dataset repository, or daily paper on Hugging Face Hub API",
+    conditions: [
+      { field: "source", operator: "=", value: "huggingface" },
+      { field: "title_sim_fuzzy", operator: ">=", value: "0.85" },
+    ],
+    conclusion: "VERIFIED",
+  },
+  "R-RFC-VERIFIED": {
+    id: "R-RFC-VERIFIED",
+    name: "IETF RFC Standard / PyPI Package Verified",
+    description: "Verified technical standard (RFC Editor / IETF Datatracker) or software package (PyPI JSON API)",
+    conditions: [
+      { field: "source", operator: "=", value: "tech_standard" },
+      { field: "title_sim_fuzzy", operator: ">=", value: "0.80" },
+    ],
+    conclusion: "VERIFIED",
   },
   "R-WEAK-EVIDENCE": {
     id: "R-WEAK-EVIDENCE",

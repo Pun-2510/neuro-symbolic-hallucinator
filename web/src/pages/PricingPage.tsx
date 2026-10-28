@@ -78,8 +78,8 @@ const COMPARISON_MATRIX: ComparisonRow[] = [
     category_en: 'Scholarly Databases & Legal Registry',
     category_vi: 'CSDL Học thuật & Hệ thống Pháp luật Việt Nam',
     basic: 'Local 127K + Crossref + OpenAlex + VN Legal',
-    pro: 'All 9 Primary APIs (+Semantic Scholar, DBLP, arXiv, PubMed, Books)',
-    ultra: 'All 9 APIs + SerpAPI Google Scholar Fallback',
+    pro: '15+ Scholarly & Technical APIs (+DataCite, DOAJ, HAL, NCBI/bioRxiv, HF, RFC, Wayback, Retraction Watch)',
+    ultra: 'All 15+ APIs + SerpAPI Google Scholar Fallback',
   },
   {
     category_en: '1-Click Bibliography Auto-Fix Studio (BibTeX / RIS)',
@@ -234,8 +234,8 @@ export function PricingPage() {
 
         <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
           {lang === 'vi'
-            ? 'Bắt đầu miễn phí với gói Basic cho bài tiểu luận ngắn, hoặc nâng cấp lên Pro & Ultra để mở khóa toàn bộ 7 cơ sở dữ liệu học thuật, Sentence-BERT Deep Neural và xuất báo cáo chuẩn hội đồng.'
-            : 'Start free with Basic for course essays, or upgrade to Pro & Ultra for full 7-database retrieval, Sentence-BERT Deep Neural verification, and academic PDF/DOCX exports.'}
+            ? 'Bắt đầu miễn phí với gói Basic cho bài tiểu luận ngắn, hoặc nâng cấp lên Pro & Ultra để mở khóa toàn bộ 15+ cơ sở dữ liệu học thuật & kỹ thuật (DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, Hugging Face, IETF RFC, Wayback Machine, Retraction Watch), Sentence-BERT Deep Neural và xuất báo cáo chuẩn hội đồng.'
+            : 'Start free with Basic for course essays, or upgrade to Pro & Ultra for full 15+ scholarly & technical API retrieval (DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, Hugging Face, IETF RFC, Wayback Machine, Retraction Watch), Sentence-BERT Deep Neural verification, and academic PDF/DOCX exports.'}
         </p>
 
         {/* Current Plan Banner for Authenticated Users */}
@@ -527,7 +527,8 @@ export function PricingPage() {
                       '50 lượt tải & kiểm tra PDF mỗi tháng (Gấp 16 lần)',
                       'Tối đa 25 MB & 100 trang / bài (Đủ cho Khóa luận & Luận văn ThS)',
                       'Kiểm chứng tới 200 trích dẫn / bài + Batch Upload 10 files',
-                      'Đầy đủ 7 nguồn học thuật (+DBLP, arXiv, PubMed/EuropePMC, Books)',
+                      'Đầy đủ 15+ nguồn học thuật & kỹ thuật (+DataCite, DOAJ, HAL, NCBI/bioRxiv, HF, RFC)',
+                      'Phát hiện bài báo bị rút hồi (Retraction Watch) & cứu hộ Link Rot qua Wayback Machine',
                       'Deep Neural Sentence-BERT đối chiếu câu bằng chứng & Stance',
                       'Cầu nối ngữ nghĩa đa ngôn ngữ (Tiếng Việt ↔ Tiếng Anh)',
                       'Mở khóa Document Inspector, Logic Trace & Đồ thị trích dẫn',
@@ -538,7 +539,8 @@ export function PricingPage() {
                       '50 PDF manuscript checks per month (16x Basic)',
                       'Up to 25 MB & 100 pages per document (Full Master/BS Theses)',
                       'Up to 200 citations / doc + 10-file concurrent Batch Upload',
-                      'All 7 Scholarly APIs (+DBLP, arXiv, PubMed/EuropePMC, Books)',
+                      'All 15+ Scholarly & Technical APIs (+DataCite, DOAJ, HAL, NCBI/bioRxiv, HF, RFC)',
+                      'Retraction Watch Detection & Wayback Machine Link-Rot Rescue',
                       'Deep Neural Sentence-BERT Evidence & Claim Stance verification',
                       'Cross-lingual semantic bridging (Vietnamese ↔ English)',
                       'Unlock Document Inspector, Logic Trace & Evidence Graph',

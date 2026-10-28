@@ -3,13 +3,21 @@ import type { Verdict } from '@/api/client';
 const SOURCE_LABELS: Record<string, string> = {
   crossref: 'Crossref',
   openalex: 'OpenAlex',
+  datacite: 'DataCite (Zenodo / Figshare / OSF)',
+  doi_ra: 'Global DOI Registration Agency (CSL-JSON)',
+  doaj: 'DOAJ (Directory of Open Access Journals)',
+  openaire_hal: 'OpenAIRE Graph / HAL Open Science',
+  ncbi_biorxiv: 'NCBI Entrez / bioRxiv / medRxiv',
   dblp: 'DBLP',
   arxiv: 'arXiv',
   openlibrary: 'OpenLibrary / Google Books',
   europepmc: 'Europe PMC (PubMed)',
+  huggingface: 'Hugging Face Hub',
+  tech_standard: 'IETF Datatracker RFC / PyPI',
   serpapi: 'Google Scholar',
   local_db: 'the local library',
   known_papers: 'the known-papers library',
+  vn_legal_registry: 'the Vietnamese Legal Registry',
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -20,6 +28,7 @@ const FIELD_LABELS: Record<string, string> = {
   doi: 'the DOI',
   venue: 'the venue',
   url: 'the link',
+  retracted: 'the retraction status (RETRACTED PAPER)',
 };
 
 const RULE_LABELS: Record<string, string> = {
@@ -36,6 +45,11 @@ const RULE_LABELS: Record<string, string> = {
   'R-KNOWN-PAPER': 'Matches a canonical benchmark publication',
   'R-KNOWN-PAPER-NO-TITLE': 'Matches a canonical seminal paper by author and year',
   'R-VN-LEGAL-FORMAT': 'Official statutory or legal document format verified',
+  'R-GLOBAL-DOI-RA-VERIFIED': 'Verified via Global DOI Registration Agency & Content Negotiation (CSL-JSON)',
+  'R-HF-VERIFIED': 'AI model, dataset, or paper verified on Hugging Face Hub',
+  'R-RFC-VERIFIED': 'Technical RFC standard or software package verified via IETF / PyPI',
+  'R-WAYBACK-ARCHIVED': 'Original URL experienced link rot, verified via Internet Archive Wayback Machine snapshot',
+  'R-RETRACTED-PAPER': 'WARNING: This publication has been officially RETRACTED in scholarly registries',
   'R-KNOWN-AUTHOR-TITLE-MISMATCH': 'Author matches, but the title needs review',
   'R-KNOWN-AUTHOR-WEAK-EVIDENCE': 'Author is known, but supporting evidence is limited',
   'R-DOI-TITLE-MISMATCH': 'DOI matches, but the title needs review',
@@ -110,19 +124,28 @@ export function getVerdictExplanation(verdict: Verdict): string {
 
   const urlStatus = verdict.url_status ?? verdict.features?.url_status;
   const urlCode = verdict.url_status_code ?? verdict.features?.url_status_code;
+  const archiveUrl = verdict.archive_url ?? verdict.features?.archive_url;
+  const isRetracted =
+    Boolean(verdict.is_retracted ?? verdict.features?.is_retracted) ||
+    Boolean((verdict.triggered_rules ?? []).includes('R-RETRACTED-PAPER'));
+  const retractionNote = isRetracted
+    ? ' RETRACTION WARNING: This publication has been officially RETRACTED in scholarly registries.'
+    : '';
   const linkNote =
     urlStatus === 'alive'
       ? ` Link check passed (HTTP ${urlCode || 200} OK).`
       : urlStatus === 'restricted_alive'
         ? ` Link check passed (HTTP ${urlCode || 403} publisher paywall — link is alive).`
-        : urlStatus === 'dead_link'
-          ? ` Warning: the cited URL returned HTTP ${urlCode || 404} (dead/unreachable link).`
-          : urlStatus === 'fake_domain'
-            ? ' Warning: the cited URL uses a fake or placeholder domain.'
-            : '';
+        : urlStatus === 'archived_alive'
+          ? ` Link rot detected, but an archived snapshot was verified on Internet Archive Wayback Machine${archiveUrl ? ` (${archiveUrl})` : ''}.`
+          : urlStatus === 'dead_link'
+            ? ` Warning: the cited URL returned HTTP ${urlCode || 404} (dead/unreachable link).`
+            : urlStatus === 'fake_domain'
+              ? ' Warning: the cited URL uses a fake or placeholder domain.'
+              : '';
 
   if (isUrlResource(verdict)) {
-    return `URL resource detected: ${verdict.citation_raw}. This is not an academic citation and is excluded from the CIS score.${linkNote}`;
+    return `URL resource detected: ${verdict.citation_raw}. This is not an academic citation and is excluded from the CIS score.${linkNote}${retractionNote}`;
   }
 
   if (verdict.mapping_status === 'missing_reference') {
@@ -136,28 +159,28 @@ export function getVerdictExplanation(verdict: Verdict): string {
   switch (verdict.label) {
     case 'verified':
       if (sources.length === 0) {
-        return `The citation is linked to its bibliography entry and passes the available checks.${linkNote}`;
+        return `The citation is linked to its bibliography entry and passes the available checks.${linkNote}${retractionNote}`;
       }
       if (sources.every((source) => source === 'the local library' || source === 'the known-papers library')) {
-        return `The citation matches a paper in ${sources[0]}. ${matchedFields} are consistent, so no external search was needed.${linkNote}`;
+        return `The citation matches a paper in ${sources[0]}. ${matchedFields} are consistent, so no external search was needed.${linkNote}${retractionNote}`;
       }
-      return `We found a matching publication in ${sources.join(' and ')}. ${matchedFields} are consistent with the citation.${linkNote}`;
+      return `We found a matching publication in ${sources.join(' and ')}. ${matchedFields} are consistent with the citation.${linkNote}${retractionNote}`;
 
     case 'metadata_error':
       return (sources.length > 0
         ? `We found a likely publication, but ${fields} do not match the citation. Please review these details.`
-        : `The citation could not be confirmed because ${fields} do not match the available record.`) + linkNote;
+        : `The citation could not be confirmed because ${fields} do not match the available record.`) + linkNote + retractionNote;
 
     case 'suspected_hallucination':
       return (sources.length === 0
         ? 'We could not find a matching publication in the checked sources. Please verify this citation manually.'
-        : 'The available records do not support this citation. Please verify the source and its details manually.') + linkNote;
+        : 'The available records do not support this citation. Please verify the source and its details manually.') + linkNote + retractionNote;
 
     case 'unresolved':
     default:
       return (sources.length === 0
         ? 'There was not enough evidence to verify this citation. Please review it manually.'
-        : `We found a possible match, but the available details are not strong enough to confirm it. Check ${fields}.`) + linkNote;
+        : `We found a possible match, but the available details are not strong enough to confirm it. Check ${fields}.`) + linkNote + retractionNote;
   }
 }
 

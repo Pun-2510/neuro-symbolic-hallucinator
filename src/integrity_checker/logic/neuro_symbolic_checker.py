@@ -321,9 +321,15 @@ class NeuroSymbolicChecker:
         # --- Check 4: Unified RetrievalOrchestrator web/documentation resource check ---
         has_fake_url_early, _ = _is_fake_url(citation.url)
         is_dead_url_early = getattr(source, "url_status", None) == "dead_link"
+        has_specialist_candidate = any(
+            getattr(c, "found", False)
+            and getattr(c, "source_name", "") in {"huggingface", "tech_standard"}
+            for c in (source.candidates or [])
+        )
         if (
             not has_fake_url_early
             and not is_dead_url_early
+            and not has_specialist_candidate
             and RetrievalOrchestrator.is_web_or_legal_resource(citation)
         ):
             url_stat = getattr(source, "url_status", None)
@@ -626,6 +632,8 @@ class NeuroSymbolicChecker:
             if "R-WAYBACK-ARCHIVED" not in verdict.triggered_rules:
                 verdict.triggered_rules.append("R-WAYBACK-ARCHIVED")
             archive_url = getattr(source, "archive_url", None)
+            if archive_url:
+                verdict.archive_url = archive_url
             if archive_url and "[Web Archive:" not in verdict.reasoning and "Wayback Machine" not in verdict.reasoning:
                 verdict.reasoning += (
                     f" [Web Archive: Original URL experienced link rot, verified via Wayback Machine snapshot: {archive_url}]"
@@ -638,10 +646,15 @@ class NeuroSymbolicChecker:
         if is_retracted:
             if hasattr(source, "is_retracted"):
                 source.is_retracted = True
+            verdict.is_retracted = True
+            if verdict.label in (ValidationLabel.VERIFIED, ValidationLabel.UNRESOLVED):
+                verdict.label = ValidationLabel.METADATA_ERROR
             if "R-RETRACTED-PAPER" not in verdict.triggered_rules:
                 verdict.triggered_rules.append("R-RETRACTED-PAPER")
             if "retracted" not in verdict.mismatched_fields:
                 verdict.mismatched_fields.append("retracted")
+            if "retracted_paper" not in verdict.mismatched_fields:
+                verdict.mismatched_fields.append("retracted_paper")
             if "[RETRACTION WARNING:" not in verdict.reasoning:
                 verdict.reasoning += (
                     " [RETRACTION WARNING: This publication has been officially RETRACTED in scholarly registries "

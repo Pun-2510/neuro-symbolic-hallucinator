@@ -701,7 +701,7 @@ function HeroSection({
     { label: 'PDF Manuscript', icon: FileText },
     { label: 'GROBID TEI-XML' },
     { label: 'In-Text [N] ↔ Bib #N' },
-    { label: 'ACL FTS5 + 6 APIs' },
+    { label: 'ACL FTS5 + 15+ APIs' },
     { label: 'VERIFIED (CIS 84.5)', isVerdict: true },
   ];
 
@@ -714,9 +714,9 @@ function HeroSection({
             sub: 'Truy vấn SQLite FTS5 < 15ms',
           },
           {
-            value: '7 Nguồn CSDL',
-            label: 'ACL · Crossref · OpenAlex · DBLP · arXiv · Books · PMC',
-            sub: 'Điều phối phân tầng theo miền học thuật',
+            value: '15+ Nguồn CSDL',
+            label: 'Crossref · OpenAlex · DataCite · DOAJ · HAL · NCBI · HF · RFC',
+            sub: 'Kèm Wayback Machine & Retraction Watch',
           },
           {
             value: '2 Lớp Kiểm chứng',
@@ -724,7 +724,7 @@ function HeroSection({
             sub: 'Phát hiện trích dẫn mồ côi & lệch năm',
           },
           {
-            value: 'R01 – R12',
+            value: 'R01 – R12+',
             label: 'Tập luật Suy diễn Neuro-Symbolic',
             sub: 'Giải thích minh bạch 100% từng kết luận',
           },
@@ -736,9 +736,9 @@ function HeroSection({
             sub: 'Sub-15ms SQLite FTS5 retrieval',
           },
           {
-            value: '7 Databases',
-            label: 'ACL · Crossref · OpenAlex · DBLP · arXiv · Books · PMC',
-            sub: 'Smart domain-aware scholarly routing',
+            value: '15+ Databases',
+            label: 'Crossref · OpenAlex · DataCite · DOAJ · HAL · NCBI · HF · RFC',
+            sub: 'Includes Wayback Machine & Retraction Watch',
           },
           {
             value: '2-Layer Engine',
@@ -746,7 +746,7 @@ function HeroSection({
             sub: 'Catches orphans & metadata drift',
           },
           {
-            value: 'Rules R01–R12',
+            value: 'Rules R01–R12+',
             label: 'Neuro-Symbolic Logic Trace',
             sub: '100% explainable evidence chains',
           },
@@ -1732,7 +1732,7 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
                     variant="outline"
                     className="font-mono text-xs bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800"
                   >
-                    7 DATA SOURCES
+                    15+ DATA SOURCES
                   </Badge>
                   <span className="font-mono text-xs text-slate-400">
                     Local FTS5 + REST
@@ -1740,13 +1740,13 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
                 </div>
                 <CardTitle className="text-xl">
                   {lang === 'vi'
-                    ? 'Liên hợp 127K Bài báo Nội bộ & 6 API Quốc tế'
-                    : '127K Local ACL Anthology + 6 Global APIs'}
+                    ? 'Liên hợp 127K Bài báo Nội bộ & 15+ API Quốc tế'
+                    : '127K Local ACL Anthology + 15+ Global APIs'}
                 </CardTitle>
                 <CardDescription>
                   {lang === 'vi'
-                    ? 'Kết hợp tìm kiếm toàn văn SQLite FTS5 tốc độ cao với điều phối phân tầng tới các CSDL học thuật lớn nhất thế giới.'
-                    : 'Combines ultra-fast local SQLite FTS5 full-text indexing with smart tiered routing across global bibliographic registries.'}
+                    ? 'Kết hợp tìm kiếm toàn văn SQLite FTS5 tốc độ cao với điều phối thông minh tới DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, Hugging Face, IETF RFC & Wayback Machine.'
+                    : 'Combines ultra-fast local SQLite FTS5 indexing with smart domain routing across DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, Hugging Face, IETF RFC & Wayback Machine.'}
                 </CardDescription>
               </CardHeader>
 

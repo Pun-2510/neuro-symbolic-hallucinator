@@ -73,7 +73,7 @@ interface LinkBadgeInfo {
   text: string;
   badgeClass: string;
   title: string;
-  status: 'alive' | 'restricted_alive' | 'dead_link' | 'fake_domain';
+  status: 'alive' | 'restricted_alive' | 'archived_alive' | 'dead_link' | 'fake_domain';
 }
 
 interface EnrichedCitationItem {
@@ -209,6 +209,36 @@ const RULE_CATALOG: Record<
     nameVi: 'Xác thực ấn bản Sách chuyên khảo / Giáo trình (Edition Match)',
     condition: 'IF openlibrary_edition_match == TRUE AND title_sim >= 0.90 AND author_jaccard >= 0.70 THEN VERIFIED',
     status: 'passed',
+  },
+  'R-GLOBAL-DOI-RA-VERIFIED': {
+    nameEn: 'Global DOI Registration Agency Verified (JaLC/CNKI/mEDRA/KISTI)',
+    nameVi: 'Xác thực Cơ quan Đăng ký DOI Quốc tế (JaLC/CNKI/mEDRA/KISTI)',
+    condition: 'IF source == "doi_ra" AND doi_exact_match == TRUE AND title_sim >= 0.85 THEN VERIFIED',
+    status: 'passed',
+  },
+  'R-HF-VERIFIED': {
+    nameEn: 'Hugging Face Hub Model / Dataset / Paper Verified',
+    nameVi: 'Xác thực Mô hình / Bộ dữ liệu / Bài báo trên Hugging Face Hub',
+    condition: 'IF source == "huggingface" AND title_sim >= 0.85 THEN VERIFIED',
+    status: 'passed',
+  },
+  'R-RFC-VERIFIED': {
+    nameEn: 'IETF RFC Technical Standard / PyPI Package Verified',
+    nameVi: 'Xác thực Chuẩn kỹ thuật IETF RFC / Gói phần mềm PyPI',
+    condition: 'IF source == "tech_standard" AND title_sim >= 0.85 THEN VERIFIED',
+    status: 'passed',
+  },
+  'R-WAYBACK-ARCHIVED': {
+    nameEn: 'Wayback Machine Archival Snapshot Verified (Link Rot Rescued)',
+    nameVi: 'Xác thực Bản lưu trữ Internet Archive Wayback Machine (Link Rot)',
+    condition: 'IF url_status == "archived_alive" AND archive_url != NULL THEN WARN_LINK_ROT_NOT_HALLUCINATION',
+    status: 'warning',
+  },
+  'R-RETRACTED-PAPER': {
+    nameEn: 'Retracted Publication Alert (Retraction Watch / Crossref)',
+    nameVi: 'CẢNH BÁO NGHIÊM TRỌNG: Bài báo đã bị rút hồi (Retracted Paper)',
+    condition: 'IF is_retracted == TRUE THEN METADATA_ERROR (FLAG_RETRACTED_PAPER)',
+    status: 'failed',
   },
   'R-CONSENSUS-FULL': {
     nameVi: 'Đồng thuận đa nguồn học thuật (≥ 2 CSDL)',
@@ -553,7 +583,7 @@ function getMappingBadgeVisuals(status: Verdict['mapping_status']): {
 }
 
 function resolveVerdictUrlStatus(verdict: Verdict): {
-  status: 'alive' | 'restricted_alive' | 'dead_link' | 'fake_domain' | null;
+  status: 'alive' | 'restricted_alive' | 'archived_alive' | 'dead_link' | 'fake_domain' | null;
   code: number | null;
 } {
   const rawStatus = verdict.url_status ?? verdict.features?.url_status ?? null;
@@ -563,6 +593,9 @@ function resolveVerdictUrlStatus(verdict: Verdict): {
     return { status: rawStatus, code: rawCode };
   }
   const rules = verdict.triggered_rules ?? [];
+  if (rules.includes('R-WAYBACK-ARCHIVED')) {
+    return { status: 'archived_alive', code: rawCode ?? 404 };
+  }
   if (rules.includes('R-FAKE-URL')) {
     return { status: 'fake_domain', code: null };
   }
@@ -601,6 +634,17 @@ function getLinkBadgeVisuals(
           lang === 'vi'
             ? `Liên kết sống — Tường lửa nhà xuất bản (HTTP ${code || 403})`
             : `Publisher paywall / bot-filtered URL is alive (HTTP ${code || 403})`,
+      };
+    case 'archived_alive':
+      return {
+        status,
+        text: '🏛️ WAYBACK ARCHIVED',
+        badgeClass:
+          'bg-amber-50 text-amber-800 border border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800 font-semibold',
+        title:
+          lang === 'vi'
+            ? `URL gốc bị lỗi Link Rot nhưng đã xác thực có bản lưu trên Internet Archive Wayback Machine${verdict.archive_url ? ` (${verdict.archive_url})` : ''}`
+            : `Live URL suffered link rot, but verified archival snapshot exists on Internet Archive Wayback Machine${verdict.archive_url ? ` (${verdict.archive_url})` : ''}`,
       };
     case 'dead_link':
       return {
@@ -645,21 +689,38 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
     vn_legal_registry: 'Hệ thống Văn bản Quy phạm Pháp luật Việt Nam',
     crossref: 'Crossref',
     openalex: 'OpenAlex',
+    semantic_scholar: 'Semantic Scholar',
     dblp: 'DBLP',
     arxiv: 'arXiv',
     openlibrary: 'OpenLibrary / Google Books',
     europepmc: 'Europe PMC (PubMed)',
+    datacite: 'DataCite (Zenodo / Figshare / OSF)',
+    doi_ra: 'Global DOI Registration Agency (JaLC / CNKI / mEDRA)',
+    doaj: 'DOAJ (Directory of Open Access Journals)',
+    openaire_hal: 'OpenAIRE Graph / HAL Open Science',
+    ncbi_biorxiv: 'NCBI Entrez / bioRxiv / medRxiv',
+    huggingface: 'Hugging Face Hub',
+    tech_standard: 'IETF Datatracker RFC / PyPI',
     serpapi: 'Google Scholar',
   };
   const sourceMapEn: Record<string, string> = {
     local_db: 'the local scholarly index (ACL / SQLite FTS5)',
     known_papers: 'the canonical Known Papers index',
+    vn_legal_registry: 'the Vietnamese Legal Statute Registry',
     crossref: 'Crossref',
     openalex: 'OpenAlex',
+    semantic_scholar: 'Semantic Scholar',
     dblp: 'DBLP',
     arxiv: 'arXiv',
     openlibrary: 'OpenLibrary / Google Books',
     europepmc: 'Europe PMC (PubMed)',
+    datacite: 'DataCite (Zenodo / Figshare / OSF)',
+    doi_ra: 'Global DOI Registration Agency (JaLC / CNKI / mEDRA)',
+    doaj: 'DOAJ (Directory of Open Access Journals)',
+    openaire_hal: 'OpenAIRE Graph / HAL Open Science',
+    ncbi_biorxiv: 'NCBI Entrez / bioRxiv / medRxiv',
+    huggingface: 'Hugging Face Hub',
+    tech_standard: 'IETF Datatracker RFC / PyPI',
     serpapi: 'Google Scholar',
   };
 
@@ -761,6 +822,10 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
       telemetryParts.push(
         `kiểm tra liên kết = HTTP ${urlCode || 403} (tường lửa nhà xuất bản — liên kết sống)`
       );
+    } else if (urlStatus === 'archived_alive') {
+      telemetryParts.push(
+        'kiểm tra liên kết = Đã lưu trữ trên Wayback Machine (Link Rot)'
+      );
     } else if (urlStatus === 'dead_link') {
       telemetryParts.push(
         `kiểm tra liên kết = HTTP ${urlCode || 404} (liên kết chết / không thể truy cập)`
@@ -768,6 +833,12 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
     } else if (urlStatus === 'fake_domain') {
       telemetryParts.push('kiểm tra liên kết = tên miền giả mạo');
     }
+    const isRetracted =
+      Boolean(verdict.is_retracted) ||
+      (verdict.triggered_rules ?? []).includes('R-RETRACTED-PAPER');
+    const retractionPrefixVi = isRetracted
+      ? '⚠️ CẢNH BÁO NGHIÊM TRỌNG: Bài báo này đã bị rút hồi chính thức (RETRACTED PAPER). Không sử dụng làm nguồn trích dẫn khoa học! '
+      : '';
     const telemetrySuffix =
       telemetryParts.length > 0 ? ` (${telemetryParts.join(' · ')})` : '';
 
@@ -810,8 +881,8 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
     }
 
     return verdict.override_note
-      ? `[Ghi đè bởi Giảng viên: ${verdict.override_note}] — ${mainText}`
-      : mainText;
+      ? `[Ghi đè bởi Giảng viên: ${verdict.override_note}] — ${retractionPrefixVi}${mainText}`
+      : `${retractionPrefixVi}${mainText}`;
   }
 
   // English ('en') — 100% pure English
@@ -833,11 +904,21 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
     telemetryPartsEn.push(
       `link check = HTTP ${urlCode || 403} (publisher paywall — link alive)`
     );
+  } else if (urlStatus === 'archived_alive') {
+    telemetryPartsEn.push(
+      'link check = Wayback Machine snapshot verified (Link Rot)'
+    );
   } else if (urlStatus === 'dead_link') {
     telemetryPartsEn.push(`link check = HTTP ${urlCode || 404} (dead link)`);
   } else if (urlStatus === 'fake_domain') {
     telemetryPartsEn.push('link check = fake/placeholder domain');
   }
+  const isRetractedEn =
+    Boolean(verdict.is_retracted) ||
+    (verdict.triggered_rules ?? []).includes('R-RETRACTED-PAPER');
+  const retractionPrefixEn = isRetractedEn
+    ? '⚠️ CRITICAL WARNING: This publication has been officially RETRACTED. Do not cite as valid scientific evidence! '
+    : '';
   const telemetrySuffixEn =
     telemetryPartsEn.length > 0 ? ` (${telemetryPartsEn.join(' · ')})` : '';
 
@@ -876,8 +957,8 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
   }
 
   return verdict.override_note
-    ? `[Instructor Override: ${verdict.override_note}] — ${mainTextEn}`
-    : mainTextEn;
+    ? `[Instructor Override: ${verdict.override_note}] — ${retractionPrefixEn}${mainTextEn}`
+    : `${retractionPrefixEn}${mainTextEn}`;
 }
 
 function enrichVerdictItem(
@@ -1174,6 +1255,9 @@ function enrichVerdictItem(
     }
     if (urlStatus === 'restricted_alive') {
       return { status: 'match', label: `HTTP ${urlCode || 403} (Alive)` };
+    }
+    if (urlStatus === 'archived_alive') {
+      return { status: 'partial', label: 'Wayback Archived' };
     }
     if (urlStatus === 'dead_link') {
       return { status: 'mismatch', label: `HTTP ${urlCode || 404} Dead` };

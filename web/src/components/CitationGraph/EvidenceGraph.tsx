@@ -34,7 +34,7 @@ interface CandidateInfo {
   url?: string;
 }
 
-const EXTERNAL_DBS = [
+const CORE_EXTERNAL_DBS = [
   'crossref',
   'openalex',
   'dblp',
@@ -42,15 +42,34 @@ const EXTERNAL_DBS = [
   'openlibrary',
   'europepmc',
 ];
+const EXTERNAL_DBS = [
+  ...CORE_EXTERNAL_DBS,
+  'datacite',
+  'doi_ra',
+  'doaj',
+  'openaire_hal',
+  'ncbi_biorxiv',
+  'huggingface',
+  'tech_standard',
+  'serpapi',
+];
 const SOURCE_FLOW_ORDER = [
   'local_db',
   'known_papers',
+  'vn_legal_registry',
   'crossref',
   'openalex',
+  'datacite',
+  'doi_ra',
+  'doaj',
+  'openaire_hal',
+  'ncbi_biorxiv',
   'dblp',
   'arxiv',
   'openlibrary',
   'europepmc',
+  'huggingface',
+  'tech_standard',
   'serpapi',
 ];
 
@@ -97,7 +116,7 @@ export function buildEvidenceGraph(
 
   const databasesWithoutResults: [string, CandidateInfo[]][] =
     Object.keys(sourcesByDatabase).length === 0
-      ? EXTERNAL_DBS.map((db) => [db, []])
+      ? CORE_EXTERNAL_DBS.map((db) => [db, []])
       : [];
 
   const isLocalOnly =

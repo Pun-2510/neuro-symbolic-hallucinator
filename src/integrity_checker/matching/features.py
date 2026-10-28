@@ -278,6 +278,11 @@ class FeatureCalculator:
             return False
         if d1 == d2:
             return True
+        # Handle Elsevier/Lancet PII DOIs with parentheses (e.g. 10.1016/s0140-6736(20)31180-6)
+        # where regex extraction stopped at the closing parenthesis
+        shorter, longer = (d1, d2) if len(d1) <= len(d2) else (d2, d1)
+        if "(" in shorter and ")" not in shorter and longer.startswith(shorter + ")"):
+            return True
         # Known equivalent canonical DOIs (e.g., BERT NAACL vs arXiv)
         equiv_sets = (
             {"10.18653/v1/n19-1423", "10.48550/arxiv.1810.04805"},

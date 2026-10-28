@@ -8,8 +8,8 @@ Engineering reference and architectural guide for AI coding assistants and contr
 
 **CITRA (`SourceLogic`)** is an explainable **Neuro-Symbolic Citation & Source Integrity Verification Platform** for academic manuscripts, theses, and research papers.
 
-- **Version:** v2.1 (Phase 6 Deep Neural Layer Complete — 2026-10-25)
-- **Unit & Integration Tests:** `1,268 backend passed · 43 frontend passed, 0 failed`
+- **Version:** v2.3 (9 Free Scholarly & Technical APIs + Retraction Watch + Wayback Machine Complete — 2026-10-28)
+- **Unit & Integration Tests:** `1,350+ backend passed · 58 frontend passed, 0 failed`
 - **Role-Based Web Workspace:** Student / Researcher (`Workspace`), Teacher (`Classroom`), Administrator (`Control`)
 - **Decision-Support Principle:** All outputs are strictly decision-support signals for academic reviewers; the system never automatically concludes academic misconduct.
 
@@ -57,20 +57,29 @@ essay-integrity-checker/
 | `UNRESOLVED` | Slate (`#64748B`) | Insufficient evidence to verify or refute (abstention zone) |
 | `RESOURCE` | Violet (`#8B5CF6`) | Non-article web/API documentation, software repositories, or legal statutes |
 
-## Smart Multi-Source Retrieval Tiering
+## Smart Multi-Source Retrieval Tiering (15+ Scholarly & Technical APIs)
 
 `RetrievalOrchestrator` routes citations by domain signals and identifier availability:
-1. **Tier 0 (Instant Local):** Known Seminal Papers Whitelist + SQLite FTS5 Local Database (`data/local_papers.db`)
-2. **Tier 1 (Primary Scholarly APIs):**
-   - **Crossref REST API** — Exact DOI resolution & bibliographic search
-   - **OpenAlex REST API** — Broad scholarly graph & inverted-index abstract reconstruction
+1. **Tier 0 (Instant Local):** Known Seminal Papers Whitelist + SQLite FTS5 Local Database (`data/local_papers.db`) + Built-in Vietnamese Legal Statute Registry (`VNLegalVerifier`)
+2. **Tier 1 (Primary & Domain-Prioritized Scholarly APIs):**
+   - **Crossref REST API** — Exact DOI resolution, bibliographic search & Retraction Watch (`update-to` / `is-retracted-by`) detection
+   - **OpenAlex REST API** — Broad scholarly graph, inverted-index abstract reconstruction & `is_retracted` flag detection
+   - **DataCite REST API (`DataCiteClient`)** — Zenodo (`10.5281/zenodo.*`), Figshare (`10.6084/*`), Dryad (`10.5061/*`), OSF (`10.17605/*`), arXiv DOIs (`10.48550/*`), datasets, theses, software & abstract enrichment
+   - **DOAJ API (`DOAJClient`)** — Directory of Open Access Journals for regional, Asian, Vietnamese, Social Sciences & Humanities Open Access articles
+   - **OpenAIRE Graph + HAL Open Science API (`OpenAIREHalClient`)** — European & global theses, dissertations (`Luận văn`, `Luận án`), working papers & institutional repositories
+   - **NCBI Entrez E-Utilities + bioRxiv/medRxiv API (`NcbiBiorxivClient`)** — `10.1101/*` biomedical preprints & PubMed PMID/abstract resolution
    - **DBLP Search API** — Computer Science, AI, ML, NLP venues & CoRR
    - **arXiv Atom API** — Direct arXiv ID & preprint verification
    - **OpenLibrary + Google Books API** — Textbooks, monographs & multi-edition books
    - **Europe PMC REST API** — PubMed/MEDLINE, biomedical, clinical, psychology & life sciences
-3. **Tier 2 (Fallback):** **SerpAPI (Google Scholar)** when primary tiers return no high-confidence match (with snippet abstract extraction)
-4. **Cross-Source Abstract Enrichment (`_enrich_missing_abstract`):** Automatically enriches missing abstracts across `OpenAlex` (DOI + title-mirror fallback), `Europe PMC`, `arXiv`, `Semantic Scholar`, `CORE`, and `OpenLibrary/Google Books`, persisting enriched abstracts back to `data/local_papers.db`.
-5. **Active Link & DOI Validator (`LinkValidator`):** Asynchronous `HEAD`/`GET` reachability checks for URLs and DOIs (`R-DEAD-LINK`, `R-URL-UNREACHABLE`).
+   - **Hugging Face Hub API (`HuggingFaceClient`)** — AI/NLP models, datasets (e.g., `vinai/phobert-base`) & Daily Papers
+   - **IETF Datatracker RFC & PyPI JSON API (`TechStandardClient`)** — Technical RFC standards (`RFC 2616`, `RFC 9110`) & Python software packages
+3. **Tier 2 (Global DOI RA & Fallback):**
+   - **Global DOI Registration Agency & Content Negotiation (`DoiRaClient`)** — Verifies regional DOIs across JaLC (Japan), CNKI/istic (China), mEDRA (EU), KISTI (Korea), Airiti (Taiwan) via `doi.org/doiRA/{doi}` and `application/vnd.citationstyles.csl+json`, or confirms non-existent DOIs (`NOT_EXIST`)
+   - **SerpAPI (Google Scholar)** when primary tiers return no high-confidence match (with snippet abstract extraction)
+4. **Cross-Source Abstract Enrichment (`_enrich_missing_abstract`):** Automatically enriches missing abstracts across `OpenAlex` (DOI + title-mirror fallback), `DataCite`, `Europe PMC`, `NCBI Entrez / bioRxiv`, `DOAJ`, `arXiv`, `Semantic Scholar`, `CORE`, and `OpenLibrary/Google Books`, persisting enriched abstracts back to `data/local_papers.db`.
+5. **Active Link, DOI & Wayback Machine Validator (`LinkValidator`):** Asynchronous `HEAD`/`GET` reachability checks for URLs and DOIs (`R-DEAD-LINK`, `R-URL-UNREACHABLE`), paired with **Internet Archive Wayback Machine Availability API (`archive.org/wayback/available`)** fallback to distinguish Link Rot (`LinkStatus.ARCHIVED_ALIVE` + `R-WAYBACK-ARCHIVED` + `archive_url`) from AI-fabricated dead URLs (`LinkStatus.DEAD_LINK`).
+6. **Retraction Watch Guardrail (`R-RETRACTED-PAPER`):** Automatically flags retracted papers (`is_retracted=True`) as `METADATA_ERROR` with `retracted_paper` mismatch warning, preventing retracted studies from being marked `VERIFIED`.
 
 ## Deep Neural Semantic & Evidence Layer (`SemanticMatcher` & `MatchFeatures`)
 

@@ -40,6 +40,14 @@ class SourceCandidate:
     cached: bool = False
     paper_id: int | None = None  # local_papers.db row id, when available
 
+    @property
+    def is_retracted(self) -> bool:
+        """True if external_ids indicates this publication has been retracted."""
+        return bool(
+            self.external_ids
+            and str(self.external_ids.get("is_retracted", "")).lower() == "true"
+        )
+
     def fingerprint(self) -> str:
         """Hash key để dedupe giữa các nguồn.
 

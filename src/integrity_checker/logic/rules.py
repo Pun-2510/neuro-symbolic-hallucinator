@@ -780,6 +780,13 @@ class SymbolicRules:
         # --- Rule 5: No candidates returned ---
         url_status = getattr(source, "url_status", None)
         url_status_code = getattr(source, "url_status_code", None)
+        if not citation_url:
+            raw_for_url = citation_raw or getattr(source, "citation_raw", "") or ""
+            url_m = re.search(r"https?://\S+", raw_for_url, re.IGNORECASE)
+            if url_m:
+                extracted_u = url_m.group(0).rstrip(".,;:)\"'")
+                if "doi.org/" not in extracted_u.lower():
+                    citation_url = extracted_u
 
         if not source.candidates or not source.best_candidate():
             if url_status == "dead_link" and not is_known_author:
@@ -944,6 +951,8 @@ class SymbolicRules:
 
         mismatched: list[str] = []
         triggered_rules: list[str] = []
+        if url_status == "archived_alive":
+            triggered_rules.append("R-WAYBACK-ARCHIVED")
         # FIX v1.2: Check well-linked citations FIRST before other rules
         # This ensures that properly matched citations (via author-year linking)
         # are verified even when author_jaccard is 0 (e.g., "et al." citations)

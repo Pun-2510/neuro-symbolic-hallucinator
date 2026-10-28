@@ -97,6 +97,7 @@ export interface OverrideRecord {
 export type UrlValidationStatus =
   | 'alive'
   | 'restricted_alive'
+  | 'archived_alive'
   | 'dead_link'
   | 'fake_domain';
 
@@ -125,6 +126,8 @@ export interface Verdict {
   matched_sources: MatchedSource[];
   url_status?: UrlValidationStatus | null;
   url_status_code?: number | null;
+  archive_url?: string | null;
+  is_retracted?: boolean;
   features?: {
     title_sim_fuzzy?: number;
     title_sim_semantic?: number;
@@ -158,6 +161,8 @@ export interface Verdict {
     }>;
     url_status?: UrlValidationStatus | null;
     url_status_code?: number | null;
+    archive_url?: string | null;
+    is_retracted?: boolean;
     checked_url?: string | null;
     matched_sources?: MatchedSource[];
   };

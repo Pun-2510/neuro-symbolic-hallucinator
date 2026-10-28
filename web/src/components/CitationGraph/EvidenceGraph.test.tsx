@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildEvidenceGraph } from './EvidenceGraph';
+import { getVerdictExplanation, getSourceDisplayName, getRuleDisplayName } from '@/lib/verdictExplanation';
 import type { Verdict } from '@/api/client';
 
 function makeVerdict(overrides: Partial<Verdict> = {}): Verdict {
@@ -129,5 +130,60 @@ describe('buildEvidenceGraph', () => {
     const crossrefNode = sources.children![0];
     expect(crossrefNode.detail).toBe('Matched fields: title, publication year.');
     expect(crossrefNode.detail).not.toMatch(/the\s+the/i);
+  });
+
+  it('supports all 9 new free API sources in buildEvidenceGraph and getSourceDisplayName', () => {
+    const newSources = [
+      'datacite',
+      'doi_ra',
+      'doaj',
+      'openaire_hal',
+      'ncbi_biorxiv',
+      'huggingface',
+      'tech_standard',
+    ];
+    for (const src of newSources) {
+      const displayName = getSourceDisplayName(src);
+      expect(displayName.length).toBeGreaterThan(2);
+      const { graph, isLocalOnly } = buildEvidenceGraph(
+        makeVerdict({
+          matched_sources: [
+            {
+              source: src,
+              matched_fields: ['title', 'authors'],
+              checked_at: '2026-01-01T00:00:00Z',
+            },
+          ],
+        }),
+      );
+      expect(isLocalOnly).toBe(false);
+      const sourcesNode = graph.children!.find((c) => c.id === 'sources')!;
+      expect(sourcesNode.status).toBe('success');
+    }
+  });
+
+  it('explains retracted papers and Wayback Machine archived links in getVerdictExplanation', () => {
+    const retractedVerdict = makeVerdict({
+      label: 'metadata_error',
+      is_retracted: true,
+      triggered_rules: ['R-RETRACTED-PAPER'],
+      mismatched_fields: ['retracted_paper'],
+    });
+    const explanation = getVerdictExplanation(retractedVerdict);
+    expect(explanation).toMatch(/RETRACTED/i);
+
+    const archivedVerdict = makeVerdict({
+      label: 'verified',
+      url_status: 'archived_alive',
+      archive_url: 'https://web.archive.org/web/20230101/https://example.org/paper.pdf',
+      triggered_rules: ['R-WAYBACK-ARCHIVED'],
+    });
+    const archExplanation = getVerdictExplanation(archivedVerdict);
+    expect(archExplanation).toMatch(/Wayback Machine/i);
+    expect(getRuleDisplayName('R-RETRACTED-PAPER')).toMatch(/retracted/i);
+    expect(getRuleDisplayName('R-WAYBACK-ARCHIVED')).toMatch(/Wayback Machine/i);
+    expect(getRuleDisplayName('R-GLOBAL-DOI-RA-VERIFIED')).toMatch(/Registration Agency/i);
+    expect(getRuleDisplayName('R-HF-VERIFIED')).toMatch(/Hugging Face/i);
+    expect(getRuleDisplayName('R-RFC-VERIFIED')).toMatch(/IETF/i);
   });
 });

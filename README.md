@@ -16,7 +16,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 [![Pytest](https://img.shields.io/badge/Tests-1%2C310_Backend_%C2%B7_41_Frontend_Passed-0A0A0A?style=for-the-badge&logo=pytest&logoColor=00E676)](./tests)
 
-*An editorial-grade academic citation debugger and thesis integrity verification workspace engineered for researchers, instructors, and university committees — combining structural PDF parsing, smart domain-aware retrieval across 8 scholarly databases, and transparent 5-stage Neuro-Symbolic decision traces.*
+*An editorial-grade academic citation debugger and thesis integrity verification workspace engineered for researchers, instructors, and university committees — combining structural PDF parsing, smart domain-aware retrieval across 15+ scholarly & technical databases (including DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, Hugging Face, IETF RFC, Wayback Machine, and Retraction Watch), and transparent 5-stage Neuro-Symbolic decision traces.*
 
 <br/>
 
@@ -136,9 +136,9 @@ Real-time health checks across GROBID, SQLite FTS5, and external scholarly APIs 
 | :--- | :--- | :--- |
 | **Document Parsing** | **Multi-Modal PDF & DOCX Extraction** | **GROBID 0.8.0 TEI-XML** deep structural parsing with automatic **PyMuPDF (`fitz`)** + `python-docx` fallback; supports Vietnamese & English section headers (`Tài liệu tham khảo`, `References`, `Bibliography`). |
 | **Citation Formats** | **11 Citation Styles + Vietnamese Legal Docs** | Auto-detects **IEEE** (`[1]`, `[1]-[3]`), **APA** (`(Smith et al., 2020)`), **Vancouver**, **Harvard**, **MLA**, **Chicago**, **ACM**, **Nature**, **Springer**, **Footnotes**, and **Vietnamese Legal Documents** (`Luật số`, `Nghị định`, `Thông tư` per TDTU standards). |
-| **Smart Retrieval** | **Domain-Aware Federated Search & Active Link Validation** | Local **ACL Anthology SQLite FTS5** (`128,626` papers with `81,973` abstracts) + **Crossref**, **OpenAlex**, **DBLP**, **arXiv**, **OpenLibrary**, **Europe PMC**, and **SerpApi Google Scholar** fallback, paired with active **HTTP Link Validation** (`HTTP 200 OK`, `403 Restricted/Paywall`, `404 Dead Link`, `Fake Domain`). |
+| **Smart Retrieval** | **Domain-Aware Federated Search, Retraction Watch & Active Link Validation** | Local **ACL Anthology SQLite FTS5** (`128,626` papers with `81,973` abstracts) + **Crossref**, **OpenAlex**, **DataCite** (Zenodo/Figshare/OSF), **Global DOI RA & CSL-JSON** (JaLC/CNKI/mEDRA/KISTI), **DOAJ**, **OpenAIRE Graph & HAL**, **NCBI Entrez & bioRxiv/medRxiv**, **DBLP**, **arXiv**, **OpenLibrary**, **Europe PMC**, **Hugging Face Hub**, **IETF Datatracker RFC & PyPI**, and **SerpApi Google Scholar** fallback, paired with **Retraction Watch Detection** (`is_retracted`) and active **HTTP + Wayback Machine Link Validation** (`HTTP 200 OK`, `403 Restricted/Paywall`, `Archived Alive`, `404 Dead Link`, `Fake Domain`). |
 | **Deep Neural Layer** | **Sentence-Level Evidence, Intent, Stance & Cross-Lingual Bridge** | **Sentence-BERT (`all-MiniLM-L6-v2`)** focal-sentence vs. abstract sentence-level max-pooling (`best_evidence_sentence`), **Citation Intent Classification** (`background`, `methodology`, `result_comparison`), **Claim Stance & Polarity Verification** (`supported`, `partially_supported`, `contradiction_risk`), **Vietnamese ↔ English Semantic Bridging**, **Multi-Occurrence Aggregation**, and **Implicit Body Passage Discovery** for uncited references. |
-| **Neuro-Symbolic Verification** | **16D Feature Vector + 23 Symbolic Rules + Platt Calibration** | Combines **Sentence-BERT** neural evidence & title alignment, **RapidFuzz**, **AuthorMatcher**, and **VenueNormalizer** with **23 deterministic Symbolic Rules** and a **Multinomial Logistic Regression + Logit-Space Platt Scaling** scorer trained on **80,000 paper-disjoint samples** (`Macro-F1 = 0.9777`, `ECE = 0.0408`). |
+| **Neuro-Symbolic Verification** | **16D Feature Vector + 28 Symbolic Rules + Platt Calibration** | Combines **Sentence-BERT** neural evidence & title alignment, **RapidFuzz**, **AuthorMatcher**, and **VenueNormalizer** with **28 deterministic Symbolic Rules** (`R-RETRACTED-PAPER`, `R-WAYBACK-ARCHIVED`, `R-GLOBAL-DOI-RA-VERIFIED`, `R-HF-VERIFIED`, `R-RFC-VERIFIED`, etc.) and a **Multinomial Logistic Regression + Logit-Space Platt Scaling** scorer trained on **80,000 paper-disjoint samples** (`Macro-F1 = 0.9777`, `ECE = 0.0408`). |
 | **Scoring Engine** | **5-Component Citation Integrity Score (`CIS`)** | Weighted composite score (`0–100`) combining Reference Validity (`35%`), Citation Mapping (`25%`), Metadata Accuracy (`15%`), Format Compliance (`15%`), and Bibliography Hygiene (`10%`) with critical failure caps. |
 | **Interactive IDE** | **4 Specialized Inspection Views** | **Bibliography Table** (side-by-side diff), **Logic Trace** (5-stage Neuro-Symbolic pipeline + Deep Neural Evidence Panel), **Consistency Matrix** (dangling & orphan detection), and **Document Context** (inline sentence highlights + SBERT evidence match popup). |
 | **Role-Based Portals** | **User, Teacher, and Admin Workflows** | JWT authentication, **Batch SSE Upload**, **Classroom Management** (`join_code`, cohort analytics), **Teacher Verdict Overrides**, and **Admin System Telemetry & Audit Logs**. |
@@ -166,8 +166,8 @@ Manuscript (PDF / DOCX)
    ├─► 3. Layer 2 — Smart Multi-Source Candidate Retrieval (RetrievalOrchestrator)
    │      ├── Pre-Screening: Web/URL Resource ([Online], GitHub, Docs) & VN Legal Classifier
    │      ├── Tier 0: Exact Identifier & Local FTS5 Lookup (128K+ Papers & Canonical Abstracts)
-   │      ├── Tier 1: Domain-Prioritized Primary Search (Crossref + OpenAlex + DBLP + OpenLibrary + Europe PMC)
-   │      └── Tier 2: Fallback Deep Search (arXiv + SerpApi Google Scholar) + Active HTTP LinkValidator
+   │      ├── Tier 1: Domain-Prioritized Primary Search (Crossref + OpenAlex + DataCite + DOAJ + OpenAIRE/HAL + NCBI/bioRxiv + DBLP + OpenLibrary + Europe PMC + Hugging Face + IETF RFC/PyPI)
+   │      └── Tier 2: Global DOI RA Content Negotiation (JaLC/CNKI/mEDRA) + Deep Search (arXiv + SerpApi Google Scholar) + Active HTTP & Wayback Machine LinkValidator
    │
    ├─► 4. Deep Neural Semantic & Symbolic Candidate Matching (SemanticMatcher + NeuroSymbolicChecker)
    │      ├── Deep Neural Layer (Sentence-BERT):
@@ -177,7 +177,7 @@ Manuscript (PDF / DOCX)
    │      │    ├── Claim Stance & Polarity Verification (supported | partially_supported | contradiction_risk)
    │      │    └── Multi-Occurrence Aggregation & Implicit Body Passage Discovery for Uncited References
    │      ├── HybridMLScorer: 16D Feature Vector + Multinomial Logistic Regression + Platt Calibration
-   │      └── Symbolic Guardrails: 23 Deterministic Rules (DOI/URL Liveness, Year/Author/Venue Veto)
+   │      └── Symbolic Guardrails: 28 Deterministic Rules (Retraction Watch Veto, Wayback Link-Rot Rescue, DOI/URL Liveness, Year/Author/Venue Veto)
    │
    └─► 5. Validation Verdict & Composite CIS Calculation (CISCalculator)
           ├── Assigns ValidationLabel: VERIFIED | METADATA_ERROR | RESOURCE | SUSPECTED_HALLUCINATION | UNRESOLVED

@@ -160,6 +160,8 @@ class CitationVerdict:
     used_local_db: bool = False  # True if result came from local database
     style_penalty: float = 0.0
     domain_exception: bool = False
+    archive_url: Optional[str] = None
+    is_retracted: bool = False
 
 
 @dataclass

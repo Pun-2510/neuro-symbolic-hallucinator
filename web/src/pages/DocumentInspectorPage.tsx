@@ -372,21 +372,26 @@ function CitationPopup({
                     const st = verdict?.url_status ?? verdict?.features?.url_status;
                     const code = verdict?.url_status_code ?? verdict?.features?.url_status_code;
                     const isOk = st === 'alive' || st === 'restricted_alive';
+                    const isArchived = st === 'archived_alive';
                     return (
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-mono font-semibold border ${
                           isOk
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800'
-                            : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/70 dark:text-red-300 dark:border-red-800'
+                            : isArchived
+                              ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800'
+                              : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/70 dark:text-red-300 dark:border-red-800'
                         }`}
                       >
                         {st === 'alive'
                           ? `✓ HTTP ${code || 200} OK`
                           : st === 'restricted_alive'
                             ? `🔒 HTTP ${code || 403} OK`
-                            : st === 'dead_link'
-                              ? `✕ HTTP ${code || 404} DEAD`
-                              : '✕ FAKE URL'}
+                            : st === 'archived_alive'
+                              ? '🏛️ WAYBACK ARCHIVED'
+                              : st === 'dead_link'
+                                ? `✕ HTTP ${code || 404} DEAD`
+                                : '✕ FAKE URL'}
                       </span>
                     );
                   })()}
