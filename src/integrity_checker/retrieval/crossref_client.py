@@ -211,13 +211,14 @@ class CrossrefClient(BaseScholarClient):
             citation.title
             and not doi_matched
             and citation.authors
-            and len(title_tokens(citation.title)) <= 3
+            and best_cand.authors
+            and (len(title_tokens(citation.title)) <= 3 or best_sim < 0.70)
             and author_match_score(citation.authors, best_cand.authors) == 0.0
         ):
             return SourceCandidate(
                 source_name=self.name,
                 found=False,
-                error=f"Crossref: short title '{citation.title}' matched different author",
+                error=f"Crossref: no title match ({best_sim:.2f}) for '{citation.title[:60]}' (different author)",
             )
 
         best_cand.found = True
@@ -331,6 +332,19 @@ class CrossrefClient(BaseScholarClient):
         subtitle = subtitles[0].strip() if subtitles and subtitles[0] else None
         if title and subtitle and subtitle.lower() not in title.lower():
             title = f"{title.rstrip(':')}: {subtitle}"
+        is_retracted_title = False
+        if isinstance(title, str) and re.match(
+            r"^\s*(?:\[?RETRACTED(?:\s+ARTICLE)?\]?|WITHDRAWN)\s*[:\-–—]\s*",
+            title,
+            re.IGNORECASE,
+        ):
+            is_retracted_title = True
+            title = re.sub(
+                r"^\s*(?:\[?RETRACTED(?:\s+ARTICLE)?\]?|WITHDRAWN)\s*[:\-–—]\s*",
+                "",
+                title,
+                flags=re.IGNORECASE,
+            ).strip()
 
         # Authors
         authors: list[str] = []
@@ -371,7 +385,7 @@ class CrossrefClient(BaseScholarClient):
 
         ext_ids: dict[str, str] = {"doi": doi.lower()} if doi else {}
         # Detect Retraction Watch / Publisher retraction metadata
-        is_retracted = False
+        is_retracted = is_retracted_title
         retraction_doi: str | None = None
         relation = message.get("relation") or {}
         if isinstance(relation, dict):

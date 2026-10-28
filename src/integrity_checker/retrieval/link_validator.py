@@ -64,6 +64,7 @@ class LinkValidator:
     """Asynchronous HTTP link validator with HEAD-then-GET and Wayback Machine fallback."""
 
     WAYBACK_API_URL = "https://archive.org/wayback/available"
+    WAYBACK_CDX_URL = "https://web.archive.org/cdx/search/cdx"
     DEFAULT_HEADERS = {
         "User-Agent": (
             "Mozilla/5.0 (compatible; EssayIntegrityChecker/1.0; "
@@ -98,7 +99,7 @@ class LinkValidator:
         if not self.enable_wayback_fallback or not url:
             return None, None
         lower_url = url.lower()
-        if ".invalid" in lower_url or "nonexistent" in lower_url:
+        if ".invalid" in lower_url or "nonexistent" in lower_url or "doi.org/" in lower_url:
             return None, None
         try:
             async with httpx.AsyncClient(
@@ -107,16 +108,34 @@ class LinkValidator:
                 headers={"User-Agent": self.DEFAULT_HEADERS["User-Agent"], "Accept": "application/json"},
             ) as client:
                 resp = await client.get(self.WAYBACK_API_URL, params={"url": url})
-                if resp.status_code != 200:
-                    return None, None
-                data = resp.json()
-                closest = ((data or {}).get("archived_snapshots") or {}).get("closest") or {}
-                if (
-                    isinstance(closest, dict)
-                    and bool(closest.get("available"))
-                    and closest.get("url")
-                ):
-                    return str(closest["url"]), str(closest.get("timestamp") or "") or None
+                if resp.status_code == 200:
+                    data = resp.json()
+                    closest = ((data or {}).get("archived_snapshots") or {}).get("closest") or {}
+                    if (
+                        isinstance(closest, dict)
+                        and bool(closest.get("available"))
+                        and closest.get("url")
+                    ):
+                        return str(closest["url"]), str(closest.get("timestamp") or "") or None
+
+                # Fallback to Wayback CDX API when availability endpoint has a lag or empty index
+                cdx_resp = await client.get(
+                    self.WAYBACK_CDX_URL,
+                    params={
+                        "url": url,
+                        "output": "json",
+                        "limit": "1",
+                        "fl": "timestamp,original",
+                        "filter": "statuscode:200",
+                    },
+                )
+                if cdx_resp.status_code == 200:
+                    rows = cdx_resp.json()
+                    if isinstance(rows, list) and len(rows) >= 2 and isinstance(rows[1], list) and len(rows[1]) >= 2:
+                        ts = str(rows[1][0]).strip()
+                        orig = str(rows[1][1]).strip() or url
+                        if ts:
+                            return f"https://web.archive.org/web/{ts}/{orig}", ts
         except Exception as exc:  # noqa: BLE001
             logger.debug(f"Wayback Machine fallback skipped for '{url}': {exc}")
         return None, None
@@ -170,6 +189,15 @@ class LinkValidator:
 
         except httpx.TimeoutException as exc:
             logger.debug(f"LinkValidator timeout for '{clean_url}': {exc}")
+            wb_url, wb_ts = await self._check_wayback_machine(clean_url)
+            if wb_url:
+                return LinkCheckResult(
+                    url=clean_url,
+                    status=LinkStatus.ARCHIVED_ALIVE,
+                    error=f"Live host timed out, recovered via Wayback Machine ({wb_ts or 'archived'})",
+                    archive_url=wb_url,
+                    archive_timestamp=wb_ts,
+                )
             return LinkCheckResult(
                 url=clean_url,
                 status=LinkStatus.UNCHECKED,

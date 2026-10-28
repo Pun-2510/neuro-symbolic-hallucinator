@@ -198,6 +198,12 @@ class NcbiBiorxivClient(BaseScholarClient):
 
         search_data = await self._fetch_json(f"{self.NCBI_BASE_URL}/esearch.fcgi", params=base_params)
         id_list = ((search_data or {}).get("esearchresult") or {}).get("idlist") or []
+        if (not isinstance(id_list, list) or not id_list) and doi_norm and raw_title and len(raw_title) >= 4:
+            # Fallback to PubMed title search if the preprint/regional DOI is not indexed as [LID]
+            fallback_params = dict(base_params)
+            fallback_params["term"] = f"{raw_title}[Title]"
+            search_data = await self._fetch_json(f"{self.NCBI_BASE_URL}/esearch.fcgi", params=fallback_params)
+            id_list = ((search_data or {}).get("esearchresult") or {}).get("idlist") or []
         if not isinstance(id_list, list) or not id_list:
             return None
 

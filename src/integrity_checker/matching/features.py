@@ -87,6 +87,15 @@ class FeatureCalculator:
             list(best.authors or []),
         )
 
+        # DOI exact match (normalized + known arXiv/ACL equivalent DOIs + explicit arXiv ID)
+        from integrity_checker.retrieval.arxiv_client import ArxivClient
+
+        cit_arxiv_id = ArxivClient.extract_arxiv_id(citation)
+        cit_doi_effective = citation.doi
+        if not cit_doi_effective and cit_arxiv_id:
+            cit_doi_effective = f"10.48550/arxiv.{cit_arxiv_id}"
+        doi_match = self._doi_matches(cit_doi_effective, best.doi)
+
         # Year distance
         year_dist = self._year_distance(citation.year, best.year)
         if year_dist > 1 and fuzzy_sim >= 0.95 and author_sim >= 0.80:
@@ -94,6 +103,7 @@ class FeatureCalculator:
                 self._year_distance(citation.year, c.year)
                 for c in source.candidates
                 if c.found
+                and (not doi_match or self._doi_matches(cit_doi_effective, c.doi))
                 and self._compute_title_similarity(
                     c_title,
                     (c.title or "").lower().strip(),
@@ -103,15 +113,6 @@ class FeatureCalculator:
             ]
             if same_work_dists:
                 year_dist = min(year_dist, min(same_work_dists))
-
-        # DOI exact match (normalized + known arXiv/ACL equivalent DOIs + explicit arXiv ID)
-        from integrity_checker.retrieval.arxiv_client import ArxivClient
-
-        cit_arxiv_id = ArxivClient.extract_arxiv_id(citation)
-        cit_doi_effective = citation.doi
-        if not cit_doi_effective and cit_arxiv_id:
-            cit_doi_effective = f"10.48550/arxiv.{cit_arxiv_id}"
-        doi_match = self._doi_matches(cit_doi_effective, best.doi)
 
         # FIX Phase 3 (BUG-21): Recognize exact arXiv ID match when candidate returned its
         # published conference/journal DOI alongside external_ids["arxiv"] (or vice versa)
@@ -388,7 +389,10 @@ class FeatureCalculator:
                 return 0.90
 
         # 4. Fallback to fuzzy matching
-        return max(
+        raw_tset = max(
             self.fuzzy.token_set_ratio(c_clean, cand_clean),
             self.fuzzy.token_set_ratio(c_dehyph, cand_dehyph),
         )
+        if len_ratio < 0.65 and not is_raw_fallback:
+            return raw_tset * (0.35 + 0.65 * len_ratio)
+        return raw_tset

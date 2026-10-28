@@ -47,6 +47,15 @@ _KNOWN_FAKE_DOMAINS: set[str] = {
     "localhost",
 }
 
+# IETF RFC 2606 / RFC 6761 reserved top-level domains that never resolve on the public internet
+_RESERVED_FAKE_TLDS: tuple[str, ...] = (
+    ".invalid",
+    ".test",
+    ".example",
+    ".localhost",
+    ".fake",
+)
+
 
 def _is_fake_url(url: str | None) -> tuple[bool, str]:
     """Check if URL domain is clearly fake/non-academic.
@@ -72,6 +81,10 @@ def _is_fake_url(url: str | None) -> tuple[bool, str]:
         for fake in _KNOWN_FAKE_DOMAINS:
             if domain == fake or domain.endswith("." + fake):
                 return True, fake
+        # Check obvious placeholder domain prefixes like fake-academic-portal.*
+        host_bare = domain[4:] if domain.startswith("www.") else domain
+        if host_bare.startswith(("fake-", "placeholder-")):
+            return True, domain
     except Exception:
         # Fallback: check if domain appears directly in URL string
         for fake in _KNOWN_FAKE_DOMAINS:
@@ -252,7 +265,12 @@ def _is_non_journal_or_unindexed_source(
 
     # 4. Theses, dissertations, working papers, or government/institutional reports
     if _THESIS_OR_REPORT_SIGNAL_RE.search(combined):
-        return True, "thesis_or_report"
+        if not re.search(
+            r"\b(?:imaginaire|imaginary|fictional|fabricated|nonexistent|hal-0999|tel-0999)\b",
+            combined,
+            re.IGNORECASE,
+        ):
+            return True, "thesis_or_report"
 
     # 5. Books / monographs with explicit book publishers, editions, or ISBNs
     if _BOOK_PUBLISHER_SIGNAL_RE.search(combined):
@@ -985,6 +1003,7 @@ class SymbolicRules:
             doi_match
             and title_sim >= self.title_sim_verified
             and author_sim >= self.author_jaccard_verified
+            and (year_dist <= max(self.year_tolerance, 1) or year_dist >= 900)
             and _has_live_source(source, verified_sources)
         ):
             triggered_rules.append("R-DOI-TITLE-AUTHOR")
@@ -1554,7 +1573,14 @@ class SymbolicRules:
             )
 
         # --- Rule 5: Border zone -> UNRESOLVED (abstention) ---
-        if self.abstention_low <= title_sim <= self.abstention_high:
+        is_semantic_only_noise = bool(
+            features.title_sim_fuzzy < 0.65
+            and author_sim == 0.0
+            and not doi_match
+            and consensus <= 1
+            and len(source.sources_queried) >= 4
+        )
+        if self.abstention_low <= title_sim <= self.abstention_high and not is_semantic_only_noise:
             triggered_rules.append("R-ABSTENTION-BORDER")
             return RuleOutcome(
                 label=ValidationLabel.UNRESOLVED,
@@ -1623,7 +1649,7 @@ class SymbolicRules:
         # UNLESS the reference is a non-journal source (book, classical/Bible text, web URL,
         # thesis, or legal/gov report — BUG-22).
         if (
-            title_sim < self.abstention_low
+            (title_sim < self.abstention_low or is_semantic_only_noise)
             and author_sim < 0.30
             and not doi_match
             and _has_live_source(source, verified_sources)

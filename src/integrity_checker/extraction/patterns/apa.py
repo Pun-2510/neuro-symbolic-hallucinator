@@ -693,7 +693,7 @@ class APAFormat:
         citation.title_normalized = self._normalize_title(citation.title)
         if venue_raw:
             self._parse_venue(citation, venue_raw)
-        doi_match = re.search(r"(10\.\d{4,9}/[^\s\]\)\,;]+)", text)
+        doi_match = re.search(r"(10\.\d{4,9}/(?:[^\s\]\)\,;()]|\([^\s\]\)\,;()]*\))+)", text)
         if doi_match:
             citation.doi = doi_match.group(1).rstrip(".,;")
         self._extract_url_into(citation, text)
@@ -793,11 +793,11 @@ class APAFormat:
         self._parse_venue(citation, venue)
 
         # Extract DOI if present
-        doi_match = re.search(r"https?://(?:dx\.)?doi\.org/(10\.\d{4,9}/[^\s\]\)\,;]+)", text, re.IGNORECASE)
+        doi_match = re.search(r"https?://(?:dx\.)?doi\.org/(10\.\d{4,9}/(?:[^\s\]\)\,;()]|\([^\s\]\)\,;()]*\))+)", text, re.IGNORECASE)
         if doi_match:
             citation.doi = doi_match.group(1).rstrip(".,;")
         else:
-            doi_match = re.search(r"(10\.\d{4,9}/[^\s\]\)\,;]+)", text)
+            doi_match = re.search(r"(10\.\d{4,9}/(?:[^\s\]\)\,;()]|\([^\s\]\)\,;()]*\))+)", text)
             if doi_match:
                 citation.doi = doi_match.group(1).rstrip(".,;")
 
@@ -868,7 +868,7 @@ class APAFormat:
         citation.venue = f"In {book_title}" + (f". {publisher.strip()}" if publisher else "")
 
         # Extract DOI if present
-        doi_match = re.search(r"(10\.\d{4,9}/[^\s\]\)\,;]+)", text)
+        doi_match = re.search(r"(10\.\d{4,9}/(?:[^\s\]\)\,;()]|\([^\s\]\)\,;()]*\))+)", text)
         if doi_match:
             citation.doi = doi_match.group(1).rstrip(".,;")
 
@@ -917,7 +917,7 @@ class APAFormat:
         self._parse_venue(citation, venue)
 
         # Extract DOI if present
-        doi_match = re.search(r"(10\.\d{4,9}/[^\s\]\)\,;]+)", text)
+        doi_match = re.search(r"(10\.\d{4,9}/(?:[^\s\]\)\,;()]|\([^\s\]\)\,;()]*\))+)", text)
         if doi_match:
             citation.doi = doi_match.group(1).rstrip(".,;")
 
@@ -962,7 +962,7 @@ class APAFormat:
                     citation.title_normalized = self._normalize_title(title)
 
         # Try to extract DOI
-        doi_match = re.search(r"(10\.\d{4,9}/[^\s\]\)\,;]+)", text)
+        doi_match = re.search(r"(10\.\d{4,9}/(?:[^\s\]\)\,;()]|\([^\s\]\)\,;()]*\))+)", text)
         if doi_match:
             citation.doi = doi_match.group(1).rstrip(".,;")
 

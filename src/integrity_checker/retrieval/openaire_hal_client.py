@@ -342,8 +342,9 @@ class OpenAIREHalClient(BaseScholarClient):
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         try:
+            req_timeout = min(self.timeout, 2.5) if "openaire.eu" in url else self.timeout
             async with httpx.AsyncClient(
-                timeout=self.timeout,
+                timeout=req_timeout,
                 headers=self._headers,
                 follow_redirects=True,
             ) as client:

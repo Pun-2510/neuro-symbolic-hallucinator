@@ -37,7 +37,7 @@ class CitationStyle(str, Enum):
 
 
 _YEAR_RE = re.compile(r"\b(19|20)\d{2}[a-z]?\b")
-_DOI_RE = re.compile(r"10\.\d{4,9}/[^\s\]\)\,;]+")
+_DOI_RE = re.compile(r"10\.\d{4,9}/(?:[^\s\]\)\,;()]|\([^\s\]\)\,;()]*\))+")
 _URL_RE = re.compile(r"https?://[^\s\]\)\,;]+")
 
 

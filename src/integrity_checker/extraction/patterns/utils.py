@@ -32,13 +32,13 @@ from integrity_checker.extraction.patterns.base import CompiledPattern, PatternT
 
 DOI_PATTERN = CompiledPattern.create(
     name="doi",
-    pattern=r"10\.\d{4,9}/[^\s\]\)\,;]+",
+    pattern=r"10\.\d{4,9}/(?:[^\s\]\)\,;()]|\([^\s\]\)\,;()]*\))+",
     pattern_type=PatternType.UTILITY,
     description="DOI: Matches 10.xxxx/yyyy format (Digital Object Identifier)",
 )
 
 # Pre-compiled regex for direct use
-_DOI_REGEX = re.compile(r"10\.\d{4,9}/[^\s\]\)\,;]+")
+_DOI_REGEX = re.compile(r"10\.\d{4,9}/(?:[^\s\]\)\,;()]|\([^\s\]\)\,;()]*\))+")
 
 
 def extract_doi(text: str) -> Optional[str]:

@@ -377,6 +377,19 @@ class OpenAlexClient(BaseScholarClient):
 
         # Title (OpenAlex dùng 'display_name' hoặc 'title')
         title = work.get("title") or work.get("display_name")
+        is_retracted_title = False
+        if isinstance(title, str) and re.match(
+            r"^\s*(?:\[?RETRACTED(?:\s+ARTICLE)?\]?|WITHDRAWN)\s*[:\-–—]\s*",
+            title,
+            re.IGNORECASE,
+        ):
+            is_retracted_title = True
+            title = re.sub(
+                r"^\s*(?:\[?RETRACTED(?:\s+ARTICLE)?\]?|WITHDRAWN)\s*[:\-–—]\s*",
+                "",
+                title,
+                flags=re.IGNORECASE,
+            ).strip()
 
         # Authors — từ 'authorships'
         authors: list[str] = []
@@ -412,7 +425,7 @@ class OpenAlexClient(BaseScholarClient):
             abstract = None
 
         ext_ids: dict[str, str] = {"doi": doi} if doi else {}
-        if bool(work.get("is_retracted", False)):
+        if bool(work.get("is_retracted", False)) or is_retracted_title:
             ext_ids["is_retracted"] = "true"
 
         return SourceCandidate(

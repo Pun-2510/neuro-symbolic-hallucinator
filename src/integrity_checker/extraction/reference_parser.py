@@ -111,7 +111,7 @@ _YEAR_PAREN_SEARCH = re.compile(r"\((?:19|20)\d{2}[a-z]?\)")
 _INITIALS_FULLMATCH = re.compile(r"[A-ZÀ-Ý](?:\.?-?[A-ZÀ-Ý])*\.?")
 
 # DOI regex (tách riêng vì có thể xuất hiện ở cuối nhiều style)
-_DOI_RE = re.compile(r"10\.\d{4,9}/[^\s\]\)\,;]+")
+_DOI_RE = re.compile(r"10\.\d{4,9}/(?:[^\s\]\)\,;()]|\([^\s\]\)\,;()]*\))+")
 _URL_RE = re.compile(r"https?://[^\s\]\)\,;]+")
 _YEAR_RE = re.compile(r"\b((?:19|20)\d{2})([a-z]?)\b")
 

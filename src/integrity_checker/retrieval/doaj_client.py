@@ -117,11 +117,21 @@ class DOAJClient(BaseScholarClient):
                 error="DOAJ: empty title query",
             )
 
-        encoded_q = quote(f"bibjson.title:{clean_query}", safe="")
+        encoded_q = quote(f'bibjson.title:"{clean_query}"', safe="")
         data = await self._fetch_json(
             f"/search/articles/{encoded_q}",
             params={"pageSize": 5},
         )
+        results = (data or {}).get("results") if isinstance(data, dict) else None
+        if not isinstance(results, list) or not results:
+            toks = [t for t in title_tokens(clean_query) if len(t) >= 3][:8]
+            if len(toks) >= 2:
+                and_expr = " AND ".join(toks)
+                encoded_and = quote(f"bibjson.title:({and_expr})", safe="")
+                data = await self._fetch_json(
+                    f"/search/articles/{encoded_and}",
+                    params={"pageSize": 5},
+                )
         if not data:
             return SourceCandidate(
                 source_name=self.name,

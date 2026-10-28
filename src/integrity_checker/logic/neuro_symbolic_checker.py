@@ -326,10 +326,18 @@ class NeuroSymbolicChecker:
             and getattr(c, "source_name", "") in {"huggingface", "tech_standard"}
             for c in (source.candidates or [])
         )
+        specialist_explicitly_not_found = (
+            any(
+                s in {"huggingface", "tech_standard"}
+                for s in (getattr(source, "sources_queried", None) or [])
+            )
+            and not any(getattr(c, "found", False) for c in (source.candidates or []))
+        )
         if (
             not has_fake_url_early
             and not is_dead_url_early
             and not has_specialist_candidate
+            and not specialist_explicitly_not_found
             and RetrievalOrchestrator.is_web_or_legal_resource(citation)
         ):
             url_stat = getattr(source, "url_status", None)
@@ -352,6 +360,7 @@ class NeuroSymbolicChecker:
                 reasoning=f"Web/documentation resource detected{http_note}: {raw_text[:70]}... (non-scholarly URL resource)",
                 triggered_rules=res_rules,
                 mismatched_fields=[],
+                archive_url=archive_url,
             )
 
         # Debug aid: if raw_text starts with URL scheme but didn't match, log it.

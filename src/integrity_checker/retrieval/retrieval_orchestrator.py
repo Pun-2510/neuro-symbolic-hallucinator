@@ -1543,6 +1543,25 @@ class RetrievalOrchestrator:
             known_result.archive_url = self._last_archive_url
             return known_result
 
+        # ===== 2.4. Fast-path for known fake/reserved URL domains (RFC 2606 .invalid/.test/example.com) =====
+        if not self._legacy_explicit_mode and not self._six_core_only_explicit_mode and citation.url:
+            from integrity_checker.logic.rules import _is_fake_url
+
+            is_fake_u, _ = _is_fake_url(citation.url)
+            if is_fake_u:
+                url_status, url_status_code = await self._validate_citation_url(citation)
+                return SourceResult(
+                    citation_raw=citation.raw_text,
+                    candidates=[],
+                    sources_queried=[],
+                    sources_succeeded=[],
+                    sources_failed={},
+                    api_exhausted=False,
+                    url_status=url_status,
+                    url_status_code=url_status_code,
+                    archive_url=self._last_archive_url,
+                )
+
         # ===== 2.5. Skip general scholarly APIs for non-academic web/software/legal resources =====
         # If the resource is a Hugging Face model/dataset or IETF RFC/PyPI package, allow the
         # dedicated specialist client to verify its metadata before returning.
@@ -1612,8 +1631,15 @@ class RetrievalOrchestrator:
         _collect_batch(tier1_clients, tier1_results)
 
         # Escalate to Tier 2 ONLY when Tier 1 did not already achieve strong consensus
+        # (and skip Tier 2 fan-out when the cited DOI matches known fabricated prefixes like 10.9999/)
+        from integrity_checker.logic.rules import _FABRICATED_DOI_PATTERNS
+
+        is_known_fabricated_doi_prefix = bool(
+            citation.doi
+            and any(p.search(citation.doi.lower()) for p in _FABRICATED_DOI_PATTERNS)
+        )
         tier1_sufficient = self._is_tier1_sufficient(valid, citation)
-        if tier2_clients and not tier1_sufficient:
+        if tier2_clients and not tier1_sufficient and not is_known_fabricated_doi_prefix:
             logger.debug(
                 f"Tier 1 insufficient for '{(citation.title or citation.raw_text)[:45]}' "
                 f"(succeeded={succeeded}) -> escalating to Tier 2 {[c.name for c in tier2_clients]}"
@@ -1621,8 +1647,36 @@ class RetrievalOrchestrator:
             tier2_results = await self._execute_client_batch(tier2_clients, citation)
             _collect_batch(tier2_clients, tier2_results)
 
-        # ===== 3.5. arXiv Fallback (trước SerpApi) =====
-        # Khi mọi API ở Tier 1 + Tier 2 đều không tìm thấy (0 found) và arXiv chưa được gọi,
+        # ===== 3.5. Global DOI RA / CSL-JSON Fallback (trước arXiv & SerpApi) =====
+        # Khi citation có DOI mà các kho học thuật trên chưa khớp được chính xác DOI đó
+        # (hoặc chỉ trả về kết quả nhiễu từ title search), kiểm tra trực tiếp hệ thống
+        # Handle/DOI toàn cầu (JaLC, mEDRA, CNKI, KISTI, DataCite...) qua doi.org/doiRA
+        cit_doi_norm = normalize_doi(citation.doi) if citation.doi else None
+        has_exact_doi_cand = bool(
+            cit_doi_norm
+            and any(
+                c.found and c.doi and normalize_doi(c.doi) == cit_doi_norm
+                for c in valid
+            )
+        )
+        if (
+            not self._legacy_explicit_mode
+            and not self._six_core_only_explicit_mode
+            and cit_doi_norm
+            and not has_exact_doi_cand
+            and self.doi_ra is not None
+            and getattr(get_settings().retrieval.sources, "doi_ra", True)
+            and self.doi_ra.name not in sources_queried
+        ):
+            logger.debug(
+                f"Tier 1+2 found no exact DOI match for '{citation.doi}' "
+                f"-> checking global DOI Registration Agency (doi_ra)"
+            )
+            doi_ra_results = await self._execute_client_batch([self.doi_ra], citation)
+            _collect_batch([self.doi_ra], doi_ra_results)
+
+        # ===== 3.6. arXiv Fallback (trước SerpApi) =====
+        # Khi mọi API ở Tier 1 + Tier 2 + DOI RA đều không tìm thấy (0 found) và arXiv chưa được gọi,
         # luôn thử qua arXiv một lượt cuối trước khi gọi SerpApi.
         if (
             not self._legacy_explicit_mode
@@ -1638,25 +1692,6 @@ class RetrievalOrchestrator:
             arxiv_results = await self._execute_client_batch([self.arxiv], citation)
             _collect_batch([self.arxiv], arxiv_results)
 
-        # ===== 3.6. Global DOI RA / CSL-JSON Fallback (trước SerpApi) =====
-        # Khi citation có DOI mà các kho học thuật trên chưa tìm thấy, kiểm tra trực tiếp
-        # hệ thống Handle/DOI toàn cầu (JaLC, mEDRA, CNKI, KISTI, DataCite...) qua doi.org/doiRA
-        if (
-            not self._legacy_explicit_mode
-            and not self._six_core_only_explicit_mode
-            and citation.doi
-            and not any(c.found for c in valid)
-            and self.doi_ra is not None
-            and getattr(get_settings().retrieval.sources, "doi_ra", True)
-            and self.doi_ra.name not in sources_queried
-        ):
-            logger.debug(
-                f"Tier 1+2+arXiv found 0 candidates for DOI '{citation.doi}' "
-                f"-> checking global DOI Registration Agency (doi_ra)"
-            )
-            doi_ra_results = await self._execute_client_batch([self.doi_ra], citation)
-            _collect_batch([self.doi_ra], doi_ra_results)
-
         # Enrich missing abstract across remaining abstract-capable APIs when metadata matched without abstract
         if any(c.found for c in valid) and not any(c.found and c.abstract and c.abstract.strip() for c in valid):
             await self._enrich_missing_abstract(
@@ -1669,11 +1704,16 @@ class RetrievalOrchestrator:
 
         # ===== 4. SerpApi Fallback =====
         # Chỉ gọi SerpApi khi KHÔNG có candidate nào found
-        # và các nguồn chính đã thất bại
+        # và các nguồn chính đã thất bại (bỏ qua nếu DOI đã được doi_ra xác nhận không tồn tại)
+        doi_confirmed_nonexistent = any(
+            (getattr(c, "external_ids", None) or {}).get("doi_ra_status") == "nonexistent"
+            for c in valid
+        )
         serpapi_candidate = None
         min_failed_for_serpapi = 1 if len(sources_queried) <= 1 else 2
         if (
             not any(c.found for c in deduped)
+            and not doi_confirmed_nonexistent
             and len(failed) >= min_failed_for_serpapi
             and get_settings().retrieval.sources.serpapi
         ):
@@ -1696,6 +1736,17 @@ class RetrievalOrchestrator:
         else:
             min_failures_for_unresolved = len(sources_queried) // 2 + 1
         url_status, url_status_code = await self._validate_citation_url(citation)
+        if (
+            not any_found
+            and "huggingface" in sources_queried
+            and citation.url
+            and "huggingface.co" in citation.url.lower()
+            and url_status == "restricted_alive"
+        ):
+            # Hugging Face Hub returns HTTP 401 on non-existent repo URLs; when the official
+            # HF API confirmed no matching public model/dataset/paper, treat as dead_link (404).
+            url_status = "dead_link"
+            url_status_code = 404
 
         if not any_found and len(failed) >= min_failures_for_unresolved:
             # Distinguish hard API/network failures from clean HTTP 200 "no results" responses

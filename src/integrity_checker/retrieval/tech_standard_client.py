@@ -112,13 +112,13 @@ class TechStandardClient(BaseScholarClient):
         """Lookup IETF RFC standard or PyPI software package."""
         rfc_num = self.extract_rfc_number(citation)
         if rfc_num is not None:
-            rfc_cand = await self._lookup_rfc(rfc_num)
+            rfc_cand = await self._lookup_rfc(rfc_num, citation=citation)
             if rfc_cand and rfc_cand.found:
                 return rfc_cand
 
         pypi_pkg = self.extract_pypi_package(citation)
         if pypi_pkg:
-            pypi_cand = await self._lookup_pypi(pypi_pkg)
+            pypi_cand = await self._lookup_pypi(pypi_pkg, citation=citation)
             if pypi_cand and pypi_cand.found:
                 return pypi_cand
 
@@ -128,14 +128,26 @@ class TechStandardClient(BaseScholarClient):
             error=f"TechStandard: no results for '{(citation.title or citation.raw_text)[:60]}'",
         )
 
-    async def _lookup_rfc(self, rfc_num: int) -> SourceCandidate | None:
+    async def _lookup_rfc(
+        self,
+        rfc_num: int,
+        citation: Citation | None = None,
+    ) -> SourceCandidate | None:
         """Lookup RFC via RFC Editor JSON API first, then IETF Datatracker API."""
         url = f"{self.RFC_EDITOR_BASE}/rfc{rfc_num}.json"
         data = await self._fetch_json(url)
         if isinstance(data, dict) and (data.get("title") or data.get("doc_id")):
             title = self._clean_text(data.get("title"))
+            if (
+                title
+                and citation
+                and citation.title
+                and re.search(rf"\bRFC\s*[-#:]?\s*{rfc_num}\b", citation.title, re.IGNORECASE)
+                and not re.search(rf"\bRFC\s*[-#:]?\s*{rfc_num}\b", title, re.IGNORECASE)
+            ):
+                title = f"RFC {rfc_num}: {title}"
             authors = [
-                str(a).strip()
+                re.sub(r",?\s*Ed\.?$", "", str(a).strip(), flags=re.IGNORECASE).strip()
                 for a in (data.get("authors") or [])
                 if str(a).strip()
             ] or ["IETF"]
@@ -172,6 +184,14 @@ class TechStandardClient(BaseScholarClient):
         dt_data = await self._fetch_json(dt_url)
         if isinstance(dt_data, dict) and dt_data.get("title"):
             title = self._clean_text(dt_data.get("title"))
+            if (
+                title
+                and citation
+                and citation.title
+                and re.search(rf"\bRFC\s*[-#:]?\s*{rfc_num}\b", citation.title, re.IGNORECASE)
+                and not re.search(rf"\bRFC\s*[-#:]?\s*{rfc_num}\b", title, re.IGNORECASE)
+            ):
+                title = f"RFC {rfc_num}: {title}"
             time_str = str(dt_data.get("time") or "")
             year = time_str[:4] if len(time_str) >= 4 and time_str[:4].isdigit() else None
             abstract = self._clean_text(dt_data.get("abstract"))
@@ -191,7 +211,11 @@ class TechStandardClient(BaseScholarClient):
             )
         return None
 
-    async def _lookup_pypi(self, pkg_name: str) -> SourceCandidate | None:
+    async def _lookup_pypi(
+        self,
+        pkg_name: str,
+        citation: Citation | None = None,
+    ) -> SourceCandidate | None:
         url = f"{self.PYPI_BASE}/{quote(pkg_name, safe='')}/json"
         data = await self._fetch_json(url)
         if not isinstance(data, dict) or not isinstance(data.get("info"), dict):
@@ -201,22 +225,48 @@ class TechStandardClient(BaseScholarClient):
         name = str(info.get("name") or pkg_name).strip()
         summary = self._clean_text(info.get("summary"))
         title = f"{name}: {summary}" if summary else name
+        if citation and citation.title and name.lower() in citation.title.lower():
+            title = citation.title.strip()
 
         authors: list[str] = []
         for field_name in ("author", "maintainer"):
             val = str(info.get(field_name) or "").strip()
             if val and val not in authors:
                 authors.append(val)
+        for email_field in ("author_email", "maintainer_email"):
+            raw_em = str(info.get(email_field) or "").strip()
+            if raw_em:
+                for part in raw_em.split(","):
+                    clean_name = re.sub(r"<[^>]+>", "", part).strip().strip("\"'")
+                    if clean_name and "@" not in clean_name and clean_name not in authors:
+                        authors.append(clean_name)
         if not authors:
             authors = ["PyPI Contributors"]
 
-        # Determine latest release year
-        year: str | None = None
+        # Determine release years (both latest and historical releases)
+        release_years: set[str] = set()
         urls_list = data.get("urls") or []
         if isinstance(urls_list, list) and urls_list:
             upload_time = str(urls_list[0].get("upload_time_iso_8601") or urls_list[0].get("upload_time") or "")
             if len(upload_time) >= 4 and upload_time[:4].isdigit():
-                year = upload_time[:4]
+                release_years.add(upload_time[:4])
+        releases_map = data.get("releases") or {}
+        if isinstance(releases_map, dict):
+            for rel_files in releases_map.values():
+                if isinstance(rel_files, list):
+                    for rf in rel_files[:1]:
+                        if isinstance(rf, dict):
+                            ut = str(rf.get("upload_time_iso_8601") or rf.get("upload_time") or "")
+                            if len(ut) >= 4 and ut[:4].isdigit():
+                                release_years.add(ut[:4])
+
+        year: str | None = max(release_years) if release_years else None
+        if citation and citation.year:
+            cit_yr = str(citation.year)[:4]
+            if cit_yr in release_years or (
+                release_years and cit_yr.isdigit() and min(release_years) <= cit_yr <= max(release_years)
+            ):
+                year = cit_yr
 
         pkg_url = str(info.get("package_url") or info.get("project_url") or f"https://pypi.org/project/{name}/")
         return SourceCandidate(

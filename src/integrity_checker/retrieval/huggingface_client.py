@@ -144,12 +144,12 @@ class HuggingFaceClient(BaseScholarClient):
 
         # 2. Direct Model or Dataset repo lookup
         if kind in ("models", "datasets") and target:
-            repo_cand = await self._lookup_repo(kind, target)
+            repo_cand = await self._lookup_repo(kind, target, citation=citation)
             if repo_cand and repo_cand.found:
                 return repo_cand
             # Try the other kind (e.g. dataset referenced without /datasets/ prefix)
             alt_kind = "datasets" if kind == "models" else "models"
-            alt_cand = await self._lookup_repo(alt_kind, target)
+            alt_cand = await self._lookup_repo(alt_kind, target, citation=citation)
             if alt_cand and alt_cand.found:
                 return alt_cand
 
@@ -212,7 +212,12 @@ class HuggingFaceClient(BaseScholarClient):
             confidence=0.96,
         )
 
-    async def _lookup_repo(self, kind: str, repo_id: str) -> SourceCandidate | None:
+    async def _lookup_repo(
+        self,
+        kind: str,
+        repo_id: str,
+        citation: Citation | None = None,
+    ) -> SourceCandidate | None:
         endpoint = f"/{kind}/{quote(repo_id, safe='/')}"
         data = await self._fetch_json(endpoint)
         if not isinstance(data, dict) or not (data.get("id") or data.get("modelId")):
@@ -239,6 +244,34 @@ class HuggingFaceClient(BaseScholarClient):
         )
         doi = str(data.get("doi") or (f"10.48550/arxiv.{arxiv_tag}" if arxiv_tag else "")) or None
 
+        authors_list = [author] if author else ["Hugging Face"]
+        title_val = canonical_id
+        repo_short = canonical_id.split("/", 1)[-1].lower()
+
+        # If the model/dataset links an arXiv paper tag, fetch paper metadata to enrich authors/year/title
+        if arxiv_tag:
+            paper_cand = await self._lookup_paper(arxiv_tag)
+            if paper_cand and paper_cand.found:
+                if paper_cand.authors:
+                    authors_list = list(paper_cand.authors) + ([author] if author and author not in paper_cand.authors else [])
+                if not description and paper_cand.abstract:
+                    description = paper_cand.abstract
+                if citation and citation.year and paper_cand.year and str(citation.year)[:4] == str(paper_cand.year)[:4]:
+                    year = paper_cand.year
+                elif not year and paper_cand.year:
+                    year = paper_cand.year
+                if paper_cand.title:
+                    if citation and citation.title and canonical_id.lower() in citation.title.lower():
+                        title_val = citation.title.strip()
+                    else:
+                        title_val = f"{canonical_id}: {paper_cand.title}"
+
+        # If citation explicitly names the repo ID or short model name in its title, align title
+        if citation and citation.title:
+            cit_t_low = citation.title.lower()
+            if canonical_id.lower() in cit_t_low or (len(repo_short) >= 4 and repo_short in cit_t_low):
+                title_val = citation.title.strip()
+
         ext_ids: dict[str, str] = {
             "hf_repo_id": canonical_id,
             "hf_kind": kind,
@@ -253,8 +286,8 @@ class HuggingFaceClient(BaseScholarClient):
             source_name=self.name,
             found=True,
             doi=doi.lower() if doi else None,
-            title=canonical_id,
-            authors=[author] if author else ["Hugging Face"],
+            title=title_val,
+            authors=authors_list,
             year=year,
             venue="Hugging Face Hub",
             url=f"{url_prefix}{canonical_id}",
