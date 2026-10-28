@@ -410,6 +410,15 @@ class CitationExtractor:
                 if _is_date_only_citation(raw):
                     continue
                 if citation_type == CitationType.IN_TEXT and not raw.startswith(("(", "[")):
+                    # Skip journal header self-citation metadata lines ("Trích dẫn: Author (2026)...", "How to cite: ...")
+                    line_start_idx = search_text.rfind("\n", 0, raw_start) + 1
+                    line_prefix_str = search_text[line_start_idx:raw_start]
+                    if re.search(
+                        r"(?:trích\s+dẫn(?:\s+bài\s+viết)?|cách\s+trích\s+dẫn|how\s+to\s+cite|to\s+cite\s+this|suggested\s+citation|cite\s+this\s+article)\s*:",
+                        line_prefix_str,
+                        re.IGNORECASE,
+                    ):
+                        continue
                     # Strip leading acronym clause before ", Author (Year)" (e.g. "EI and HRV, Vanuk et al. (2019)")
                     raw = re.sub(r"^(?:[A-Z]{2,5}\s+and\s+[A-Z]{2,5},\s+)", "", raw).strip()
                     # Skip common-noun page/year parentheticals or pre-1900 historical founding years

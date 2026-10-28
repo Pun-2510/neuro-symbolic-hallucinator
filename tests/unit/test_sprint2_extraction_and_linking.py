@@ -166,6 +166,49 @@ class TestReferenceListParserSprint2:
         assert len(refs) == 3
         assert all(r.numeric_index is None for r in refs)
 
+    def test_multipage_bracketed_bibliography_past_page_15_not_truncated(self) -> None:
+        bib_text = (
+            "References\n"
+            "[1] De Choudhury, M., Gamon, S. (2013). Predicting depression via social media. ICWSM.\n"
+            "[2] Nguyen, D. Q., Nguyen, A. T. (2020). PhoBERT: Pre-trained language models for Vietnamese. EMNLP.\n"
+            "19\n"
+            "[3] Vaswani, A., Shazeer, N. (2017). Attention is all you need. NeurIPS.\n"
+            "77\n"
+            "[4] Devlin, J., Chang, M.-W. (2019). BERT: Pre-training of deep bidirectional transformers. NAACL."
+        )
+        parser = ReferenceListParser()
+        refs = parser.parse_reference_section(_doc_from_bib(bib_text))
+        assert len(refs) == 4
+        assert [r.numeric_index for r in refs] == [1, 2, 3, 4]
+
+    def test_vn_legal_wrapped_url_and_court_judgment_preserved(self) -> None:
+        bib_text = (
+            "Tài liệu tham khảo:\n"
+            "Quốc hội. (2013). Hiến pháp nước Cộng hòa xã hội chủ nghĩa Việt Nam năm 2013, ban hành ngày 28/11/2013. "
+            "https://\nvanban.chinhphu.vn/?\npageid=27160&docid=171264\n"
+            "Tòa án nhân dân cấp cao tại TP. Hồ Chí Minh\n(2022). Bản án số 39/2022/KDTM-PT ngày 18/7/2022 "
+            "xét xử phúc thẩm công khai vụ án kinh doanh thương mại về tranh chấp tên miền."
+        )
+        parser = ReferenceListParser()
+        refs = parser.parse_reference_section(_doc_from_bib(bib_text))
+        assert len(refs) == 2
+        assert refs[0].year == "2013"
+        assert refs[1].year == "2022"
+        linker = CitationLinker()
+        body = [
+            Citation(
+                raw_text="(Tòa án nhân dân cấp cao tại TP. Hồ Chí Minh, 2022)",
+                citation_type=CitationType.IN_TEXT,
+                style=CitationStyle.APA,
+                year="2022",
+                reference_id="occ-court",
+            )
+        ]
+        refs[0].reference_id = "ref-const"
+        refs[1].reference_id = "ref-court"
+        res = linker.link(body, refs)
+        assert len(res.unmatched_in_text) == 0
+
 
 class TestCitationLinkerSprint2:
     """Verify square-bracketed Author-Year/Page, corporate acronym learning, and Ibid. inheritance."""

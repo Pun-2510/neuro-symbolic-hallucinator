@@ -71,8 +71,8 @@ _SECONDARY_CITATION_RE = re.compile(
 )
 # Institutional / Corporate / Legal author indicator
 _INSTITUTIONAL_AUTHOR_RE = re.compile(
-    r"^(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Chính\s+phủ|Quốc\s+hội|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội"
-    r"|Hiến\s+pháp|Bộ\s+luật|Luật|Pháp\s+lệnh|Nghị\s+định|Thông\s+tư|Quyết\s+định|Nghị\s+quyết|Chỉ\s+thị"
+    r"^(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Chính\s+phủ|Quốc\s+hội|Thủ\s+tướng|Ban\s+|Đảng\s+|Tòa\s+án|Toà\s+án|Văn\s+phòng|Thanh\s+tra|Kiểm\s+toán|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội"
+    r"|Hiến\s+pháp|Bộ\s+luật|Luật|Pháp\s+lệnh|Nghị\s+định|Thông\s+tư|Quyết\s+định|Nghị\s+quyết|Chỉ\s+thị|Bản\s+án|Án\s+lệ|Công\s+ước"
     r"|Viện|Trường|Cục|Vụ|Sở|Department|Ministry|Association|Organization|Organisation"
     r"|Institute|Council|World\s+Health|United\s+Nations|Reserve\s+Bank|National\s+Institute"
     r"|National\s+Academ(?:ies|ics)|American\s+Psychiatric|American\s+Library|American\s+College"
@@ -471,6 +471,15 @@ class CitationLinker:
                 bib_by_author_year.get((author.lower().strip(), year), [])
                 or bib_by_author_year.get((folded_auth, year), [])
             )
+            if not candidates:
+                for alt_yr in re.findall(r"\b((?:19|20)\d{2})\b", cit.raw_text or ""):
+                    if alt_yr != year:
+                        candidates = (
+                            bib_by_author_year.get((author.lower().strip(), alt_yr), [])
+                            or bib_by_author_year.get((folded_auth, alt_yr), [])
+                        )
+                        if candidates:
+                            break
             if candidates:
                 if cit.title and len(candidates) > 1:
                     cit_t_low = cit.title.strip().lower()

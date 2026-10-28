@@ -200,7 +200,7 @@ _VN_AGENCY_FIRST_LEGAL_RE = re.compile(
     r"|Viện\s+kiểm\s+sát\s+nhân\s+dân[^,(\n]{0,55}|Thanh\s+tra\s+Chính\s+phủ|Kiểm\s+toán\s+Nhà\s+nước"
     r"|Ngân\s+hàng\s+Nhà\s+nước(?:\s+Việt\s+Nam)?|Bộ\s+[A-ZÀ-ÝĐ][^,().\n]{2,60}"
     r"|Ủy\s+ban\s+nhân\s+dân[^,(\n]{0,50}|Uỷ\s+ban\s+nhân\s+dân[^,(\n]{0,50}"
-    r"|Chủ\s+tịch\s+nước|Chủ\s+tịch\s+Chính\s+phủ[^,(\n]{0,30}))\s*"
+    r"|Chủ\s+tịch\s+nước|Chủ\s+tịch\s+Chính\s+phủ[^,(\n]{0,30}))[.,]*\s*"
     r"(?:\(\s*(?P<agency_year>(?:19|20)\d{2}[a-z]?(?:\s*[,–\-/]\s*(?:19|20)\d{2}[a-z]?)*)\s*\))?\s*[.,:]+\s*"
     r"(?P<doc_rest>.+)$",
     re.IGNORECASE,
@@ -208,7 +208,7 @@ _VN_AGENCY_FIRST_LEGAL_RE = re.compile(
 
 _VN_CONSTITUTION_RE = re.compile(
     r"^Hiến\s+pháp(?:\s+nước\s+Cộng\s+hòa\s+xã\s+hội\s+chủ\s+nghĩa\s+Việt\s+Nam|\s+Việt\s+Nam)?"
-    r"(?:\s+các)?(?:\s+năm)?\s*\(?(?P<years>(?:19|20)\d{2}(?:\s*(?:,|và|-|–)\s*(?:19|20)\d{2})*)\)?[.,;\s]*$",
+    r"(?:\s+các)?(?:\s+năm)?\s*\(?(?P<years>(?:19|20)\d{2}(?:\s*(?:,|và|-|–)\s*(?:19|20)\d{2})*)\)?(?:\b.*)?$",
     re.IGNORECASE,
 )
 
@@ -416,17 +416,24 @@ def parse_vn_legal_reference(text: str) -> Optional[Citation]:
         doc_type = re.sub(r"\s+", " ", sublaw_m.group("doc_type")).strip()
         doc_code = re.sub(r"\s+", "", sublaw_m.group("doc_code").strip().rstrip(".,;"))
 
-        # Extract issuing agency after "của ..."
+        # Extract issuing agency after "của ..." and from official code suffix
         agency: Optional[str] = None
+        mapped_suffix_agency: Optional[str] = None
+        code_upper = doc_code.upper()
+        for suffix_key, mapped_agency in _SUBLAW_AGENCY_SUFFIX_MAP.items():
+            if suffix_key in code_upper:
+                mapped_suffix_agency = mapped_agency
+                break
+
         agency_m = re.search(
             r"\bcủa\s+(?P<agency>(?:Chính\s+phủ|Thủ\s+tướng(?:\s+Chính\s+phủ)?|Quốc\s+hội"
             r"|Ủy\s+ban\s+Thường\s+vụ\s+Quốc\s+hội|Uỷ\s+ban\s+Thường\s+vụ\s+Quốc\s+hội"
             r"|Bộ\s+Chính\s+trị|Ban\s+Bí\s+thư|Ban\s+Chấp\s+hành\s+Trung\s+ương(?:\s+Đảng)?"
             r"|Bộ\s+(?:trưởng\s+Bộ\s+)?[A-ZÀ-ÝĐ][^,.\n“\"']{2,55}?"
-            r"|Ngân\s+hàng\s+Nhà\s+nước(?:\s+Việt\s+Nam)?|Tòa\s+án\s+nhân\s+dân[^,.\n“\"']{0,45}?"
-            r"|Toà\s+án\s+nhân\s+dân[^,.\n“\"']{0,45}?|Hội\s+đồng\s+Thẩm\s+phán[^,.\n“\"']{0,45}?"
-            r"|Viện\s+kiểm\s+sát\s+nhân\s+dân[^,.\n“\"']{0,45}?|Thanh\s+tra\s+Chính\s+phủ"
-            r"|Ủy\s+ban\s+nhân\s+dân[^,.\n“\"']{0,45}?|Uỷ\s+ban\s+nhân\s+dân[^,.\n“\"']{0,45}?|Chủ\s+tịch\s+nước))"
+            r"|Ngân\s+hàng\s+Nhà\s+nước(?:\s+Việt\s+Nam)?|Tòa\s+án\s+nhân\s+dân[^,.\n“\"']{0,75}?"
+            r"|Toà\s+án\s+nhân\s+dân[^,.\n“\"']{0,75}?|Hội\s+đồng\s+Thẩm\s+phán[^,.\n“\"']{0,75}?"
+            r"|Viện\s+kiểm\s+sát\s+nhân\s+dân[^,.\n“\"']{0,75}?|Thanh\s+tra\s+Chính\s+phủ"
+            r"|Ủy\s+ban\s+nhân\s+dân[^,.\n“\"']{0,75}?|Uỷ\s+ban\s+nhân\s+dân[^,.\n“\"']{0,75}?|Chủ\s+tịch\s+nước))"
             r"(?=\s+ngày\s+\d|\s+về\s+|\s+ban\s+hành|\s+quy\s+định|\s+hướng\s+dẫn|\s+sửa\s+đổi|\s+phê\s+duyệt|[,.\"“]|$)",
             cleaned,
             re.IGNORECASE,
@@ -434,11 +441,7 @@ def parse_vn_legal_reference(text: str) -> Optional[Citation]:
         if agency_m:
             agency = agency_m.group("agency").strip()
         else:
-            code_upper = doc_code.upper()
-            for suffix_key, mapped_agency in _SUBLAW_AGENCY_SUFFIX_MAP.items():
-                if suffix_key in code_upper:
-                    agency = mapped_agency
-                    break
+            agency = mapped_suffix_agency
 
         date_y = re.search(
             r"\bngày\s+\d{1,2}\s*(?:[/-]|tháng)\s*\d{1,2}\s*(?:[/-]|năm)\s*((?:19|20)\d{2})\b",
@@ -454,8 +457,16 @@ def parse_vn_legal_reference(text: str) -> Optional[Citation]:
         )
 
         authors = []
-        if agency:
+        if mapped_suffix_agency:
+            authors.append(_make_corp_author(mapped_suffix_agency))
+        if agency and agency.lower() != (mapped_suffix_agency or "").lower():
             authors.append(_make_corp_author(agency))
+            if "thành phố hồ chí minh" in agency.lower():
+                tp_alias = re.sub(r"Thành\s+phố\s+Hồ\s+Chí\s+Minh", "TP. Hồ Chí Minh", agency, flags=re.IGNORECASE)
+                authors.append(_make_corp_author(tp_alias))
+            elif "tp. hồ chí minh" in agency.lower() or "tp hồ chí minh" in agency.lower():
+                tp_alias = re.sub(r"TP\.?\s*Hồ\s+Chí\s+Minh", "Thành phố Hồ Chí Minh", agency, flags=re.IGNORECASE)
+                authors.append(_make_corp_author(tp_alias))
         authors.append(_make_corp_author(f"{doc_type} số {doc_code}"))
         authors.append(_make_corp_author(f"{doc_type} {doc_code}"))
 

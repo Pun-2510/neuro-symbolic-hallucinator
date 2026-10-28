@@ -176,7 +176,7 @@ _DATED_WEB_AUTHOR_HEAD_R = (
 _CORP_AUTHOR_HEAD_R = (
     r"(?:(?:\d{1,2}\s*[\.\)]\s*)?(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Chính\s+phủ|Quốc\s+hội|Thủ\s+tướng|Ban\s+Chấp\s+hành|Đảng\s+Cộng\s+sản|Tòa\s+án|Toà\s+án|Viện\s+kiểm\s+sát|Thanh\s+tra|Kiểm\s+toán|Văn\s+phòng\s+Quốc\s+hội|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội|Trường\s+Đại\s+học"
     r"|Department|Ministry|Reserve\s+Bank|World\s+Health|United\s+Nations|World\s+Bank|International\s+Labour|National\s+Assembly)"
-    r"[^().\n]{0,70}?\.?\s*\(\s*(?:19|20)\d{2}[a-z]?\s*\)[.,:])"
+    r"(?:[^().\n]|\b(?:TP|Tp)\.){0,75}?\.?\s*\(\s*(?:18|19|20)\d{2}(?:\s*[-–]\s*(?:18|19|20)\d{2})?[a-z]?\s*\)[.,:])"
 )
 _LEGAL_HEAD_R = (
     r"(?:\d+\s*[\.\)]\s*)?(?:Hiến\s+pháp(?:\s+nước\s+Cộng\s+hòa\s+xã\s+hội\s+chủ\s+nghĩa\s+Việt\s+Nam)?(?:\s+các)?(?:\s+năm|\s+\d{4})"
@@ -773,6 +773,13 @@ class ReferenceListParser:
                 valid_starts.append(pos)
                 continue
             prefix = cleaned_chunk[:pos]
+            # Never split a legal/statute title away from its own leading 'Author (Year).' header
+            prev_seg = cleaned_chunk[valid_starts[-1]:pos].strip() if valid_starts else prefix.strip()
+            if len(prev_seg) < 100 and re.search(
+                r"\(\s*(?:18|19|20)\d{2}(?:\s*[-–]\s*(?:18|19|20)\d{2})?[a-z]?\s*\)\s*[.,:]?$",
+                prev_seg,
+            ):
+                continue
             # Must follow a sentence-ending period/semicolon, a URL, or a sub-header
             if re.search(
                 r"(?:[\.;]|https?://\S+)\s+$"
@@ -844,13 +851,19 @@ class ReferenceListParser:
             flat,
             flags=re.IGNORECASE,
         )
-        # Only join a broken URL after '/' or '-' when the next token starts with lowercase/digit
+        # Only join a broken URL after '/', '-', '.', '?', '&', '=' when the next token starts with lowercase/digit
         # and is NOT the start of a new bibliography entry (never glue capitalized author surnames!).
-        flat = re.sub(
-            r"(https?://[^\s/]+(?:/[^\s/]+)*[/\-])\s+([a-z0-9_~%#][^\s]*)",
-            r"\1\2",
-            flat,
-        )
+        for _ in range(2):
+            flat = re.sub(
+                r"(https?://[^\s]+?[/\-?&=])\s+((?:[a-z0-9_~%#][^\s]*|[A-Za-z0-9_~%#-]+/[^\s]*))",
+                r"\1\2",
+                flat,
+            )
+            flat = re.sub(
+                r"(https?://[^\s]+?\.)\s+([a-z_~%#][^\s]*)",
+                r"\1\2",
+                flat,
+            )
         flat = re.sub(
             r"\b(10\.\d{4,9}/[A-Za-z0-9._;()/-]+[-/])\s+(\d+[A-Za-z0-9._;()/-]*)",
             r"\1\2",
@@ -965,12 +978,14 @@ class ReferenceListParser:
             if post_bib_stop_re.match(stripped) and len(cleaned) >= 2:
                 break
             # In a bracket-numbered bibliography ([1]..[N]), a bare 2-digit number line
-            # near the bottom of the page (e.g. "31" followed by footnote text) marks bottom footnotes
+            # near the bottom of the page (e.g. "31" followed by footnote text) marks bottom footnotes,
+            # ONLY if no further [N] bibliography entries appear after it (otherwise it is a page number).
             if (
                 has_bracket_refs
                 and re.fullmatch(r"\d{2}", stripped)
                 and int(stripped) >= 15
                 and any(re.match(r"^\s*\[\d+\]", c_ln) for c_ln in cleaned)
+                and not any(re.match(r"^\s*\[\d+\]", rem_ln) for rem_ln in lines[idx_ln + 1 :])
             ):
                 break
             # Skip standalone page numbers or PDF font encoding bullet '®'
@@ -1290,10 +1305,11 @@ class ReferenceListParser:
         or omitted (e.g., '[1] Đỗ Văn Đại, Title, Nxb. Hồng Đức, 2023', '8. Title. https://..., ngày 30/8/2024')."""
         if not _VN_DIACRITIC_RE.search(entry):
             return None
-        # Do not intercept APA entries that have (Year) right after the author block
+        # Do not intercept APA entries that have (Year) or (n.d.) right after the author block
         if re.search(
-            r"^\s*(?:\[\s*\d+\s*\]|\d{1,3}\s*[\.\)])?\s*[^()]{2,95}\(\s*(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?:18|19|20)\d{2}[a-z]?(?:\s*[,–\-/]\s*[^)]*)?\s*\)",
+            r"^\s*(?:\[\s*\d+\s*\]|\d{1,3}\s*[\.\)])?\s*[^()]{2,95}\(\s*(?:(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?:18|19|20)\d{2}[a-z]?(?:\s*[,–\-/]\s*[^)]*)?|n\.?\s*d\.?(?:-[a-z])?)\s*\)",
             entry,
+            re.IGNORECASE,
         ):
             return None
 
