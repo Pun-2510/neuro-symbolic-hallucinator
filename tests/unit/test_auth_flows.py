@@ -709,5 +709,399 @@ class TestGoogleOAuthFlow:
         assert local_login.json()["user"]["username"] == "baominh_scholar"
 
 
+class TestAmbiguousAndAdversarialAuthEdgeCases:
+    """Tests for subtle, ambiguous, and adversarial security edge cases."""
+
+    def test_get_auth_me_preserves_google_onboarding_and_password_flags_on_reload(
+        self, monkeypatch
+    ):
+        client = TestClient(app)
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-reload-check",
+                "email": "reload_check@tdtu.edu.vn",
+                "email_verified": True,
+                "name": "Reload Check",
+            },
+        )
+
+        g_resp = client.post("/api/auth/google", json={"access_token": "tok"})
+        assert g_resp.status_code == 200
+        token = g_resp.json()["token"]
+
+        # GET /api/auth/me must return has_password, can_set_username, and needs_onboarding
+        auth_me = client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert auth_me.status_code == 200
+        me_data = auth_me.json()
+        assert me_data["has_password"] is False
+        assert me_data["can_set_username"] is True
+        assert me_data["needs_onboarding"] is True
+        assert me_data["google_linked"] is True
+
+    def test_case_insensitive_username_collision_and_login(self, monkeypatch):
+        client = TestClient(app)
+        email_svc = get_email_service()
+        email_svc.clear_outbox()
+
+        # 1. Register user with mixed-case username "Scholar_Alpha"
+        reg = client.post(
+            "/api/auth/register",
+            json={
+                "username": "Scholar_Alpha",
+                "email": "alpha1@tdtu.edu.vn",
+                "password": "SafePassword123!",
+            },
+        )
+        assert reg.status_code == 200
+        act_tok = email_svc.outbox[-1].token
+        client.post("/api/auth/activate", json={"token": act_tok})
+
+        # 2. Another user cannot register "scholar_alpha" or "SCHOLAR_ALPHA"
+        dup_lower = client.post(
+            "/api/auth/register",
+            json={
+                "username": "scholar_alpha",
+                "email": "alpha2@tdtu.edu.vn",
+                "password": "SafePassword123!",
+            },
+        )
+        assert dup_lower.status_code == 400
+        assert "already exists" in dup_lower.json()["detail"].lower()
+
+        dup_upper = client.post(
+            "/api/auth/register",
+            json={
+                "username": "SCHOLAR_ALPHA",
+                "email": "alpha3@tdtu.edu.vn",
+                "password": "SafePassword123!",
+            },
+        )
+        assert dup_upper.status_code == 400
+
+        # 3. User A can log in using lowercase or uppercase variant of their username
+        login_lower = client.post(
+            "/api/auth/login",
+            json={"username": "scholar_alpha", "password": "SafePassword123!"},
+        )
+        assert login_lower.status_code == 200
+
+        # 4. A new Google user cannot claim "SCHOLAR_ALPHA", but CAN change casing of their own handle
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-case-test",
+                "email": "auto_handle@tdtu.edu.vn",
+                "email_verified": True,
+                "name": "Case Tester",
+            },
+        )
+        g_resp = client.post("/api/auth/google", json={"access_token": "tok"})
+        g_token = g_resp.json()["token"]
+
+        collision_patch = client.patch(
+            "/api/users/me",
+            json={"username": "SCHOLAR_ALPHA"},
+            headers={"Authorization": f"Bearer {g_token}"},
+        )
+        assert collision_patch.status_code == 400
+
+        own_case_patch = client.patch(
+            "/api/users/me",
+            json={"username": "Auto_Handle"},
+            headers={"Authorization": f"Bearer {g_token}"},
+        )
+        assert own_case_patch.status_code == 200
+        assert own_case_patch.json()["username"] == "Auto_Handle"
+        assert own_case_patch.json()["can_set_username"] is False
+
+    def test_reserved_usernames_blocked_even_when_demo_mode_disabled_in_production(
+        self, monkeypatch
+    ):
+        client = TestClient(app)
+        monkeypatch.setenv("APP_ENV", "production")
+        monkeypatch.setenv("DEMO_USERS_ENABLED", "false")
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+
+        for reserved in ("Admin", "TEACHER", "root", "System", "support", "CITRA"):
+            r = client.post(
+                "/api/auth/register",
+                json={
+                    "username": reserved,
+                    "email": f"{reserved.lower()}@tdtu.edu.vn",
+                    "password": "SafePassword123!",
+                },
+            )
+            assert r.status_code == 400, f"Reserved username {reserved} should be blocked"
+
+        # Google user with email admin@gmail.com gets auto-suffixed to admin_1, not "admin"
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-admin-email",
+                "email": "admin@gmail.com",
+                "email_verified": True,
+                "name": "Google User",
+            },
+        )
+        g_resp = client.post("/api/auth/google", json={"access_token": "tok"})
+        assert g_resp.status_code == 200
+        assert g_resp.json()["user"]["username"] == "admin_1"
+        g_token = g_resp.json()["token"]
+
+        # Google user cannot rename their handle to "Admin" or "root"
+        for reserved in ("Admin", "root", "teacher"):
+            patch_r = client.patch(
+                "/api/users/me",
+                json={"username": reserved},
+                headers={"Authorization": f"Bearer {g_token}"},
+            )
+            assert patch_r.status_code == 400
+
+    def test_malformed_and_boundary_usernames_rejected_and_degenerate_google_emails_sanitized(
+        self, monkeypatch
+    ):
+        client = TestClient(app)
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-degenerate-1",
+                "email": "...@gmail.com",
+                "email_verified": True,
+                "name": "!!!",
+            },
+        )
+        # Degenerate Google email local part "...@gmail.com" + symbol-only name -> falls back to "scholar"
+        g_resp = client.post("/api/auth/google", json={"access_token": "tok"})
+        assert g_resp.status_code == 200
+        assert g_resp.json()["user"]["username"] == "scholar"
+        g_token = g_resp.json()["token"]
+
+        # Single-char Google email local part "a@gmail.com" with no name -> "user_a"
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-degenerate-2",
+                "email": "a@gmail.com",
+                "email_verified": True,
+                "name": "",
+            },
+        )
+        g_resp2 = client.post("/api/auth/google", json={"access_token": "tok"})
+        assert g_resp2.status_code == 200
+        assert g_resp2.json()["user"]["username"] == "user_a"
+
+        # Malformed usernames must be rejected on both register and PATCH /api/users/me
+        malformed_handles = [
+            "...",
+            "---",
+            "___",
+            ".scholar",
+            "scholar.",
+            "-scholar",
+            "scholar-",
+            "ab..cd",
+            "user name",
+            "<script>",
+        ]
+        for bad in malformed_handles:
+            reg_r = client.post(
+                "/api/auth/register",
+                json={
+                    "username": bad,
+                    "email": "valid_test@tdtu.edu.vn",
+                    "password": "SafePassword123!",
+                },
+            )
+            assert reg_r.status_code in (400, 422), f"Expected {bad!r} to fail registration"
+
+            patch_r = client.patch(
+                "/api/users/me",
+                json={"username": bad},
+                headers={"Authorization": f"Bearer {g_token}"},
+            )
+            assert patch_r.status_code in (400, 422), f"Expected {bad!r} to fail PATCH /api/users/me"
+
+    def test_password_edge_cases_null_byte_whitespace_and_72_byte_utf8_limit(
+        self, monkeypatch
+    ):
+        client = TestClient(app)
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-pw-edge",
+                "email": "pw_edge@tdtu.edu.vn",
+                "email_verified": True,
+                "name": "PW Edge",
+            },
+        )
+        g_resp = client.post("/api/auth/google", json={"access_token": "tok"})
+        g_token = g_resp.json()["token"]
+
+        # 1. Null-byte password ("Pass\x00word123") -> 400 (never 500 ValueError)
+        # 2. Whitespace-only password ("        ") -> 400
+        # 3. Multi-byte UTF-8 password > 72 bytes ("Nguyễn Bảo Minh Trường Học " * 3) -> 400 (never 500 ValueError)
+        adversarial_passwords = [
+            "Pass\x00word123",
+            "        ",
+            "Nguyễn Bảo Minh Trường Học " * 3,
+        ]
+        for bad_pw in adversarial_passwords:
+            r_reg = client.post(
+                "/api/auth/register",
+                json={
+                    "username": "pw_tester",
+                    "email": "pw_tester@tdtu.edu.vn",
+                    "password": bad_pw,
+                },
+            )
+            assert r_reg.status_code == 400, f"Expected 400 on register for {bad_pw!r}, got {r_reg.status_code}"
+
+            r_me_pw = client.post(
+                "/api/users/me/password",
+                json={"new_password": bad_pw},
+                headers={"Authorization": f"Bearer {g_token}"},
+            )
+            assert r_me_pw.status_code == 400, f"Expected 400 on password change for {bad_pw!r}, got {r_me_pw.status_code}"
+
+    def test_google_linked_user_cannot_change_bound_email_and_second_password_requires_current(
+        self, monkeypatch
+    ):
+        client = TestClient(app)
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-bound-email",
+                "email": "bound_owner@tdtu.edu.vn",
+                "email_verified": True,
+                "name": "Bound Owner",
+            },
+        )
+        g_resp = client.post("/api/auth/google", json={"access_token": "tok"})
+        assert g_resp.status_code == 200
+        first_token = g_resp.json()["token"]
+
+        # 1. Google user cannot change their bound email to another address via PATCH /api/users/me
+        email_change = client.patch(
+            "/api/users/me",
+            json={"email": "victim@tdtu.edu.vn"},
+            headers={"Authorization": f"Bearer {first_token}"},
+        )
+        assert email_change.status_code == 400
+        assert "google" in email_change.json()["detail"].lower()
+
+        # 2. First password setup without current_password succeeds and invalidates old session token
+        pw1 = client.post(
+            "/api/users/me/password",
+            json={"new_password": "FirstGooglePassword123!"},
+            headers={"Authorization": f"Bearer {first_token}"},
+        )
+        assert pw1.status_code == 200
+        second_token = pw1.json()["token"]
+        assert second_token and second_token != first_token
+
+        # Old token must be invalidated immediately
+        old_me = client.get(
+            "/api/users/me",
+            headers={"Authorization": f"Bearer {first_token}"},
+        )
+        assert old_me.status_code == 401
+
+        # 3. Second password change WITHOUT current_password must be rejected (400)
+        pw2_no_current = client.post(
+            "/api/users/me/password",
+            json={"new_password": "HijackAttemptPassword123!"},
+            headers={"Authorization": f"Bearer {second_token}"},
+        )
+        assert pw2_no_current.status_code == 400
+        assert "current password" in pw2_no_current.json()["detail"].lower()
+
+        # 4. Second password change WITH current_password succeeds
+        pw2_with_current = client.post(
+            "/api/users/me/password",
+            json={
+                "current_password": "FirstGooglePassword123!",
+                "new_password": "SecondGooglePassword456!",
+            },
+            headers={"Authorization": f"Bearer {second_token}"},
+        )
+        assert pw2_with_current.status_code == 200
+
+    def test_google_welcome_reset_link_upgrades_provider_while_preserving_one_time_username_setup(
+        self, monkeypatch
+    ):
+        client = TestClient(app)
+        email_svc = get_email_service()
+        email_svc.clear_outbox()
+
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-email-first",
+                "email": "email_first@tdtu.edu.vn",
+                "email_verified": True,
+                "name": "Email First User",
+            },
+        )
+        g_resp = client.post("/api/auth/google", json={"access_token": "tok"})
+        assert g_resp.status_code == 200
+        welcome_token = email_svc.outbox[-1].token
+        assert welcome_token
+
+        # User sets password via the welcome email reset link BEFORE customizing their @username
+        reset_resp = client.post(
+            "/api/auth/reset-password",
+            json={
+                "token": welcome_token,
+                "new_password": "EmailLinkPassword123!",
+            },
+        )
+        assert reset_resp.status_code == 200
+
+        # Reusing the welcome token a second time is blocked
+        reuse_resp = client.post(
+            "/api/auth/reset-password",
+            json={
+                "token": welcome_token,
+                "new_password": "AnotherPassword123!",
+            },
+        )
+        assert reuse_resp.status_code == 400
+
+        # User logs in with email + newly set password; can_set_username is STILL True!
+        login_resp = client.post(
+            "/api/auth/login",
+            json={
+                "username": "email_first@tdtu.edu.vn",
+                "password": "EmailLinkPassword123!",
+            },
+        )
+        assert login_resp.status_code == 200
+        user_data = login_resp.json()["user"]
+        assert user_data["has_password"] is True
+        assert user_data["can_set_username"] is True
+        tok = login_resp.json()["token"]
+
+        # User can still customize their @username once
+        patch_resp = client.patch(
+            "/api/users/me",
+            json={"username": "email_first_custom"},
+            headers={"Authorization": f"Bearer {tok}"},
+        )
+        assert patch_resp.status_code == 200
+        assert patch_resp.json()["username"] == "email_first_custom"
+        assert patch_resp.json()["can_set_username"] is False
+
+
+
 
 

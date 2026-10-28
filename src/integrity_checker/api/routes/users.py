@@ -19,7 +19,10 @@ from integrity_checker.api.deps import get_current_user, get_db, require_admin
 from integrity_checker.api.routes.auth import (
     _create_token,
     _ensure_utc,
-    _get_hardcoded_users,
+    _hash_password,
+    _is_reserved_username,
+    _is_valid_username_format,
+    _verify_password,
 )
 from integrity_checker.api.services.avatar_service import get_avatar_service
 from integrity_checker.api.services.email_service import get_email_service
@@ -30,8 +33,6 @@ from integrity_checker.db.repository import Repository
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-_USERNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 
 
 # ---------- Schemas ----------
@@ -93,6 +94,7 @@ class UserResponse(BaseModel):
     full_name: str | None
     role: str
     is_active: bool
+    email_verified: bool = True
     auth_provider: str = "local"
     google_linked: bool = False
     has_password: bool = True
@@ -118,17 +120,6 @@ class MessageResponse(BaseModel):
 # ---------- Helpers ----------
 
 
-def _hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-
-def _verify_password(password: str, hashed: str) -> bool:
-    try:
-        return bcrypt.checkpw(password.encode(), hashed.encode())
-    except (ValueError, TypeError):
-        return False
-
-
 def _to_response(user: User) -> UserResponse:
     sub = get_user_subscription_summary(user)
     provider = getattr(user, "auth_provider", None) or "local"
@@ -144,6 +135,7 @@ def _to_response(user: User) -> UserResponse:
         full_name=user.full_name,
         role=user.role,
         is_active=bool(user.is_active),
+        email_verified=bool(getattr(user, "email_verified", True)),
         auth_provider=provider,
         google_linked=google_linked,
         has_password=has_password,
@@ -364,10 +356,10 @@ def update_me(
 
     if request.username is not None:
         new_username = request.username.strip()
-        if len(new_username) < 3 or len(new_username) > 50 or not _USERNAME_RE.match(new_username):
+        if not _is_valid_username_format(new_username):
             raise HTTPException(
                 status_code=400,
-                detail="Username must be 3-50 characters and contain only letters, numbers, dots, underscores, or hyphens.",
+                detail="Username must be 3-50 characters, start and end with a letter or number, and contain only letters, numbers, dots, underscores, or hyphens.",
             )
         if new_username != current_user.username:
             if not can_set_username:
@@ -376,24 +368,35 @@ def update_me(
                     detail="Username cannot be changed after initial setup.",
                 )
             dup_user = repo.get_user_by_username(new_username)
-            if (dup_user and dup_user.id != current_user.id) or new_username in _get_hardcoded_users():
+            if (dup_user and dup_user.id != current_user.id) or _is_reserved_username(new_username):
                 raise HTTPException(status_code=400, detail="Username already exists")
             update_data["username"] = new_username
             update_data["username_customized"] = True
+            update_data["google_onboarded"] = True
         elif can_set_username:
             update_data["username_customized"] = True
+            update_data["google_onboarded"] = True
 
     if request.complete_onboarding:
         update_data["username_customized"] = True
+        update_data["google_onboarded"] = True
 
-    if request.email is not None and request.email != current_user.email:
-        dup = repo.get_user_by_email(request.email)
-        if dup and dup.id != current_user.id:
-            raise HTTPException(status_code=400, detail="Email already exists")
-        update_data["email"] = request.email
+    if request.email is not None:
+        normalized_email = str(request.email).strip().lower()
+        current_email = (current_user.email or "").strip().lower()
+        if normalized_email != current_email:
+            if google_linked and current_email:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Email address is linked to Google Sign-In and cannot be changed.",
+                )
+            dup = repo.get_user_by_email(normalized_email)
+            if dup and dup.id != current_user.id:
+                raise HTTPException(status_code=400, detail="Email already exists")
+            update_data["email"] = normalized_email
 
     if request.full_name is not None:
-        update_data["full_name"] = request.full_name
+        update_data["full_name"] = request.full_name.strip()
 
     if update_data:
         user = repo.update_user(current_user.id, **update_data)
@@ -496,6 +499,7 @@ def change_my_password(
         update_fields["auth_provider"] = (
             "local,google" if "google" in provider else "local"
         )
+        update_fields["google_onboarded"] = True
     updated_user = repo.update_user(current_user.id, **update_fields) or current_user
     repo.delete_user_sessions(current_user.id)
     new_token, expires_at = _create_token(updated_user)

@@ -31,6 +31,62 @@ router = APIRouter()
 
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 
+_RESERVED_USERNAMES = frozenset(
+    {
+        "admin",
+        "administrator",
+        "teacher",
+        "user",
+        "root",
+        "system",
+        "support",
+        "citra",
+        "api",
+        "auth",
+        "me",
+        "null",
+        "undefined",
+    }
+)
+
+
+def _is_valid_username_format(username: str) -> bool:
+    """Validate username is 3-50 chars, [a-zA-Z0-9._-], no leading/trailing punctuation or '..'."""
+    if len(username) < 3 or len(username) > 50:
+        return False
+    if not _USERNAME_RE.match(username):
+        return False
+    if username[0] in "._-" or username[-1] in "._-":
+        return False
+    if ".." in username:
+        return False
+    return True
+
+
+def _is_reserved_username(username: str) -> bool:
+    """Return True if username is a reserved system/demo handle (case-insensitive)."""
+    normalized = username.strip().lower()
+    return normalized in _RESERVED_USERNAMES or normalized in _get_hardcoded_users()
+
+
+def _validate_password(password: str) -> None:
+    """Validate password against null bytes, pure whitespace, and bcrypt 72-byte limit."""
+    if "\x00" in password:
+        raise HTTPException(
+            status_code=400,
+            detail="Password contains invalid null characters.",
+        )
+    if not password.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Password cannot be blank or whitespace only.",
+        )
+    if len(password.encode("utf-8")) > 72:
+        raise HTTPException(
+            status_code=400,
+            detail="Password cannot exceed 72 UTF-8 bytes.",
+        )
+
 
 class _SlidingWindowRateLimiter:
     """Thread-safe in-memory sliding window rate limiter for auth endpoints."""
@@ -223,6 +279,9 @@ class UserResponse(BaseModel):
     email_verified: bool = True
     auth_provider: str = "local"
     google_linked: bool = False
+    has_password: bool = True
+    can_set_username: bool = False
+    needs_onboarding: bool = False
     avatar_url: str | None = None
     last_login_at: str | None = None
     created_at: str | None = None
@@ -241,7 +300,8 @@ class MessageResponse(BaseModel):
 
 
 def _hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    _validate_password(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode()
 
 
 def _verify_password(password: str, hashed: str) -> bool:
@@ -463,6 +523,11 @@ def _verify_google_payload(
                 token_data = token_resp.json()
                 access_token = (token_data.get("access_token") or "").strip()
                 id_token = (token_data.get("id_token") or "").strip()
+                if not access_token and not id_token:
+                    raise HTTPException(
+                        status_code=401,
+                        detail="Google token exchange did not return a valid token.",
+                    )
 
             if id_token and not access_token:
                 info_resp = client.get(
@@ -547,18 +612,21 @@ def _generate_unique_google_username(
 ) -> str:
     """Generate a unique valid username (3-50 chars, [a-zA-Z0-9._-]) from a Google email."""
     local_part = email.split("@", 1)[0].lower()
-    cleaned = re.sub(r"[^a-z0-9._-]", "_", local_part).strip("._-")
+    cleaned = re.sub(r"[^a-z0-9._-]", "_", local_part)
+    cleaned = re.sub(r"\.{2,}", ".", cleaned)
+    cleaned = re.sub(r"_{2,}", "_", cleaned).strip("._-")
     if len(cleaned) < 3:
         if full_name:
             slug = re.sub(r"[^a-z0-9]", "", full_name.lower())
-            cleaned = f"{cleaned}_{slug}".strip("_")
+            cleaned = f"{cleaned}_{slug}".strip("._-")
         if len(cleaned) < 3:
-            cleaned = f"user_{cleaned}" if cleaned else "scholar"
-    base = cleaned[:42]
+            cleaned = f"user_{cleaned}".strip("._-") if cleaned else "scholar"
+        if len(cleaned) < 3:
+            cleaned = "scholar"
+    base = cleaned[:42].strip("._-") or "scholar"
     candidate = base
-    hardcoded = _get_hardcoded_users()
     suffix = 1
-    while repo.get_user_by_username(candidate) or candidate in hardcoded:
+    while repo.get_user_by_username(candidate) or _is_reserved_username(candidate):
         candidate = f"{base}_{suffix}"
         suffix += 1
     return candidate
@@ -722,16 +790,16 @@ def google_login(request: GoogleLoginRequest, db=Depends(get_db)):
 def register(request: RegisterRequest, db=Depends(get_db)):
     """Self-register a new account (creates inactive user and sends HTML activation email)."""
     username = request.username.strip()
-    if len(username) < 3 or len(username) > 50 or not _USERNAME_RE.match(username):
+    if not _is_valid_username_format(username):
         raise HTTPException(
             status_code=400,
-            detail="Username must be 3-50 characters and contain only letters, numbers, dots, underscores, or hyphens.",
+            detail="Username must be 3-50 characters, start and end with a letter or number, and contain only letters, numbers, dots, underscores, or hyphens.",
         )
 
     email = request.email.strip().lower()
     repo = Repository(db)
 
-    if repo.get_user_by_username(username) or username in _get_hardcoded_users():
+    if repo.get_user_by_username(username) or _is_reserved_username(username):
         raise HTTPException(status_code=400, detail="Username already exists")
 
     if repo.get_user_by_email(email):
@@ -1001,6 +1069,7 @@ def reset_password(request: ResetPasswordRequest, db=Depends(get_db)):
         update_fields["is_active"] = True
     if getattr(user, "auth_provider", "local") == "google":
         update_fields["auth_provider"] = "local,google"
+        update_fields["google_onboarded"] = True
 
     repo.update_user(user.id, **update_fields)
     repo.mark_auth_token_used(token_row)

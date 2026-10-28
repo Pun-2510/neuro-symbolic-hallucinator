@@ -489,7 +489,14 @@ class Repository:
     # -- Users --
 
     def get_user_by_username(self, username: str) -> User | None:
-        return self.session.query(User).filter(User.username == username).first()
+        normalized = username.strip().lower()
+        if not normalized:
+            return None
+        return (
+            self.session.query(User)
+            .filter(func.lower(User.username) == normalized)
+            .first()
+        )
 
     def get_user_by_email(self, email: str) -> User | None:
         normalized = email.strip().lower()
@@ -561,6 +568,7 @@ class Repository:
             google_id=google_id,
             auth_provider=auth_provider,
             username_customized=1 if username_customized else 0,
+            google_onboarded=1 if username_customized else 0,
         )
         self.session.add(user)
         self.session.flush()
@@ -589,6 +597,7 @@ class Repository:
                     "email_verified",
                     "cancel_at_period_end",
                     "username_customized",
+                    "google_onboarded",
                 )
                 and isinstance(value, bool)
             ):
