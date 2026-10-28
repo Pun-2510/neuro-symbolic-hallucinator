@@ -33,8 +33,13 @@ from integrity_checker.retrieval.arxiv_client import ArxivClient
 from integrity_checker.retrieval.base import BaseScholarClient
 from integrity_checker.retrieval.coreapi_client import CoreAPIClient
 from integrity_checker.retrieval.crossref_client import CrossrefClient
+from integrity_checker.retrieval.datacite_client import DataCiteClient
 from integrity_checker.retrieval.dblp_client import DBLPClient
+from integrity_checker.retrieval.doaj_client import DOAJClient
+from integrity_checker.retrieval.doi_ra_client import DoiRaClient
 from integrity_checker.retrieval.europepmc_client import EuropePMCClient
+from integrity_checker.retrieval.huggingface_client import HuggingFaceClient
+from integrity_checker.retrieval.ncbi_biorxiv_client import NcbiBiorxivClient
 from integrity_checker.retrieval.normalization import (
     author_key,
     author_keys,
@@ -43,11 +48,13 @@ from integrity_checker.retrieval.normalization import (
     normalize_doi,
     title_similarity,
 )
+from integrity_checker.retrieval.openaire_hal_client import OpenAIREHalClient
 from integrity_checker.retrieval.openalex_client import OpenAlexClient
 from integrity_checker.retrieval.openlibrary_client import OpenLibraryClient
 from integrity_checker.retrieval.rate_limiter import RateLimiter
 from integrity_checker.retrieval.semantic_scholar_client import SemanticScholarClient
 from integrity_checker.retrieval.serpapi_client import SerpApiClient
+from integrity_checker.retrieval.tech_standard_client import TechStandardClient
 
 if TYPE_CHECKING:
     from integrity_checker.database import LocalDatabase
@@ -674,6 +681,23 @@ _PERIODICAL_SIGNAL_RE = re.compile(
     re.IGNORECASE,
 )
 
+_THESIS_OR_REPO_SIGNAL_RE = re.compile(
+    r"\b(?:"
+    r"thesis|dissertation|luận\s+văn|luận\s+án|khóa\s+luận|đồ\s+án\s+tốt\s+nghiệp"
+    r"|master['’]?s\s+thesis|doctoral\s+dissertation|phd\s+thesis|working\s+paper|technical\s+report"
+    r"|hal-\d+|openaire|institutional\s+repository|archives-ouvertes\.fr"
+    r")\b",
+    re.IGNORECASE,
+)
+
+_OPEN_ACCESS_REGIONAL_RE = re.compile(
+    r"\b(?:"
+    r"doaj|open\s+access|tạp\s+chí\s+khoa\s+học|vietnam\s+journal|vnu\s+journal"
+    r"|tdtu|ton\s+duc\s+thang|ho\s+chi\s+minh\s+city|hanoi|southeast\s+asian|asian\s+journal"
+    r")\b",
+    re.IGNORECASE,
+)
+
 _WEB_RESOURCE_PATTERNS = [
     re.compile(
         r"^(Google|Microsoft|Amazon|Apple|Facebook|Meta|Twitter|GitHub|IBM|Intel|"
@@ -808,6 +832,13 @@ class RetrievalOrchestrator:
         arxiv: ArxivClient | None = None,
         openlibrary: OpenLibraryClient | None = None,
         europepmc: EuropePMCClient | None = None,
+        datacite: DataCiteClient | None = None,
+        doi_ra: DoiRaClient | None = None,
+        doaj: DOAJClient | None = None,
+        openaire_hal: OpenAIREHalClient | None = None,
+        ncbi_biorxiv: NcbiBiorxivClient | None = None,
+        huggingface: HuggingFaceClient | None = None,
+        tech_standard: TechStandardClient | None = None,
         semantic_scholar: SemanticScholarClient | None = None,
         coreapi: CoreAPIClient | None = None,
         serpapi: SerpApiClient | None = None,
@@ -828,12 +859,28 @@ class RetrievalOrchestrator:
         self.arxiv = arxiv or ArxivClient(contact_email=contact_email)
         self.openlibrary = openlibrary or OpenLibraryClient(contact_email=contact_email)
         self.europepmc = europepmc or EuropePMCClient(contact_email=contact_email)
+        self.datacite = datacite or DataCiteClient(contact_email=contact_email)
+        self.doi_ra = doi_ra or DoiRaClient(contact_email=contact_email)
+        self.doaj = doaj or DOAJClient(contact_email=contact_email)
+        self.openaire_hal = openaire_hal or OpenAIREHalClient(contact_email=contact_email)
+        self.ncbi_biorxiv = ncbi_biorxiv or NcbiBiorxivClient(contact_email=contact_email)
+        self.huggingface = huggingface or HuggingFaceClient(contact_email=contact_email)
+        self.tech_standard = tech_standard or TechStandardClient(contact_email=contact_email)
 
         # Legacy clients retained for backward compatibility when explicitly injected or enabled
         self._s2_explicit = semantic_scholar is not None
         self._coreapi_explicit = coreapi is not None
+        self._extended_clients_explicit = any(
+            c is not None
+            for c in (datacite, doi_ra, doaj, openaire_hal, ncbi_biorxiv, huggingface, tech_standard)
+        )
         self._new_clients_explicit = any(
             c is not None for c in (dblp, arxiv, openlibrary, europepmc)
+        ) or self._extended_clients_explicit
+        self._six_core_only_explicit_mode = (
+            any(c is not None for c in (crossref, openalex, dblp, arxiv, openlibrary, europepmc))
+            and not self._extended_clients_explicit
+            and not (self._s2_explicit or self._coreapi_explicit)
         )
         self._legacy_explicit_mode = (
             (self._s2_explicit or self._coreapi_explicit)
@@ -858,6 +905,7 @@ class RetrievalOrchestrator:
             else (link_validator is not None or (self.cache is None and env not in {"test", "testing"}))
         )
         self.link_validator = link_validator
+        self._last_archive_url: str | None = None
 
         # Rate limiters for all sources
         self._rate_limiters: dict[str, RateLimiter] = {
@@ -867,6 +915,13 @@ class RetrievalOrchestrator:
             self.arxiv.name: RateLimiter(getattr(settings.rate_limits, "arxiv_per_sec", 2.0)),
             self.openlibrary.name: RateLimiter(getattr(settings.rate_limits, "openlibrary_per_sec", 3.0)),
             self.europepmc.name: RateLimiter(getattr(settings.rate_limits, "europepmc_per_sec", 5.0)),
+            self.datacite.name: RateLimiter(getattr(settings.rate_limits, "datacite_per_sec", 5.0)),
+            self.doi_ra.name: RateLimiter(getattr(settings.rate_limits, "doi_ra_per_sec", 10.0)),
+            self.doaj.name: RateLimiter(getattr(settings.rate_limits, "doaj_per_sec", 2.0)),
+            self.openaire_hal.name: RateLimiter(getattr(settings.rate_limits, "openaire_hal_per_sec", 3.0)),
+            self.ncbi_biorxiv.name: RateLimiter(getattr(settings.rate_limits, "ncbi_biorxiv_per_sec", 3.0)),
+            self.huggingface.name: RateLimiter(getattr(settings.rate_limits, "huggingface_per_sec", 5.0)),
+            self.tech_standard.name: RateLimiter(getattr(settings.rate_limits, "tech_standard_per_sec", 5.0)),
             self.semantic_scholar.name: RateLimiter(settings.rate_limits.semantic_scholar_per_sec),
         }
         if settings.sources.coreapi or self._coreapi_explicit:
@@ -910,6 +965,21 @@ class RetrievalOrchestrator:
             result.append(self.openlibrary)
         if getattr(src_cfg, "europepmc", True) and self.europepmc is not None:
             result.append(self.europepmc)
+        if not self._six_core_only_explicit_mode:
+            if getattr(src_cfg, "datacite", True) and self.datacite is not None:
+                result.append(self.datacite)
+            if getattr(src_cfg, "doi_ra", True) and self.doi_ra is not None:
+                result.append(self.doi_ra)
+            if getattr(src_cfg, "doaj", True) and self.doaj is not None:
+                result.append(self.doaj)
+            if getattr(src_cfg, "openaire_hal", True) and self.openaire_hal is not None:
+                result.append(self.openaire_hal)
+            if getattr(src_cfg, "ncbi_biorxiv", True) and self.ncbi_biorxiv is not None:
+                result.append(self.ncbi_biorxiv)
+            if getattr(src_cfg, "huggingface", True) and self.huggingface is not None:
+                result.append(self.huggingface)
+            if getattr(src_cfg, "tech_standard", True) and self.tech_standard is not None:
+                result.append(self.tech_standard)
         if (src_cfg.semantic_scholar or self._s2_explicit) and self.semantic_scholar is not None:
             result.append(self.semantic_scholar)
         if (src_cfg.coreapi or self._coreapi_explicit) and self.coreapi is not None:
@@ -961,6 +1031,8 @@ class RetrievalOrchestrator:
     def classify_citation_domain(cls, citation: Citation) -> dict[str, bool]:
         """Classify citation signals to route to the right specialist APIs without blind fan-out."""
         is_arxiv_doi = cls.is_arxiv_doi(citation.doi)
+        is_datacite_doi = DataCiteClient.is_datacite_doi(citation.doi) and not is_arxiv_doi
+        is_biorxiv_doi = NcbiBiorxivClient.is_biorxiv_doi(citation.doi)
         arxiv_id = ArxivClient.extract_arxiv_id(citation)
         combined_text = " ".join(
             part
@@ -977,14 +1049,28 @@ class RetrievalOrchestrator:
             or arxiv_id
             or re.search(r"\barxiv\b|\bcorr\b", combined_text, re.IGNORECASE)
         )
+        is_rfc_or_pypi = bool(
+            TechStandardClient.extract_rfc_number(citation) is not None
+            or TechStandardClient.extract_pypi_package(citation)
+        )
+        hf_kind, _ = HuggingFaceClient.extract_hf_target(citation)
+        is_huggingface = bool(hf_kind is not None)
+        is_thesis_or_repo = bool(_THESIS_OR_REPO_SIGNAL_RE.search(combined_text))
+        is_open_access_regional = bool(_OPEN_ACCESS_REGIONAL_RE.search(combined_text))
         isbn = OpenLibraryClient.extract_isbn(citation)
-        is_book = bool(isbn or _BOOK_SIGNAL_RE.search(combined_text)) and not is_arxiv
-        is_biomed = bool(_BIOMED_SIGNAL_RE.search(combined_text))
+        is_book = bool(isbn or _BOOK_SIGNAL_RE.search(combined_text)) and not is_arxiv and not is_thesis_or_repo
+        is_biomed = bool(is_biorxiv_doi or _BIOMED_SIGNAL_RE.search(combined_text))
         is_cs_ai = bool(_CS_AI_SIGNAL_RE.search(combined_text))
         is_periodical = bool(_PERIODICAL_SIGNAL_RE.search(combined_text)) and not is_book
         return {
             "is_arxiv_doi": is_arxiv_doi,
+            "is_datacite_doi": is_datacite_doi,
+            "is_biorxiv_doi": is_biorxiv_doi,
             "is_arxiv": is_arxiv,
+            "is_rfc_or_pypi": is_rfc_or_pypi,
+            "is_huggingface": is_huggingface,
+            "is_thesis_or_repo": is_thesis_or_repo,
+            "is_open_access_regional": is_open_access_regional,
             "is_book": is_book,
             "is_biomed": is_biomed,
             "is_cs_ai": is_cs_ai,
@@ -1028,6 +1114,21 @@ class RetrievalOrchestrator:
             enabled["openlibrary"] = self.openlibrary
         if getattr(src_cfg, "europepmc", True) and self.europepmc is not None:
             enabled["europepmc"] = self.europepmc
+        if not self._six_core_only_explicit_mode:
+            if getattr(src_cfg, "datacite", True) and self.datacite is not None:
+                enabled["datacite"] = self.datacite
+            if getattr(src_cfg, "doi_ra", True) and self.doi_ra is not None:
+                enabled["doi_ra"] = self.doi_ra
+            if getattr(src_cfg, "doaj", True) and self.doaj is not None:
+                enabled["doaj"] = self.doaj
+            if getattr(src_cfg, "openaire_hal", True) and self.openaire_hal is not None:
+                enabled["openaire_hal"] = self.openaire_hal
+            if getattr(src_cfg, "ncbi_biorxiv", True) and self.ncbi_biorxiv is not None:
+                enabled["ncbi_biorxiv"] = self.ncbi_biorxiv
+            if getattr(src_cfg, "huggingface", True) and self.huggingface is not None:
+                enabled["huggingface"] = self.huggingface
+            if getattr(src_cfg, "tech_standard", True) and self.tech_standard is not None:
+                enabled["tech_standard"] = self.tech_standard
         if (src_cfg.semantic_scholar or self._s2_explicit) and self.semantic_scholar is not None:
             enabled["semantic_scholar"] = self.semantic_scholar
         if (src_cfg.coreapi or self._coreapi_explicit) and self.coreapi is not None:
@@ -1038,17 +1139,41 @@ class RetrievalOrchestrator:
 
         signals = self.classify_citation_domain(citation)
 
+        # 0a. Technical Standard (IETF RFC / PyPI package)
+        if signals.get("is_rfc_or_pypi") and "tech_standard" in enabled:
+            tier1 = _pick(["tech_standard", "crossref", "openalex"])
+            tier2 = _pick(["dblp"])
+            return tier1, tier2
+
+        # 0b. Hugging Face Model / Dataset / Paper
+        if signals.get("is_huggingface") and "huggingface" in enabled:
+            tier1 = _pick(["huggingface", "arxiv", "dblp", "openalex"])
+            tier2 = _pick(["datacite", "crossref"])
+            return tier1, tier2
+
         # 1. Explicit arXiv DOI (10.48550/arXiv.*): Crossref DOI endpoint returns 404,
-        # so route to arXiv, DBLP, OpenAlex (which falls back to title search), and S2/CORE.
+        # so route to arXiv, DataCite, DBLP, OpenAlex, and S2/CORE.
         if signals["is_arxiv_doi"]:
-            tier1 = _pick(["arxiv", "dblp", "openalex", "semantic_scholar", "coreapi"])
-            tier2 = []
+            tier1 = _pick(["arxiv", "datacite", "dblp", "openalex", "semantic_scholar", "coreapi"])
+            tier2 = _pick(["huggingface"])
+            return tier1, tier2
+
+        # 1b. Explicit DataCite DOI (Zenodo, Figshare, Dryad, OSF, Dataverse)
+        if signals.get("is_datacite_doi") and "datacite" in enabled:
+            tier1 = _pick(["datacite", "openalex", "crossref"])
+            tier2 = _pick(["openaire_hal", "dblp", "arxiv"])
+            return tier1, tier2
+
+        # 1c. Explicit bioRxiv / medRxiv DOI (10.1101/*)
+        if signals.get("is_biorxiv_doi") and "ncbi_biorxiv" in enabled:
+            tier1 = _pick(["ncbi_biorxiv", "europepmc", "openalex"])
+            tier2 = _pick(["crossref"])
             return tier1, tier2
 
         # 2. Preprint / arXiv citation (by arXiv ID in URL/text or venue="arXiv")
         if signals["is_arxiv"]:
             tier1 = _pick(["arxiv", "dblp", "openalex"])
-            tier2 = _pick(["crossref"])
+            tier2 = _pick(["datacite", "huggingface", "crossref"])
             return tier1, tier2
 
         # 3. Book / Textbook / Edition / ISBN citation
@@ -1057,29 +1182,43 @@ class RetrievalOrchestrator:
             tier2 = _pick(["dblp"]) if signals["is_cs_ai"] else []
             return tier1, tier2
 
+        # 3b. Thesis / Dissertation / Institutional Repository (OpenAIRE / HAL)
+        if signals.get("is_thesis_or_repo") and "openaire_hal" in enabled:
+            tier1 = _pick(["openaire_hal", "openalex", "crossref"])
+            tier2 = _pick(["datacite", "doaj", "dblp"])
+            return tier1, tier2
+
         # 4. Biomedical / Psychology / Clinical / Public Health citation
         if signals["is_biomed"]:
             tier1 = _pick(["crossref", "openalex", "europepmc"])
-            tier2_names = ["dblp", "arxiv"] if signals["is_cs_ai"] else (["openlibrary"] if not citation.doi else [])
+            tier2_names = ["ncbi_biorxiv", "doaj"]
+            if signals["is_cs_ai"]:
+                tier2_names.extend(["dblp", "arxiv"])
+            elif not citation.doi:
+                tier2_names.append("openlibrary")
             return tier1, _pick(tier2_names)
 
         # 5. Computer Science / AI / ML / NLP / Software Engineering citation
         if signals["is_cs_ai"]:
             tier1 = _pick(["crossref", "openalex", "dblp"])
-            t2_names = ["arxiv"]
+            t2_names = ["arxiv", "datacite", "openaire_hal"]
             if not citation.doi and not signals.get("is_periodical", False):
                 t2_names.append("openlibrary")
             tier2 = _pick(t2_names)
             return tier1, tier2
 
-        # 6. General academic citation: start lean with Crossref + OpenAlex, escalate only if needed
-        tier1 = _pick(["crossref", "openalex"])
+        # 6. General academic citation: start lean with Crossref + OpenAlex (+ DOAJ if regional OA)
+        tier1 = _pick(
+            ["crossref", "openalex", "doaj"]
+            if signals.get("is_open_access_regional")
+            else ["crossref", "openalex"]
+        )
         if citation.doi:
-            tier2 = _pick(["europepmc", "dblp"])
+            tier2 = _pick(["datacite", "doaj", "europepmc", "dblp"])
         elif signals.get("is_periodical", False):
-            tier2 = _pick(["dblp", "arxiv", "europepmc"])
+            tier2 = _pick(["doaj", "dblp", "arxiv", "europepmc", "openaire_hal"])
         else:
-            tier2 = _pick(["dblp", "arxiv", "openlibrary", "europepmc"])
+            tier2 = _pick(["doaj", "openaire_hal", "dblp", "arxiv", "openlibrary", "europepmc"])
         return tier1, tier2
 
     @classmethod
@@ -1191,6 +1330,7 @@ class RetrievalOrchestrator:
 
     async def _validate_citation_url(self, citation: Citation) -> tuple[str | None, int | None]:
         """Validate citation.url via LinkValidator if present and enabled."""
+        self._last_archive_url = None
         if not citation.url and citation.raw_text:
             url_m = re.search(r"https?://\S+", citation.raw_text, re.IGNORECASE)
             if url_m:
@@ -1201,6 +1341,7 @@ class RetrievalOrchestrator:
 
         validator = self.link_validator or LinkValidator()
         link_res = await validator.validate_url(citation.url)
+        self._last_archive_url = getattr(link_res, "archive_url", None)
         return link_res.status.value, link_res.status_code
 
     async def _enrich_missing_abstract(
@@ -1253,7 +1394,19 @@ class RetrievalOrchestrator:
                 pool.append(c)
         else:
             enabled_clients = {c.name: c for c in self.clients()}
-            for name in ("openalex", "arxiv", "europepmc", "openlibrary", "semantic_scholar", "coreapi"):
+            for name in (
+                "openalex",
+                "datacite",
+                "arxiv",
+                "europepmc",
+                "ncbi_biorxiv",
+                "doaj",
+                "openaire_hal",
+                "huggingface",
+                "openlibrary",
+                "semantic_scholar",
+                "coreapi",
+            ):
                 c = enabled_clients.get(name)
                 if c is None or c.name in already_queried:
                     continue
@@ -1261,7 +1414,13 @@ class RetrievalOrchestrator:
                     continue
                 if c.name == "arxiv" and signals.get("is_book"):
                     continue
-                if c.name == "europepmc" and not (signals.get("is_biomed") or citation.doi or ref_doi):
+                if c.name in ("europepmc", "ncbi_biorxiv") and not (
+                    signals.get("is_biomed") or citation.doi or ref_doi
+                ):
+                    continue
+                if c.name == "huggingface" and not (
+                    signals.get("is_huggingface") or signals.get("is_arxiv") or signals.get("is_cs_ai")
+                ):
                     continue
                 pool.append(c)
 
@@ -1335,8 +1494,10 @@ class RetrievalOrchestrator:
             3. Stage 1 (Tier 1): Query primary + domain-matched APIs (2–3 sources)
             4. Stage 2 (Tier 2): Escalate to specialist APIs (arXiv, OpenLibrary, EuropePMC, DBLP)
                ONLY if Tier 1 did not achieve strong year-consistent consensus (or enrich missing abstract)
-            5. Stage 3 (Tier 3): SerpApi Google Scholar fallback if 0 candidates found
-            6. Deduplicate, filter low-quality noise, and sync verified papers to local DB
+            5. Stage 2.5 (arXiv Fallback): If 0 candidates found across Tier 1 + Tier 2 and arXiv was not yet
+               queried, always try arXiv one last time before SerpApi
+            6. Stage 3 (Tier 3): SerpApi Google Scholar fallback if 0 candidates found
+            7. Deduplicate, filter low-quality noise, and sync verified papers to local DB
         """
         # ===== 1. Check local database first =====
         if self._local_db is not None:
@@ -1365,6 +1526,7 @@ class RetrievalOrchestrator:
                 url_status, url_status_code = await self._validate_citation_url(citation)
                 local_result.url_status = url_status
                 local_result.url_status_code = url_status_code
+                local_result.archive_url = self._last_archive_url
                 return local_result
             else:
                 logger.debug(f"Local DB MISS: {citation.raw_text[:50]}")
@@ -1378,24 +1540,46 @@ class RetrievalOrchestrator:
             url_status, url_status_code = await self._validate_citation_url(citation)
             known_result.url_status = url_status
             known_result.url_status_code = url_status_code
+            known_result.archive_url = self._last_archive_url
             return known_result
 
-        # ===== 2.5. Skip scholarly APIs for non-academic web/software/legal resources =====
+        # ===== 2.5. Skip general scholarly APIs for non-academic web/software/legal resources =====
+        # If the resource is a Hugging Face model/dataset or IETF RFC/PyPI package, allow the
+        # dedicated specialist client to verify its metadata before returning.
         if not self._legacy_explicit_mode and self.is_web_or_legal_resource(citation):
-            logger.debug(
-                f"Skipping external scholarly APIs for web/software/legal resource: {citation.raw_text[:55]}"
-            )
-            url_status, url_status_code = await self._validate_citation_url(citation)
-            return SourceResult(
-                citation_raw=citation.raw_text,
-                candidates=[],
-                sources_queried=[],
-                sources_succeeded=[],
-                sources_failed={},
-                api_exhausted=False,
-                url_status=url_status,
-                url_status_code=url_status_code,
-            )
+            signals_early = self.classify_citation_domain(citation)
+            specialist_clients: list[BaseScholarClient] = []
+            if not self._six_core_only_explicit_mode:
+                src_cfg = get_settings().retrieval.sources
+                if (
+                    signals_early.get("is_rfc_or_pypi")
+                    and getattr(src_cfg, "tech_standard", True)
+                    and self.tech_standard is not None
+                ):
+                    specialist_clients.append(self.tech_standard)
+                elif (
+                    signals_early.get("is_huggingface")
+                    and getattr(src_cfg, "huggingface", True)
+                    and self.huggingface is not None
+                ):
+                    specialist_clients.append(self.huggingface)
+
+            if not specialist_clients:
+                logger.debug(
+                    f"Skipping external scholarly APIs for web/software/legal resource: {citation.raw_text[:55]}"
+                )
+                url_status, url_status_code = await self._validate_citation_url(citation)
+                return SourceResult(
+                    citation_raw=citation.raw_text,
+                    candidates=[],
+                    sources_queried=[],
+                    sources_succeeded=[],
+                    sources_failed={},
+                    api_exhausted=False,
+                    url_status=url_status,
+                    url_status_code=url_status_code,
+                    archive_url=self._last_archive_url,
+                )
 
         # ===== 3. Smart Multi-Stage External API Retrieval =====
         tier1_clients, tier2_clients = self._plan_retrieval_tiers(citation)
@@ -1436,6 +1620,42 @@ class RetrievalOrchestrator:
             )
             tier2_results = await self._execute_client_batch(tier2_clients, citation)
             _collect_batch(tier2_clients, tier2_results)
+
+        # ===== 3.5. arXiv Fallback (trước SerpApi) =====
+        # Khi mọi API ở Tier 1 + Tier 2 đều không tìm thấy (0 found) và arXiv chưa được gọi,
+        # luôn thử qua arXiv một lượt cuối trước khi gọi SerpApi.
+        if (
+            not self._legacy_explicit_mode
+            and not any(c.found for c in valid)
+            and self.arxiv is not None
+            and getattr(get_settings().retrieval.sources, "arxiv", True)
+            and self.arxiv.name not in sources_queried
+        ):
+            logger.debug(
+                f"Tier 1+2 found 0 candidates for '{(citation.title or citation.raw_text)[:45]}' "
+                f"-> trying arXiv fallback before SerpApi"
+            )
+            arxiv_results = await self._execute_client_batch([self.arxiv], citation)
+            _collect_batch([self.arxiv], arxiv_results)
+
+        # ===== 3.6. Global DOI RA / CSL-JSON Fallback (trước SerpApi) =====
+        # Khi citation có DOI mà các kho học thuật trên chưa tìm thấy, kiểm tra trực tiếp
+        # hệ thống Handle/DOI toàn cầu (JaLC, mEDRA, CNKI, KISTI, DataCite...) qua doi.org/doiRA
+        if (
+            not self._legacy_explicit_mode
+            and not self._six_core_only_explicit_mode
+            and citation.doi
+            and not any(c.found for c in valid)
+            and self.doi_ra is not None
+            and getattr(get_settings().retrieval.sources, "doi_ra", True)
+            and self.doi_ra.name not in sources_queried
+        ):
+            logger.debug(
+                f"Tier 1+2+arXiv found 0 candidates for DOI '{citation.doi}' "
+                f"-> checking global DOI Registration Agency (doi_ra)"
+            )
+            doi_ra_results = await self._execute_client_batch([self.doi_ra], citation)
+            _collect_batch([self.doi_ra], doi_ra_results)
 
         # Enrich missing abstract across remaining abstract-capable APIs when metadata matched without abstract
         if any(c.found for c in valid) and not any(c.found and c.abstract and c.abstract.strip() for c in valid):
@@ -1505,6 +1725,7 @@ class RetrievalOrchestrator:
                 api_exhausted=not has_clean_search_response,
                 url_status=url_status,
                 url_status_code=url_status_code,
+                archive_url=self._last_archive_url,
             )
 
         # ===== 4. Quality filtering - remove garbage/unrelated candidates =====
@@ -1534,6 +1755,12 @@ class RetrievalOrchestrator:
                     ),
                 )
 
+        is_retracted = any(
+            c.found
+            and c.external_ids
+            and str(c.external_ids.get("is_retracted", "")).lower() == "true"
+            for c in quality_candidates
+        )
         return SourceResult(
             citation_raw=citation.raw_text,
             candidates=quality_candidates,
@@ -1542,6 +1769,8 @@ class RetrievalOrchestrator:
             sources_failed=failed,
             url_status=url_status,
             url_status_code=url_status_code,
+            archive_url=self._last_archive_url,
+            is_retracted=is_retracted,
         )
 
     def _resolve_known_abstract(self, citation: Citation, paper_abstract: str | None) -> str | None:

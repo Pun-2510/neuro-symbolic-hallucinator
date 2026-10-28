@@ -411,6 +411,10 @@ class OpenAlexClient(BaseScholarClient):
         if OpenAlexClient._is_boilerplate_citation_abstract(abstract):
             abstract = None
 
+        ext_ids: dict[str, str] = {"doi": doi} if doi else {}
+        if bool(work.get("is_retracted", False)):
+            ext_ids["is_retracted"] = "true"
+
         return SourceCandidate(
             source_name="openalex",
             doi=doi,
@@ -420,5 +424,5 @@ class OpenAlexClient(BaseScholarClient):
             venue=venue,
             url=url,
             abstract=abstract,
-            external_ids={"doi": doi} if doi else {},
+            external_ids=ext_ids,
         )

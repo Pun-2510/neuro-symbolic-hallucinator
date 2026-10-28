@@ -369,6 +369,35 @@ class CrossrefClient(BaseScholarClient):
             if cleaned_abs:
                 abstract = cleaned_abs
 
+        ext_ids: dict[str, str] = {"doi": doi.lower()} if doi else {}
+        # Detect Retraction Watch / Publisher retraction metadata
+        is_retracted = False
+        retraction_doi: str | None = None
+        relation = message.get("relation") or {}
+        if isinstance(relation, dict):
+            retracted_by = relation.get("is-retracted-by") or []
+            if isinstance(retracted_by, list) and retracted_by:
+                is_retracted = True
+                first_rel = retracted_by[0]
+                if isinstance(first_rel, dict) and first_rel.get("id"):
+                    retraction_doi = str(first_rel["id"]).lower()
+        for update_field in ("update-to", "updated-by"):
+            updates = message.get(update_field) or []
+            if isinstance(updates, list):
+                for upd in updates:
+                    if isinstance(upd, dict) and str(upd.get("type", "")).lower() in (
+                        "retraction",
+                        "withdrawal",
+                        "removal",
+                    ):
+                        is_retracted = True
+                        if upd.get("DOI") and not retraction_doi:
+                            retraction_doi = str(upd["DOI"]).lower()
+        if is_retracted:
+            ext_ids["is_retracted"] = "true"
+            if retraction_doi:
+                ext_ids["retraction_doi"] = retraction_doi
+
         return SourceCandidate(
             source_name="crossref",
             doi=doi.lower() if doi else None,
@@ -378,5 +407,5 @@ class CrossrefClient(BaseScholarClient):
             venue=venue,
             url=url,
             abstract=abstract,
-            external_ids={"doi": doi.lower()} if doi else {},
+            external_ids=ext_ids,
         )

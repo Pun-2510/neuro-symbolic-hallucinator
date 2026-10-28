@@ -270,6 +270,14 @@ class SourceToggleConfig(BaseModel):
     arxiv: bool = True
     openlibrary: bool = True
     europepmc: bool = True
+    datacite: bool = True
+    doi_ra: bool = True
+    doaj: bool = True
+    openaire_hal: bool = True
+    ncbi_biorxiv: bool = True
+    huggingface: bool = True
+    tech_standard: bool = True
+    wayback_fallback: bool = True
     serpapi: bool = True  # Fallback khi các API free thất bại
     semantic_scholar: bool = False  # Replaced by DBLP/arXiv/OpenLibrary/EuropePMC
     coreapi: bool = False  # Replaced by DBLP/arXiv/OpenLibrary/EuropePMC
@@ -288,6 +296,20 @@ class RateLimitsConfig(BaseModel):
     openlibrary_per_sec: float = 3.0
     # Europe PMC / PubMed: biomedical & psychology API (5 req/s)
     europepmc_per_sec: float = 5.0
+    # DataCite: DOI & dataset/preprint metadata API (5 req/s)
+    datacite_per_sec: float = 5.0
+    # DOI Registration Agency & CSL-JSON negotiation (10 req/s)
+    doi_ra_per_sec: float = 10.0
+    # DOAJ: Open Access Journals API (2 req/s)
+    doaj_per_sec: float = 2.0
+    # OpenAIRE + HAL Open Science API (3 req/s)
+    openaire_hal_per_sec: float = 3.0
+    # NCBI Entrez E-Utilities + bioRxiv/medRxiv API (3 req/s without key)
+    ncbi_biorxiv_per_sec: float = 3.0
+    # Hugging Face Hub Models/Datasets/Papers API (5 req/s)
+    huggingface_per_sec: float = 5.0
+    # IETF Datatracker RFC & PyPI JSON API (5 req/s)
+    tech_standard_per_sec: float = 5.0
     # SerpApi: conservative fallback (rate limit depends on subscription)
     serpapi_per_sec: float = 1.0
     # Legacy sources (disabled by default)

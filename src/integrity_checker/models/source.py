@@ -79,6 +79,17 @@ class SourceResult:
     api_exhausted: bool = False
     url_status: Optional[str] = None
     url_status_code: Optional[int] = None
+    archive_url: Optional[str] = None
+    is_retracted: bool = False
+
+    def has_retracted_candidate(self) -> bool:
+        """True if this result or any found candidate is marked as retracted."""
+        if self.is_retracted:
+            return True
+        for c in self.candidates:
+            if c.found and c.external_ids and str(c.external_ids.get("is_retracted", "")).lower() == "true":
+                return True
+        return False
 
     def best_candidate(self) -> Optional[SourceCandidate]:
         """Trả về candidate tốt nhất (highest confidence hoặc được chọn bởi FeatureCalculator) trong số found=True."""

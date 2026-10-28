@@ -799,6 +799,24 @@ class SymbolicRules:
             if (
                 citation_url
                 and not (citation_doi and str(citation_doi).strip())
+                and url_status == "archived_alive"
+            ):
+                archive_url = getattr(source, "archive_url", None) or "https://web.archive.org"
+                return RuleOutcome(
+                    label=ValidationLabel.RESOURCE,
+                    confidence=0.90,
+                    reasoning=(
+                        f"Citation URL '{citation_url}' is no longer live (link rot), but a historical "
+                        f"snapshot was verified via Internet Archive Wayback Machine ({archive_url})."
+                    ),
+                    triggered_rules=["R-WAYBACK-ARCHIVED", "R-URL-RESOURCE"],
+                    mismatched_fields=[],
+                    style_penalty=0.0,
+                )
+
+            if (
+                citation_url
+                and not (citation_doi and str(citation_doi).strip())
                 and url_status in ("alive", "restricted_alive")
             ):
                 status_code_str = f"HTTP {url_status_code}" if url_status_code else "HTTP 200 OK"
@@ -961,6 +979,8 @@ class SymbolicRules:
             and _has_live_source(source, verified_sources)
         ):
             triggered_rules.append("R-DOI-TITLE-AUTHOR")
+            if "doi_ra" in source.sources_succeeded or (best and best.source_name == "doi_ra"):
+                triggered_rules.append("R-GLOBAL-DOI-RA-VERIFIED")
             return RuleOutcome(
                 label=ValidationLabel.VERIFIED,
                 confidence=max(
@@ -972,6 +992,72 @@ class SymbolicRules:
                 reasoning=(
                     f"Exact DOI match confirmed, title similarity={title_sim:.2f}, "
                     f"author overlap={author_sim:.2f}.{provenance_note}"
+                ),
+                triggered_rules=triggered_rules,
+                mismatched_fields=[],
+                style_penalty=style_penalty,
+            )
+
+        # --- Rule 1a-ext: Technical standard (IETF RFC / PyPI) or Hugging Face Hub verification ---
+        if best and best.source_name == "tech_standard" and features.title_sim_fuzzy >= 0.80:
+            if year_dist <= self.year_tolerance or year_dist >= 900:
+                triggered_rules.append("R-RFC-VERIFIED")
+                return RuleOutcome(
+                    label=ValidationLabel.VERIFIED,
+                    confidence=max(0.0, 0.92 - style_penalty - provenance_penalty),
+                    reasoning=(
+                        f"Verified technical standard / software package via {best.venue or 'IETF RFC / PyPI'} "
+                        f"(title similarity={features.title_sim_fuzzy:.2f}).{provenance_note}"
+                    ),
+                    triggered_rules=triggered_rules,
+                    mismatched_fields=[],
+                    style_penalty=style_penalty,
+                )
+            else:
+                mismatched.append("year")
+                triggered_rules.extend(["R-RFC-VERIFIED", "R-SINGLE-SOURCE-PARTIAL"])
+                return RuleOutcome(
+                    label=ValidationLabel.METADATA_ERROR,
+                    confidence=max(0.0, 0.75 - style_penalty),
+                    reasoning=(
+                        f"Technical standard '{best.title}' found in {best.venue or 'IETF / PyPI'}, "
+                        f"but cited publication year differs from official release year ({best.year})."
+                    ),
+                    triggered_rules=triggered_rules,
+                    mismatched_fields=mismatched,
+                    style_penalty=style_penalty,
+                )
+
+        if best and best.source_name == "huggingface" and features.title_sim_fuzzy >= 0.85:
+            if year_dist <= self.year_tolerance or year_dist >= 900:
+                triggered_rules.append("R-HF-VERIFIED")
+                return RuleOutcome(
+                    label=ValidationLabel.VERIFIED,
+                    confidence=max(0.0, 0.90 - style_penalty - provenance_penalty),
+                    reasoning=(
+                        f"Verified AI model/dataset/paper via Hugging Face Hub "
+                        f"(title similarity={features.title_sim_fuzzy:.2f}).{provenance_note}"
+                    ),
+                    triggered_rules=triggered_rules,
+                    mismatched_fields=[],
+                    style_penalty=style_penalty,
+                )
+
+        if (
+            best
+            and best.source_name == "doi_ra"
+            and doi_match
+            and features.title_sim_fuzzy >= 0.85
+            and (year_dist <= self.year_tolerance or year_dist >= 900)
+        ):
+            triggered_rules.append("R-GLOBAL-DOI-RA-VERIFIED")
+            ra_agency = (best.external_ids or {}).get("doi_ra", "Global DOI RA")
+            return RuleOutcome(
+                label=ValidationLabel.VERIFIED,
+                confidence=max(0.0, 0.88 - style_penalty - provenance_penalty),
+                reasoning=(
+                    f"Exact DOI verified via Global DOI Registration Agency ({ra_agency}) CSL-JSON "
+                    f"(title similarity={features.title_sim_fuzzy:.2f}).{provenance_note}"
                 ),
                 triggered_rules=triggered_rules,
                 mismatched_fields=[],
@@ -1419,7 +1505,26 @@ class SymbolicRules:
                 style_penalty=style_penalty,
             )
 
-        # --- Rule 4e: Reachable URL resource (HTTP 200 OK) with no DOI and no scholarly match → RESOURCE ---
+        # --- Rule 4e: Reachable or Wayback-archived URL resource with no DOI and no scholarly match → RESOURCE ---
+        if (
+            citation_url
+            and not (citation_doi and str(citation_doi).strip())
+            and url_status == "archived_alive"
+            and not is_known_author
+        ):
+            archive_url = getattr(source, "archive_url", None) or "https://web.archive.org"
+            return RuleOutcome(
+                label=ValidationLabel.RESOURCE,
+                confidence=0.90,
+                reasoning=(
+                    f"Citation URL '{citation_url}' experienced link rot, but an authentic snapshot "
+                    f"was verified on Internet Archive Wayback Machine ({archive_url})."
+                ),
+                triggered_rules=["R-WAYBACK-ARCHIVED", "R-URL-RESOURCE"],
+                mismatched_fields=[],
+                style_penalty=0.0,
+            )
+
         if (
             citation_url
             and not (citation_doi and str(citation_doi).strip())

@@ -56,6 +56,9 @@ _ARXIV_ID_PATTERNS = [
 _STOPWORDS = frozenset({
     "the", "and", "for", "with", "from", "into", "using", "via", "over",
     "under", "towards", "toward", "through", "based", "between", "about",
+    "not", "andnot", "are", "was", "were", "can", "how", "what", "when",
+    "where", "which", "who", "why", "will", "this", "that", "these", "those",
+    "their", "there", "then", "than", "our", "you", "your",
 })
 
 _ARXIV_LOOP_SEMS: dict[int, asyncio.Semaphore] = {}
@@ -278,11 +281,18 @@ class ArxivClient(BaseScholarClient):
             queries.append(f'ti:"{cleaned_phrase}"')
 
         # Keyword + first author fallback (handles hyphenation / subtitle differences)
-        words = [
+        raw_words = [
             w
             for w in re.sub(r"[^\w\s]", " ", title).split()
             if len(w) >= 3 and w.lower() not in _STOPWORDS
         ]
+        seen_words: set[str] = set()
+        words: list[str] = []
+        for w in raw_words:
+            wl = w.lower()
+            if wl not in seen_words:
+                seen_words.add(wl)
+                words.append(w)
         if words:
             ti_terms = " AND ".join(f"ti:{w}" for w in words[:7])
             if citation.authors:

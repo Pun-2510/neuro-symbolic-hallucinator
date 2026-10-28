@@ -201,6 +201,23 @@ class TestArxivClient:
         assert res.title == "GPT-4 Technical Report"
         assert res.confidence >= 0.90
 
+    def test_arxiv_build_search_queries_filters_lucene_stopwords_and_deduplicates(self, client):
+        """ArxivClient._build_search_queries filters out 'not'/'andnot' and deduplicates tokens."""
+        cit = Citation(
+            raw_text="Matthew Peters et al. (2019). To Tune or Not to Tune? Adapting Pretrained Representations to Diverse Tasks.",
+            title="To Tune or Not to Tune? Adapting Pretrained Representations to Diverse Tasks",
+            authors=["Matthew Peters", "Sebastian Ruder", "Noah A. Smith"],
+            year="2019",
+        )
+        queries = client._build_search_queries(cit)
+        assert len(queries) == 2
+        # Keyword fallback query should not contain ti:Not or duplicate ti:Tune
+        kw_query = queries[1]
+        assert "ti:Not" not in kw_query
+        assert "ti:not" not in kw_query
+        assert kw_query.count("ti:Tune") == 1
+        assert "au:peters" in kw_query
+
 
 # ============================================================
 # 3. OpenLibraryClient Tests
@@ -581,4 +598,190 @@ class TestSmartDomainOrchestratorRouting:
         assert res.consensus_count() == 2
         m_arxiv.lookup.assert_not_called()
         m_epmc.lookup.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_zero_found_in_tier1_and_tier2_triggers_arxiv_fallback_before_serpapi(self):
+        """When Tier 1 + Tier 2 find 0 candidates for a citation where arXiv was not in Tier 1/2,
+        arXiv is queried as a last-resort fallback before SerpApi (and skips SerpApi on hit).
+        """
+        from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
+
+        m_crossref = self._make_mock_client("crossref", found=False, error="Crossref: no results for query")
+        m_openalex = self._make_mock_client("openalex", found=False, error="OpenAlex: no results for query")
+        m_dblp = self._make_mock_client("dblp", found=False, error="DBLP: no results for query")
+        m_epmc = self._make_mock_client("europepmc", found=False, error="EuropePMC: no results for query")
+        m_openlib = self._make_mock_client("openlibrary", found=False, error="OpenLibrary: no results for query")
+        m_arxiv = self._make_mock_client(
+            "arxiv",
+            found=True,
+            doi="10.48550/arxiv.2405.99999",
+            title="Clinical Quantitative Biology Preprint on Metabolic Pathways",
+            authors=["Alice Nguyen"],
+            year="2024",
+            abstract="Preprint abstract from arXiv.",
+            confidence=0.91,
+        )
+
+        orch = RetrievalOrchestrator(
+            crossref=m_crossref,
+            openalex=m_openalex,
+            dblp=m_dblp,
+            arxiv=m_arxiv,
+            openlibrary=m_openlib,
+            europepmc=m_epmc,
+            use_local_db=False,
+            enable_link_validation=False,
+        )
+
+        # Citation with a regular DOI (where _plan_retrieval_tiers only puts crossref+openalex in Tier 1
+        # and europepmc+dblp in Tier 2)
+        cit = Citation(
+            raw_text="Nguyen, A. (2024). Clinical Quantitative Biology Preprint on Metabolic Pathways. doi:10.1093/bio/2024.99",
+            title="Clinical Quantitative Biology Preprint on Metabolic Pathways",
+            authors=["Alice Nguyen"],
+            year="2024",
+            doi="10.1093/bio/2024.99",
+        )
+
+        with patch.object(orch, "_lookup_serpapi_fallback", return_value=None) as mock_serp:
+            res = await orch.retrieve(cit)
+
+        m_arxiv.lookup.assert_called_once()
+        mock_serp.assert_not_called()
+        assert "arxiv" in res.sources_queried
+        assert "arxiv" in res.sources_succeeded
+        assert res.best_candidate() is not None
+        assert res.best_candidate().source_name == "arxiv"
+
+    @pytest.mark.asyncio
+    async def test_zero_found_in_arxiv_fallback_proceeds_to_serpapi(self):
+        """When Tier 1 + Tier 2 AND the arXiv fallback all return 0 found, SerpApi fallback runs after arXiv."""
+        from integrity_checker.models.source import SourceCandidate
+        from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
+
+        m_crossref = self._make_mock_client("crossref", found=False, error="Crossref: no results for query")
+        m_openalex = self._make_mock_client("openalex", found=False, error="OpenAlex: no results for query")
+        m_dblp = self._make_mock_client("dblp", found=False, error="DBLP: no results for query")
+        m_epmc = self._make_mock_client("europepmc", found=False, error="EuropePMC: no results for query")
+        m_openlib = self._make_mock_client("openlibrary", found=False, error="OpenLibrary: no results for query")
+        m_arxiv = self._make_mock_client("arxiv", found=False, error="arXiv: no results for query")
+
+        orch = RetrievalOrchestrator(
+            crossref=m_crossref,
+            openalex=m_openalex,
+            dblp=m_dblp,
+            arxiv=m_arxiv,
+            openlibrary=m_openlib,
+            europepmc=m_epmc,
+            use_local_db=False,
+            enable_link_validation=False,
+        )
+
+        cit = Citation(
+            raw_text="Nguyen, A. (2024). Obscure Clinical Study Not On Free APIs. doi:10.1093/bio/2024.00",
+            title="Obscure Clinical Study Not On Free APIs",
+            authors=["Alice Nguyen"],
+            year="2024",
+            doi="10.1093/bio/2024.00",
+        )
+
+        serp_cand = SourceCandidate(
+            source_name="serpapi",
+            found=True,
+            title="Obscure Clinical Study Not On Free APIs",
+            authors=["Alice Nguyen"],
+            year="2024",
+            confidence=0.5,
+        )
+
+        with patch.object(orch, "_lookup_serpapi_fallback", return_value=serp_cand) as mock_serp:
+            res = await orch.retrieve(cit)
+
+        m_arxiv.lookup.assert_called_once()
+        mock_serp.assert_called_once()
+        assert res.sources_queried[-2:] == ["arxiv", "serpapi"]
+        assert "serpapi" in res.sources_succeeded
+
+    @pytest.mark.asyncio
+    async def test_arxiv_fallback_end_to_end_symbolic_rules_verdicts(self):
+        """End-to-end check: when Tier 1 + Tier 2 return 0 found and arXiv fallback runs,
+        NeuroSymbolicChecker assigns VERIFIED for exact match, METADATA_ERROR for year mismatch,
+        and SUSPECTED_HALLUCINATION when arXiv and SerpApi also return 0 found.
+        """
+        from integrity_checker.logic.neuro_symbolic_checker import NeuroSymbolicChecker
+        from integrity_checker.models.validation import ValidationLabel
+        from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
+
+        checker = NeuroSymbolicChecker()
+
+        # Case 1: Exact match via arXiv fallback -> VERIFIED
+        orch_exact = RetrievalOrchestrator(
+            crossref=self._make_mock_client("crossref", found=False, error="Crossref: no results for query"),
+            openalex=self._make_mock_client("openalex", found=False, error="OpenAlex: no results for query"),
+            dblp=self._make_mock_client("dblp", found=False, error="DBLP: no results for query"),
+            europepmc=self._make_mock_client("europepmc", found=False, error="EuropePMC: no results for query"),
+            openlibrary=self._make_mock_client("openlibrary", found=False, error="OpenLibrary: no results for query"),
+            arxiv=self._make_mock_client(
+                "arxiv",
+                found=True,
+                doi="10.48550/arxiv.2405.99999",
+                title="Clinical Quantitative Biology Preprint on Metabolic Pathways",
+                authors=["Alice Nguyen", "Bob Tran"],
+                year="2024",
+                abstract="Preprint abstract.",
+                confidence=0.92,
+            ),
+            use_local_db=False,
+            enable_link_validation=False,
+        )
+        cit_exact = Citation(
+            raw_text="Nguyen, A. et al. (2024). Clinical Quantitative Biology Preprint on Metabolic Pathways.",
+            title="Clinical Quantitative Biology Preprint on Metabolic Pathways",
+            authors=["Alice Nguyen"],
+            year="2024",
+        )
+        with patch.object(orch_exact, "_lookup_serpapi_fallback", return_value=None):
+            res_exact = await orch_exact.retrieve(cit_exact)
+        verdict_exact = checker.check(cit_exact, res_exact)
+        assert verdict_exact.label == ValidationLabel.VERIFIED
+        assert "R-SINGLE-SOURCE-VERIFIED" in verdict_exact.triggered_rules
+
+        # Case 2: Year mismatch (cited 2021 vs arXiv 2024) via arXiv fallback -> METADATA_ERROR
+        cit_year_err = Citation(
+            raw_text="Nguyen, A. et al. (2021). Clinical Quantitative Biology Preprint on Metabolic Pathways.",
+            title="Clinical Quantitative Biology Preprint on Metabolic Pathways",
+            authors=["Alice Nguyen"],
+            year="2021",
+        )
+        with patch.object(orch_exact, "_lookup_serpapi_fallback", return_value=None):
+            res_year_err = await orch_exact.retrieve(cit_year_err)
+        verdict_year_err = checker.check(cit_year_err, res_year_err)
+        assert verdict_year_err.label == ValidationLabel.METADATA_ERROR
+        assert "R-SINGLE-SOURCE-PARTIAL" in verdict_year_err.triggered_rules
+        assert "year" in verdict_year_err.mismatched_fields
+
+        # Case 3: 0 found across Tier 1 + Tier 2 + arXiv fallback (+ no SerpApi hit) -> SUSPECTED_HALLUCINATION
+        orch_none = RetrievalOrchestrator(
+            crossref=self._make_mock_client("crossref", found=False, error="Crossref: no results for query"),
+            openalex=self._make_mock_client("openalex", found=False, error="OpenAlex: no results for query"),
+            dblp=self._make_mock_client("dblp", found=False, error="DBLP: no results for query"),
+            europepmc=self._make_mock_client("europepmc", found=False, error="EuropePMC: no results for query"),
+            openlibrary=self._make_mock_client("openlibrary", found=False, error="OpenLibrary: no results for query"),
+            arxiv=self._make_mock_client("arxiv", found=False, error="arXiv: no results for query"),
+            use_local_db=False,
+            enable_link_validation=False,
+        )
+        cit_fake = Citation(
+            raw_text="Nguyen, A. (2024). Completely Fabricated Study on Quantum Metabolic Teleportation.",
+            title="Completely Fabricated Study on Quantum Metabolic Teleportation",
+            authors=["Alice Nguyen"],
+            year="2024",
+        )
+        with patch.object(orch_none, "_lookup_serpapi_fallback", return_value=None):
+            res_none = await orch_none.retrieve(cit_fake)
+        verdict_none = checker.check(cit_fake, res_none)
+        assert verdict_none.label == ValidationLabel.SUSPECTED_HALLUCINATION
+        assert "R-NO-SCHOLARLY-RECORD" in verdict_none.triggered_rules
+
+
 

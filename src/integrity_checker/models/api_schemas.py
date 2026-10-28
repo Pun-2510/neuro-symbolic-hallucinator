@@ -39,6 +39,8 @@ class VerdictSchema(BaseModel):
     features: Optional[dict] = None
     url_status: Optional[str] = None
     url_status_code: Optional[int] = None
+    archive_url: Optional[str] = None
+    is_retracted: bool = False
     citation_link: Optional[dict] = None
     mapping_status: str = "matched"
     mapping_confidence: float = 0.0

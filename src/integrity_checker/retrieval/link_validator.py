@@ -27,6 +27,7 @@ class LinkStatus(str, Enum):
 
     ALIVE = "alive"
     RESTRICTED_ALIVE = "restricted_alive"
+    ARCHIVED_ALIVE = "archived_alive"
     DEAD_LINK = "dead_link"
     FAKE_DOMAIN = "fake_domain"
     UNCHECKED = "unchecked"
@@ -41,21 +42,28 @@ class LinkCheckResult:
     status_code: Optional[int] = None
     final_url: Optional[str] = None
     error: Optional[str] = None
+    archive_url: Optional[str] = None
+    archive_timestamp: Optional[str] = None
 
     @property
     def is_valid(self) -> bool:
-        """True if the URL resolves to a live or paywall-protected scholarly page."""
-        return self.status in (LinkStatus.ALIVE, LinkStatus.RESTRICTED_ALIVE)
+        """True if the URL resolves to a live, paywall-protected, or Wayback-archived page."""
+        return self.status in (
+            LinkStatus.ALIVE,
+            LinkStatus.RESTRICTED_ALIVE,
+            LinkStatus.ARCHIVED_ALIVE,
+        )
 
     @property
     def is_broken(self) -> bool:
-        """True if the URL is confirmed dead (404/410/DNS failure) or a fake domain."""
+        """True if the URL is confirmed dead (404/410/DNS failure with no archive) or a fake domain."""
         return self.status in (LinkStatus.DEAD_LINK, LinkStatus.FAKE_DOMAIN)
 
 
 class LinkValidator:
-    """Asynchronous HTTP link validator with HEAD-then-GET fallback."""
+    """Asynchronous HTTP link validator with HEAD-then-GET and Wayback Machine fallback."""
 
+    WAYBACK_API_URL = "https://archive.org/wayback/available"
     DEFAULT_HEADERS = {
         "User-Agent": (
             "Mozilla/5.0 (compatible; EssayIntegrityChecker/1.0; "
@@ -64,11 +72,57 @@ class LinkValidator:
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
 
-    def __init__(self, timeout: float = 5.0) -> None:
+    def __init__(
+        self,
+        timeout: float = 5.0,
+        enable_wayback_fallback: bool | None = None,
+    ) -> None:
         self.timeout = timeout
+        if enable_wayback_fallback is None:
+            try:
+                from integrity_checker.config import get_settings
+
+                enable_wayback_fallback = bool(
+                    getattr(get_settings().retrieval.sources, "wayback_fallback", True)
+                )
+            except Exception:  # noqa: BLE001
+                enable_wayback_fallback = True
+        self.enable_wayback_fallback = enable_wayback_fallback
+
+    async def _check_wayback_machine(self, url: str) -> tuple[str | None, str | None]:
+        """Query Internet Archive Wayback Machine Availability API for a dead URL.
+
+        Distinguishes historical 'link rot' (URL genuinely existed in the past)
+        from AI-hallucinated URLs (never existed or archived).
+        """
+        if not self.enable_wayback_fallback or not url:
+            return None, None
+        lower_url = url.lower()
+        if ".invalid" in lower_url or "nonexistent" in lower_url:
+            return None, None
+        try:
+            async with httpx.AsyncClient(
+                timeout=min(self.timeout, 3.5),
+                follow_redirects=True,
+                headers={"User-Agent": self.DEFAULT_HEADERS["User-Agent"], "Accept": "application/json"},
+            ) as client:
+                resp = await client.get(self.WAYBACK_API_URL, params={"url": url})
+                if resp.status_code != 200:
+                    return None, None
+                data = resp.json()
+                closest = ((data or {}).get("archived_snapshots") or {}).get("closest") or {}
+                if (
+                    isinstance(closest, dict)
+                    and bool(closest.get("available"))
+                    and closest.get("url")
+                ):
+                    return str(closest["url"]), str(closest.get("timestamp") or "") or None
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"Wayback Machine fallback skipped for '{url}': {exc}")
+        return None, None
 
     async def validate_url(self, url: str | None) -> LinkCheckResult:
-        """Validate whether a citation URL is reachable and alive."""
+        """Validate whether a citation URL is reachable and alive (or archived on Wayback Machine)."""
         if not url or not str(url).strip():
             return LinkCheckResult(url="", status=LinkStatus.UNCHECKED)
 
@@ -100,7 +154,19 @@ class LinkValidator:
                         status_code = get_resp.status_code
                         final_url = str(get_resp.url)
 
-                return self._classify_status_code(clean_url, status_code, final_url)
+                result = self._classify_status_code(clean_url, status_code, final_url)
+                if result.status == LinkStatus.DEAD_LINK:
+                    wb_url, wb_ts = await self._check_wayback_machine(clean_url)
+                    if wb_url:
+                        return LinkCheckResult(
+                            url=clean_url,
+                            status=LinkStatus.ARCHIVED_ALIVE,
+                            status_code=status_code,
+                            final_url=final_url,
+                            archive_url=wb_url,
+                            archive_timestamp=wb_ts,
+                        )
+                return result
 
         except httpx.TimeoutException as exc:
             logger.debug(f"LinkValidator timeout for '{clean_url}': {exc}")
@@ -111,6 +177,15 @@ class LinkValidator:
             )
         except httpx.ConnectError as exc:
             logger.debug(f"LinkValidator connect/DNS error for '{clean_url}': {exc}")
+            wb_url, wb_ts = await self._check_wayback_machine(clean_url)
+            if wb_url:
+                return LinkCheckResult(
+                    url=clean_url,
+                    status=LinkStatus.ARCHIVED_ALIVE,
+                    error=f"Live host unreachable, recovered via Wayback Machine ({wb_ts or 'archived'})",
+                    archive_url=wb_url,
+                    archive_timestamp=wb_ts,
+                )
             return LinkCheckResult(
                 url=clean_url,
                 status=LinkStatus.DEAD_LINK,
