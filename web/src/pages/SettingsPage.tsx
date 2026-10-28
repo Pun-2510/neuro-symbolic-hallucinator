@@ -589,7 +589,7 @@ export function SettingsPage(): JSX.Element {
 
           <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
             <a
-              href="https://github.com/Pun-2510/neuro-symbolic-hallucinator"
+              href="https://github.com/iannwendy/citra"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"

@@ -423,8 +423,8 @@ Launch the entire 3-service stack (**React Web UI**, **FastAPI Backend**, and **
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Pun-2510/neuro-symbolic-hallucinator.git
-cd essay-integrity-checker
+git clone https://github.com/iannwendy/citra.git
+cd citra
 
 # 2. Copy environment configuration
 cp .env.example .env

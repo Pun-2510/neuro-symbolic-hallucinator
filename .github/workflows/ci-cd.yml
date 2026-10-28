@@ -152,6 +152,7 @@ jobs:
             echo ">>> [1/4] Syncing /opt/citra with origin/main..."
             sudo chown -R "$USER":1000 /opt/citra
             cd /opt/citra
+            git remote set-url origin https://github.com/iannwendy/citra.git
             git fetch origin main
             git reset --hard origin/main
 

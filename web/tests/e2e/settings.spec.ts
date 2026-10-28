@@ -111,7 +111,7 @@ test.describe('Settings Page', () => {
     expect(pageContent).toContain('Version');
   });
 
-  test('should have about section and point View Source Code to neuro-symbolic-hallucinator', async ({ page }) => {
+  test('should have about section and point View Source Code to citra', async ({ page }) => {
     await page.goto('/settings');
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
 
@@ -122,7 +122,7 @@ test.describe('Settings Page', () => {
     const sourceLink = page.getByRole('link', { name: /View Source Code|Xem mã nguồn/i });
     await expect(sourceLink).toHaveAttribute(
       'href',
-      'https://github.com/Pun-2510/neuro-symbolic-hallucinator'
+      'https://github.com/iannwendy/citra'
     );
   });
 

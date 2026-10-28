@@ -59,7 +59,7 @@ class LinkValidator:
     DEFAULT_HEADERS = {
         "User-Agent": (
             "Mozilla/5.0 (compatible; EssayIntegrityChecker/1.0; "
-            "+https://github.com/essay-integrity-checker)"
+            "+https://github.com/iannwendy/citra)"
         ),
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
