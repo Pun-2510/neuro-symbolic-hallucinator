@@ -356,6 +356,7 @@ export function AccountManagementPage() {
                           <img
                             src={u.avatar_url}
                             alt={u.username}
+                            referrerPolicy="no-referrer"
                             className="w-full h-full object-cover"
                           />
                         ) : (

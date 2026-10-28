@@ -6,6 +6,7 @@ import {
   AuthSplitShell,
   PasswordStrengthIndicator,
 } from '@/components/AuthSplitShell';
+import { GoogleAuthButton } from '@/components/GoogleAuthButton';
 import {
   Eye,
   EyeOff,
@@ -481,6 +482,8 @@ export function RegisterPage() {
                   )}
                 </Button>
               </form>
+
+              <GoogleAuthButton onError={setError} disabled={loading} />
 
               <div className="mt-5 pt-4 border-t border-slate-200/70 dark:border-slate-800/70 text-center text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                 <span>{t('auth.alreadyHaveAccount')} </span>

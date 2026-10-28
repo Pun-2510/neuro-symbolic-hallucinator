@@ -97,6 +97,7 @@ export function AvatarUpload({ currentAvatarUrl, onSuccess, size = 'md' }: Avata
           <img
             src={displayUrl}
             alt="Avatar preview"
+            referrerPolicy="no-referrer"
             className="w-full h-full object-cover"
           />
         ) : (

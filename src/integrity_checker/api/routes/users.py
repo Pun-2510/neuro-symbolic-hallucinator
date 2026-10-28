@@ -68,6 +68,8 @@ class UserResponse(BaseModel):
     full_name: str | None
     role: str
     is_active: bool
+    auth_provider: str = "local"
+    google_linked: bool = False
     avatar_url: str | None
     last_login_at: str | None
     created_at: str | None
@@ -108,6 +110,8 @@ def _to_response(user: User) -> UserResponse:
         full_name=user.full_name,
         role=user.role,
         is_active=bool(user.is_active),
+        auth_provider=getattr(user, "auth_provider", None) or "local",
+        google_linked=bool(getattr(user, "google_id", None)),
         avatar_url=user.avatar_path,
         last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
         created_at=user.created_at.isoformat() if user.created_at else None,

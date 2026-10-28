@@ -53,6 +53,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./configs/config.docker.yaml:/app/configs/config.yaml:ro
+      - ./.env:/app/.env:ro
     env_file:
       - .env
     restart: unless-stopped
@@ -67,6 +68,8 @@ services:
       - GROBID_URL=http://grobid:8070
       - DATABASE_URL=${DATABASE_URL:-sqlite:///./data/app.db}
       - FRONTEND_URL=${FRONTEND_URL:-https://citra.io.vn}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-429053368516-7uia3j5uavajvbkhd7hq6lih9a65n22u.apps.googleusercontent.com}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health',timeout=5).status==200 else 1)"]
       interval: 30s
@@ -98,6 +101,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: /api
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-429053368516-7uia3j5uavajvbkhd7hq6lih9a65n22u.apps.googleusercontent.com}
     container_name: integrity-web
     ports:
       - "${WEB_PORT:-80}:80"

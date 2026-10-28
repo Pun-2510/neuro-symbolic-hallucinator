@@ -62,6 +62,7 @@ services:
       # Hot-reload: mount source code live (no rebuild needed)
       - ./src:/app/src:ro
       - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./.env:/app/.env:ro
     env_file:
       - .env
     restart: unless-stopped
@@ -71,6 +72,8 @@ services:
     environment:
       - GROBID_URL=http://grobid:8070  # Docker internal network
       - DATABASE_URL=sqlite:///./data/app.db
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-429053368516-7uia3j5uavajvbkhd7hq6lih9a65n22u.apps.googleusercontent.com}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
     healthcheck:
       # Health lives under /api (the app is mounted there), not at the root.
       test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health',timeout=5).status==200 else 1)"]
@@ -105,6 +108,7 @@ services:
       # Use proxy (/api) - Vite forwards directly over Docker bridge network to api:8000
       - VITE_API_BASE_URL=/api
       - VITE_API_PROXY_TARGET=http://api:8000
+      - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-429053368516-7uia3j5uavajvbkhd7hq6lih9a65n22u.apps.googleusercontent.com}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     command: >

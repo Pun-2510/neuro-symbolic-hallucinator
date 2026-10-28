@@ -166,7 +166,12 @@
     "resetPasswordBtn": "Update Password",
     "resettingPassword": "Updating password...",
     "resetSuccessTitle": "Password Updated!",
-    "resetSuccessSubtitle": "Your password has been reset and all prior sessions have been signed out."
+    "resetSuccessSubtitle": "Your password has been reset and all prior sessions have been signed out.",
+    "orContinueWith": "Or continue with",
+    "continueWithGoogle": "Continue with Google",
+    "connectingGoogle": "Connecting to Google...",
+    "googleNotConfigured": "Google Sign-In is not configured yet (missing GOOGLE_CLIENT_ID in .env).",
+    "googleLoginError": "Google Sign-In failed. Please try again."
   },
   "dashboard": {
     "title": "Dashboard",

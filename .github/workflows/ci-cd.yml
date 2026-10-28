@@ -160,6 +160,9 @@ jobs:
             sudo mkdir -p /opt/citra/data/essays/uploads /opt/citra/data/avatars /opt/citra/data/cache/grobid /opt/citra/data/logs
             sudo chown -R 1000:1000 /opt/citra/data
             sudo chmod -R ug+rwX /opt/citra/data
+            if [ -f /opt/citra/.env ] && ! grep -q "^GOOGLE_CLIENT_ID=" /opt/citra/.env 2>/dev/null; then
+              printf '\nGOOGLE_CLIENT_ID=429053368516-7uia3j5uavajvbkhd7hq6lih9a65n22u.apps.googleusercontent.com\n' | sudo tee -a /opt/citra/.env >/dev/null
+            fi
 
             echo ">>> [3/4] Building and rolling out updated containers (api & web)..."
             sudo docker compose -f docker-compose.prod.yml build api web

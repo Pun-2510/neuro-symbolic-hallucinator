@@ -395,3 +395,225 @@ class TestProductionSecurityGuards:
         finally:
             _login_rate_limiter.clear_all()
 
+
+class TestGoogleOAuthFlow:
+    def test_google_config_endpoint_reflects_client_id(self, monkeypatch):
+        client = TestClient(app)
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "")
+        r1 = client.get("/api/auth/google/config")
+        assert r1.status_code == 200
+        assert r1.json() == {"enabled": False, "client_id": None}
+
+        unconfigured_login = client.post(
+            "/api/auth/google",
+            json={"access_token": "dummy_tok"},
+        )
+        assert unconfigured_login.status_code == 503
+        assert "GOOGLE_NOT_CONFIGURED" in unconfigured_login.json()["detail"]
+
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+        r2 = client.get("/api/auth/google/config")
+        assert r2.status_code == 200
+        assert r2.json() == {
+            "enabled": True,
+            "client_id": "12345-citra.apps.googleusercontent.com",
+        }
+
+    def test_google_login_creates_new_user_and_returns_jwt(self, monkeypatch):
+        client = TestClient(app)
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-998877",
+                "email": "Minh.Scholar@tdtu.edu.vn",
+                "email_verified": True,
+                "name": "Nguyễn Bảo Minh",
+                "picture": "https://lh3.googleusercontent.com/a/avatar123",
+            },
+        )
+
+        resp = client.post(
+            "/api/auth/google",
+            json={"access_token": "valid_google_access_token"},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["token"]
+        user = data["user"]
+        assert user["username"] == "minh.scholar"
+        assert user["email"] == "minh.scholar@tdtu.edu.vn"
+        assert user["full_name"] == "Nguyễn Bảo Minh"
+        assert user["avatar_url"] == "https://lh3.googleusercontent.com/a/avatar123"
+        assert user["auth_provider"] == "google"
+        assert user["google_linked"] is True
+        assert user["email_verified"] is True
+        assert user["is_active"] is True
+
+        # Verify session token works with /api/auth/me
+        me_resp = client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {data['token']}"},
+        )
+        assert me_resp.status_code == 200
+        assert me_resp.json()["username"] == "minh.scholar"
+
+    def test_google_login_links_existing_unactivated_user_and_activates_account(
+        self, monkeypatch
+    ):
+        client = TestClient(app)
+        # Register local user (unactivated)
+        reg = client.post(
+            "/api/auth/register",
+            json={
+                "username": "custom_handle",
+                "email": "linked@tdtu.edu.vn",
+                "password": "LocalPassword123",
+            },
+        )
+        assert reg.status_code == 200
+
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-linked-001",
+                "email": "linked@tdtu.edu.vn",
+                "email_verified": "true",
+                "name": "Linked Scholar",
+                "picture": "https://lh3.googleusercontent.com/a/linked",
+            },
+        )
+
+        g_resp = client.post(
+            "/api/auth/google",
+            json={"credential": "valid_google_id_token"},
+        )
+        assert g_resp.status_code == 200, g_resp.text
+        g_user = g_resp.json()["user"]
+        # Preserves original username, activates account, and links Google
+        assert g_user["username"] == "custom_handle"
+        assert g_user["is_active"] is True
+        assert g_user["email_verified"] is True
+        assert g_user["google_linked"] is True
+        assert g_user["auth_provider"] == "local,google"
+        assert g_user["full_name"] == "Linked Scholar"
+
+        # Original local password still works after Google account linking
+        local_login = client.post(
+            "/api/auth/login",
+            json={"username": "custom_handle", "password": "LocalPassword123"},
+        )
+        assert local_login.status_code == 200
+
+    def test_google_login_blocks_deactivated_user(self, monkeypatch):
+        client = TestClient(app)
+        session = get_session()
+        repo = Repository(session)
+        u = repo.create_user(
+            username="deactivated_scholar",
+            password_hash="hash",
+            role="user",
+            email="blocked@tdtu.edu.vn",
+            is_active=False,
+            email_verified=True,
+        )
+        session.commit()
+        session.close()
+
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-blocked",
+                "email": "blocked@tdtu.edu.vn",
+                "email_verified": True,
+                "name": "Blocked User",
+            },
+        )
+
+        resp = client.post(
+            "/api/auth/google",
+            json={"access_token": "tok"},
+        )
+        assert resp.status_code == 403
+        assert "ACCOUNT_DEACTIVATED" in resp.json()["detail"]
+
+    def test_google_login_rejects_mismatched_google_id_on_existing_email(self, monkeypatch):
+        client = TestClient(app)
+        session = get_session()
+        repo = Repository(session)
+        repo.create_user(
+            username="existing_google_user",
+            password_hash="hash",
+            role="user",
+            email="conflict@tdtu.edu.vn",
+            is_active=True,
+            email_verified=True,
+            google_id="original-google-sub-111",
+            auth_provider="google",
+        )
+        session.commit()
+        session.close()
+
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "different-google-sub-222",
+                "email": "conflict@tdtu.edu.vn",
+                "email_verified": True,
+                "name": "Conflict User",
+            },
+        )
+
+        resp = client.post(
+            "/api/auth/google",
+            json={"access_token": "tok"},
+        )
+        assert resp.status_code == 403
+        assert "linked to a different Google account" in resp.json()["detail"]
+
+    def test_google_login_filters_non_https_avatar_and_rejects_unverified_email(
+        self, monkeypatch
+    ):
+        client = TestClient(app)
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "12345-citra.apps.googleusercontent.com")
+
+        # Unverified Google email must be rejected
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-unverified",
+                "email": "unverified@tdtu.edu.vn",
+                "email_verified": False,
+                "name": "Unverified",
+            },
+        )
+        r_unverified = client.post(
+            "/api/auth/google",
+            json={"access_token": "tok"},
+        )
+        assert r_unverified.status_code == 403
+        assert "not verified" in r_unverified.json()["detail"]
+
+        # Non-https avatar URL must be ignored
+        monkeypatch.setattr(
+            "integrity_checker.api.routes.auth._verify_google_payload",
+            lambda req, cid, csec: {
+                "sub": "google-sub-http-avatar",
+                "email": "httpavatar@tdtu.edu.vn",
+                "email_verified": True,
+                "name": "HTTP Avatar",
+                "picture": "javascript:alert(1)",
+            },
+        )
+        r_avatar = client.post(
+            "/api/auth/google",
+            json={"access_token": "tok"},
+        )
+        assert r_avatar.status_code == 200
+        assert r_avatar.json()["user"]["avatar_url"] is None
+
+
+

@@ -88,6 +88,8 @@ class AvatarService:
         """Delete the file referenced by a public URL or path. Safe if missing."""
         if not avatar_url:
             return
+        if avatar_url.startswith(("http://", "https://")):
+            return
         # Accept either the public URL or a relative path; resolve to local file safely
         name = Path(avatar_url.rsplit("/", 1)[-1]).name
         if not name:

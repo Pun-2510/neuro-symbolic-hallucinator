@@ -5,12 +5,15 @@ from __future__ import annotations
 import logging
 import os
 import re
+import secrets
 import threading
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import bcrypt
+import httpx
 import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field
@@ -140,6 +143,18 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class GoogleLoginRequest(BaseModel):
+    credential: str | None = None
+    access_token: str | None = None
+    code: str | None = None
+    redirect_uri: str | None = None
+
+
+class GoogleConfigResponse(BaseModel):
+    enabled: bool
+    client_id: str | None = None
+
+
 class LoginResponse(BaseModel):
     token: str
     user: dict
@@ -206,6 +221,8 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool = True
     email_verified: bool = True
+    auth_provider: str = "local"
+    google_linked: bool = False
     avatar_url: str | None = None
     last_login_at: str | None = None
     created_at: str | None = None
@@ -250,6 +267,8 @@ def _to_response_dict(user: User) -> dict:
         "role": user.role,
         "is_active": bool(user.is_active),
         "email_verified": bool(getattr(user, "email_verified", True)),
+        "auth_provider": getattr(user, "auth_provider", None) or "local",
+        "google_linked": bool(getattr(user, "google_id", None)),
         "avatar_url": user.avatar_path,
         "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
         "created_at": user.created_at.isoformat() if user.created_at else None,
@@ -344,6 +363,308 @@ def login(request: LoginRequest, db=Depends(get_db)):
     repo.update_last_login(user.id)
 
     # Create session
+    token, expires_at = _create_token(user)
+    repo.create_session(user.id, token, expires_at)
+    repo.commit()
+
+    return LoginResponse(token=token, user=_to_response_dict(user))
+
+
+_DEFAULT_GOOGLE_CLIENT_ID = (
+    "429053368516-7uia3j5uavajvbkhd7hq6lih9a65n22u.apps.googleusercontent.com"
+)
+
+
+def _get_google_client_config() -> tuple[str, str]:
+    """Return (google_client_id, google_client_secret) from env, settings, or .env."""
+    settings = get_settings()
+    if "GOOGLE_CLIENT_ID" in os.environ:
+        client_id = os.environ["GOOGLE_CLIENT_ID"].strip()
+    else:
+        client_id = (settings.auth.google_client_id or "").strip()
+
+    if "GOOGLE_CLIENT_SECRET" in os.environ:
+        client_secret = os.environ["GOOGLE_CLIENT_SECRET"].strip()
+    else:
+        client_secret = (settings.auth.google_client_secret or "").strip()
+
+    if not client_id and not is_test_runtime():
+        try:
+            from dotenv import dotenv_values
+            from integrity_checker.config import PROJECT_ROOT
+
+            for candidate_env in (PROJECT_ROOT / ".env", Path(".env")):
+                if candidate_env.exists():
+                    vals = dotenv_values(candidate_env)
+                    file_cid = (vals.get("GOOGLE_CLIENT_ID") or "").strip()
+                    file_csec = (vals.get("GOOGLE_CLIENT_SECRET") or "").strip()
+                    if file_cid and not file_cid.startswith("your-google-client-id"):
+                        client_id = file_cid
+                    if file_csec and not file_csec.startswith("your-google-client-secret"):
+                        client_secret = client_secret or file_csec
+                    if client_id:
+                        break
+        except Exception:
+            pass
+        if not client_id or client_id.startswith("your-google-client-id"):
+            client_id = _DEFAULT_GOOGLE_CLIENT_ID
+
+    return client_id, client_secret
+
+
+def _verify_google_payload(
+    request: GoogleLoginRequest,
+    client_id: str,
+    client_secret: str,
+) -> dict:
+    """Verify Google ID token, OAuth2 access_token, or authorization code with Google APIs."""
+    id_token = (request.credential or "").strip()
+    access_token = (request.access_token or "").strip()
+    auth_code = (request.code or "").strip()
+
+    if not id_token and not access_token and not auth_code:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing Google authentication token (credential, access_token, or code).",
+        )
+
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            if auth_code:
+                if not client_secret:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="GOOGLE_CLIENT_SECRET is required on the server for authorization code exchange.",
+                    )
+                token_resp = client.post(
+                    "https://oauth2.googleapis.com/token",
+                    data={
+                        "code": auth_code,
+                        "client_id": client_id,
+                        "client_secret": client_secret,
+                        "redirect_uri": request.redirect_uri or "postmessage",
+                        "grant_type": "authorization_code",
+                    },
+                )
+                if token_resp.status_code != 200:
+                    raise HTTPException(
+                        status_code=401,
+                        detail="Invalid or expired Google authorization code.",
+                    )
+                token_data = token_resp.json()
+                access_token = (token_data.get("access_token") or "").strip()
+                id_token = (token_data.get("id_token") or "").strip()
+
+            if id_token and not access_token:
+                info_resp = client.get(
+                    "https://oauth2.googleapis.com/tokeninfo",
+                    params={"id_token": id_token},
+                )
+                if info_resp.status_code != 200:
+                    raise HTTPException(
+                        status_code=401,
+                        detail="Invalid or expired Google ID token.",
+                    )
+                info = info_resp.json()
+                token_aud = info.get("aud")
+                if client_id and token_aud != client_id:
+                    raise HTTPException(
+                        status_code=401,
+                        detail="Google ID token audience mismatch.",
+                    )
+                token_iss = info.get("iss")
+                if token_iss and token_iss not in (
+                    "accounts.google.com",
+                    "https://accounts.google.com",
+                ):
+                    raise HTTPException(
+                        status_code=401,
+                        detail="Invalid Google ID token issuer.",
+                    )
+                return info
+
+            # Verify access_token audience and fetch userinfo
+            token_check = client.get(
+                "https://oauth2.googleapis.com/tokeninfo",
+                params={"access_token": access_token},
+            )
+            if token_check.status_code != 200:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid or expired Google access token.",
+                )
+            token_meta = token_check.json()
+            token_aud = (
+                token_meta.get("aud")
+                or token_meta.get("azp")
+                or token_meta.get("issued_to")
+            )
+            if client_id and token_aud != client_id:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Google access token audience mismatch.",
+                )
+
+            userinfo_resp = client.get(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if userinfo_resp.status_code != 200:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Failed to retrieve Google user profile.",
+                )
+            userinfo = userinfo_resp.json()
+            meta_sub = str(token_meta.get("sub") or "").strip()
+            info_sub = str(userinfo.get("sub") or "").strip()
+            if meta_sub and info_sub and meta_sub != info_sub:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Google token subject mismatch.",
+                )
+            return userinfo
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Google OAuth verification failed: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach Google authentication servers. Please try again.",
+        )
+
+
+def _generate_unique_google_username(
+    repo: Repository, email: str, full_name: str | None
+) -> str:
+    """Generate a unique valid username (3-50 chars, [a-zA-Z0-9._-]) from a Google email."""
+    local_part = email.split("@", 1)[0].lower()
+    cleaned = re.sub(r"[^a-z0-9._-]", "_", local_part).strip("._-")
+    if len(cleaned) < 3:
+        if full_name:
+            slug = re.sub(r"[^a-z0-9]", "", full_name.lower())
+            cleaned = f"{cleaned}_{slug}".strip("_")
+        if len(cleaned) < 3:
+            cleaned = f"user_{cleaned}" if cleaned else "scholar"
+    base = cleaned[:42]
+    candidate = base
+    hardcoded = _get_hardcoded_users()
+    suffix = 1
+    while repo.get_user_by_username(candidate) or candidate in hardcoded:
+        candidate = f"{base}_{suffix}"
+        suffix += 1
+    return candidate
+
+
+@router.get("/google/config", response_model=GoogleConfigResponse)
+def get_google_auth_config():
+    """Return public Google OAuth configuration (whether enabled and client_id)."""
+    client_id, _ = _get_google_client_config()
+    return GoogleConfigResponse(
+        enabled=bool(client_id),
+        client_id=client_id or None,
+    )
+
+
+@router.post("/google", response_model=LoginResponse)
+def google_login(request: GoogleLoginRequest, db=Depends(get_db)):
+    """Sign in or register with a Google account (ID token, access token, or auth code)."""
+    client_id, client_secret = _get_google_client_config()
+    if not client_id:
+        raise HTTPException(
+            status_code=503,
+            detail="GOOGLE_NOT_CONFIGURED: Google Sign-In is not configured on the server (missing GOOGLE_CLIENT_ID).",
+        )
+
+    _login_rate_limiter.check("google_auth_endpoint")
+    try:
+        profile = _verify_google_payload(request, client_id, client_secret)
+    except HTTPException as exc:
+        if exc.status_code in (400, 401, 403):
+            _login_rate_limiter.record_failure("google_auth_endpoint")
+        raise
+
+    google_id = str(profile.get("sub") or "").strip()
+    email = str(profile.get("email") or "").strip().lower()
+    email_verified = profile.get("email_verified") in (True, "true", "True", 1, "1")
+    full_name = str(profile.get("name") or "").strip() or None
+    picture = str(profile.get("picture") or "").strip() or None
+
+    if not google_id or not email:
+        raise HTTPException(
+            status_code=400,
+            detail="Google account did not provide a valid user ID and email address.",
+        )
+
+    if not email_verified:
+        raise HTTPException(
+            status_code=403,
+            detail="Google email address is not verified.",
+        )
+
+    rate_key = f"google:{email}"
+    _login_rate_limiter.check(rate_key)
+
+    repo = Repository(db)
+    user = repo.get_user_by_google_id(google_id)
+    if not user:
+        user = repo.get_user_by_email(email)
+
+    if user:
+        existing_gid = getattr(user, "google_id", None)
+        if existing_gid and existing_gid != google_id:
+            raise HTTPException(
+                status_code=403,
+                detail="This email is already linked to a different Google account.",
+            )
+
+        # Check if account was deactivated by an administrator
+        if not user.is_active and getattr(user, "email_verified", True):
+            raise HTTPException(
+                status_code=403,
+                detail="ACCOUNT_DEACTIVATED: Your account has been deactivated by an administrator.",
+            )
+
+        # Link Google identity and auto-activate if previously pending email activation
+        updates: dict = {}
+        if existing_gid != google_id:
+            updates["google_id"] = google_id
+        current_provider = getattr(user, "auth_provider", None) or "local"
+        if "google" not in current_provider:
+            updates["auth_provider"] = (
+                f"{current_provider},google" if current_provider else "google"
+            )
+        if not user.is_active or not getattr(user, "email_verified", True):
+            updates["is_active"] = True
+            updates["email_verified"] = True
+        if not user.full_name and full_name:
+            updates["full_name"] = full_name[:120]
+        if not user.avatar_path and picture and picture.startswith("https://"):
+            updates["avatar_path"] = picture[:500]
+        if updates:
+            user = repo.update_user(user.id, **updates) or user
+    else:
+        username = _generate_unique_google_username(repo, email, full_name)
+        random_password_hash = _hash_password(secrets.token_urlsafe(32))
+        safe_picture = (
+            picture[:500] if picture and picture.startswith("https://") else None
+        )
+        user = repo.create_user(
+            username=username,
+            password_hash=random_password_hash,
+            role="user",
+            email=email,
+            full_name=full_name[:120] if full_name else None,
+            avatar_path=safe_picture,
+            is_active=True,
+            email_verified=True,
+            google_id=google_id,
+            auth_provider="google",
+        )
+
+    _login_rate_limiter.reset("google_auth_endpoint")
+    _login_rate_limiter.reset(rate_key)
+    repo.update_last_login(user.id)
+
     token, expires_at = _create_token(user)
     repo.create_session(user.id, token, expires_at)
     repo.commit()
@@ -632,6 +953,8 @@ def reset_password(request: ResetPasswordRequest, db=Depends(get_db)):
     if not getattr(user, "email_verified", True):
         update_fields["email_verified"] = True
         update_fields["is_active"] = True
+    if getattr(user, "auth_provider", "local") == "google":
+        update_fields["auth_provider"] = "local,google"
 
     repo.update_user(user.id, **update_fields)
     repo.mark_auth_token_used(token_row)

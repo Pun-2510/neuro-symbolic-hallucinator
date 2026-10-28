@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/api/client';
 import { AuthSplitShell } from '@/components/AuthSplitShell';
+import { GoogleAuthButton } from '@/components/GoogleAuthButton';
 import {
   Eye,
   EyeOff,
@@ -264,6 +265,9 @@ export function LoginPage() {
               )}
             </Button>
           </form>
+
+          {/* Google OAuth Sign-In (placed after form so #password Eye toggle remains first SVG button) */}
+          <GoogleAuthButton onError={setError} disabled={loading} />
 
           {/* Create Account Link */}
           <div className="mt-5 pt-4 border-t border-slate-200/70 dark:border-slate-800/70 text-center text-xs sm:text-sm text-slate-600 dark:text-slate-400">

@@ -53,6 +53,7 @@ function makeWrapper(options: WrapperOptions = {}) {
               isAdmin: user?.role === 'admin',
               isLoading: false,
               login: async () => {},
+              loginWithGoogle: async () => {},
               logout: async () => {},
               refreshUser: async () => {},
             }}

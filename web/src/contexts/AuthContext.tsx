@@ -1,11 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { User } from '@/api/client';
+import type { GoogleLoginPayload, User } from '@/api/client';
 import { queryClient } from '@/lib/queryClient';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (username: string, password: string) => Promise<void>;
+  loginWithGoogle?: (payload: GoogleLoginPayload) => Promise<void>;
   logout: () => Promise<void>;
   isAdmin: boolean;
   isLoading: boolean;
@@ -107,6 +108,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   };
 
+  const loginWithGoogle = async (payload: GoogleLoginPayload) => {
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (networkErr) {
+      throw new Error(
+        networkErr instanceof Error
+          ? `Cannot reach server: ${networkErr.message}`
+          : 'Cannot reach server'
+      );
+    }
+
+    if (!res.ok) {
+      let detail = `Google login failed (HTTP ${res.status})`;
+      try {
+        const contentType = res.headers.get('content-type') ?? '';
+        if (contentType.includes('application/json')) {
+          const error = await res.json();
+          if (typeof error?.detail === 'string') {
+            detail = error.detail;
+          } else if (Array.isArray(error?.detail)) {
+            detail =
+              error.detail
+                .map((d: { msg?: string }) => d?.msg)
+                .filter(Boolean)
+                .join('; ') || detail;
+          } else if (typeof error?.message === 'string') {
+            detail = error.message;
+          }
+        } else {
+          const text = (await res.text()).trim();
+          if (text) detail = text;
+        }
+      } catch {
+        // Keep default message
+      }
+      throw new Error(detail);
+    }
+
+    const data = await res.json();
+    queryClient.clear();
+    localStorage.setItem('token', data.token);
+    setToken(data.token);
+    setUser(data.user);
+  };
+
   const logout = async () => {
     const currentToken = localStorage.getItem('token');
     if (currentToken) {
@@ -144,6 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     token,
     login,
+    loginWithGoogle,
     logout,
     isAdmin: user?.role === 'admin',
     isLoading,

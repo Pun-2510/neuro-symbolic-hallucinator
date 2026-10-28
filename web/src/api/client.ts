@@ -513,6 +513,8 @@ export interface User {
   full_name: string | null;
   role: 'user' | 'teacher' | 'admin';
   is_active: boolean;
+  auth_provider?: string;
+  google_linked?: boolean;
   avatar_url: string | null;
   last_login_at: string | null;
   created_at: string | null;
@@ -524,6 +526,18 @@ export interface User {
   cancel_at_period_end?: boolean;
   current_period_end?: string | null;
   quota?: UserQuota | null;
+}
+
+export interface GoogleConfigResponse {
+  enabled: boolean;
+  client_id: string | null;
+}
+
+export interface GoogleLoginPayload {
+  credential?: string;
+  access_token?: string;
+  code?: string;
+  redirect_uri?: string;
 }
 
 export interface UserCreate {
@@ -748,7 +762,15 @@ export interface RemediatedBibliographyResponse {
 export const api = {
   health: () => request<HealthResponse>('/health'),
 
-  // Public authentication flows (register, activate, forgot/reset password)
+  // Public authentication flows (register, activate, forgot/reset password, google oauth)
+  getGoogleConfig: () =>
+    authRequest<GoogleConfigResponse>('/auth/google/config'),
+  googleLogin: (data: GoogleLoginPayload) =>
+    authRequest<{ token: string; user: User }>('/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
   register: (data: RegisterPayload) =>
     authRequest<RegisterResponse>('/auth/register', {
       method: 'POST',

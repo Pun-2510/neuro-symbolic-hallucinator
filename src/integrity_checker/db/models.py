@@ -45,6 +45,9 @@ class User(Base):
     can_override_verdicts: Mapped[bool] = mapped_column(Integer, default=0)
     # v1.17 — email verification status (1 for admin/demo/verified, 0 for pending activation)
     email_verified: Mapped[bool] = mapped_column(Integer, default=1)
+    # v2.3 — Google OAuth2 account linking
+    google_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
+    auth_provider: Mapped[str] = mapped_column(String(30), default="local")
     # v2.2 — Premium Subscription & Quota fields
     plan_tier: Mapped[str] = mapped_column(String(20), default="basic")
     billing_cycle: Mapped[str | None] = mapped_column(String(20), nullable=True)

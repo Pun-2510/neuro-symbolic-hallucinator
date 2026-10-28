@@ -72,12 +72,14 @@ _INSECURE_JWT_SECRETS = frozenset({
 
 
 class AuthConfig(BaseModel):
-    """Authentication config for JWT tokens."""
+    """Authentication config for JWT tokens and Google OAuth2."""
 
     jwt_secret: str = "change-me-in-production-use-env-var"
     token_expire_hours: int = 24
     activation_expire_hours: int = 24
     reset_expire_minutes: int = 30
+    google_client_id: str = ""
+    google_client_secret: str = ""
 
     def validate_for_env(self, app_env: str) -> None:
         """Reject default/weak JWT secrets when running in production."""
@@ -506,6 +508,10 @@ class Settings(BaseSettings):
             self.extraction.grobid.url = env_grobid_url.strip()
         if os.getenv("JWT_SECRET"):
             self.auth.jwt_secret = os.environ["JWT_SECRET"]
+        if os.getenv("GOOGLE_CLIENT_ID") is not None:
+            self.auth.google_client_id = os.environ["GOOGLE_CLIENT_ID"].strip()
+        if os.getenv("GOOGLE_CLIENT_SECRET") is not None:
+            self.auth.google_client_secret = os.environ["GOOGLE_CLIENT_SECRET"].strip()
 
         # Email / SMTP env overrides
         if os.getenv("SMTP_HOST"):

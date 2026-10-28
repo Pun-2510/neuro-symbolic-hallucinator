@@ -6,9 +6,13 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import '@/i18n';
 import { LoginPage } from './LoginPage';
 
-function renderLoginPage(loginMock = vi.fn().mockResolvedValue(undefined)) {
+function renderLoginPage(
+  loginMock = vi.fn().mockResolvedValue(undefined),
+  loginWithGoogleMock = vi.fn().mockResolvedValue(undefined),
+) {
   return {
     loginMock,
+    loginWithGoogleMock,
     ...render(
       <ThemeProvider defaultTheme="light">
         <MemoryRouter initialEntries={['/login']}>
@@ -19,6 +23,7 @@ function renderLoginPage(loginMock = vi.fn().mockResolvedValue(undefined)) {
               isAdmin: false,
               isLoading: false,
               login: loginMock,
+              loginWithGoogle: loginWithGoogleMock,
               logout: async () => {},
               refreshUser: async () => {},
             }}
@@ -114,6 +119,21 @@ describe('LoginPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Invalid username or password')).toBeDefined();
+    });
+  });
+
+  it('renders Continue with Google button and shows message when GOOGLE_CLIENT_ID is not configured', async () => {
+    renderLoginPage();
+
+    const googleBtn = screen.getByTestId('google-auth-button');
+    expect(googleBtn).toBeDefined();
+
+    fireEvent.click(googleBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/GOOGLE_CLIENT_ID/i)
+      ).toBeDefined();
     });
   });
 });

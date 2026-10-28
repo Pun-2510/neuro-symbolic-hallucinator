@@ -499,6 +499,16 @@ class Repository:
             .first()
         )
 
+    def get_user_by_google_id(self, google_id: str) -> User | None:
+        normalized = google_id.strip()
+        if not normalized:
+            return None
+        return (
+            self.session.query(User)
+            .filter(User.google_id == normalized)
+            .first()
+        )
+
     def get_user_by_id(self, user_id: int) -> User | None:
         return self.session.get(User, user_id)
 
@@ -526,6 +536,9 @@ class Repository:
         can_override_verdicts: bool | None = None,
         email_verified: bool = True,
         plan_tier: str | None = None,
+        google_id: str | None = None,
+        auth_provider: str = "local",
+        avatar_path: str | None = None,
     ) -> User:
         if can_override_verdicts is None:
             can_override_verdicts = role in ("admin", "teacher")
@@ -536,11 +549,14 @@ class Repository:
             role=role,
             email=email,
             full_name=full_name,
+            avatar_path=avatar_path,
             is_active=1 if is_active else 0,
             institution=institution,
             can_override_verdicts=1 if can_override_verdicts else 0,
             email_verified=1 if email_verified else 0,
             plan_tier=resolved_tier,
+            google_id=google_id,
+            auth_provider=auth_provider,
         )
         self.session.add(user)
         self.session.flush()
@@ -556,6 +572,7 @@ class Repository:
             "current_period_start",
             "current_period_end",
             "stripe_subscription_id",
+            "google_id",
         }
         for key, value in kwargs.items():
             if value is None and key not in nullable_fields:

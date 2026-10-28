@@ -183,6 +183,19 @@ def _run_inline_migrations(engine: Engine) -> None:
                 "ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 1"
             )
 
+        # --- users (v2.3 — Google OAuth2 account linking) ---
+        if "google_id" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN google_id VARCHAR(255)"
+            )
+            conn.exec_driver_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL"
+            )
+        if "auth_provider" not in user_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN auth_provider VARCHAR(30) DEFAULT 'local'"
+            )
+
         # --- users (v2.2 — Premium Subscription & Quota fields) ---
         if "plan_tier" not in user_cols:
             conn.exec_driver_sql(

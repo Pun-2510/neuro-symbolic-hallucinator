@@ -191,4 +191,23 @@ test.describe('Authentication', () => {
     await page.getByRole('button', { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
   });
+
+  test('should display Google Sign-In button on login and register pages and complete Google OAuth flow', async ({ page, request }) => {
+    const configRes = await request.get('/api/auth/google/config');
+    expect(configRes.ok()).toBeTruthy();
+    const configData = await configRes.json();
+    expect(configData).toHaveProperty('enabled');
+    expect(configData).toHaveProperty('client_id');
+
+    // Verify Google button on /login
+    await page.goto('/login');
+    const loginGoogleBtn = page.getByTestId('google-auth-button');
+    await expect(loginGoogleBtn).toBeVisible();
+    await expect(loginGoogleBtn).toContainText(/continue with google|tiếp tục với google/i);
+
+    // Verify Google button on /register
+    await page.goto('/register');
+    const registerGoogleBtn = page.getByTestId('google-auth-button');
+    await expect(registerGoogleBtn).toBeVisible();
+  });
 });

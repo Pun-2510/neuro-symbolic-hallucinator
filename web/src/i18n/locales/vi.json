@@ -166,7 +166,12 @@
     "resetPasswordBtn": "Cập nhật Mật khẩu",
     "resettingPassword": "Đang cập nhật...",
     "resetSuccessTitle": "Đổi mật khẩu thành công!",
-    "resetSuccessSubtitle": "Mật khẩu của bạn đã được cập nhật và toàn bộ phiên đăng nhập cũ đã được thu hồi."
+    "resetSuccessSubtitle": "Mật khẩu của bạn đã được cập nhật và toàn bộ phiên đăng nhập cũ đã được thu hồi.",
+    "orContinueWith": "Hoặc tiếp tục với",
+    "continueWithGoogle": "Tiếp tục với Google",
+    "connectingGoogle": "Đang kết nối Google...",
+    "googleNotConfigured": "Đăng nhập Google chưa được cấu hình (thiếu GOOGLE_CLIENT_ID trong tệp .env).",
+    "googleLoginError": "Đăng nhập bằng Google thất bại. Vui lòng thử lại."
   },
   "dashboard": {
     "title": "Bảng điều khiển",
