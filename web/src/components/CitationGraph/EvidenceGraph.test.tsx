@@ -141,6 +141,7 @@ describe('buildEvidenceGraph', () => {
       'ncbi_biorxiv',
       'huggingface',
       'tech_standard',
+      'wikidata_opencitations',
     ];
     for (const src of newSources) {
       const displayName = getSourceDisplayName(src);
@@ -185,5 +186,8 @@ describe('buildEvidenceGraph', () => {
     expect(getRuleDisplayName('R-GLOBAL-DOI-RA-VERIFIED')).toMatch(/Registration Agency/i);
     expect(getRuleDisplayName('R-HF-VERIFIED')).toMatch(/Hugging Face/i);
     expect(getRuleDisplayName('R-RFC-VERIFIED')).toMatch(/IETF/i);
+    expect(getRuleDisplayName('R-GITHUB-VERIFIED')).toMatch(/GitHub/i);
+    expect(getRuleDisplayName('R-PACKAGE-VERIFIED')).toMatch(/PyPI|NPM/i);
+    expect(getRuleDisplayName('R-WIKIDATA-VERIFIED')).toMatch(/Wikidata|OpenCitations/i);
   });
 });

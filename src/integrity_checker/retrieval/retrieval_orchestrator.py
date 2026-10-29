@@ -55,6 +55,9 @@ from integrity_checker.retrieval.rate_limiter import RateLimiter
 from integrity_checker.retrieval.semantic_scholar_client import SemanticScholarClient
 from integrity_checker.retrieval.serpapi_client import SerpApiClient
 from integrity_checker.retrieval.tech_standard_client import TechStandardClient
+from integrity_checker.retrieval.wikidata_opencitations_client import (
+    WikidataOpenCitationsClient,
+)
 
 if TYPE_CHECKING:
     from integrity_checker.database import LocalDatabase
@@ -839,6 +842,7 @@ class RetrievalOrchestrator:
         ncbi_biorxiv: NcbiBiorxivClient | None = None,
         huggingface: HuggingFaceClient | None = None,
         tech_standard: TechStandardClient | None = None,
+        wikidata_opencitations: WikidataOpenCitationsClient | None = None,
         semantic_scholar: SemanticScholarClient | None = None,
         coreapi: CoreAPIClient | None = None,
         serpapi: SerpApiClient | None = None,
@@ -866,13 +870,25 @@ class RetrievalOrchestrator:
         self.ncbi_biorxiv = ncbi_biorxiv or NcbiBiorxivClient(contact_email=contact_email)
         self.huggingface = huggingface or HuggingFaceClient(contact_email=contact_email)
         self.tech_standard = tech_standard or TechStandardClient(contact_email=contact_email)
+        self.wikidata_opencitations = wikidata_opencitations or WikidataOpenCitationsClient(
+            contact_email=contact_email
+        )
 
         # Legacy clients retained for backward compatibility when explicitly injected or enabled
         self._s2_explicit = semantic_scholar is not None
         self._coreapi_explicit = coreapi is not None
         self._extended_clients_explicit = any(
             c is not None
-            for c in (datacite, doi_ra, doaj, openaire_hal, ncbi_biorxiv, huggingface, tech_standard)
+            for c in (
+                datacite,
+                doi_ra,
+                doaj,
+                openaire_hal,
+                ncbi_biorxiv,
+                huggingface,
+                tech_standard,
+                wikidata_opencitations,
+            )
         )
         self._new_clients_explicit = any(
             c is not None for c in (dblp, arxiv, openlibrary, europepmc)
@@ -880,7 +896,6 @@ class RetrievalOrchestrator:
         self._six_core_only_explicit_mode = (
             any(c is not None for c in (crossref, openalex, dblp, arxiv, openlibrary, europepmc))
             and not self._extended_clients_explicit
-            and not (self._s2_explicit or self._coreapi_explicit)
         )
         self._legacy_explicit_mode = (
             (self._s2_explicit or self._coreapi_explicit)
@@ -922,6 +937,9 @@ class RetrievalOrchestrator:
             self.ncbi_biorxiv.name: RateLimiter(getattr(settings.rate_limits, "ncbi_biorxiv_per_sec", 3.0)),
             self.huggingface.name: RateLimiter(getattr(settings.rate_limits, "huggingface_per_sec", 5.0)),
             self.tech_standard.name: RateLimiter(getattr(settings.rate_limits, "tech_standard_per_sec", 5.0)),
+            self.wikidata_opencitations.name: RateLimiter(
+                getattr(settings.rate_limits, "wikidata_opencitations_per_sec", 5.0)
+            ),
             self.semantic_scholar.name: RateLimiter(settings.rate_limits.semantic_scholar_per_sec),
         }
         if settings.sources.coreapi or self._coreapi_explicit:
@@ -980,6 +998,8 @@ class RetrievalOrchestrator:
                 result.append(self.huggingface)
             if getattr(src_cfg, "tech_standard", True) and self.tech_standard is not None:
                 result.append(self.tech_standard)
+            if getattr(src_cfg, "wikidata_opencitations", True) and self.wikidata_opencitations is not None:
+                result.append(self.wikidata_opencitations)
         if (src_cfg.semantic_scholar or self._s2_explicit) and self.semantic_scholar is not None:
             result.append(self.semantic_scholar)
         if (src_cfg.coreapi or self._coreapi_explicit) and self.coreapi is not None:
@@ -1049,12 +1069,10 @@ class RetrievalOrchestrator:
             or arxiv_id
             or re.search(r"\barxiv\b|\bcorr\b", combined_text, re.IGNORECASE)
         )
-        is_rfc_or_pypi = bool(
-            TechStandardClient.extract_rfc_number(citation) is not None
-            or TechStandardClient.extract_pypi_package(citation)
-        )
+        is_rfc_or_pypi = TechStandardClient.has_tech_target(citation)
         hf_kind, _ = HuggingFaceClient.extract_hf_target(citation)
         is_huggingface = bool(hf_kind is not None)
+        is_knowledge_graph = WikidataOpenCitationsClient.is_knowledge_graph_target(citation)
         is_thesis_or_repo = bool(_THESIS_OR_REPO_SIGNAL_RE.search(combined_text))
         is_open_access_regional = bool(_OPEN_ACCESS_REGIONAL_RE.search(combined_text))
         isbn = OpenLibraryClient.extract_isbn(citation)
@@ -1069,6 +1087,7 @@ class RetrievalOrchestrator:
             "is_arxiv": is_arxiv,
             "is_rfc_or_pypi": is_rfc_or_pypi,
             "is_huggingface": is_huggingface,
+            "is_knowledge_graph": is_knowledge_graph,
             "is_thesis_or_repo": is_thesis_or_repo,
             "is_open_access_regional": is_open_access_regional,
             "is_book": is_book,
@@ -1129,6 +1148,8 @@ class RetrievalOrchestrator:
                 enabled["huggingface"] = self.huggingface
             if getattr(src_cfg, "tech_standard", True) and self.tech_standard is not None:
                 enabled["tech_standard"] = self.tech_standard
+            if getattr(src_cfg, "wikidata_opencitations", True) and self.wikidata_opencitations is not None:
+                enabled["wikidata_opencitations"] = self.wikidata_opencitations
         if (src_cfg.semantic_scholar or self._s2_explicit) and self.semantic_scholar is not None:
             enabled["semantic_scholar"] = self.semantic_scholar
         if (src_cfg.coreapi or self._coreapi_explicit) and self.coreapi is not None:
@@ -1139,16 +1160,30 @@ class RetrievalOrchestrator:
 
         signals = self.classify_citation_domain(citation)
 
-        # 0a. Technical Standard (IETF RFC / PyPI package)
+        # 0a. Technical Standard & Software Registry (IETF RFC / PyPI / NPM / GitHub repository)
         if signals.get("is_rfc_or_pypi") and "tech_standard" in enabled:
-            tier1 = _pick(["tech_standard", "crossref", "openalex"])
-            tier2 = _pick(["dblp"])
+            if TechStandardClient.extract_rfc_number(citation) is not None:
+                tier1 = _pick(["tech_standard", "crossref", "openalex"])
+                tier2 = _pick(["dblp"])
+            else:
+                tier1 = _pick(["tech_standard", "openalex"])
+                tier2 = []
             return tier1, tier2
 
         # 0b. Hugging Face Model / Dataset / Paper
         if signals.get("is_huggingface") and "huggingface" in enabled:
             tier1 = _pick(["huggingface", "arxiv", "dblp", "openalex"])
             tier2 = _pick(["datacite", "crossref"])
+            return tier1, tier2
+
+        # 0c. International Standards & Clinical Manuals (ISO/IEC, NIST SP, IEEE 802, OWASP, WCAG, DSM-5, ICD-11)
+        if (
+            signals.get("is_knowledge_graph")
+            and "wikidata_opencitations" in enabled
+            and WikidataOpenCitationsClient.extract_standard_or_manual_code(citation) is not None
+        ):
+            tier1 = _pick(["wikidata_opencitations", "crossref", "openalex"])
+            tier2 = _pick(["openlibrary", "europepmc"]) if signals.get("is_biomed") else _pick(["openlibrary"])
             return tier1, tier2
 
         # 1. Explicit arXiv DOI (10.48550/arXiv.*): Crossref DOI endpoint returns 404,
@@ -1563,8 +1598,9 @@ class RetrievalOrchestrator:
                 )
 
         # ===== 2.5. Skip general scholarly APIs for non-academic web/software/legal resources =====
-        # If the resource is a Hugging Face model/dataset or IETF RFC/PyPI package, allow the
-        # dedicated specialist client to verify its metadata before returning.
+        # If the resource is a Hugging Face model/dataset, IETF RFC/PyPI/NPM/GitHub package, or
+        # international technical standard (ISO/NIST/IEEE/OWASP/WCAG), allow the dedicated
+        # specialist client to verify its metadata before returning.
         if not self._legacy_explicit_mode and self.is_web_or_legal_resource(citation):
             signals_early = self.classify_citation_domain(citation)
             specialist_clients: list[BaseScholarClient] = []
@@ -1582,6 +1618,14 @@ class RetrievalOrchestrator:
                     and self.huggingface is not None
                 ):
                     specialist_clients.append(self.huggingface)
+                elif (
+                    signals_early.get("is_knowledge_graph")
+                    and WikidataOpenCitationsClient.extract_standard_or_manual_code(citation) is not None
+                    and citation.matched_pattern != "vn_legal_document"
+                    and getattr(src_cfg, "wikidata_opencitations", True)
+                    and self.wikidata_opencitations is not None
+                ):
+                    specialist_clients.append(self.wikidata_opencitations)
 
             if not specialist_clients:
                 logger.debug(
@@ -1664,6 +1708,7 @@ class RetrievalOrchestrator:
             and not self._six_core_only_explicit_mode
             and cit_doi_norm
             and not has_exact_doi_cand
+            and not is_known_fabricated_doi_prefix
             and self.doi_ra is not None
             and getattr(get_settings().retrieval.sources, "doi_ra", True)
             and self.doi_ra.name not in sources_queried
@@ -1675,12 +1720,19 @@ class RetrievalOrchestrator:
             doi_ra_results = await self._execute_client_batch([self.doi_ra], citation)
             _collect_batch([self.doi_ra], doi_ra_results)
 
-        # ===== 3.6. arXiv Fallback (trước SerpApi) =====
+        nonexistent_registry_confirmed = is_known_fabricated_doi_prefix or any(
+            (getattr(c, "external_ids", None) or {}).get(status_key) == "nonexistent"
+            for c in valid
+            for status_key in ("doi_ra_status", "github_status", "npm_status", "pypi_status")
+        )
+
+        # ===== 3.6. arXiv Fallback (trước Wikidata/OpenCitations & SerpApi) =====
         # Khi mọi API ở Tier 1 + Tier 2 + DOI RA đều không tìm thấy (0 found) và arXiv chưa được gọi,
-        # luôn thử qua arXiv một lượt cuối trước khi gọi SerpApi.
+        # luôn thử qua arXiv một lượt cuối trước khi gọi fallback tiếp theo.
         if (
             not self._legacy_explicit_mode
             and not any(c.found for c in valid)
+            and not nonexistent_registry_confirmed
             and self.arxiv is not None
             and getattr(get_settings().retrieval.sources, "arxiv", True)
             and self.arxiv.name not in sources_queried
@@ -1692,6 +1744,26 @@ class RetrievalOrchestrator:
             arxiv_results = await self._execute_client_batch([self.arxiv], citation)
             _collect_batch([self.arxiv], arxiv_results)
 
+        # ===== 3.65. Wikidata Knowledge Graph (WikiCite) & OpenCitations (COCI) Fallback =====
+        # Hoàn toàn miễn phí (no API key): cứu các trích dẫn sách/báo cáo tổ chức (WHO, UNESCO,
+        # World Bank), tiêu chuẩn kỹ thuật (ISO/NIST/IEEE/OWASP/WCAG), cẩm nang lâm sàng (DSM-5,
+        # ICD-11) hoặc DOI mở chưa tìm thấy ở các bước trên trước khi phải dùng đến SerpApi.
+        if (
+            not self._legacy_explicit_mode
+            and not self._six_core_only_explicit_mode
+            and not any(c.found for c in valid)
+            and not nonexistent_registry_confirmed
+            and self.wikidata_opencitations is not None
+            and getattr(get_settings().retrieval.sources, "wikidata_opencitations", True)
+            and self.wikidata_opencitations.name not in sources_queried
+        ):
+            logger.debug(
+                f"Tier 1+2+arXiv found 0 candidates for '{(citation.title or citation.raw_text)[:45]}' "
+                f"-> trying Wikidata & OpenCitations free knowledge graph fallback"
+            )
+            wk_results = await self._execute_client_batch([self.wikidata_opencitations], citation)
+            _collect_batch([self.wikidata_opencitations], wk_results)
+
         # Enrich missing abstract across remaining abstract-capable APIs when metadata matched without abstract
         if any(c.found for c in valid) and not any(c.found and c.abstract and c.abstract.strip() for c in valid):
             await self._enrich_missing_abstract(
@@ -1702,18 +1774,78 @@ class RetrievalOrchestrator:
 
         deduped = self._dedupe_candidates(valid, citation=citation)
 
-        # ===== 4. SerpApi Fallback =====
-        # Chỉ gọi SerpApi khi KHÔNG có candidate nào found
-        # và các nguồn chính đã thất bại (bỏ qua nếu DOI đã được doi_ra xác nhận không tồn tại)
-        doi_confirmed_nonexistent = any(
-            (getattr(c, "external_ids", None) or {}).get("doi_ra_status") == "nonexistent"
-            for c in valid
-        )
+        # ===== 4. SerpApi Fallback + Smart Quota Guard =====
+        # Chỉ gọi SerpApi khi KHÔNG có candidate nào found, ID không bị xác nhận là không tồn tại,
+        # và Smart SerpAPI Quota Guard cho phép (tránh đốt quota miễn phí vào các trích dẫn ảo
+        # khi >= 3 API học thuật miễn phí đã trả về HTTP 200 "no results" sạch sẽ mà không bị lỗi mạng/429).
+        serpapi_quota_guard_skip = False
+        if (
+            not self._legacy_explicit_mode
+            and not self._six_core_only_explicit_mode
+            and getattr(get_settings().retrieval.sources, "serpapi_quota_guard", True)
+            and not any(c.found for c in deduped)
+        ):
+            from datetime import datetime
+            from integrity_checker.logic.rules import _is_fake_author_name
+
+            current_year = datetime.now().year
+            has_future_year = bool(
+                citation.year
+                and str(citation.year)[:4].isdigit()
+                and int(str(citation.year)[:4]) > current_year
+            )
+            has_fake_author = bool(
+                (citation.authors or citation.raw_text)
+                and _is_fake_author_name(citation.raw_text, citation.authors)[0]
+            )
+            clean_miss_count = sum(
+                1
+                for err in failed.values()
+                if any(
+                    marker in (err or "").lower()
+                    for marker in (
+                        "no results",
+                        "no title match",
+                        "does not exist",
+                        "not found",
+                        "no matching",
+                    )
+                )
+            )
+            has_hard_api_failure = any(
+                any(
+                    err_marker in (err or "").lower()
+                    for err_marker in (
+                        "429",
+                        "rate limit",
+                        "timeout",
+                        "timed out",
+                        "connect",
+                        "500",
+                        "502",
+                        "503",
+                        "504",
+                        "backoff",
+                    )
+                )
+                for err in failed.values()
+            )
+            if has_future_year or has_fake_author or (
+                clean_miss_count >= 3 and not has_hard_api_failure
+            ):
+                serpapi_quota_guard_skip = True
+                logger.info(
+                    f"SerpApi Quota Guard: skipping paid lookup for '{(citation.title or citation.raw_text)[:45]}' "
+                    f"(clean_misses={clean_miss_count}, hard_failure={has_hard_api_failure}, "
+                    f"future_year={has_future_year}, fake_author={has_fake_author})"
+                )
+
         serpapi_candidate = None
         min_failed_for_serpapi = 1 if len(sources_queried) <= 1 else 2
         if (
             not any(c.found for c in deduped)
-            and not doi_confirmed_nonexistent
+            and not nonexistent_registry_confirmed
+            and not serpapi_quota_guard_skip
             and len(failed) >= min_failed_for_serpapi
             and get_settings().retrieval.sources.serpapi
         ):
@@ -1747,12 +1879,27 @@ class RetrievalOrchestrator:
             # HF API confirmed no matching public model/dataset/paper, treat as dead_link (404).
             url_status = "dead_link"
             url_status_code = 404
+        if not any_found and any(
+            (getattr(c, "external_ids", None) or {}).get(k) == "nonexistent"
+            for c in valid
+            for k in ("github_status", "npm_status", "pypi_status")
+        ):
+            # Official GitHub / NPM / PyPI Registry API confirmed HTTP 404 nonexistent package/repo
+            url_status = "dead_link"
+            url_status_code = 404
 
         if not any_found and len(failed) >= min_failures_for_unresolved:
             # Distinguish hard API/network failures from clean HTTP 200 "no results" responses
             has_clean_search_response = any(
-                "no results for" in (err or "").lower()
-                or "no title match" in (err or "").lower()
+                any(
+                    marker in (err or "").lower()
+                    for marker in (
+                        "no results for",
+                        "no title match",
+                        "does not exist",
+                        "not found (404)",
+                    )
+                )
                 for err in failed.values()
             )
             logger.warning(

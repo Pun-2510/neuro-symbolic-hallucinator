@@ -26,6 +26,7 @@ from integrity_checker.retrieval.rate_limiter import RateLimiter
 from integrity_checker.retrieval.retrieval_orchestrator import RetrievalOrchestrator
 from integrity_checker.retrieval.semantic_scholar_client import SemanticScholarClient
 from integrity_checker.retrieval.tech_standard_client import TechStandardClient
+from integrity_checker.retrieval.wikidata_opencitations_client import WikidataOpenCitationsClient
 
 __all__ = [
     "ArxivClient",
@@ -44,6 +45,7 @@ __all__ = [
     "OpenLibraryClient",
     "SemanticScholarClient",
     "TechStandardClient",
+    "WikidataOpenCitationsClient",
     "RetrievalOrchestrator",
     "RateLimiter",
 ]

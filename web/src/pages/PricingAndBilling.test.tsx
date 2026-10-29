@@ -660,9 +660,11 @@ describe('Premium Subscription, Pricing, Stripe Checkout & Paywall UI/UX Flows',
     expect(
       screen.getByText(/Compared 42 source hits across 5 databases/i),
     ).toBeDefined();
-    expect(screen.getByText('15+ INDEXES')).toBeDefined();
+    expect(screen.getByText('18+ INDEXES')).toBeDefined();
     expect(screen.getByText('28 SYMBOLIC RULES')).toBeDefined();
     expect(screen.getByText('Local ACL FTS5 (128K+)')).toBeDefined();
+    expect(screen.getByText('IETF RFC / PyPI / NPM / GitHub')).toBeDefined();
+    expect(screen.getByText('Wikidata / OpenCitations')).toBeDefined();
     expect(screen.getByText('Seminal Whitelist')).toBeDefined();
     expect(document.body.textContent).not.toContain('интерактив');
   });

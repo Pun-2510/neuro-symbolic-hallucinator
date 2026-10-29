@@ -279,8 +279,10 @@ class SourceToggleConfig(BaseModel):
     ncbi_biorxiv: bool = True
     huggingface: bool = True
     tech_standard: bool = True
+    wikidata_opencitations: bool = True
     wayback_fallback: bool = True
-    serpapi: bool = True  # Fallback khi các API free thất bại
+    serpapi: bool = True  # Fallback khi các API free gặp lỗi mạng/timeout
+    serpapi_quota_guard: bool = True  # Chặn đốt quota SerpAPI khi >=3 API free trả về HTTP 200 rỗng
     semantic_scholar: bool = False  # Replaced by DBLP/arXiv/OpenLibrary/EuropePMC
     coreapi: bool = False  # Replaced by DBLP/arXiv/OpenLibrary/EuropePMC
 
@@ -310,8 +312,10 @@ class RateLimitsConfig(BaseModel):
     ncbi_biorxiv_per_sec: float = 3.0
     # Hugging Face Hub Models/Datasets/Papers API (5 req/s)
     huggingface_per_sec: float = 5.0
-    # IETF Datatracker RFC & PyPI JSON API (5 req/s)
+    # IETF Datatracker RFC, PyPI, NPM & GitHub API (5 req/s)
     tech_standard_per_sec: float = 5.0
+    # Wikidata Knowledge Graph & OpenCitations API (5 req/s)
+    wikidata_opencitations_per_sec: float = 5.0
     # SerpApi: conservative fallback (rate limit depends on subscription)
     serpapi_per_sec: float = 1.0
     # Legacy sources (disabled by default)

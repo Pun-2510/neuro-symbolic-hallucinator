@@ -415,6 +415,146 @@ class TestKnownGroundTruthHardCases:
         assert verdict.label == ValidationLabel.VERIFIED
         assert "R-GLOBAL-DOI-RA-VERIFIED" in verdict.triggered_rules
 
+    def test_case_11_github_repo_with_citation_cff_verified(self) -> None:
+        """Hard Case 11: Public GitHub repository verified via GitHub API + CITATION.cff -> VERIFIED."""
+        citation = _make_citation(
+            cid=12,
+            raw_ref="[12] Vu, A. (2023). underthesea: Vietnamese NLP Toolkit. GitHub. https://github.com/undertheseanlp/underthesea",
+            title="underthesea: Vietnamese NLP Toolkit",
+            authors=["Anh Vu"],
+            year=2023,
+            url="https://github.com/undertheseanlp/underthesea",
+            venue="GitHub",
+        )
+        source = SourceResult(
+            citation_raw=citation.raw_text,
+            candidates=[
+                SourceCandidate(
+                    source_name="tech_standard",
+                    found=True,
+                    title="underthesea: Vietnamese NLP Toolkit",
+                    authors=["Anh Vu"],
+                    year="2023",
+                    venue="GitHub Repository (undertheseanlp/underthesea)",
+                    url="https://github.com/undertheseanlp/underthesea",
+                    external_ids={"github_repo": "undertheseanlp/underthesea"},
+                    confidence=0.95,
+                )
+            ],
+            sources_queried=["tech_standard"],
+            sources_succeeded=["tech_standard"],
+        )
+
+        verdict = self.checker.check(citation, source, mapping_status=CitationMappingStatus.MATCHED)
+        assert verdict.label == ValidationLabel.VERIFIED
+        assert "R-GITHUB-VERIFIED" in verdict.triggered_rules
+
+    def test_case_12_nonexistent_404_github_repo_flagged_as_hallucination(self) -> None:
+        """Hard Case 12: AI-hallucinated GitHub repository URL returning 404 -> SUSPECTED_HALLUCINATION."""
+        citation = _make_citation(
+            cid=13,
+            raw_ref="[13] Chen, L. (2024). QuantumGPT-V9: Autonomous Hallucination Engine. GitHub. https://github.com/chen-lab-9999/quantumgpt-v9",
+            title="QuantumGPT-V9: Autonomous Hallucination Engine",
+            authors=["Chen, L."],
+            year=2024,
+            url="https://github.com/chen-lab-9999/quantumgpt-v9",
+            venue="GitHub",
+        )
+        source = SourceResult(
+            citation_raw=citation.raw_text,
+            candidates=[],
+            sources_queried=["tech_standard"],
+            sources_succeeded=[],
+            sources_failed={"tech_standard": "TechStandard: GitHub repository 'chen-lab-9999/quantumgpt-v9' not found (404)"},
+            url_status="dead_link",
+            url_status_code=404,
+        )
+
+        verdict = self.checker.check(citation, source, mapping_status=CitationMappingStatus.MATCHED)
+        assert verdict.label == ValidationLabel.SUSPECTED_HALLUCINATION
+        assert "R-DEAD-URL" in verdict.triggered_rules
+
+    def test_case_13_scoped_npm_package_verified_and_wrong_year_detected(self) -> None:
+        """Hard Case 13: Scoped NPM package (@tanstack/react-query) verified with R-PACKAGE-VERIFIED, and wrong year -> METADATA_ERROR."""
+        citation_ok = _make_citation(
+            cid=14,
+            raw_ref="[14] Linsley, T. (2023). @tanstack/react-query: Powerful asynchronous state management for TS/JS. NPM. https://www.npmjs.com/package/@tanstack/react-query",
+            title="@tanstack/react-query: Powerful asynchronous state management for TS/JS",
+            authors=["Tanner Linsley"],
+            year=2023,
+            url="https://www.npmjs.com/package/@tanstack/react-query",
+            venue="NPM Package Registry",
+        )
+        source = SourceResult(
+            citation_raw=citation_ok.raw_text,
+            candidates=[
+                SourceCandidate(
+                    source_name="tech_standard",
+                    found=True,
+                    title="@tanstack/react-query: Powerful asynchronous state management for TS/JS",
+                    authors=["Tanner Linsley"],
+                    year="2023",
+                    venue="NPM Package Registry",
+                    url="https://www.npmjs.com/package/@tanstack/react-query",
+                    external_ids={"npm_package": "@tanstack/react-query"},
+                    confidence=0.95,
+                )
+            ],
+            sources_queried=["tech_standard"],
+            sources_succeeded=["tech_standard"],
+        )
+
+        verdict_ok = self.checker.check(citation_ok, source, mapping_status=CitationMappingStatus.MATCHED)
+        assert verdict_ok.label == ValidationLabel.VERIFIED
+        assert "R-PACKAGE-VERIFIED" in verdict_ok.triggered_rules
+
+        citation_bad_year = _make_citation(
+            cid=15,
+            raw_ref="[15] Linsley, T. (2015). @tanstack/react-query: Powerful asynchronous state management for TS/JS. NPM. https://www.npmjs.com/package/@tanstack/react-query",
+            title="@tanstack/react-query: Powerful asynchronous state management for TS/JS",
+            authors=["Tanner Linsley"],
+            year=2015,
+            url="https://www.npmjs.com/package/@tanstack/react-query",
+            venue="NPM Package Registry",
+        )
+        verdict_bad = self.checker.check(citation_bad_year, source, mapping_status=CitationMappingStatus.MATCHED)
+        assert verdict_bad.label == ValidationLabel.METADATA_ERROR
+        assert "year" in verdict_bad.mismatched_fields
+        assert "R-PACKAGE-VERIFIED" in verdict_bad.triggered_rules
+
+    def test_case_14_iso_standard_and_dsm5_verified_via_wikidata_opencitations(self) -> None:
+        """Hard Case 14: ISO/IEC 27001 standard and DSM-5 manual verified via Wikidata Knowledge Graph -> VERIFIED."""
+        citation_iso = _make_citation(
+            cid=16,
+            raw_ref="[16] ISO/IEC (2022). ISO/IEC 27001:2022 Information security, cybersecurity and privacy protection — Information security management systems. ISO.",
+            title="ISO/IEC 27001:2022 Information security, cybersecurity and privacy protection — Information security management systems",
+            authors=["ISO/IEC"],
+            year=2022,
+            venue="ISO/IEC Standard",
+        )
+        source_iso = SourceResult(
+            citation_raw=citation_iso.raw_text,
+            candidates=[
+                SourceCandidate(
+                    source_name="wikidata_opencitations",
+                    found=True,
+                    title="ISO/IEC 27001:2022 Information security, cybersecurity and privacy protection — Information security management systems",
+                    authors=["ISO/IEC"],
+                    year="2022",
+                    venue="Wikidata Knowledge Graph (Q1334491)",
+                    external_ids={"wikidata_qid": "Q1334491", "standard_code": "ISO/IEC 27001"},
+                    confidence=0.92,
+                )
+            ],
+            sources_queried=["wikidata_opencitations"],
+            sources_succeeded=["wikidata_opencitations"],
+        )
+
+        verdict_iso = self.checker.check(citation_iso, source_iso, mapping_status=CitationMappingStatus.MATCHED)
+        assert verdict_iso.label == ValidationLabel.VERIFIED
+        assert "R-WIKIDATA-VERIFIED" in verdict_iso.triggered_rules
+
+
 
 class TestRealPdfEndToEndAndBeforeAfterBenchmark:
     """Generates a real multi-page PDF document with PyMuPDF and runs the full parsing,

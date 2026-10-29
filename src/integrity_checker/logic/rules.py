@@ -1026,15 +1026,20 @@ class SymbolicRules:
                 style_penalty=style_penalty,
             )
 
-        # --- Rule 1a-ext: Technical standard (IETF RFC / PyPI) or Hugging Face Hub verification ---
+        # --- Rule 1a-ext: Technical standard (IETF RFC / PyPI / NPM / GitHub) or Hugging Face / Wikidata ---
         if best and best.source_name == "tech_standard" and features.title_sim_fuzzy >= 0.80:
+            ext_ids = best.external_ids or {}
+            triggered_rules.append("R-RFC-VERIFIED")
+            if "github_repo" in ext_ids:
+                triggered_rules.append("R-GITHUB-VERIFIED")
+            elif "npm_package" in ext_ids or "pypi_package" in ext_ids:
+                triggered_rules.append("R-PACKAGE-VERIFIED")
             if year_dist <= self.year_tolerance or year_dist >= 900:
-                triggered_rules.append("R-RFC-VERIFIED")
                 return RuleOutcome(
                     label=ValidationLabel.VERIFIED,
                     confidence=max(0.0, 0.92 - style_penalty - provenance_penalty),
                     reasoning=(
-                        f"Verified technical standard / software package via {best.venue or 'IETF RFC / PyPI'} "
+                        f"Verified technical standard / software package via {best.venue or 'IETF RFC / PyPI / NPM / GitHub'} "
                         f"(title similarity={features.title_sim_fuzzy:.2f}).{provenance_note}"
                     ),
                     triggered_rules=triggered_rules,
@@ -1043,13 +1048,42 @@ class SymbolicRules:
                 )
             else:
                 mismatched.append("year")
-                triggered_rules.extend(["R-RFC-VERIFIED", "R-SINGLE-SOURCE-PARTIAL"])
+                triggered_rules.append("R-SINGLE-SOURCE-PARTIAL")
                 return RuleOutcome(
                     label=ValidationLabel.METADATA_ERROR,
                     confidence=max(0.0, 0.75 - style_penalty),
                     reasoning=(
-                        f"Technical standard '{best.title}' found in {best.venue or 'IETF / PyPI'}, "
+                        f"Technical standard / software package '{best.title}' found in {best.venue or 'IETF / PyPI / NPM / GitHub'}, "
                         f"but cited publication year differs from official release year ({best.year})."
+                    ),
+                    triggered_rules=triggered_rules,
+                    mismatched_fields=mismatched,
+                    style_penalty=style_penalty,
+                )
+
+        if best and best.source_name == "wikidata_opencitations" and features.title_sim_fuzzy >= 0.80:
+            triggered_rules.append("R-WIKIDATA-VERIFIED")
+            if year_dist <= self.year_tolerance or year_dist >= 900:
+                return RuleOutcome(
+                    label=ValidationLabel.VERIFIED,
+                    confidence=max(0.0, 0.90 - style_penalty - provenance_penalty),
+                    reasoning=(
+                        f"Verified via {best.venue or 'Wikidata Knowledge Graph / OpenCitations'} "
+                        f"(title similarity={features.title_sim_fuzzy:.2f}).{provenance_note}"
+                    ),
+                    triggered_rules=triggered_rules,
+                    mismatched_fields=[],
+                    style_penalty=style_penalty,
+                )
+            else:
+                mismatched.append("year")
+                triggered_rules.append("R-SINGLE-SOURCE-PARTIAL")
+                return RuleOutcome(
+                    label=ValidationLabel.METADATA_ERROR,
+                    confidence=max(0.0, 0.75 - style_penalty),
+                    reasoning=(
+                        f"Work or standard '{best.title}' found in {best.venue or 'Wikidata / OpenCitations'}, "
+                        f"but cited publication year differs from official publication year ({best.year})."
                     ),
                     triggered_rules=triggered_rules,
                     mismatched_fields=mismatched,

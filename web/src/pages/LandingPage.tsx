@@ -714,9 +714,9 @@ function HeroSection({
             sub: 'Truy vấn SQLite FTS5 < 15ms',
           },
           {
-            value: '15+ Nguồn CSDL',
-            label: 'Crossref · OpenAlex · DataCite · DOAJ · HAL · NCBI · HF · RFC',
-            sub: 'Kèm Wayback Machine & Retraction Watch',
+            value: '18+ Nguồn CSDL',
+            label: 'Crossref · OpenAlex · DataCite · DOAJ · HAL · NCBI · HF · GitHub · Wikidata',
+            sub: 'Kèm NPM, PyPI, IETF RFC, Wayback Machine & Retraction Watch',
           },
           {
             value: '2 Lớp Kiểm chứng',
@@ -736,9 +736,9 @@ function HeroSection({
             sub: 'Sub-15ms SQLite FTS5 retrieval',
           },
           {
-            value: '15+ Databases',
-            label: 'Crossref · OpenAlex · DataCite · DOAJ · HAL · NCBI · HF · RFC',
-            sub: 'Includes Wayback Machine & Retraction Watch',
+            value: '18+ Databases',
+            label: 'Crossref · OpenAlex · DataCite · DOAJ · HAL · NCBI · HF · GitHub · Wikidata',
+            sub: 'Includes NPM, PyPI, IETF RFC, Wayback Machine & Retraction Watch',
           },
           {
             value: '2-Layer Engine',
@@ -1732,7 +1732,7 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
                     variant="outline"
                     className="font-mono text-xs bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800"
                   >
-                    15+ DATA SOURCES
+                    18+ DATA SOURCES
                   </Badge>
                   <span className="font-mono text-xs text-slate-400">
                     Local FTS5 + REST
@@ -1740,13 +1740,13 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
                 </div>
                 <CardTitle className="text-xl">
                   {lang === 'vi'
-                    ? 'Liên hợp 127K Bài báo Nội bộ & 15+ API Quốc tế'
-                    : '127K Local ACL Anthology + 15+ Global APIs'}
+                    ? 'Liên hợp 127K Bài báo Nội bộ & 18+ API Quốc tế'
+                    : '127K Local ACL Anthology + 18+ Global APIs'}
                 </CardTitle>
                 <CardDescription>
                   {lang === 'vi'
-                    ? 'Kết hợp tìm kiếm toàn văn SQLite FTS5 tốc độ cao với điều phối thông minh tới DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, Hugging Face, IETF RFC & Wayback Machine.'
-                    : 'Combines ultra-fast local SQLite FTS5 indexing with smart domain routing across DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, Hugging Face, IETF RFC & Wayback Machine.'}
+                    ? 'Kết hợp tìm kiếm toàn văn SQLite FTS5 tốc độ cao với điều phối thông minh tới DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, Hugging Face, GitHub, NPM, Wikidata, IETF RFC & Wayback Machine.'
+                    : 'Combines ultra-fast local SQLite FTS5 indexing with smart domain routing across DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, Hugging Face, GitHub, NPM, Wikidata, IETF RFC & Wayback Machine.'}
                 </CardDescription>
               </CardHeader>
 
@@ -1778,9 +1778,9 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
                     badgeClass: 'source-badge-dblp',
                   },
                   {
-                    name: 'DataCite, DOAJ, HAL, NCBI, HF & IETF RFC',
-                    meta: 'Zenodo datasets, OA journals, theses, bioRxiv, AI models, RFCs & Wayback Machine',
-                    badge: '+9 FREE APIS',
+                    name: 'DataCite, DOAJ, HAL, NCBI, HF, GitHub, NPM & Wikidata',
+                    meta: 'Zenodo, OA journals, theses, bioRxiv, AI models, GitHub/NPM/PyPI, ISO/NIST/DSM-5, RFCs & Wayback',
+                    badge: '+12 FREE APIS',
                     badgeClass:
                       'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
                   },

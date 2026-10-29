@@ -104,7 +104,8 @@ function SourceIcon({ source }: { source: string }) {
   if (lower.includes('openlibrary')) return <span className="text-[11px] font-mono font-bold">OL</span>;
   if (lower.includes('europepmc')) return <span className="text-[11px] font-mono font-bold">PM</span>;
   if (lower.includes('huggingface')) return <span className="text-[11px] font-mono font-bold">HF</span>;
-  if (lower.includes('tech_standard') || lower.includes('rfc')) return <span className="text-[11px] font-mono font-bold">RF</span>;
+  if (lower.includes('tech_standard') || lower.includes('rfc') || lower.includes('github') || lower.includes('npm')) return <span className="text-[11px] font-mono font-bold">TS</span>;
+  if (lower.includes('wikidata') || lower.includes('opencitations')) return <span className="text-[11px] font-mono font-bold">WD</span>;
   if (lower.includes('doi_ra')) return <span className="text-[11px] font-mono font-bold">RA</span>;
   return <Database className="h-3.5 w-3.5" />;
 }

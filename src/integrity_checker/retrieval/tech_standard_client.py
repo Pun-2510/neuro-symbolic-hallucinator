@@ -1,16 +1,22 @@
-"""IETF Datatracker RFC & PyPI Package Registry Verification Client.
+"""IETF Datatracker RFC, PyPI, NPM Registry & GitHub Repository Verification Client.
 
-Verifies technical standards and open-source software packages commonly cited
-in Computer Science, Networking, Cybersecurity, and Software Engineering theses:
+Verifies technical standards and open-source software repositories/packages commonly cited
+in Computer Science, Networking, Cybersecurity, AI, and Software Engineering theses:
 1. IETF RFC Standards (`RFC 2616`, `RFC 6749`, `RFC 9110`, `10.17487/RFC*`) via
    RFC Editor JSON API & IETF Datatracker REST API v1.
 2. Python Package Index (`pypi.org/project/{pkg}`) via PyPI JSON API.
+3. NPM Package Registry (`npmjs.com/package/{pkg}` including `@scope/pkg`) via
+   `https://registry.npmjs.org/{pkg}`.
+4. GitHub Public Repositories (`github.com/{owner}/{repo}`) via GitHub REST API
+   (`https://api.github.com/repos/{owner}/{repo}`) + `CITATION.cff` metadata enrichment.
 
 Rate limit: 5 req/s (free public REST APIs, no API key required).
 Docs:
 - https://www.rfc-editor.org/
 - https://datatracker.ietf.org/api/v1/
 - https://warehouse.pypa.io/api-reference/json.html
+- https://github.com/npm/registry/blob/main/docs/REGISTRY-API.md
+- https://docs.github.com/en/rest/repos/repos
 """
 
 from __future__ import annotations
@@ -22,13 +28,14 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
+import yaml
 
 from integrity_checker.config import get_settings
 from integrity_checker.logging import get_logger
 from integrity_checker.models.citation import Citation
 from integrity_checker.models.source import SourceCandidate
 from integrity_checker.retrieval.base import BaseScholarClient
-from integrity_checker.retrieval.normalization import normalize_doi
+from integrity_checker.retrieval.normalization import normalize_doi, title_similarity
 
 logger = get_logger(__name__)
 
@@ -42,13 +49,54 @@ _PYPI_URL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+_NPM_URL_PATTERN = re.compile(
+    r"https?://(?:www\.)?npmjs\.(?:com|org)/package/(?P<pkg>(?:@[A-Za-z0-9_.-]+/)?[A-Za-z0-9_.-]+)",
+    re.IGNORECASE,
+)
+
+_GITHUB_URL_PATTERN = re.compile(
+    r"https?://(?:www\.)?github\.com/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)",
+    re.IGNORECASE,
+)
+
+_GITHUB_RESERVED_OWNERS = frozenset({
+    "orgs",
+    "topics",
+    "trending",
+    "settings",
+    "login",
+    "pricing",
+    "features",
+    "about",
+    "marketplace",
+    "sponsors",
+    "events",
+    "collections",
+    "security",
+    "enterprise",
+    "readme",
+    "search",
+    "pulls",
+    "issues",
+    "notifications",
+    "blog",
+    "docs",
+    "site",
+    "customer-stories",
+    "team",
+    "join",
+})
+
 
 class TechStandardClient(BaseScholarClient):
-    """IETF RFC & PyPI JSON metadata client for CS / Networking / Software citations."""
+    """IETF RFC, PyPI, NPM & GitHub Repository metadata client for CS / Software citations."""
 
     RFC_EDITOR_BASE = "https://www.rfc-editor.org/rfc"
     IETF_API_BASE = "https://datatracker.ietf.org/api/v1/doc/document"
     PYPI_BASE = "https://pypi.org/pypi"
+    NPM_BASE = "https://registry.npmjs.org"
+    GITHUB_API_BASE = "https://api.github.com/repos"
+    GITHUB_RAW_BASE = "https://raw.githubusercontent.com"
     name = "tech_standard"
 
     def __init__(
@@ -72,6 +120,7 @@ class TechStandardClient(BaseScholarClient):
             ),
             "Accept": "application/json",
         }
+        self._last_status_code: int | None = None
 
     @classmethod
     def extract_rfc_number(cls, citation: Citation) -> int | None:
@@ -108,8 +157,53 @@ class TechStandardClient(BaseScholarClient):
             return m.group("pkg").strip().rstrip(".,;:)\"'/")
         return None
 
+    @classmethod
+    def extract_npm_package(cls, citation: Citation) -> str | None:
+        """Extract NPM package name (including `@scope/pkg`) if citation references npmjs.com."""
+        combined = " ".join(
+            part
+            for part in (citation.url or "", citation.raw_text or "", citation.venue or "")
+            if part
+        )
+        m = _NPM_URL_PATTERN.search(combined)
+        if m:
+            return m.group("pkg").strip().rstrip(".,;:)\"'/")
+        return None
+
+    @classmethod
+    def extract_github_repo(cls, citation: Citation) -> str | None:
+        """Extract `owner/repo` slug if citation references a GitHub repository."""
+        combined = " ".join(
+            part
+            for part in (citation.url or "", citation.raw_text or "", citation.venue or "")
+            if part
+        )
+        for m in _GITHUB_URL_PATTERN.finditer(combined):
+            owner = m.group("owner").strip().rstrip(".,;:)\"'/")
+            repo = m.group("repo").strip().rstrip(".,;:)\"'/")
+            if repo.lower().endswith(".git"):
+                repo = repo[:-4]
+            if (
+                owner
+                and repo
+                and owner.lower() not in _GITHUB_RESERVED_OWNERS
+                and repo.lower() not in ("issues", "pulls", "discussions", "wiki", "releases", "actions")
+            ):
+                return f"{owner}/{repo}"
+        return None
+
+    @classmethod
+    def has_tech_target(cls, citation: Citation) -> bool:
+        """Return True if citation references an IETF RFC, PyPI package, NPM package, or GitHub repo."""
+        return bool(
+            cls.extract_rfc_number(citation) is not None
+            or cls.extract_pypi_package(citation)
+            or cls.extract_npm_package(citation)
+            or cls.extract_github_repo(citation)
+        )
+
     async def lookup(self, citation: Citation) -> SourceCandidate:
-        """Lookup IETF RFC standard or PyPI software package."""
+        """Lookup IETF RFC standard, PyPI package, NPM package, or GitHub repository."""
         rfc_num = self.extract_rfc_number(citation)
         if rfc_num is not None:
             rfc_cand = await self._lookup_rfc(rfc_num, citation=citation)
@@ -119,8 +213,20 @@ class TechStandardClient(BaseScholarClient):
         pypi_pkg = self.extract_pypi_package(citation)
         if pypi_pkg:
             pypi_cand = await self._lookup_pypi(pypi_pkg, citation=citation)
-            if pypi_cand and pypi_cand.found:
+            if pypi_cand is not None:
                 return pypi_cand
+
+        npm_pkg = self.extract_npm_package(citation)
+        if npm_pkg:
+            npm_cand = await self._lookup_npm(npm_pkg, citation=citation)
+            if npm_cand is not None:
+                return npm_cand
+
+        gh_repo = self.extract_github_repo(citation)
+        if gh_repo:
+            gh_cand = await self._lookup_github_repo(gh_repo, citation=citation)
+            if gh_cand is not None:
+                return gh_cand
 
         return SourceCandidate(
             source_name=self.name,
@@ -219,14 +325,23 @@ class TechStandardClient(BaseScholarClient):
         url = f"{self.PYPI_BASE}/{quote(pkg_name, safe='')}/json"
         data = await self._fetch_json(url)
         if not isinstance(data, dict) or not isinstance(data.get("info"), dict):
+            if self._last_status_code == 404:
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"TechStandard: PyPI package '{pkg_name}' does not exist (404)",
+                    external_ids={"pypi_status": "nonexistent"},
+                )
             return None
 
         info = data["info"]
         name = str(info.get("name") or pkg_name).strip()
         summary = self._clean_text(info.get("summary"))
-        title = f"{name}: {summary}" if summary else name
-        if citation and citation.title and name.lower() in citation.title.lower():
-            title = citation.title.strip()
+        full_api_title = f"{name}: {summary}" if summary else name
+        title = full_api_title
+        if citation and citation.title and summary:
+            if title_similarity(citation.title, name) > title_similarity(citation.title, full_api_title):
+                title = name
 
         authors: list[str] = []
         for field_name in ("author", "maintainer"):
@@ -283,6 +398,268 @@ class TechStandardClient(BaseScholarClient):
             confidence=0.95,
         )
 
+    async def _lookup_npm(
+        self,
+        pkg_name: str,
+        citation: Citation | None = None,
+    ) -> SourceCandidate | None:
+        """Lookup NPM package metadata via `https://registry.npmjs.org/{pkg}`."""
+        url = f"{self.NPM_BASE}/{quote(pkg_name, safe='@/')}"
+        data = await self._fetch_json(url)
+        if not isinstance(data, dict) or not (data.get("name") or data.get("_id")):
+            if self._last_status_code == 404:
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"TechStandard: NPM package '{pkg_name}' does not exist (404)",
+                    external_ids={"npm_status": "nonexistent"},
+                )
+            return None
+
+        name = str(data.get("name") or data.get("_id") or pkg_name).strip()
+        description = self._clean_text(data.get("description"))
+        full_api_title = f"{name}: {description}" if description else name
+        title = full_api_title
+        if citation and citation.title and description:
+            if title_similarity(citation.title, name) > title_similarity(citation.title, full_api_title):
+                title = name
+
+        authors: list[str] = []
+        raw_author = data.get("author")
+        if isinstance(raw_author, dict) and raw_author.get("name"):
+            authors.append(str(raw_author["name"]).strip())
+        elif isinstance(raw_author, str) and raw_author.strip():
+            clean_a = re.sub(r"<[^>]+>|\([^)]+\)", "", raw_author).strip()
+            if clean_a:
+                authors.append(clean_a)
+
+        for maint in data.get("maintainers") or []:
+            if isinstance(maint, dict) and maint.get("name"):
+                m_name = str(maint["name"]).strip()
+                if m_name and m_name not in authors:
+                    authors.append(m_name)
+        if not authors:
+            authors = ["NPM Contributors"]
+
+        release_years: set[str] = set()
+        time_map = data.get("time") or {}
+        if isinstance(time_map, dict):
+            for ts_val in time_map.values():
+                ts_str = str(ts_val or "")
+                if len(ts_str) >= 4 and ts_str[:4].isdigit():
+                    release_years.add(ts_str[:4])
+
+        year: str | None = max(release_years) if release_years else None
+        if citation and citation.year:
+            cit_yr = str(citation.year)[:4]
+            if cit_yr.isdigit() and release_years:
+                min_yr = min(release_years)
+                max_yr = max(release_years)
+                if min_yr <= cit_yr <= max_yr:
+                    year = cit_yr
+                elif int(cit_yr) < int(min_yr):
+                    year = min_yr
+
+        homepage = str(data.get("homepage") or f"https://www.npmjs.com/package/{name}")
+        return SourceCandidate(
+            source_name=self.name,
+            found=True,
+            doi=None,
+            title=title,
+            authors=authors[:6],
+            year=year,
+            venue="NPM Package Registry (npmjs.com)",
+            url=f"https://www.npmjs.com/package/{name}" if "npmjs.com" not in homepage else homepage,
+            abstract=description,
+            external_ids={"npm_package": name},
+            confidence=0.95,
+        )
+
+    async def _lookup_github_repo(
+        self,
+        repo_slug: str,
+        citation: Citation | None = None,
+    ) -> SourceCandidate | None:
+        """Verify GitHub repository via GitHub REST API + optional `CITATION.cff` enrichment."""
+        headers = dict(self._headers)
+        headers["Accept"] = "application/vnd.github+json, application/json"
+        gh_token = os.getenv("GITHUB_TOKEN", "").strip()
+        if gh_token:
+            headers["Authorization"] = f"Bearer {gh_token}"
+
+        api_url = f"{self.GITHUB_API_BASE}/{repo_slug}"
+        data = await self._fetch_json(api_url, extra_headers=headers)
+        status_code = self._last_status_code
+
+        # Also attempt CITATION.cff fetch (helps enrich academic authors/DOI and works even if REST API is rate-limited)
+        cff_meta = await self._fetch_github_citation_cff(repo_slug)
+
+        if not isinstance(data, dict) or not (data.get("full_name") or data.get("name")):
+            if status_code == 404:
+                return SourceCandidate(
+                    source_name=self.name,
+                    found=False,
+                    error=f"TechStandard: GitHub repository '{repo_slug}' does not exist (404)",
+                    external_ids={"github_status": "nonexistent"},
+                )
+            if cff_meta:
+                return self._build_github_candidate_from_cff(repo_slug, cff_meta, citation=citation)
+            return None
+
+        full_name = str(data.get("full_name") or repo_slug).strip()
+        repo_name = str(data.get("name") or full_name.split("/")[-1]).strip()
+        owner_obj = data.get("owner") or {}
+        owner_login = str(owner_obj.get("login") if isinstance(owner_obj, dict) else full_name.split("/")[0]).strip()
+        repo_Desc = self._clean_text(data.get("description"))
+        cff_abs = cff_meta.get("abstract") if cff_meta else None
+        description = cff_abs or repo_Desc
+
+        # Build title strictly from CITATION.cff or GitHub repository metadata
+        cff_title = cff_meta.get("title") if cff_meta else None
+        api_title_candidates = [
+            t
+            for t in (
+                cff_title,
+                f"{repo_name}: {repo_Desc}" if repo_Desc else None,
+                f"{full_name}: {repo_Desc}" if repo_Desc else None,
+                repo_name,
+                full_name,
+            )
+            if t
+        ]
+        title = api_title_candidates[0] if api_title_candidates else full_name
+        if citation and citation.title and api_title_candidates:
+            title = max(
+                api_title_candidates,
+                key=lambda cand_t: title_similarity(citation.title, cand_t),
+            )
+
+        # Build authors list strictly from CITATION.cff authors + GitHub repository owner
+        authors: list[str] = []
+        if cff_meta and cff_meta.get("authors"):
+            authors.extend(cff_meta["authors"])
+        if owner_login and owner_login not in authors:
+            authors.append(owner_login)
+        if not authors:
+            authors = [owner_login or "GitHub Contributors"]
+
+        # Active repository years from created_at, updated_at, pushed_at, and CITATION.cff date-released
+        active_years: set[str] = set()
+        for dt_field in ("created_at", "updated_at", "pushed_at"):
+            dt_val = str(data.get(dt_field) or "")
+            if len(dt_val) >= 4 and dt_val[:4].isdigit():
+                active_years.add(dt_val[:4])
+        if cff_meta and cff_meta.get("year"):
+            active_years.add(str(cff_meta["year"])[:4])
+
+        created_yr = str(data.get("created_at") or "")[:4]
+        year: str | None = (cff_meta.get("year") if cff_meta else None) or (max(active_years) if active_years else None)
+        if citation and citation.year:
+            cit_yr = str(citation.year)[:4]
+            if cit_yr.isdigit() and active_years:
+                min_yr = min(active_years)
+                max_yr = max(active_years)
+                if int(min_yr) - 1 <= int(cit_yr) <= int(max_yr) + 1:
+                    year = cit_yr
+                elif created_yr.isdigit():
+                    year = created_yr
+
+        doi = normalize_doi(cff_meta.get("doi")) if (cff_meta and cff_meta.get("doi")) else None
+        ext_ids: dict[str, str] = {"github_repo": full_name}
+        if doi:
+            ext_ids["doi"] = doi
+        if data.get("stargazers_count") is not None:
+            ext_ids["stars"] = str(data.get("stargazers_count"))
+
+        html_url = str(data.get("html_url") or f"https://github.com/{full_name}")
+        return SourceCandidate(
+            source_name=self.name,
+            found=True,
+            doi=doi,
+            title=title,
+            authors=authors[:6],
+            year=year,
+            venue="GitHub Repository",
+            url=html_url,
+            abstract=description,
+            external_ids=ext_ids,
+            confidence=0.95,
+        )
+
+    async def _fetch_github_citation_cff(self, repo_slug: str) -> dict[str, Any] | None:
+        """Fetch and parse `CITATION.cff` from `raw.githubusercontent.com/{owner}/{repo}/HEAD/CITATION.cff`."""
+        cff_url = f"{self.GITHUB_RAW_BASE}/{repo_slug}/HEAD/CITATION.cff"
+        try:
+            async with httpx.AsyncClient(
+                timeout=min(self.timeout, 3.5),
+                headers={"User-Agent": self._headers["User-Agent"]},
+                follow_redirects=True,
+            ) as client:
+                resp = await client.get(cff_url)
+                if resp.status_code != 200 or not resp.text:
+                    return None
+                parsed = yaml.safe_load(resp.text)
+                if not isinstance(parsed, dict):
+                    return None
+
+                title = self._clean_text(parsed.get("title"))
+                abstract = self._clean_text(parsed.get("abstract") or parsed.get("message"))
+                doi = normalize_doi(str(parsed.get("doi") or ""))
+                date_rel = str(parsed.get("date-released") or "")
+                yr_m = re.search(r"\b(19|20)\d{2}\b", date_rel)
+                year = yr_m.group(0) if yr_m else None
+
+                authors: list[str] = []
+                for a in parsed.get("authors") or []:
+                    if isinstance(a, dict):
+                        given = str(a.get("given-names") or "").strip()
+                        family = str(a.get("family-names") or "").strip()
+                        name_str = str(a.get("name") or "").strip()
+                        if given and family:
+                            authors.append(f"{given} {family}")
+                        elif family:
+                            authors.append(family)
+                        elif name_str:
+                            authors.append(name_str)
+
+                return {
+                    "title": title,
+                    "abstract": abstract,
+                    "doi": doi,
+                    "year": year,
+                    "authors": authors,
+                }
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"GitHub CITATION.cff lookup skipped for {repo_slug}: {exc}")
+            return None
+
+    def _build_github_candidate_from_cff(
+        self,
+        repo_slug: str,
+        cff_meta: dict[str, Any],
+        citation: Citation | None = None,
+    ) -> SourceCandidate:
+        title = cff_meta.get("title") or repo_slug
+        authors = cff_meta.get("authors") or [repo_slug.split("/")[0]]
+        year = cff_meta.get("year")
+        doi = cff_meta.get("doi")
+        ext_ids: dict[str, str] = {"github_repo": repo_slug}
+        if doi:
+            ext_ids["doi"] = doi
+        return SourceCandidate(
+            source_name=self.name,
+            found=True,
+            doi=doi,
+            title=title,
+            authors=authors,
+            year=year,
+            venue="GitHub Repository (CITATION.cff)",
+            url=f"https://github.com/{repo_slug}",
+            abstract=cff_meta.get("abstract"),
+            external_ids=ext_ids,
+            confidence=0.95,
+        )
+
     @staticmethod
     def _clean_text(text: Any) -> str | None:
         if not text:
@@ -292,14 +669,21 @@ class TechStandardClient(BaseScholarClient):
         cleaned = re.sub(r"\s+", " ", cleaned).strip()
         return cleaned or None
 
-    async def _fetch_json(self, url: str) -> dict[str, Any] | None:
+    async def _fetch_json(
+        self,
+        url: str,
+        extra_headers: dict[str, str] | None = None,
+    ) -> dict[str, Any] | None:
+        self._last_status_code = None
+        req_headers = extra_headers or self._headers
         try:
             async with httpx.AsyncClient(
                 timeout=self.timeout,
-                headers=self._headers,
+                headers=req_headers,
                 follow_redirects=True,
             ) as client:
                 resp = await client.get(url)
+                self._last_status_code = resp.status_code
                 if resp.status_code != 200:
                     return None
                 return resp.json()

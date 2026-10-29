@@ -974,6 +974,14 @@ class Repository:
                 "arxiv",
                 "openlibrary",
                 "europepmc",
+                "datacite",
+                "doi_ra",
+                "doaj",
+                "openaire_hal",
+                "ncbi_biorxiv",
+                "huggingface",
+                "tech_standard",
+                "wikidata_opencitations",
                 "serpapi",
             ]
         }

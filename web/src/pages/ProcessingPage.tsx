@@ -65,11 +65,11 @@ const STEP_LABELS: Array<{
     tag: 'LINKING GRAPH',
   },
   {
-    labelEn: 'Retrieving source metadata across 15+ registries',
-    labelVi: 'Truy hồi dữ liệu từ hệ thống 15+ CSDL học thuật liên hợp',
-    detailsEn: 'Querying Crossref, OpenAlex, DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, DBLP, arXiv, OpenLibrary, Europe PMC, Hugging Face, IETF RFC & ACL FTS5',
-    detailsVi: 'Truy vấn phân tầng Crossref, OpenAlex, DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, DBLP, arXiv, OpenLibrary, Europe PMC, Hugging Face, IETF RFC & ACL FTS5',
-    tag: '15+ INDEXES',
+    labelEn: 'Retrieving source metadata across 18+ registries',
+    labelVi: 'Truy hồi dữ liệu từ hệ thống 18+ CSDL học thuật & tri thức liên hợp',
+    detailsEn: 'Querying Crossref, OpenAlex, DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, DBLP, arXiv, OpenLibrary, Europe PMC, Hugging Face, GitHub, NPM/PyPI, Wikidata/OpenCitations, IETF RFC & ACL FTS5',
+    detailsVi: 'Truy vấn phân tầng Crossref, OpenAlex, DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, DBLP, arXiv, OpenLibrary, Europe PMC, Hugging Face, GitHub, NPM/PyPI, Wikidata/OpenCitations, IETF RFC & ACL FTS5',
+    tag: '18+ INDEXES',
   },
   {
     labelEn: 'Comparing candidate publications & neural evidence',
@@ -492,8 +492,8 @@ export function ProcessingPage() {
             <Database className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
             <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
               {lang === 'vi'
-                ? 'Trạng thái Truy vấn 15+ CSDL Học thuật Liên hợp'
-                : 'Federated 15+ Source Retrieval'}
+                ? 'Trạng thái Truy vấn 18+ CSDL Học thuật & Tri thức Liên hợp'
+                : 'Federated 18+ Source Retrieval'}
             </h3>
           </div>
           {!isDone && !isFailed && (
@@ -519,6 +519,7 @@ export function ProcessingPage() {
             'europepmc',
             'huggingface',
             'tech_standard',
+            'wikidata_opencitations',
             'doi_ra',
             'known_papers',
           ] as const).map((db) => (
@@ -607,7 +608,8 @@ function SourceTile({
     openlibrary: 'OpenLibrary / Books',
     europepmc: 'Europe PMC',
     huggingface: 'Hugging Face Hub',
-    tech_standard: 'IETF RFC / PyPI',
+    tech_standard: 'IETF RFC / PyPI / NPM / GitHub',
+    wikidata_opencitations: 'Wikidata / OpenCitations',
     doi_ra: 'Global DOI RA',
     local_db: 'Local ACL FTS5 (128K+)',
     known_papers: 'Seminal Whitelist',

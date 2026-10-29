@@ -280,10 +280,40 @@ const RULE_DEFINITIONS: Record<string, Omit<Rule, "triggered">> = {
   },
   "R-RFC-VERIFIED": {
     id: "R-RFC-VERIFIED",
-    name: "IETF RFC Standard / PyPI Package Verified",
-    description: "Verified technical standard (RFC Editor / IETF Datatracker) or software package (PyPI JSON API)",
+    name: "IETF RFC / PyPI / NPM / GitHub Verified",
+    description: "Verified technical standard (RFC Editor / IETF Datatracker), software package (PyPI / NPM Registry), or GitHub repository (CITATION.cff)",
     conditions: [
       { field: "source", operator: "=", value: "tech_standard" },
+      { field: "title_sim_fuzzy", operator: ">=", value: "0.80" },
+    ],
+    conclusion: "VERIFIED",
+  },
+  "R-GITHUB-VERIFIED": {
+    id: "R-GITHUB-VERIFIED",
+    name: "GitHub Repository & CITATION.cff Verified",
+    description: "Verified public GitHub repository metadata and CITATION.cff citation file via GitHub REST API",
+    conditions: [
+      { field: "source", operator: "=", value: "tech_standard" },
+      { field: "github_repo", operator: "!=", value: "null" },
+    ],
+    conclusion: "VERIFIED",
+  },
+  "R-PACKAGE-VERIFIED": {
+    id: "R-PACKAGE-VERIFIED",
+    name: "PyPI / NPM Package Registry Verified",
+    description: "Verified software package release metadata and maintainers via PyPI or NPM Registry API",
+    conditions: [
+      { field: "source", operator: "=", value: "tech_standard" },
+      { field: "package_registry", operator: "IN", value: "[pypi, npm]" },
+    ],
+    conclusion: "VERIFIED",
+  },
+  "R-WIKIDATA-VERIFIED": {
+    id: "R-WIKIDATA-VERIFIED",
+    name: "Wikidata Knowledge Graph / OpenCitations Verified",
+    description: "Verified international standard (ISO/IEC, NIST SP, IEEE 802, OWASP, WCAG), clinical manual (DSM-5, ICD-11), or DOI via Wikidata & OpenCitations",
+    conditions: [
+      { field: "source", operator: "=", value: "wikidata_opencitations" },
       { field: "title_sim_fuzzy", operator: ">=", value: "0.80" },
     ],
     conclusion: "VERIFIED",

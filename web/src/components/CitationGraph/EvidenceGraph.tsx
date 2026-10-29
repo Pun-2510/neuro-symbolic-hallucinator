@@ -51,6 +51,7 @@ const EXTERNAL_DBS = [
   'ncbi_biorxiv',
   'huggingface',
   'tech_standard',
+  'wikidata_opencitations',
   'serpapi',
 ];
 const SOURCE_FLOW_ORDER = [
@@ -70,6 +71,7 @@ const SOURCE_FLOW_ORDER = [
   'europepmc',
   'huggingface',
   'tech_standard',
+  'wikidata_opencitations',
   'serpapi',
 ];
 

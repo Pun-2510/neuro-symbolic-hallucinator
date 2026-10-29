@@ -50,12 +50,15 @@ class SerpApiClient(BaseScholarClient):
         - Year range filtering (as_ylo, as_yhi)
         - Citation count extraction
         - Author profile links
+        - Quota exhaustion circuit breaker & negative query cache
 
     Usage: Fallback khi Crossref/OpenAlex/Semantic Scholar thất bại.
     """
 
     BASE_URL = "https://serpapi.com"
     name = "serpapi"
+    _quota_exhausted: bool = False
+    _negative_query_cache: set[tuple[str, str]] = set()
 
     def __init__(
         self,
@@ -91,6 +94,13 @@ class SerpApiClient(BaseScholarClient):
                 error="SerpApi: No API key configured",
             )
 
+        if self.__class__._quota_exhausted:
+            return SourceCandidate(
+                source_name=self.name,
+                found=False,
+                error="SerpApi: Quota exhausted (circuit breaker active)",
+            )
+
         if not citation.title and not citation.authors:
             return SourceCandidate(
                 source_name=self.name,
@@ -107,10 +117,19 @@ class SerpApiClient(BaseScholarClient):
                 error="SerpApi: Empty search query",
             )
 
+        cache_key = (query.strip().lower(), str(citation.year or "").strip())
+        if cache_key in self.__class__._negative_query_cache:
+            return SourceCandidate(
+                source_name=self.name,
+                found=False,
+                error=f"SerpApi: Cached negative result for '{query[:60]}'",
+            )
+
         # Execute search với retry
         result = await self._search_with_retry(query, citation)
 
         if not result:
+            self.__class__._negative_query_cache.add(cache_key)
             return SourceCandidate(
                 source_name=self.name,
                 found=False,
@@ -121,6 +140,7 @@ class SerpApiClient(BaseScholarClient):
         if citation.title:
             similarity = title_similarity(citation.title, result.get("title"))
             if similarity < MIN_TITLE_SIMILARITY:
+                self.__class__._negative_query_cache.add(cache_key)
                 logger.info(
                     f"SerpApi: title mismatch ({similarity:.2f}) for '{query[:60]}' "
                     f"→ '{str(result.get('title'))[:60]}'"
@@ -243,11 +263,26 @@ class SerpApiClient(BaseScholarClient):
             search = GoogleScholarSearch(params)
             data = search.get_dict()
 
-            # Check for API errors
+            # Check for API errors or quota exhaustion
+            if "error" in data and not data.get("organic_results"):
+                err_str = str(data.get("error") or "")
+                if any(
+                    kw in err_str.lower()
+                    for kw in ("run out of searches", "quota", "searches per month", "exceeded", "forbidden")
+                ):
+                    self.__class__._quota_exhausted = True
+                    logger.warning(f"SerpApi quota circuit breaker tripped: {err_str}")
+                return None
+
             if "search_metadata" in data:
                 status = data["search_metadata"].get("status")
                 if status != "Success":
-                    error_msg = data.get("error", "Unknown SerpApi error")
+                    error_msg = str(data.get("error", "Unknown SerpApi error"))
+                    if any(
+                        kw in error_msg.lower()
+                        for kw in ("run out of searches", "quota", "searches per month", "exceeded", "forbidden")
+                    ):
+                        self.__class__._quota_exhausted = True
                     logger.warning(f"SerpApi status={status}: {error_msg}")
                     return None
 

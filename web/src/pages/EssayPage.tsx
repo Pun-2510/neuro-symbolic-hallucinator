@@ -224,9 +224,27 @@ const RULE_CATALOG: Record<
     status: 'passed',
   },
   'R-RFC-VERIFIED': {
-    nameEn: 'IETF RFC Technical Standard / PyPI Package Verified',
-    nameVi: 'Xác thực Chuẩn kỹ thuật IETF RFC / Gói phần mềm PyPI',
-    condition: 'IF source == "tech_standard" AND title_sim >= 0.85 THEN VERIFIED',
+    nameEn: 'IETF RFC Standard / PyPI / NPM / GitHub Verified',
+    nameVi: 'Xác thực Chuẩn IETF RFC / Gói phần mềm PyPI / NPM / GitHub',
+    condition: 'IF source == "tech_standard" AND title_sim >= 0.80 THEN VERIFIED',
+    status: 'passed',
+  },
+  'R-GITHUB-VERIFIED': {
+    nameEn: 'GitHub Public Repository & CITATION.cff Verified',
+    nameVi: 'Xác thực Kho mã nguồn GitHub & Hồ sơ CITATION.cff',
+    condition: 'IF source == "tech_standard" AND github_repo != NULL AND title_sim >= 0.80 THEN VERIFIED',
+    status: 'passed',
+  },
+  'R-PACKAGE-VERIFIED': {
+    nameEn: 'PyPI / NPM Software Package Registry Verified',
+    nameVi: 'Xác thực Gói thư viện Mã nguồn mở trên PyPI / NPM Registry',
+    condition: 'IF source == "tech_standard" AND (npm_package != NULL OR pypi_package != NULL) THEN VERIFIED',
+    status: 'passed',
+  },
+  'R-WIKIDATA-VERIFIED': {
+    nameEn: 'Wikidata Knowledge Graph / OpenCitations Verified',
+    nameVi: 'Xác thực Chuẩn quốc tế / Cẩm nang lâm sàng / DOI qua Wikidata & OpenCitations',
+    condition: 'IF source == "wikidata_opencitations" AND title_sim >= 0.80 THEN VERIFIED',
     status: 'passed',
   },
   'R-WAYBACK-ARCHIVED': {
@@ -701,7 +719,8 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
     openaire_hal: 'OpenAIRE Graph / HAL Open Science',
     ncbi_biorxiv: 'NCBI Entrez / bioRxiv / medRxiv',
     huggingface: 'Hugging Face Hub',
-    tech_standard: 'IETF Datatracker RFC / PyPI',
+    tech_standard: 'IETF RFC / PyPI / NPM / GitHub',
+    wikidata_opencitations: 'Wikidata Knowledge Graph / OpenCitations',
     serpapi: 'Google Scholar',
   };
   const sourceMapEn: Record<string, string> = {
@@ -721,7 +740,8 @@ function buildLocalizedReasoning(verdict: Verdict, lang: 'vi' | 'en'): string {
     openaire_hal: 'OpenAIRE Graph / HAL Open Science',
     ncbi_biorxiv: 'NCBI Entrez / bioRxiv / medRxiv',
     huggingface: 'Hugging Face Hub',
-    tech_standard: 'IETF Datatracker RFC / PyPI',
+    tech_standard: 'IETF RFC / PyPI / NPM / GitHub',
+    wikidata_opencitations: 'Wikidata Knowledge Graph / OpenCitations',
     serpapi: 'Google Scholar',
   };
 
@@ -1367,7 +1387,8 @@ function enrichVerdictItem(
     { key: 'openlibrary', label: 'OpenLibrary / Google Books', matchTokens: ['openlibrary', 'google_books'] },
     { key: 'europepmc', label: 'Europe PMC / PubMed', matchTokens: ['europepmc', 'pubmed'] },
     { key: 'huggingface', label: 'Hugging Face Hub (Models / Datasets / Papers)', matchTokens: ['huggingface'] },
-    { key: 'tech_standard', label: 'IETF Datatracker RFC / PyPI', matchTokens: ['tech_standard', 'rfc', 'pypi'] },
+    { key: 'tech_standard', label: 'IETF RFC / PyPI / NPM / GitHub', matchTokens: ['tech_standard', 'rfc', 'pypi', 'npm', 'github'] },
+    { key: 'wikidata_opencitations', label: 'Wikidata Knowledge Graph / OpenCitations', matchTokens: ['wikidata', 'opencitations'] },
     { key: 'doi_ra', label: 'Global DOI Registration Agency (CSL-JSON)', matchTokens: ['doi_ra', 'jalc', 'cnki', 'medra'] },
   ];
 
