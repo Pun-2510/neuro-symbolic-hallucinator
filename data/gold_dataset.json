@@ -1,11 +1,11 @@
 {
   "dataset_id": "arxiv_nlp_full",
-  "description": "arXiv NLP papers, all 5 papers, Crossref-enriched, full dataset",
-  "num_papers": 5,
-  "num_citations": 174,
+  "description": "arXiv NLP papers, 6 papers, Crossref-enriched, 200-citation human gold dataset",
+  "num_papers": 6,
+  "num_citations": 200,
   "stats": {
-    "crossref_matched": 152,
-    "crossref_unmatched": 22
+    "crossref_matched": 175,
+    "crossref_unmatched": 25
   },
   "citation_level_schema": {
     "label": [
@@ -4597,6 +4597,668 @@
         "type": "book-chapter",
         "url": "https://doi.org/10.4324/9780429290169-3",
         "source": "title_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_001",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[1] MLC-SLM Challenge Organizers, “2nd Challenge and Work- shop on Multilingual Conversational Speech Language Model (MLC-SLM),” 2026. [Online]. Available: https://www.nexdata.ai/ competition/mlc-slm (accessed Jul. 10, 2026).",
+      "citation_normalized": "1 mlc slm challenge organizers 2nd challenge and work shop on multilingual conversational speech language model mlc slm 2026 online available https www nexdata ai competition mlc slm accessed jul 10 2026",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2026",
+      "title": null,
+      "doi": null,
+      "venue": null,
+      "crossref": null,
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_002",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[2] Naoyuki Kanda, Guoli Ye, Yashesh Gaur, et al., “End-to-End Speaker-Attributed ASR with Transformer,” in Proc. Interspeech, 2021, pp. 4413–4417.",
+      "citation_normalized": "2 naoyuki kanda guoli ye yashesh gaur et al end to end speaker attributed asr with transformer in proc interspeech 2021 pp 4413 4417",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2021",
+      "title": "Review Ye Tian et al",
+      "doi": "10.5194/bg-2018-446-rc2",
+      "venue": null,
+      "crossref": {
+        "doi": "10.5194/bg-2018-446-rc2",
+        "title": "Review Ye Tian et al",
+        "authors": [],
+        "year": "2019",
+        "venue": null,
+        "publisher": "Copernicus GmbH",
+        "type": "peer-review",
+        "url": "https://doi.org/10.5194/bg-2018-446-rc2",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_003",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[3] Naoyuki Kanda, Xuankai Chang, Yashesh Gaur, et al., “Inves- tigation of End-to-End Speaker-Attributed ASR for Continuous Multi-Talker Recordings,” in Proc. IEEE SLT, 2021, pp. 809–816.",
+      "citation_normalized": "3 naoyuki kanda xuankai chang yashesh gaur et al inves tigation of end to end speaker attributed asr for continuous multi talker recordings in proc ieee slt 2021 pp 809 816",
+      "style": "IEEE_LIKE",
+      "authors": [
+        "Andy J. Chang",
+        "Noah S. Kim",
+        "Homza Hireed",
+        "Alex Diaz de Arce",
+        "Fabian E. Ortega",
+        "Johannes Riegler",
+        "Daniel V. Madison",
+        "Mark A. Krasnow"
+      ],
+      "year": "2021",
+      "title": "Chang et al. reply",
+      "doi": "10.1038/s41586-018-0547-7",
+      "venue": "Nature",
+      "crossref": {
+        "doi": "10.1038/s41586-018-0547-7",
+        "title": "Chang et al. reply",
+        "authors": [
+          "Andy J. Chang",
+          "Noah S. Kim",
+          "Homza Hireed",
+          "Alex Diaz de Arce",
+          "Fabian E. Ortega",
+          "Johannes Riegler",
+          "Daniel V. Madison",
+          "Mark A. Krasnow"
+        ],
+        "year": "2018",
+        "venue": "Nature",
+        "publisher": "Springer Science and Business Media LLC",
+        "type": "journal-article",
+        "url": "https://doi.org/10.1038/s41586-018-0547-7",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_004",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[4] Naoyuki Kanda, Xiong Xiao, Yashesh Gaur, et al., “Transcribe- to-Diarize: Neural Speaker Diarization for Unlimited Number of Speakers Using End-to-End Speaker-Attributed ASR,” in Proc. IEEE ICASSP, 2022, pp. 8082–8086.",
+      "citation_normalized": "4 naoyuki kanda xiong xiao yashesh gaur et al transcribe to diarize neural speaker diarization for unlimited number of speakers using end to end speaker attributed asr in proc ieee icassp 2022 pp 8082 8086",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2022",
+      "title": "Xiong et al. supplementary material",
+      "doi": "10.1180/mgm.2025.10169.sm001",
+      "venue": null,
+      "crossref": {
+        "doi": "10.1180/mgm.2025.10169.sm001",
+        "title": "Xiong et al. supplementary material",
+        "authors": [],
+        "year": "2025",
+        "venue": null,
+        "publisher": "Mineralogical Society",
+        "type": "component",
+        "url": "https://doi.org/10.1180/mgm.2025.10169.sm001",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_005",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[5] Huanru Henry Mao, Shuyang Li, Julian McAuley, and Garrison W. Cottrell, “Speech Recognition and Multi-Speaker Diarization of Long Conversations,” in Proc. Interspeech, 2020, pp. 691–695.",
+      "citation_normalized": "5 huanru henry mao shuyang li julian mcauley and garrison w cottrell speech recognition and multi speaker diarization of long conversations in proc interspeech 2020 pp 691 695",
+      "style": "IEEE_LIKE",
+      "authors": [
+        "Laurie Prescott"
+      ],
+      "year": "2020",
+      "title": "Julian Henry Shelley",
+      "doi": "10.1136/bmj.r1847",
+      "venue": "BMJ",
+      "crossref": {
+        "doi": "10.1136/bmj.r1847",
+        "title": "Julian Henry Shelley",
+        "authors": [
+          "Laurie Prescott"
+        ],
+        "year": "2025",
+        "venue": "BMJ",
+        "publisher": "BMJ",
+        "type": "journal-article",
+        "url": "https://doi.org/10.1136/bmj.r1847",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_006",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[6] Zhiliang Peng, Jianwei Yu, Yaoyao Chang, et al., “VIBEVOICE- ASR Technical Report,” arXiv preprint arXiv:2601.18184, 2026.",
+      "citation_normalized": "6 zhiliang peng jianwei yu yaoyao chang et al vibevoice asr technical report arxiv preprint arxiv 2601 18184 2026",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2026",
+      "title": "Yu Peng",
+      "doi": "10.1093/benz/9780199773787.article.b00200660",
+      "venue": "Benezit Dictionary of Artists",
+      "crossref": {
+        "doi": "10.1093/benz/9780199773787.article.b00200660",
+        "title": "Yu Peng",
+        "authors": [],
+        "year": "2017",
+        "venue": "Benezit Dictionary of Artists",
+        "publisher": "Oxford University Press",
+        "type": "reference-book",
+        "url": "https://doi.org/10.1093/benz/9780199773787.article.b00200660",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_007",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[7] Orevaoghene Ahia, Martijn Bartelds, Kabir Ahuja, et al., “BLAB: Brutally Long Audio Bench,” in Proc. ICML Workshop on Ma- chine Learning for Audio, 2025, arXiv:2505.03054.",
+      "citation_normalized": "7 orevaoghene ahia martijn bartelds kabir ahuja et al blab brutally long audio bench in proc icml workshop on ma chine learning for audio 2025 arxiv 2505 03054",
+      "style": "IEEE_LIKE",
+      "authors": [
+        "G. Ahuja",
+        "M Behari",
+        "K Prasad",
+        "R. Goulatia",
+        "B. L Jailkhani"
+      ],
+      "year": "2025",
+      "title": "MATTERS ARISING: Dr Ahuja et al reply:",
+      "doi": "10.1136/jnnp.53.9.818-b",
+      "venue": "Journal of Neurology, Neurosurgery &amp; Psychiatry",
+      "crossref": {
+        "doi": "10.1136/jnnp.53.9.818-b",
+        "title": "MATTERS ARISING: Dr Ahuja et al reply:",
+        "authors": [
+          "G. Ahuja",
+          "M Behari",
+          "K Prasad",
+          "R. Goulatia",
+          "B. L Jailkhani"
+        ],
+        "year": "2008",
+        "venue": "Journal of Neurology, Neurosurgery &amp; Psychiatry",
+        "publisher": "BMJ",
+        "type": "journal-article",
+        "url": "https://doi.org/10.1136/jnnp.53.9.818-b",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_008",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[8] Yuan Gong, Hongyin Luo, Alexander H. Liu, Leonid Karlinsky, and James R. Glass, “Listen, Think, and Understand,” in Proc. ICLR, 2024.",
+      "citation_normalized": "8 yuan gong hongyin luo alexander h liu leonid karlinsky and james r glass listen think and understand in proc iclr 2024",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2024",
+      "title": "Liu Yuan",
+      "doi": "10.1093/benz/9780199773787.article.b00110618",
+      "venue": "Benezit Dictionary of Artists",
+      "crossref": {
+        "doi": "10.1093/benz/9780199773787.article.b00110618",
+        "title": "Liu Yuan",
+        "authors": [],
+        "year": "2017",
+        "venue": "Benezit Dictionary of Artists",
+        "publisher": "Oxford University Press",
+        "type": "reference-book",
+        "url": "https://doi.org/10.1093/benz/9780199773787.article.b00110618",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_009",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[9] Sreyan Ghosh, Zhifeng Kong, Sonal Kumar, et al., “Audio Flamingo 2: An Audio-Language Model with Long-Audio Under- standing and Expert Reasoning Abilities,” in Proc. ICML, 2025, pp. 19358–19405.",
+      "citation_normalized": "9 sreyan ghosh zhifeng kong sonal kumar et al audio flamingo 2 an audio language model with long audio under standing and expert reasoning abilities in proc icml 2025 pp 19358 19405",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2025",
+      "title": "Sajal Kumar Ghosh",
+      "doi": "10.1136/bmj.331.7525.1147-b",
+      "venue": "BMJ",
+      "crossref": {
+        "doi": "10.1136/bmj.331.7525.1147-b",
+        "title": "Sajal Kumar Ghosh",
+        "authors": [],
+        "year": "2005",
+        "venue": "BMJ",
+        "publisher": "BMJ",
+        "type": "journal-article",
+        "url": "https://doi.org/10.1136/bmj.331.7525.1147-b",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_010",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[10] Haolin He, Xingjian Du, Renhe Sun, et al., “Measuring Audio’s Impact on Correctness: Audio-Contribution-Aware Post-Training of Large Audio Language Models,” in Proc. ICLR, 2026.",
+      "citation_normalized": "10 haolin he xingjian du renhe sun et al measuring audio s impact on correctness audio contribution aware post training of large audio language models in proc iclr 2026",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2026",
+      "title": "« Sortir du vingtième siècle » : dialogue entre Gao Xingjian et Liu Zaifu",
+      "doi": "10.3406/perch.2008.3644",
+      "venue": "Perspectives chinoises",
+      "crossref": {
+        "doi": "10.3406/perch.2008.3644",
+        "title": "« Sortir du vingtième siècle » : dialogue entre Gao Xingjian et Liu Zaifu",
+        "authors": [],
+        "year": "2013",
+        "venue": "Perspectives chinoises",
+        "publisher": "PERSEE Program",
+        "type": "journal-article",
+        "url": "https://doi.org/10.3406/perch.2008.3644",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_011",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[11] Jin Xu, Zhifang Guo, Hangrui Hu, et al., “Qwen3-Omni Technical Report,” arXiv preprint arXiv:2509.17765, 2025.",
+      "citation_normalized": "11 jin xu zhifang guo hangrui hu et al qwen3 omni technical report arxiv preprint arxiv 2509 17765 2025",
+      "style": "IEEE_LIKE",
+      "authors": [
+        "Sarah Nechuta",
+        "Theresa Bacon-Baguley",
+        "Lauren Hamel"
+      ],
+      "year": "2025",
+      "title": "Response to Xu, Yu, Hu et al.",
+      "doi": "10.1093/jnci/djag168",
+      "venue": "JNCI: Journal of the National Cancer Institute",
+      "crossref": {
+        "doi": "10.1093/jnci/djag168",
+        "title": "Response to Xu, Yu, Hu et al.",
+        "authors": [
+          "Sarah Nechuta",
+          "Theresa Bacon-Baguley",
+          "Lauren Hamel"
+        ],
+        "year": "2026",
+        "venue": "JNCI: Journal of the National Cancer Institute",
+        "publisher": "Oxford University Press (OUP)",
+        "type": "journal-article",
+        "url": "https://doi.org/10.1093/jnci/djag168",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_012",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[12] Tom Ko, Vijayaditya Peddinti, Daniel Povey, and Sanjeev Khu- danpur, “Audio Augmentation for Speech Recognition,” in Proc. Interspeech, 2015, pp. 3586–3589.",
+      "citation_normalized": "12 tom ko vijayaditya peddinti daniel povey and sanjeev khu danpur audio augmentation for speech recognition in proc interspeech 2015 pp 3586 3589",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2015",
+      "title": "Sanjeev Gupta",
+      "doi": "10.1038/7151xva",
+      "venue": "Nature",
+      "crossref": {
+        "doi": "10.1038/7151xva",
+        "title": "Sanjeev Gupta",
+        "authors": [],
+        "year": "2007",
+        "venue": "Nature",
+        "publisher": "Springer Science and Business Media LLC",
+        "type": "journal-article",
+        "url": "https://doi.org/10.1038/7151xva",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_013",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[13] Daniel S. Park, William Chan, Yu Zhang, et al., “SpecAugment: A Simple Data Augmentation Method for Automatic Speech Recog- nition,” in Proc. Interspeech, 2019, pp. 2613–2617.",
+      "citation_normalized": "13 daniel s park william chan yu zhang et al specaugment a simple data augmentation method for automatic speech recog nition in proc interspeech 2019 pp 2613 2617",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2019",
+      "title": "Zhang Yu",
+      "doi": "10.1093/benz/9780199773787.article.b00201648",
+      "venue": "Benezit Dictionary of Artists",
+      "crossref": {
+        "doi": "10.1093/benz/9780199773787.article.b00201648",
+        "title": "Zhang Yu",
+        "authors": [],
+        "year": "2017",
+        "venue": "Benezit Dictionary of Artists",
+        "publisher": "Oxford University Press",
+        "type": "reference-book",
+        "url": "https://doi.org/10.1093/benz/9780199773787.article.b00201648",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_014",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[14] Daniel Morales-Brotons, Thijs Vogels, and Hadrien Hendrikx, “Exponential Moving Average of Weights in Deep Learning: Dy- namics and Benefits,” Trans. Mach. Learn. Res., 2024.",
+      "citation_normalized": "14 daniel morales brotons thijs vogels and hadrien hendrikx exponential moving average of weights in deep learning dy namics and benefits trans mach learn res 2024",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2024",
+      "title": null,
+      "doi": null,
+      "venue": null,
+      "crossref": null,
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_015",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[15] Edward J. Hu, Yelong Shen, Phillip Wallis, et al., “LoRA: Low- Rank Adaptation of Large Language Models,” in Proc. ICLR, 2022.",
+      "citation_normalized": "15 edward j hu yelong shen phillip wallis et al lora low rank adaptation of large language models in proc iclr 2022",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2022",
+      "title": "EDWARD WALLIS HOCH",
+      "doi": "10.2307/j.ctv1p2gmb4.33",
+      "venue": "Kansas Governors",
+      "crossref": {
+        "doi": "10.2307/j.ctv1p2gmb4.33",
+        "title": "EDWARD WALLIS HOCH",
+        "authors": [],
+        "year": "2021",
+        "venue": "Kansas Governors",
+        "publisher": "University Press of Kansas",
+        "type": "book-chapter",
+        "url": "https://doi.org/10.2307/j.ctv1p2gmb4.33",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_016",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[16] Tianqi Chen, Bing Xu, Chiyuan Zhang, and Carlos Guestrin, “Training Deep Nets with Sublinear Memory Cost,” arXiv preprint arXiv:1604.06174, 2016.",
+      "citation_normalized": "16 tianqi chen bing xu chiyuan zhang and carlos guestrin training deep nets with sublinear memory cost arxiv preprint arxiv 1604 06174 2016",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2016",
+      "title": "Zhang Tianqi",
+      "doi": "10.1093/benz/9780199773787.article.b00201617",
+      "venue": "Benezit Dictionary of Artists",
+      "crossref": {
+        "doi": "10.1093/benz/9780199773787.article.b00201617",
+        "title": "Zhang Tianqi",
+        "authors": [],
+        "year": "2018",
+        "venue": "Benezit Dictionary of Artists",
+        "publisher": "Oxford University Press",
+        "type": "reference-entry",
+        "url": "https://doi.org/10.1093/benz/9780199773787.article.b00201617",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_017",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[17] Samyam Rajbhandari, Jeff Rasley, Olatunji Ruwase, and Yuxiong He, “ZeRO: Memory Optimizations Toward Training Trillion Pa- rameter Models,” in Proc. SC, 2020, pp. 1–16.",
+      "citation_normalized": "17 samyam rajbhandari jeff rasley olatunji ruwase and yuxiong he zero memory optimizations toward training trillion pa rameter models in proc sc 2020 pp 1 16",
+      "style": "IEEE_LIKE",
+      "authors": [
+        "Jaleh Afshar"
+      ],
+      "year": "2020",
+      "title": "Olatunji Saliu",
+      "doi": "10.1007/979-8-8688-1137-1_21",
+      "venue": "Chief Design Officers at Work",
+      "crossref": {
+        "doi": "10.1007/979-8-8688-1137-1_21",
+        "title": "Olatunji Saliu",
+        "authors": [
+          "Jaleh Afshar"
+        ],
+        "year": "2025",
+        "venue": "Chief Design Officers at Work",
+        "publisher": "Apress",
+        "type": "book-chapter",
+        "url": "https://doi.org/10.1007/979-8-8688-1137-1_21",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_018",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[18] Yunfei Chu, Jin Xu, Qian Yang, et al., “Qwen2-Audio Technical Report,” arXiv preprint arXiv:2407.10759, 2024.",
+      "citation_normalized": "18 yunfei chu jin xu qian yang et al qwen2 audio technical report arxiv preprint arxiv 2407 10759 2024",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2024",
+      "title": "Qian Xu",
+      "doi": "10.1093/benz/9780199773787.article.b00147254",
+      "venue": "Benezit Dictionary of Artists",
+      "crossref": {
+        "doi": "10.1093/benz/9780199773787.article.b00147254",
+        "title": "Qian Xu",
+        "authors": [],
+        "year": "2017",
+        "venue": "Benezit Dictionary of Artists",
+        "publisher": "Oxford University Press",
+        "type": "reference-book",
+        "url": "https://doi.org/10.1093/benz/9780199773787.article.b00147254",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_019",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[19] Yizhong Wang, Yeganeh Kordi, Swaroop Mishra, et al., “Self- Instruct: Aligning Language Models with Self-Generated Instruc- tions,” in Proc. ACL, 2023, pp. 13484–13508.",
+      "citation_normalized": "19 yizhong wang yeganeh kordi swaroop mishra et al self instruct aligning language models with self generated instruc tions in proc acl 2023 pp 13484 13508",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2023",
+      "title": "Mishra et al. supplementary material",
+      "doi": "10.1017/s1047951125101005.sm001",
+      "venue": null,
+      "crossref": {
+        "doi": "10.1017/s1047951125101005.sm001",
+        "title": "Mishra et al. supplementary material",
+        "authors": [],
+        "year": "2025",
+        "venue": null,
+        "publisher": "Cambridge University Press (CUP)",
+        "type": "component",
+        "url": "https://doi.org/10.1017/s1047951125101005.sm001",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_020",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[20] Gheorghe Comanici, Eric Bieber, Mike Schaekermann, et al., “Gemini 2.5: Pushing the Frontier with Advanced Reasoning, Mul- timodality, Long Context, and Next Generation Agentic Capabili- ties,” arXiv preprint arXiv:2507.06261, 2025.",
+      "citation_normalized": "20 gheorghe comanici eric bieber mike schaekermann et al gemini 2 5 pushing the frontier with advanced reasoning mul timodality long context and next generation agentic capabili ties arxiv preprint arxiv 2507 06261 2025",
+      "style": "IEEE_LIKE",
+      "authors": [
+        "Makoto Naganuma",
+        "Naoki Hosoe",
+        "Yoshihiro Nakazato",
+        "Haruhiko Ogata",
+        "Takanori Kanai"
+      ],
+      "year": "2025",
+      "title": "Reply to Gheorghe et al.",
+      "doi": "10.1055/s-0043-120443",
+      "venue": "Endoscopy",
+      "crossref": {
+        "doi": "10.1055/s-0043-120443",
+        "title": "Reply to Gheorghe et al.",
+        "authors": [
+          "Makoto Naganuma",
+          "Naoki Hosoe",
+          "Yoshihiro Nakazato",
+          "Haruhiko Ogata",
+          "Takanori Kanai"
+        ],
+        "year": "2017",
+        "venue": "Endoscopy",
+        "publisher": "Georg Thieme Verlag KG",
+        "type": "journal-article",
+        "url": "https://doi.org/10.1055/s-0043-120443",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_021",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[21] Cheng Wang, Gelei Deng, Xianglin Yang, Han Qiu, and Tianwei Zhang, “When Audio and Text Disagree: Revealing Text Bias in Large Audio-Language Models,” in Proc. EMNLP, 2025, pp. 4878–4888.",
+      "citation_normalized": "21 cheng wang gelei deng xianglin yang han qiu and tianwei zhang when audio and text disagree revealing text bias in large audio language models in proc emnlp 2025 pp 4878 4888",
+      "style": "IEEE_LIKE",
+      "authors": [
+        "Jesse J. Chapman",
+        "Michael Nylan"
+      ],
+      "year": "2025",
+      "title": "Han Emperor Cheng",
+      "doi": "10.1002/9781119399919.eahaa00659",
+      "venue": "The Encyclopedia of Ancient History",
+      "crossref": {
+        "doi": "10.1002/9781119399919.eahaa00659",
+        "title": "Han Emperor Cheng",
+        "authors": [
+          "Jesse J. Chapman",
+          "Michael Nylan"
+        ],
+        "year": "2022",
+        "venue": "The Encyclopedia of Ancient History",
+        "publisher": "Wiley",
+        "type": "other",
+        "url": "https://doi.org/10.1002/9781119399919.eahaa00659",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_022",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[22] Jin Xu, Zhifang Guo, Jinzheng He, et al., “Qwen2.5-Omni Techni- cal Report,” arXiv preprint arXiv:2503.20215, 2025.",
+      "citation_normalized": "22 jin xu zhifang guo jinzheng he et al qwen2 5 omni techni cal report arxiv preprint arxiv 2503 20215 2025",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2025",
+      "title": "Guo Xu",
+      "doi": "10.1093/benz/9780199773787.article.b00081537",
+      "venue": "Benezit Dictionary of Artists",
+      "crossref": {
+        "doi": "10.1093/benz/9780199773787.article.b00081537",
+        "title": "Guo Xu",
+        "authors": [],
+        "year": "2018",
+        "venue": "Benezit Dictionary of Artists",
+        "publisher": "Oxford University Press",
+        "type": "reference-entry",
+        "url": "https://doi.org/10.1093/benz/9780199773787.article.b00081537",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_023",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[23] Swarup Ranjan Behera, Pailla Balakrishna Reddy, Achyut Mani Tripathi, Megavath Bharadwaj Rathod, and Tejesh Karavadi, “To- wards Multi-Lingual Audio Question Answering,” in Proc. Inter- speech, 2023, pp. 356–360.",
+      "citation_normalized": "23 swarup ranjan behera pailla balakrishna reddy achyut mani tripathi megavath bharadwaj rathod and tejesh karavadi to wards multi lingual audio question answering in proc inter speech 2023 pp 356 360",
+      "style": "IEEE_LIKE",
+      "authors": [
+        "Gautam Bhatia"
+      ],
+      "year": "2023",
+      "title": "Kanvinde, Achyut",
+      "doi": "10.1093/gao/9781884446054.article.t045778",
+      "venue": "Oxford Art Online",
+      "crossref": {
+        "doi": "10.1093/gao/9781884446054.article.t045778",
+        "title": "Kanvinde, Achyut",
+        "authors": [
+          "Gautam Bhatia"
+        ],
+        "year": "2017",
+        "venue": "Oxford Art Online",
+        "publisher": "Oxford University Press",
+        "type": "reference-book",
+        "url": "https://doi.org/10.1093/gao/9781884446054.article.t045778",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_024",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[24] MLC-SLM II Challenge Organizers, “MLC-SLM-2nd-Task1- Baseline,” GitHub repository, 2026. [Online]. Available: https: //github.com/alanshaoTT/MLC-SLM-2nd-Task1-Baseline (ac- cessed Jul. 11, 2026).",
+      "citation_normalized": "24 mlc slm ii challenge organizers mlc slm 2nd task1 baseline github repository 2026 online available https github com alanshaott mlc slm 2nd task1 baseline ac cessed jul 11 2026",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2026",
+      "title": null,
+      "doi": null,
+      "venue": null,
+      "crossref": null,
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_025",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[25] Thilo von Neumann, Christoph Boeddeker, Marc Delcroix, and Reinhold Haeb-Umbach, “MeetEval: A Toolkit for Computation of Word Error Rates for Meeting Transcription Systems,” in Proc. CHiME, 2023, pp. 27–32.",
+      "citation_normalized": "25 thilo von neumann christoph boeddeker marc delcroix and reinhold haeb umbach meeteval a toolkit for computation of word error rates for meeting transcription systems in proc chime 2023 pp 27 32",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2023",
+      "title": "Steudner, Marc Christoph",
+      "doi": "10.1093/benz/9780199773787.article.b00175726",
+      "venue": "Benezit Dictionary of Artists",
+      "crossref": {
+        "doi": "10.1093/benz/9780199773787.article.b00175726",
+        "title": "Steudner, Marc Christoph",
+        "authors": [],
+        "year": "2017",
+        "venue": "Benezit Dictionary of Artists",
+        "publisher": "Oxford University Press",
+        "type": "reference-book",
+        "url": "https://doi.org/10.1093/benz/9780199773787.article.b00175726",
+        "source": "raw_search"
+      },
+      "ground_truth": null
+    },
+    {
+      "citation_id": "2608.14150v1_026",
+      "source_paper_arxiv_id": "2608.14150v1",
+      "citation_raw": "[26] Thilo von Neumann, Christoph Boeddeker, Marc Delcroix, and Reinhold Haeb-Umbach, “Word Error Rate Definitions and Algo- rithms for Long-Form Multi-Talker Speech Recognition,” IEEE Trans. Audio Speech Lang. Process., vol. 33, pp. 3174–3188, 2025.",
+      "citation_normalized": "26 thilo von neumann christoph boeddeker marc delcroix and reinhold haeb umbach word error rate definitions and algo rithms for long form multi talker speech recognition ieee trans audio speech lang process vol 33 pp 3174 3188 2025",
+      "style": "IEEE_LIKE",
+      "authors": [],
+      "year": "2025",
+      "title": "Steudner, Marc Christoph",
+      "doi": "10.1093/benz/9780199773787.article.b00175726",
+      "venue": "Benezit Dictionary of Artists",
+      "crossref": {
+        "doi": "10.1093/benz/9780199773787.article.b00175726",
+        "title": "Steudner, Marc Christoph",
+        "authors": [],
+        "year": "2017",
+        "venue": "Benezit Dictionary of Artists",
+        "publisher": "Oxford University Press",
+        "type": "reference-book",
+        "url": "https://doi.org/10.1093/benz/9780199773787.article.b00175726",
+        "source": "raw_search"
       },
       "ground_truth": null
     }

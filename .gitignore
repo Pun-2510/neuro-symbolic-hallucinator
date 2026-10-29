@@ -111,6 +111,7 @@ tdtu_github_reports/
 
 # User avatars (uploaded images)
 data/avatars/
+data/demo/
 
 # Working plan docs (not part of source — kept locally)
 IMPLEMENTATION_PHASE2_PLAN.md
