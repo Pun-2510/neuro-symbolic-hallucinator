@@ -146,8 +146,8 @@ def _is_date_only_citation(extracted_text: str) -> bool:
 
     Returns True if the text appears to be a date/non-citation only.
     """
-    # Extract content inside parentheses
-    inner = extracted_text.strip('()').strip()
+    # Extract content inside parentheses or brackets
+    inner = extracted_text.strip('()[]').strip()
 
     # Chicago footnote publication block: "(City: Publisher, YYYY)" or "(City, ST: Publisher, YYYY)"
     if re.match(
@@ -285,6 +285,27 @@ class CitationExtractor:
 
     # -- public API --
 
+    @staticmethod
+    def _find_valid_ref_header_match(raw_text: str) -> re.Match | None:
+        """Return first valid bibliography header match on a page, ignoring singular 'Reference' labels in tables/figures."""
+        for m in _REFERENCE_HEADERS.finditer(raw_text or ""):
+            matched_word = (m.group(1) or "").strip()
+            if matched_word.islower():
+                continue
+            if re.fullmatch(r"reference", matched_word, re.IGNORECASE):
+                prev_win = raw_text[max(0, m.start() - 300) : m.start()]
+                if re.search(r"\b(?:table|bảng)\s+\d+", prev_win, re.IGNORECASE):
+                    continue
+                after_lines = raw_text[m.end() :].splitlines()[:16]
+                if len(after_lines) > 4 and not re.search(
+                    r"\b(?:18|19|20)\d{2}\b|\[\d+\]|https?://|doi:",
+                    "\n".join(after_lines),
+                    re.IGNORECASE,
+                ):
+                    continue
+            return m
+        return None
+
     def extract_from_document(self, doc: Document) -> list[Citation]:
         """Trích xuất mọi *occurrence* citation trong Document.
 
@@ -294,12 +315,29 @@ class CitationExtractor:
         trong ``_extract_from_text``.
         """
         citations: list[Citation] = []
+        bib_candidates = [
+            p.page_num
+            for p in (doc.pages or [])
+            if self._find_valid_ref_header_match(p.text or "") is not None
+        ]
+        target_bib_page: int | None = None
+        if bib_candidates:
+            if len(bib_candidates) > 1 and doc.num_pages:
+                later = [p for p in bib_candidates if p > doc.num_pages * 0.35]
+                target_bib_page = later[-1] if later else bib_candidates[-1]
+            else:
+                target_bib_page = bib_candidates[0]
+
         in_bib_section = False
         for page in doc.pages:
             if in_bib_section:
                 break
             raw_text = page.text  # Keep raw text for whitespace detection
-            ref_header_m = _REFERENCE_HEADERS.search(raw_text)
+            ref_header_m = (
+                self._find_valid_ref_header_match(raw_text)
+                if (target_bib_page is None or page.page_num == target_bib_page)
+                else None
+            )
             if ref_header_m:
                 raw_text = raw_text[: ref_header_m.start()]
                 in_bib_section = True
@@ -317,13 +355,20 @@ class CitationExtractor:
 
     def find_reference_section(self, doc: Document) -> tuple[int, int] | None:
         """Trả về (start_page, end_page) của reference section. None nếu không thấy."""
-        for i, page in enumerate(doc.pages):
-            if _REFERENCE_HEADERS.search(page.text):
-                start = page.page_num  # FIX: Use actual page_num instead of index
-                # FIX: Calculate end based on actual max page in document
-                max_page = max(p.page_num for p in doc.pages) if doc.pages else doc.num_pages
-                end = min(start + 5, max_page)
-                return (start, end)
+        candidates = [
+            page.page_num
+            for page in doc.pages
+            if self._find_valid_ref_header_match(page.text) is not None
+        ]
+        if candidates:
+            if len(candidates) > 1 and doc.num_pages:
+                later = [p for p in candidates if p > doc.num_pages * 0.35]
+                start = later[-1] if later else candidates[-1]
+            else:
+                start = candidates[0]
+            max_page = max(p.page_num for p in doc.pages) if doc.pages else doc.num_pages
+            end = min(start + 5, max_page)
+            return (start, end)
         return None
 
     # -- internals --
@@ -385,9 +430,12 @@ class CitationExtractor:
                 # Bug fix 1: Filter out IEEE [N] reference list markers and array/year/interval brackets ([0], [0, 1], [2020])
                 # "[4] Xiao, Y., ..." at start of line is a reference list entry, not in-text citation
                 if citation_type == CitationType.NUMERIC or raw.startswith("["):
-                    if re.fullmatch(r"\[\s*(?:0|(?:19|20)\d{2})\s*\]", raw) or re.match(r"^\[\s*0\b", raw):
+                    if re.fullmatch(r"\[\s*(?:0|(?:18|19|20)\d{2})\s*\]", raw) or re.match(r"^\[\s*0\b", raw):
                         continue
-                    if _is_reference_list_marker(search_text, raw_start, m.end()):
+                    if (
+                        citation_type == CitationType.NUMERIC
+                        or re.match(r"^\[\s*\d+\s*\]$", raw)
+                    ) and _is_reference_list_marker(search_text, raw_start, m.end()):
                         continue
 
                 # Filter out template placeholder citations like "(Author et al., 2020)", "Author (2020)"
@@ -428,11 +476,11 @@ class CitationExtractor:
                         re.IGNORECASE,
                     ):
                         continue
-                    if re.search(r"\(\s*(?:1[0-8]\d{2})\s*\)$", raw):
+                    if re.search(r"[\(\[]\s*(?:1[0-7]\d{2})\s*[\)\]]$", raw):
                         continue
-                if citation_type == CitationType.IN_TEXT and raw.startswith("("):
+                if citation_type == CitationType.IN_TEXT and raw.startswith(("(", "[")):
                     if style != CitationStyle.MLA and not re.search(
-                        r"\b(?:(?:19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)",
+                        r"\b(?:(?:18|19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)",
                         raw,
                         re.IGNORECASE,
                     ):

@@ -57,20 +57,20 @@ _CORP_AUTHOR_NARRATIVE = (
 )
 _PAGE_OR_SECONDARY_SUFFIX = (
     r"(?:\s*,\s*(?:"
-    r"(?:dẫn\s+theo|trích\s+dẫn\s+(?:trong|từ)|as\s+cited\s+in|cited\s+in)\s+[^)]+"
+    r"(?:dẫn\s+theo|trích\s+dẫn\s+(?:trong|từ)|as\s+cited\s+in|cited\s+in)\s+[^)\]]+"
     r"|(?:pp?\.?|tr\.?|trang)\s*\d+(?:\s*[-–]\s*\d+)?"
     r"))?"
 )
 
-# Parenthetical: (Author, 2020), (Author et al., 2020), ("Title," 2024), (Author, n.d.)
+# Parenthetical: (Author, 2020), [Author, 2020], (Author et al., 2020), ("Title," 2024), (Author, n.d.)
 _APA_INTEXT_PARENTHETICAL = CompiledPattern.create(
     name="apa_intext_parenthetical",
-    pattern=rf"\(([^)]+),[\"\u201d\u2019']?\s*((?:19|20)\d{{2}}[a-z]?|n\.?\s*d\.?(?:-[a-z])?){_PAGE_OR_SECONDARY_SUFFIX}\)",
+    pattern=rf"[\(\[]([^)\]\[]+),[\"\u201d\u2019']?\s*((?:18|19|20)\d{{2}}[a-z]?|n\.?\s*d\.?(?:-[a-z])?){_PAGE_OR_SECONDARY_SUFFIX}[\)\]]",
     pattern_type=PatternType.IN_TEXT,
     description="APA in-text parenthetical: (Author, 2020) | (Author et al., 2020) | (Author, n.d.)",
 )
 
-# Narrative: Author (2020), Author et al. (2020), Author et al. 2020, Corporate Author (2020)
+# Narrative: Author (2020), Author [2020], Author et al. (2020), Author et al. 2020, Corporate Author (2020)
 _APA_INTEXT_NARRATIVE = CompiledPattern.create(
     name="apa_intext_narrative",
     pattern=(
@@ -78,8 +78,8 @@ _APA_INTEXT_NARRATIVE = CompiledPattern.create(
         rf"(?:(?:\s*,\s*(?:và|and|&)\s+|\s+(?:và|and|&)\s+|\s*,\s*){_STOPWORDS_AHEAD}{_AUTHOR_TOKEN})*"
         rf"(?:\s*,?\s*(?:et\s+a?l\.?|và\s+cộng\s+sự|và\s+cs\.?))?"
         rf"(?:[\s,]{_UPPER_VN}[a-zA-ZÀ-ỹ'\u2019\-]*)*)"
-        rf"\s+\(((?:19|20)\d{{2}}[a-z]?|n\.?\s*d\.?(?:-[a-z])?){_PAGE_OR_SECONDARY_SUFFIX}\)"
-        rf"|({_STOPWORDS_AHEAD}{_AUTHOR_TOKEN}\s+et\s+al\.)\s+((?:19|20)\d{{2}}[a-z]?)\b"
+        rf"\s+[\(\[]((?:18|19|20)\d{{2}}[a-z]?|n\.?\s*d\.?(?:-[a-z])?){_PAGE_OR_SECONDARY_SUFFIX}[\)\]]"
+        rf"|({_STOPWORDS_AHEAD}{_AUTHOR_TOKEN}\s+et\s+al\.)\s+((?:18|19|20)\d{{2}}[a-z]?)\b"
     ),
     pattern_type=PatternType.IN_TEXT,
     description="APA narrative: Author (2020) | Author et al. (2020) | Author (n.d.)",

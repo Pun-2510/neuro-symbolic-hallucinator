@@ -30,6 +30,7 @@ from typing import Optional
 
 from integrity_checker.extraction.patterns.base import CompiledPattern, PatternType
 from integrity_checker.extraction.patterns.registry import register_format
+from integrity_checker.extraction.patterns.utils import extract_publication_year
 from integrity_checker.matching.author_parser import parse_authors
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
@@ -105,18 +106,17 @@ _VANCOUVER_NUMBERED_REFERENCE = CompiledPattern.create(
     description="Numbered Vancouver: [1] Authors. Title. Venue. YEAR.",
 )
 
-# Year-first variant (NLM style):
-# Format: Authors. YEAR. Title. Source. Volume:Pages.
+# Year-first variant (NLM / ACL style):
+# Format: Authors. YEAR[a-z]?. Title[.?!] [Source. Volume:Pages.]
 # Example: Smith J, Jones A. 2020. Article title. J Clin Med. 10:123-145.
 _VANCOUVER_YEAR_FIRST = CompiledPattern.create(
     name="vancouver_year_first",
     pattern=(
         r"^(?!\d+\.\s)(?!\[\s*\d+\s*\])(?!\(\s*\d+\s*\))"
-        r"(?P<authors>[^;\"“]+?)\.\s*"  # Authors (ends with period)
-        r"(?P<year>(?:19|20)\d{2})\.\s+"  # Year
-        r"(?P<title>[^\"“]+?)\.\s+"  # Title
-        r"(?P<venue>.+)"  # Venue (rest)
-        r"$"
+        r"(?P<authors>[^\"“()]+?)\.\s*"  # Authors (ends with period)
+        r"(?P<year>(?:18|19|20)\d{2}[a-z]?)\.\s+"  # Year
+        r"(?P<title>(?:[^.?!\"“]|\b(?:vs|dr|mr|mrs|ms|st|fig|eq|al|e\.g|i\.e|\d)\.|(?:^|[\s\-])[A-ZÀ-Ý]\.)+?)"  # Title
+        r"(?:[.?!]\s+(?P<venue>.+?))?[.?!]?$"  # Optional Venue (rest)
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="Vancouver year-first: Authors. YEAR. Title. Venue.",
@@ -127,11 +127,10 @@ _VANCOUVER_YEAR_FIRST_NUMBERED = CompiledPattern.create(
     name="vancouver_year_first_numbered",
     pattern=(
         r"^\[\s*(?P<index>\d+)\s*\]\s*"  # [N]
-        r"(?P<authors>[^;\"“]+?)\.\s*"  # Authors
-        r"(?P<year>(?:19|20)\d{2})\.\s+"  # Year
-        r"(?P<title>[^\"“]+?)\.\s+"  # Title
-        r"(?P<venue>.+)"  # Venue
-        r"$"
+        r"(?P<authors>[^\"“()]+?)\.\s*"  # Authors
+        r"(?P<year>(?:18|19|20)\d{2}[a-z]?)\.\s+"  # Year
+        r"(?P<title>(?:[^.?!\"“]|\b(?:vs|dr|mr|mrs|ms|st|fig|eq|al|e\.g|i\.e|\d)\.|(?:^|[\s\-])[A-ZÀ-Ý]\.)+?)"  # Title
+        r"(?:[.?!]\s+(?P<venue>.+?))?[.?!]?$"  # Optional Venue
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
     description="Numbered Vancouver year-first: [1] Authors. YEAR. Title. Venue.",
@@ -277,6 +276,11 @@ class VancouverFormat:
                 citation.numeric_index = numeric_index
             return citation
 
+        # Try plainnat / NeurIPS / ICLR / COLM / ICML unnumbered format ("Authors. Title. Venue, Year.")
+        citation = self._try_parse_plainnat(text)
+        if citation:
+            return citation
+
         # Fallback: try to extract whatever we can
         return self._parse_vancouver_fallback(text)
 
@@ -286,22 +290,151 @@ class VancouverFormat:
         # ACS parenthesized number prefix: (1) ...
         if re.match(r'^\(\s*\d+\s*\)', text):
             return True
-        # Quoted title (Chicago / MLA / IEEE / ACM)
-        if re.search(r'["\u201c][^"\u201d]{4,}["\u201d]', text):
+        # Quoted title right after author/year boundary (Chicago / MLA / IEEE / ACM)
+        if re.search(r'(?:[.,]|\b\d{4}\.)\s*["\u201c][^"\u201d]{4,}["\u201d]', text):
             return True
-        # Nature: Volume, Pages (Year). at end
-        if re.search(r'\b\d+\s*,\s*(?:[\d–-]+|[a-zA-Z]?\d+)\s*\(\s*(?:19|20)\d{2}[a-z]?\s*\)\.?$', text):
+        # Nature: (Year). or (Publisher, Year). at end of entry
+        if re.search(r'\(\s*(?:[^()]{2,80},\s*)?(?:19|20)\d{2}[a-z]?\s*\)(?:,?\s*pp?\.\s*[\d–-]+)?\.?$', text):
             return True
-        # ACS: Year, Volume
-        if re.search(r'\b(?:19|20)\d{2}\s*,\s*\d+', text):
+        # ACS: Year, Volume (not preceded by comma ", Year, Pages")
+        if re.search(r'(?<!,\s)\b(?:19|20)\d{2}\s*,\s*\d+', text) and not re.search(
+            r'(?<!\bvol)(?<!\bno)(?<!\bpp)\.\s*(?:18|19|20)\d{2}[a-z]?\.\s+[A-ZÀ-Ý0-9]', text
+        ):
             return True
-        # AMA / Chicago / Harvard / CSE book with Place: Publisher after a period
-        if re.search(r'\.\s+[A-Z][A-Za-z\s,]+:\s*[A-Z][A-Za-z\s&\'-]+(?:;\s*(?:19|20)\d{2}|,\s*(?:19|20)\d{2})\b', text):
+        # AMA / Chicago / Harvard / CSE book with Place: Publisher; Year or Place: Publisher, Year (after Book Title.)
+        if re.search(
+            r'(?<!\b[A-ZÀ-Ý])\.\s+[^.]+(?<!\b[A-ZÀ-Ý])\.\s+[A-Z][A-Za-z.\s]{1,25}(?:,\s*[A-Z]{2})?:\s*[A-Z][A-Za-z\s&\'-]{2,40}(?:;\s*(?:19|20)\d{2}|,\s*(?:19|20)\d{2})\b',
+            text,
+        ):
             return True
         # Chicago / MLA author format: "Surname, Firstname" (full first name after comma)
         if re.match(r'^(?:\[\s*\d+\s*\]\s*|\d+\.\s*)?[A-ZÀ-Ý][a-zà-ÿ]+,\s+[A-ZÀ-Ý][a-zà-ÿ]{2,}', text):
             return True
         return False
+
+    def _try_parse_plainnat(self, text: str) -> Optional[Citation]:
+        """Parse plainnat / NeurIPS / ICLR / COLM / ICML unnumbered reference entries."""
+        s = text.strip()
+        if re.match(r'^(?:\[\s*\d+\s*\]|\d+\.\s|\(\s*\d+\s*\))', s):
+            return None
+        if re.search(r'\(\s*(?:18|19|20)\d{2}[a-z]?\s*\)', s):
+            return None
+
+        is_inverted = bool(
+            re.match(
+                r'^(?:(?:van|de|der|den|von|le|la)\s+)*[A-ZÀ-Ý][a-zA-ZÀ-ÿ\'\u2019\-]+,\s+[A-ZÀ-Ý]\.',
+                s,
+            )
+        )
+        author_end_m = None
+        for m in re.finditer(r'\.\s+(?=[A-ZÀ-Ý0-9"\u201c\u2018])', s):
+            prefix = s[: m.start()]
+            after = s[m.end() :]
+            if re.search(
+                r'\b(?:vol|no|pp|p|ed|eds|jr|sr|vs|dr|prof|mr|mrs|ms|st|fig|eq|sec|ch|dept|univ|proc|trans|intl|conf|symp|rev|lett|bull|ann|acad|sci|natl|soc|inst|tech|rep)$',
+                prefix,
+                re.I,
+            ):
+                continue
+            if re.search(r'(?:^|[\s.\-])([A-ZÀ-Ý])$', prefix):
+                if not is_inverted:
+                    continue
+                if re.match(
+                    r'^(?:[A-ZÀ-Ý]\.|and\b|&|et\s+al\b|(?:(?:van|de|der|den|von)\s+)*[A-ZÀ-Ý][a-zA-ZÀ-ÿ\'\u2019\-]+,\s+[A-ZÀ-Ý]\.)',
+                    after,
+                ):
+                    continue
+            author_end_m = m
+            break
+        if not author_end_m:
+            return None
+
+        authors_str = s[: author_end_m.start()].strip()
+        remainder = s[author_end_m.end() :].strip()
+        if (
+            not authors_str
+            or len(authors_str) > 4000
+            or ';' in authors_str
+            or re.search(r'\b(?:18|19|20)\d{2}\b|https?://|doi:', authors_str, re.I)
+        ):
+            return None
+
+        # Case 1: 2-segment short preprint / web report ("Authors. Title, [Month] YYYY[a-z]?. [URL/DOI]")
+        m2 = re.match(
+            r'^(?P<title>(?:[^.?!]|\.(?!\s)){2,}?),\s*(?:[A-Za-z]+\.?\s+)?(?P<year>(?:18|19|20)\d{2})(?P<suffix>[a-z])?\.(?:\s*(?P<rest>(?:URL\s+)?https?://.+|doi:\s*\S+.*))?$',
+            remainder,
+            re.I,
+        )
+        if m2:
+            title_str = m2.group('title').strip()
+            citation = Citation(
+                raw_text=s,
+                citation_type=CitationType.REFERENCE_LIST,
+                style=CitationStyle.VANCOUVER,
+                matched_pattern='vancouver_reference_entry',
+                authors=self._parse_authors(authors_str),
+                title=title_str,
+                title_normalized=self._normalize_title(title_str),
+                year=m2.group('year'),
+                year_suffix=m2.group('suffix'),
+            )
+            rest_str = (m2.group('rest') or '').strip()
+            if rest_str:
+                self._parse_venue(citation, rest_str)
+            doi_m = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', s)
+            if doi_m:
+                citation.doi = doi_m.group(0).rstrip('.')
+            url_m = re.search(r'https?://[^\s\]\)\,;]+', s)
+            if url_m:
+                citation.url = url_m.group(0).rstrip('.')
+            citation.confidence = self._estimate_confidence(citation)
+            return citation
+
+        # Case 2: 3-segment plainnat ("Authors. Title[.?!] Venue, YYYY[a-z]?. [URL/DOI]")
+        title_end_m = None
+        for tm in re.finditer(
+            r'([.?!])\s+(?=[A-ZÀ-Ý0-9"\u201c\u2018]|in\s|arXiv\b|CoRR\b|abs/|http|doi:)',
+            remainder,
+        ):
+            t_pref = remainder[: tm.start()]
+            if tm.group(1) == '.' and (
+                re.search(r'(?:^|[\s.\-])[A-ZÀ-Ý]$', t_pref)
+                or re.search(r'\b(?:vs|dr|mr|mrs|ms|st|fig|eq|al|etc|cf|e\.g|i\.e)$', t_pref, re.I)
+            ):
+                continue
+            title_end_m = tm
+            break
+        if not title_end_m:
+            return None
+
+        title_str = remainder[
+            : title_end_m.start() + (1 if title_end_m.group(1) in '?!' else 0)
+        ].strip()
+        venue_rest = remainder[title_end_m.end() :].strip()
+        yr, yr_suf = extract_publication_year(venue_rest, prefer_last=True)
+        if not yr:
+            return None
+
+        citation = Citation(
+            raw_text=s,
+            citation_type=CitationType.REFERENCE_LIST,
+            style=CitationStyle.VANCOUVER,
+            matched_pattern='vancouver_reference_entry',
+            authors=self._parse_authors(authors_str),
+            title=title_str,
+            title_normalized=self._normalize_title(title_str),
+            year=yr,
+            year_suffix=yr_suf,
+        )
+        self._parse_venue(citation, venue_rest)
+        doi_m = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', s)
+        if doi_m:
+            citation.doi = doi_m.group(0).rstrip('.')
+        url_m = re.search(r'https?://[^\s\]\)\,;]+', s)
+        if url_m:
+            citation.url = url_m.group(0).rstrip('.')
+        citation.confidence = self._estimate_confidence(citation)
+        return citation
 
     def _try_parse_year_first(self, text: str) -> Optional[Citation]:
         """Try to parse year-first Vancouver variant."""
@@ -363,21 +496,29 @@ class VancouverFormat:
         # Extract year
         year_str = match.group('year')
         if year_str:
-            citation.year = year_str
+            citation.year = year_str[:4]
+            if len(year_str) > 4:
+                citation.year_suffix = year_str[4:]
 
         # Extract title
         title = match.group('title').strip()
+        if re.match(r'^(?:URL\s+)?https?://', title, re.I):
+            return None
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
         # Extract venue
-        venue = match.group('venue').strip()
-        self._parse_venue(citation, venue)
+        venue = (match.group('venue') or '').strip()
+        if venue:
+            self._parse_venue(citation, venue)
 
         # Extract DOI if present
         doi_match = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', text)
         if doi_match:
             citation.doi = doi_match.group(0).rstrip('.')
+        url_match = re.search(r'https?://[^\s\]\)\,;]+', text)
+        if url_match:
+            citation.url = url_match.group(0).rstrip('.')
 
         citation.confidence = self._estimate_confidence(citation)
         return citation
@@ -406,6 +547,8 @@ class VancouverFormat:
 
         # Extract title
         title = match.group('title').strip()
+        if re.match(r'^(?:URL\s+)?https?://', title, re.I):
+            return None
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
@@ -459,6 +602,8 @@ class VancouverFormat:
 
         # Extract title
         title = match.group('title').strip()
+        if re.match(r'^(?:URL\s+)?https?://', title, re.I):
+            return None
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
@@ -509,9 +654,10 @@ class VancouverFormat:
                 citation.numeric_index = int(num_m.group(1))
 
         # Try to extract year
-        year_m = re.search(r'\b((?:19|20)\d{2})\b', text)
-        if year_m:
-            citation.year = year_m.group(1)
+        yr, yr_suf = extract_publication_year(text, prefer_last=True)
+        if yr:
+            citation.year = yr
+            citation.year_suffix = yr_suf
 
         # Try to extract title (text between periods)
         # Strategy: find the longest sentence-like segment

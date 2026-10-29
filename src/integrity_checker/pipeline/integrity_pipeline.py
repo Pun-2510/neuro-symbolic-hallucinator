@@ -539,7 +539,11 @@ class IntegrityPipeline:
             # Modern path: DocumentParser (PyMuPDF + GROBID + SectionSegmenter)
             parsed = self.document_parser.parse(pdf_path)
             num_pages = parsed.document.num_pages  # FIX: lấy num_pages từ document gốc
-            in_text_citations = parsed.body_citations
+            in_text_citations = list(parsed.body_citations) + [
+                c
+                for c in (parsed.appendix_citations or [])
+                if c not in parsed.body_citations
+            ]
             ref_citations = parsed.references
             appendix_citations = parsed.appendix_citations
             parser_warnings = parsed.parser_warnings

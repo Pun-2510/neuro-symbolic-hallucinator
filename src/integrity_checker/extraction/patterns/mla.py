@@ -367,12 +367,13 @@ class MLAFormat:
         pub_year = match.group('publisher_year')
         if pub_year:
             pub_year = pub_year.strip()
-            # Try to extract year
-            year_m = re.search(r'\b((?:19|20)\d{2})\b', pub_year)
-            if year_m:
-                citation.year = year_m.group(1)
-                # Extract publisher (text before year)
-                pub = pub_year[:year_m.start()].strip().rstrip(',')
+            yr, yr_suf = extract_publication_year(pub_year, prefer_last=True)
+            if yr:
+                citation.year = yr
+                if yr_suf:
+                    citation.year_suffix = yr_suf
+                year_m = re.search(rf'\b{re.escape(yr + (yr_suf or ""))}\b', pub_year)
+                pub = pub_year[:year_m.start()].strip().rstrip(',') if year_m else pub_year
                 if pub:
                     citation.venue = pub
 

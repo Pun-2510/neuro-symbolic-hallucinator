@@ -107,7 +107,7 @@ _ACM_BOOK = CompiledPattern.create(
     pattern=(
         r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
         r'(?P<authors>[^.]+?),\s+'  # Authors,
-        r'(?P<title>[^,.]+?)[.,]\s+'  # Book title. or ,
+        r'(?P<title>(?!and\b|&\s)[^,.]+?)[.,]\s+'  # Book title. or ,
         r'(?P<publisher>[^,.]+?),\s*'  # Publisher,
         r'(?P<year>(?:19|20)\d{2})'  # Required 4-digit year
         r'\.?$'
@@ -143,7 +143,7 @@ _ACM_YEAR_FIRST = CompiledPattern.create(
         r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
         r'(?P<authors>.+?)\.\s+'  # Authors.
         r'(?P<year>(?:19|20)\d{2}[a-z]?)\.\s+'  # Year.
-        r'(?P<title>[^.]+?)\.\s+'  # Title.
+        r'(?P<title>[^.?!]+?)[.?!]\s+'  # Title.
         r'(?P<venue>.+?)'  # Venue
         r'\.?$'
     ),
@@ -158,10 +158,10 @@ _ACM_JOURNAL = CompiledPattern.create(
     name="acm_journal",
     pattern=(
         r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
-        r'(?P<authors>.+?)(?<!\bvol)(?<!\bno)(?<!\bpp)\.\s+(?!(?:[A-ZÀ-Ý]\.|[A-ZÀ-Ý][a-zà-ÿ\'-]+\.\s|and\b|&|et\s+al\.))'  # Authors (don't stop at initial).
-        r'(?P<title>[^.]*[A-Za-z]{3,}[^.]*?)\.\s+'  # Title.
+        r'(?P<authors>.+?)(?<!\bvol)(?<!\bno)(?<!\bpp)\.\s+(?!(?:[A-ZÀ-Ý]\.|[A-ZÀ-Ý][a-zà-ÿ\'-]+(?:\s+[A-ZÀ-Ý][a-zà-ÿ\'-]+)?(?:[.,]\s|\s+and\s+[A-ZÀ-Ý]|\s*&|\s+et\s+al\b)|and\b|&|et\s+al\.))'  # Authors (don't stop at initial).
+        r'(?P<title>(?:[^.?!]|\.(?!\s))*[A-Za-z]{3,}(?:[^.?!]|\.(?!\s))*?)[.?!]\s+'  # Title.
         r'(?P<venue>.+?)'  # Venue
-        r'(?:,\s*(?P<year>(?:19|20)\d{2}))?'  # Optional trailing year
+        r'(?:,\s*(?P<year>(?:18|19|20)\d{2}[a-z]?))?'  # Optional trailing year
         r'\.?$'
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -191,10 +191,9 @@ _ACM_FULL_NAME = CompiledPattern.create(
     name="acm_full_name",
     pattern=(
         r'^\[\s*(?P<index>\d+)\s*\]\s*'  # [N]
-        r'(?P<authors>.+?)(?<!\bvol)(?<!\bno)(?<!\bpp)\.\s+(?!(?:[A-ZÀ-Ý]\.|[A-ZÀ-Ý][a-zà-ÿ\'-]+[.,]\s|and\b|&|et\s+al\.))'  # Authors (ends with surname).
-        r'(?P<title>[^.]*[A-Za-z]{3,}[^.]*?)\.\s+'  # Title.
-        r'(?P<venue>.+?)'  # Venue
-        r'(?:\s+(?P<year>(?:19|20)\d{2}))?'  # Optional year
+        r'(?P<authors>.+?)(?<!\bvol)(?<!\bno)(?<!\bpp)\.\s+(?!(?:[A-ZÀ-Ý]\.|[A-ZÀ-Ý][a-zà-ÿ\'-]+(?:\s+[A-ZÀ-Ý][a-zà-ÿ\'-]+)?(?:[.,]\s|\s+and\s+[A-ZÀ-Ý]|\s*&|\s+et\s+al\b)|and\b|&|et\s+al\.))'  # Authors (ends with surname).
+        r'(?P<title>(?:[^.?!]|\.(?!\s))*[A-Za-z]{3,}(?:[^.?!]|\.(?!\s))*?)(?:[.?!]\s+(?P<venue>.+?)|,\s*(?:[A-Za-z]+\.?\s+)?(?P<year_direct>(?:18|19|20)\d{2}[a-z]?)(?:\.\s*(?P<trailing_url>(?:URL\s+)?https?://\S+|\bdoi:\s*\S+))?)'  # Title. Venue OR Title, Year.
+        r'(?:\s+(?P<year>(?:18|19|20)\d{2}[a-z]?))?'  # Optional year
         r'\.?$'
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -547,6 +546,17 @@ class ACMFormat:
                 break
         # Strip trailing period if present
         title = title.rstrip('.')
+        # Extract trailing ", Year" from title when venue starts with URL/DOI (e.g. "Title, 2021. URL https://...")
+        title_yr_m = re.search(
+            r'^(?P<clean_title>.+?),\s*(?:[A-Za-z]+\.?\s+)?(?P<t_year>(?:18|19|20)\d{2}[a-z]?)$',
+            title,
+        )
+        if title_yr_m:
+            title = title_yr_m.group('clean_title').strip()
+            t_yr = title_yr_m.group('t_year')
+            citation.year = t_yr[:4]
+            if len(t_yr) > 4:
+                citation.year_suffix = t_yr[4:]
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
@@ -609,22 +619,39 @@ class ACMFormat:
                 break
         # Strip trailing period if present
         title = title.rstrip('.')
+        # Extract trailing ", Year" from title when venue starts with URL/DOI (e.g. "Title, 2021. URL https://...")
+        title_yr_m = re.search(
+            r'^(?P<clean_title>.+?),\s*(?:[A-Za-z]+\.?\s+)?(?P<t_year>(?:18|19|20)\d{2}[a-z]?)$',
+            title,
+        )
+        if title_yr_m:
+            title = title_yr_m.group('clean_title').strip()
+            t_yr = title_yr_m.group('t_year')
+            citation.year = t_yr[:4]
+            if len(t_yr) > 4:
+                citation.year_suffix = t_yr[4:]
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
         # Extract venue
-        venue = match.group('venue').strip()
-        self._parse_venue(citation, venue)
+        venue = (match.group('venue') or '').strip()
+        if venue:
+            self._parse_venue(citation, venue)
 
         # Extract year
         year_str = match.group('year')
         if year_str:
-            citation.year = year_str
+            citation.year = year_str[:4]
+            if len(year_str) > 4:
+                citation.year_suffix = year_str[4:]
 
         # Extract DOI if present
         doi_m = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', text)
         if doi_m:
             citation.doi = doi_m.group(0).rstrip('.')
+        url_m = re.search(r'https?://[^\s\]\)\,;]+', text)
+        if url_m:
+            citation.url = url_m.group(0).rstrip('.,;)')
 
         citation.confidence = self._estimate_confidence(citation)
         return citation
@@ -665,22 +692,39 @@ class ACMFormat:
                 break
         # Strip trailing period if present
         title = title.rstrip('.')
+        # Extract trailing ", Year" from title when venue starts with URL/DOI (e.g. "Title, 2021. URL https://...")
+        title_yr_m = re.search(
+            r'^(?P<clean_title>.+?),\s*(?:[A-Za-z]+\.?\s+)?(?P<t_year>(?:18|19|20)\d{2}[a-z]?)$',
+            title,
+        )
+        if title_yr_m:
+            title = title_yr_m.group('clean_title').strip()
+            t_yr = title_yr_m.group('t_year')
+            citation.year = t_yr[:4]
+            if len(t_yr) > 4:
+                citation.year_suffix = t_yr[4:]
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
         # Extract venue
-        venue = match.group('venue').strip()
-        self._parse_venue(citation, venue)
+        venue = (match.groupdict().get('venue') or '').strip()
+        if venue:
+            self._parse_venue(citation, venue)
 
         # Extract year
-        year_str = match.group('year')
+        year_str = match.groupdict().get('year') or match.groupdict().get('year_direct')
         if year_str:
-            citation.year = year_str
+            citation.year = year_str[:4]
+            if len(year_str) > 4:
+                citation.year_suffix = year_str[4:]
 
         # Extract DOI if present
         doi_m = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', text)
         if doi_m:
             citation.doi = doi_m.group(0).rstrip('.')
+        url_m = re.search(r'https?://[^\s\]\)\,;]+', text)
+        if url_m:
+            citation.url = url_m.group(0).rstrip('.,;)')
 
         citation.confidence = self._estimate_confidence(citation)
         return citation
@@ -717,6 +761,17 @@ class ACMFormat:
                 break
         # Strip trailing period if present
         title = title.rstrip('.')
+        # Extract trailing ", Year" from title when venue starts with URL/DOI (e.g. "Title, 2021. URL https://...")
+        title_yr_m = re.search(
+            r'^(?P<clean_title>.+?),\s*(?:[A-Za-z]+\.?\s+)?(?P<t_year>(?:18|19|20)\d{2}[a-z]?)$',
+            title,
+        )
+        if title_yr_m:
+            title = title_yr_m.group('clean_title').strip()
+            t_yr = title_yr_m.group('t_year')
+            citation.year = t_yr[:4]
+            if len(t_yr) > 4:
+                citation.year_suffix = t_yr[4:]
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 
@@ -819,6 +874,17 @@ class ACMFormat:
                 break
         # Strip trailing period if present
         title = title.rstrip('.')
+        # Extract trailing ", Year" from title when venue starts with URL/DOI (e.g. "Title, 2021. URL https://...")
+        title_yr_m = re.search(
+            r'^(?P<clean_title>.+?),\s*(?:[A-Za-z]+\.?\s+)?(?P<t_year>(?:18|19|20)\d{2}[a-z]?)$',
+            title,
+        )
+        if title_yr_m:
+            title = title_yr_m.group('clean_title').strip()
+            t_yr = title_yr_m.group('t_year')
+            citation.year = t_yr[:4]
+            if len(t_yr) > 4:
+                citation.year_suffix = t_yr[4:]
         citation.title = title
         citation.title_normalized = self._normalize_title(title)
 

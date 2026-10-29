@@ -120,7 +120,8 @@ _CORPORATE_AUTHOR_RE = re.compile(
     r"|Ministry|Department|University|Institute|Institution|Council|Government|Corporation"
     r"|Administration|Center|Centre|Research|Advisors|Project|Team|Developers|Clinics"
     r"|Foundation|Society|Federation|Encyclopedia|Archive|Initiative|Network|Contributors"
-    r"|Guard|Force|Command|Commission|Intelligence|Security|Deals|Drug)\b",
+    r"|Guard|Force|Command|Commission|Intelligence|Security|Deals|Drug"
+    r"|LLC|Inc|Ltd|Corp|GmbH|PLC|OpenAI|Anthropic|DeepMind|DeepSeek|Meta\s+AI|Hugging\s*Face)\b",
     re.IGNORECASE,
 )
 

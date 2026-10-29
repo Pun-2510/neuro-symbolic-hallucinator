@@ -81,12 +81,22 @@ _BIBLIOGRAPHY_HEADERS = re.compile(
 )
 
 _APPENDIX_HEADERS = re.compile(
-    r"^\s*(?:(?:\d+|I{1,3}|IV|V|VI{0,3}|IX|X)\.?\s+)?(?:"
+    r"^\s*(?:(?:\d+|I{1,3}|IV|V|VI{0,3}|IX|X|[A-Z])\.?\s+)?(?:"
     r"(?:appendix|appendices|phụ\s+lục|annex)"
-    r"(?:\s+for\b[^,;]*|\s+[A-Z0-9]{1,3}(?:\s*[:.\-—–]\s*[^,;]{1,80})?|\s*[:.\-—–]\s*[^,;]{1,80})?|"
+    r"(?:\s+for\b[^,;]*|\s+[A-Z0-9]{1,3}(?:\s*[:.\-—–]?\s*[^,;]{1,80})?|\s*[:.\-—–]\s*[^,;]{1,80})?|"
+    r"supplementary\s+(?:material|materials|information|appendix|experiments?|results?|details?)|"
     r"附件.*"
     r")\s*$",
     re.IGNORECASE,
+)
+
+_POST_BIB_APPENDIX_SINGLE_LINE_RE = re.compile(
+    r"^(?:"
+    r"A(?:\.1)?\s+(?:Additional|Supplementary|Implementation|Experimental|Training|Model|Dataset|Evaluation|Proof|Proofs|Further|Extended|Detailed|Prompt|Prompts|Hyperparameter|Ablation|Human|Case|Error|More|Ethical|Broader|Limitation|Societal)\b[A-Za-z0-9\s,\-:–—()]{2,70}"
+    r"|Attention\s+Visualizations"
+    r"|Acknowledgements?"
+    r"|Extended\s+Data(?:\s+Figures?|\s+Tables?)?"
+    r")$"
 )
 
 _FOOTNOTE_PATTERN = re.compile(r"^\s*\d{1,3}\.\s+\S")   # "1. Text..."
@@ -152,10 +162,33 @@ class SectionSegmenter:
             ))
 
         # BIBLIOGRAPHY — chỉ tạo nếu thực sự tìm thấy header
+        app_start = boundaries["appendix_start"]
+        app_line_idx = boundaries.get("appendix_line_idx")
+        mid_page_appendix = False
+        if app_start and app_line_idx is not None and app_line_idx > 0:
+            app_page = next((p for p in doc.pages if p.page_num == app_start), None)
+            if app_page and app_page.text:
+                app_lines = app_page.text.splitlines()
+                start_slice = 0
+                if app_start == boundaries["biblio_start"]:
+                    b_idx = self._find_bibliography_header_line_idx(app_page)
+                    if b_idx is not None:
+                        start_slice = b_idx + 1
+                pre_app_lines = app_lines[start_slice:app_line_idx]
+                pre_app_text = "\n".join(pre_app_lines).strip()
+                if app_start == boundaries["biblio_start"] or (
+                    len(pre_app_text) >= 40
+                    and (
+                        sum(1 for ln in pre_app_lines if ln.strip()) >= 3
+                        or bool(re.search(r"\b(?:19|20)\d{2}\b|https?://", pre_app_text))
+                    )
+                ):
+                    mid_page_appendix = True
+
         if boundaries["biblio_start"] > 0:
             biblio_end = (
-                boundaries["appendix_start"] - 1
-                if boundaries["appendix_start"]
+                (app_start if mid_page_appendix else app_start - 1)
+                if app_start
                 else doc.num_pages
             )
             if boundaries["biblio_start"] <= biblio_end:
@@ -164,6 +197,8 @@ class SectionSegmenter:
                     boundaries["biblio_start"],
                     biblio_end,
                     doc,
+                    appendix_page=app_start if mid_page_appendix else None,
+                    appendix_line_idx=app_line_idx if mid_page_appendix else None,
                 ))
         else:
             # Không có bibliography → fallback toàn bộ document là BODY
@@ -172,12 +207,14 @@ class SectionSegmenter:
             ))
 
         # APPENDIX
-        if boundaries["appendix_start"]:
+        if app_start:
             sections.append(self._build_section(
                 SectionType.APPENDIX,
-                boundaries["appendix_start"],
+                app_start,
                 doc.num_pages,
                 doc,
+                appendix_page=app_start if mid_page_appendix else None,
+                appendix_line_idx=app_line_idx if mid_page_appendix else None,
             ))
 
         # Bước 3: tách footnote/figure-caption riêng từ body
@@ -190,8 +227,8 @@ class SectionSegmenter:
 
     # -- internals --
 
-    def _find_boundaries(self, doc: Document) -> dict[str, int]:
-        """Tìm (biblio_start, appendix_start).
+    def _find_boundaries(self, doc: Document) -> dict[str, int | None]:
+        """Tìm (biblio_start, appendix_start, appendix_line_idx).
 
         Two-pass approach:
           1. Explicit header scan (original logic).
@@ -199,10 +236,12 @@ class SectionSegmenter:
              Detects pages dominated by IEEE-style [N] reference markers.
 
         Returns:
-            dict có 'biblio_start' (1-indexed) và 'appendix_start' (1-indexed hoặc None).
+            dict có 'biblio_start' (1-indexed), 'appendix_start' (1-indexed hoặc None),
+            và 'appendix_line_idx' (0-indexed hoặc None).
         """
         biblio_start = 0
         appendix_start = 0
+        appendix_line_idx: int | None = None
 
         # ── Pass 1: explicit header ──────────────────────────────────────────
         bib_candidates = [
@@ -214,16 +253,36 @@ class SectionSegmenter:
             # Ignore early TOC / table column header false hits when multiple candidates exist
             if len(bib_candidates) > 1:
                 later = [p for p in bib_candidates if p > doc.num_pages * 0.35]
-                biblio_start = later[-1] if later else bib_candidates[-1]
+                if len(later) > 1:
+                    first_pg = next((pg for pg in doc.pages if pg.page_num == later[0]), None)
+                    first_yr_hits = len(re.findall(r"\b(?:18|19|20)\d{2}\b", first_pg.text or "")) if first_pg else 0
+                    if later[1] == later[0] + 1 or first_yr_hits >= 4:
+                        biblio_start = later[0]
+                    else:
+                        biblio_start = later[-1]
+                else:
+                    biblio_start = later[-1] if later else bib_candidates[-1]
             else:
                 biblio_start = bib_candidates[0]
             logger.debug("Bibliography starts at page %d (header)", biblio_start)
 
         if biblio_start > 0:
             for page in doc.pages:
-                if page.page_num > biblio_start and self._page_has_appendix_header(page):
+                if page.page_num < biblio_start:
+                    continue
+                min_idx = 0
+                if page.page_num == biblio_start:
+                    b_hdr_idx = self._find_bibliography_header_line_idx(page)
+                    min_idx = (b_hdr_idx + 1) if b_hdr_idx is not None else 1
+                app_idx = self._find_appendix_header_line_idx(page, min_line_idx=min_idx)
+                if app_idx is not None:
                     appendix_start = page.page_num
-                    logger.debug("Appendix starts at page %d", page.page_num)
+                    appendix_line_idx = app_idx
+                    logger.debug(
+                        "Appendix starts at page %d (line %d)",
+                        page.page_num,
+                        app_idx,
+                    )
                     break
 
         # ── Pass 2: implicit bibliography (no header found) ────────────────────
@@ -236,6 +295,7 @@ class SectionSegmenter:
         return {
             "biblio_start": biblio_start,
             "appendix_start": appendix_start or None,
+            "appendix_line_idx": appendix_line_idx,
         }
 
     def _find_implicit_bibliography(self, doc: Document) -> int:
@@ -339,10 +399,29 @@ class SectionSegmenter:
             if not stripped or stripped.islower():
                 continue
             if _BIBLIOGRAPHY_HEADERS.match(stripped):
-                # Ignore singular "Reference" column header inside a Table block
+                # Ignore singular "Reference" or plural "References" used as a table column header
+                next_8_lines = [ln.strip() for ln in lines[idx + 1 : idx + 10] if ln.strip()]
+                metric_headers = sum(
+                    1
+                    for ln in next_8_lines
+                    if re.fullmatch(
+                        r"(?:Entities(?:,\s*n)?|Entity|Attribute|Recall|Precision|F1(?:\s*Score)?|Accuracy|Score|Metric|Support)(?:\s+(?:Recall|Precision|F1(?:\s*Score)?))*",
+                        ln,
+                        re.IGNORECASE,
+                    )
+                )
+                if metric_headers >= 2:
+                    continue
                 if re.fullmatch(r"reference\s*[:.]?", stripped, re.IGNORECASE):
                     prev_window = "\n".join(lines[max(0, idx - 12) : idx])
                     if re.search(r"\b(?:table|bảng)\s+\d+", prev_window, re.IGNORECASE):
+                        continue
+                    next_window = "\n".join(lines[idx + 1 : idx + 16])
+                    if len(lines) - idx > 5 and not re.search(
+                        r"\b(?:18|19|20)\d{2}\b|\[\d+\]|https?://|doi:",
+                        next_window,
+                        re.IGNORECASE,
+                    ):
                         continue
                 return idx
         return None
@@ -353,15 +432,36 @@ class SectionSegmenter:
         return SectionSegmenter._find_bibliography_header_line_idx(page) is not None
 
     @staticmethod
-    def _page_has_appendix_header(page: Page) -> bool:
-        """True nếu page có dòng khớp appendix header."""
-        for line in page.text.splitlines()[:15]:
-            stripped = line.strip()
+    def _find_appendix_header_line_idx(page: Page, min_line_idx: int = 0) -> int | None:
+        """Return 0-indexed line number of appendix header on `page` (at or after `min_line_idx`), or None."""
+        lines = page.text.splitlines()
+        for idx in range(max(0, min_line_idx), len(lines)):
+            stripped = lines[idx].strip()
             if not stripped or stripped.islower():
                 continue
-            if _APPENDIX_HEADERS.match(stripped):
-                return True
-        return False
+            if _APPENDIX_HEADERS.match(stripped) or _POST_BIB_APPENDIX_SINGLE_LINE_RE.match(stripped):
+                return idx
+            # Two-line LaTeX \appendix \section{...}: standalone "A" / "A." followed by section title line
+            if stripped in ("A", "A.", "Appendix A") and idx + 1 < len(lines):
+                nxt = ""
+                for j in range(idx + 1, min(idx + 4, len(lines))):
+                    if lines[j].strip():
+                        nxt = lines[j].strip()
+                        break
+                if (
+                    nxt
+                    and 3 <= len(nxt) <= 80
+                    and nxt[0].isupper()
+                    and not re.search(r"\b(?:19|20)\d{2}\b|https?://", nxt)
+                    and not nxt.endswith(".")
+                ):
+                    return idx
+        return None
+
+    @staticmethod
+    def _page_has_appendix_header(page: Page) -> bool:
+        """True nếu page có dòng khớp appendix header."""
+        return SectionSegmenter._find_appendix_header_line_idx(page) is not None
 
     def _build_section(
         self,
@@ -369,6 +469,9 @@ class SectionSegmenter:
         start_page: int,
         end_page: int,
         doc: Document,
+        *,
+        appendix_page: int | None = None,
+        appendix_line_idx: int | None = None,
     ) -> DocumentSection:
         """Ghép text của tất cả page trong range."""
         parts: list[str] = []
@@ -377,17 +480,34 @@ class SectionSegmenter:
         for p in pages:
             if not p.text:
                 continue
-            if section_type == SectionType.BIBLIOGRAPHY and p.page_num == start_page:
-                hdr_idx = self._find_bibliography_header_line_idx(p)
-                if hdr_idx is not None and hdr_idx > 0:
-                    lines = p.text.splitlines()
-                    pre_text = "\n".join(lines[:hdr_idx]).strip()
-                    post_text = "\n".join(lines[hdr_idx:])
-                    if len(pre_text) >= 60:
-                        metadata["pre_header_body_text"] = pre_text
-                        metadata["pre_header_page_num"] = p.page_num
-                    parts.append(post_text)
-                    continue
+            if section_type == SectionType.BIBLIOGRAPHY and (
+                p.page_num == start_page or (appendix_page == p.page_num and appendix_line_idx is not None)
+            ):
+                lines = p.text.splitlines()
+                slice_start = 0
+                slice_end = len(lines)
+                if p.page_num == start_page:
+                    hdr_idx = self._find_bibliography_header_line_idx(p)
+                    if hdr_idx is not None and hdr_idx > 0:
+                        pre_text = "\n".join(lines[:hdr_idx]).strip()
+                        if len(pre_text) >= 60:
+                            metadata["pre_header_body_text"] = pre_text
+                            metadata["pre_header_page_num"] = p.page_num
+                        slice_start = hdr_idx
+                if appendix_page == p.page_num and appendix_line_idx is not None:
+                    slice_end = max(slice_start, appendix_line_idx)
+                parts.append("\n".join(lines[slice_start:slice_end]))
+                continue
+            if (
+                section_type == SectionType.APPENDIX
+                and p.page_num == start_page
+                and appendix_page == p.page_num
+                and appendix_line_idx is not None
+                and appendix_line_idx > 0
+            ):
+                lines = p.text.splitlines()
+                parts.append("\n".join(lines[appendix_line_idx:]))
+                continue
             parts.append(p.text)
         text = "\n".join(parts)
         return DocumentSection(

@@ -399,6 +399,9 @@ class DocumentParser:
             body_citations = self._extract_attached_superscript_citations(
                 sections, text_doc, body_citations, references
             )
+            body_citations = self._extract_alpha_bracket_citations(
+                sections, text_doc, body_citations, references
+            )
 
         # 3.4 Appendix citations (chỉ track, không analyse)
         appendix_citations = self._extract_appendix_citations(sections)
@@ -670,9 +673,16 @@ class DocumentParser:
                 clean_last = (getattr(a0, "last_name", None) or "").strip()
             if clean_last and "," not in clean_last:
                 surname = clean_last
-            else:
-                surname = first_raw.split(",", 1)[0].strip() if first_raw else ""
+            elif "," in first_raw:
+                surname = first_raw.split(",", 1)[0].strip()
                 surname = re.sub(r"\s+[A-Z\.]{1,5}$", "", surname).strip()
+            else:
+                stripped_init = re.sub(r"\s+[A-Z\.]{1,5}$", "", first_raw).strip()
+                if stripped_init != first_raw and stripped_init:
+                    surname = stripped_init
+                else:
+                    parts_raw = first_raw.split()
+                    surname = parts_raw[-1] if parts_raw else ""
             given = first_raw.split(",", 1)[1].strip() if "," in first_raw else ""
             sn_fold = _fold(surname)
             gv_fold = _fold(given.split()[0].rstrip(".")) if given else ""
@@ -758,7 +768,16 @@ class DocumentParser:
                 for prof in ref_profiles
             )
         )
-        if existing_matched_count >= 10:
+        author_year_body_count = sum(
+            1
+            for c in existing_body
+            if c.citation_type == CitationType.IN_TEXT
+            and c.year
+            and re.search(r"[A-Za-z]{2,}", c.raw_text or "")
+        )
+        if existing_matched_count >= 10 or (
+            author_year_body_count >= 5 and not has_ibid and has_pub_city < 2
+        ):
             return existing_body
 
         if not (has_ibid or has_pub_city >= 2 or len(fn_blocks) >= 5 or (len(references) >= 5 and existing_matched_count <= 5)):
@@ -1181,6 +1200,69 @@ class DocumentParser:
             return existing_body + candidates
         return existing_body
 
+    def _extract_alpha_bracket_citations(
+        self,
+        sections: list[DocumentSection],
+        source_doc: Document,
+        existing_body: list[Citation],
+        references: list[Citation],
+    ) -> list[Citation]:
+        """Extract LaTeX alpha-style in-text citations (e.g. [ADG+16], [VSP+17, DCLT18])."""
+        alpha_key_re = re.compile(r"^\s*\[\s*([A-ZÀ-Ý][A-Za-zÀ-ÿ0-9+\-]{1,10}\d{2}[a-z]?)\s*\]")
+        alpha_map: dict[str, Citation] = {}
+        for ref in references:
+            m = alpha_key_re.match(ref.raw_text or "")
+            if m:
+                key = re.sub(r"\s+", "", m.group(1))
+                alpha_map.setdefault(key, ref)
+
+        if len(alpha_map) < 2:
+            return existing_body
+
+        by_page = {p.page_num: p for p in source_doc.pages}
+        body_page_texts: dict[int, str] = {}
+        for section in sections:
+            if section.section_type == SectionType.BODY:
+                for n in sorted(by_page):
+                    if section.start_page <= n <= section.end_page and by_page[n].text:
+                        body_page_texts.setdefault(n, by_page[n].text)
+            elif section.section_type == SectionType.BIBLIOGRAPHY:
+                pre_body = (section.metadata or {}).get("pre_header_body_text")
+                pre_pnum = (section.metadata or {}).get("pre_header_page_num") or section.start_page
+                if pre_body and pre_pnum:
+                    body_page_texts[pre_pnum] = (body_page_texts.get(pre_pnum, "") + "\n" + pre_body).strip()
+
+        if not body_page_texts:
+            return existing_body
+
+        added: list[Citation] = []
+        for p_num, raw_p_text in sorted(body_page_texts.items()):
+            p_text = re.sub(r"\s+", " ", raw_p_text)
+            for m in re.finditer(r"\[([^\[\]]{2,180})\]", p_text):
+                inside = m.group(1).strip()
+                parts = [pt.strip() for pt in re.split(r"[,;]", inside) if pt.strip()]
+                for pt in parts:
+                    norm_key = re.sub(r"\s+", "", pt)
+                    ref = alpha_map.get(norm_key)
+                    if ref is not None:
+                        added.append(
+                            Citation(
+                                raw_text=f"[{norm_key}]",
+                                citation_type=CitationType.IN_TEXT,
+                                style=ref.style or CitationStyle.ACM,
+                                page_num=p_num,
+                                authors=list(ref.authors[:1]) if ref.authors else [],
+                                year=ref.year,
+                                year_suffix=ref.year_suffix,
+                                title=ref.title,
+                                title_normalized=ref.title_normalized,
+                                matched_pattern="alpha_bracket",
+                                confidence=0.92,
+                            )
+                        )
+
+        return existing_body + added if added else existing_body
+
     def _extract_references(
         self,
         sections: list[DocumentSection],
@@ -1200,12 +1282,22 @@ class DocumentParser:
 
         # Lấy references từ GROBID (primary) và lọc bỏ fake/appendix entries + gộp các entry
         # bị GROBID tách đôi TRƯỚC khi đánh lại order_index / numeric_index.
-        bib_text_norm = " ".join(
-            (s.text or "") for s in sections if s.section_type == SectionType.BIBLIOGRAPHY
+        bib_text_norm = re.sub(
+            r"\s+",
+            " ",
+            " ".join((s.text or "") for s in sections if s.section_type == SectionType.BIBLIOGRAPHY),
         ).lower()
-        appendix_text_norm = " ".join(
-            (s.text or "") for s in sections if s.section_type == SectionType.APPENDIX
+        appendix_text_norm = re.sub(
+            r"\s+",
+            " ",
+            " ".join((s.text or "") for s in sections if s.section_type == SectionType.APPENDIX),
         ).lower()
+        body_text_norm = re.sub(
+            r"\s+",
+            " ",
+            " ".join((s.text or "") for s in sections if s.section_type == SectionType.BODY),
+        ).lower()
+        non_bib_text_norm = f"{body_text_norm} {appendix_text_norm}".strip()
 
         # If a multi-page document (3+ pages) has no BIBLIOGRAPHY section at all (e.g. 3.pdf screenplay),
         # ignore any GROBID-hallucinated references from body text.
@@ -1225,25 +1317,55 @@ class DocumentParser:
                     )
                     continue
 
-                # Filter out yearless/DOI-less/URL-less GROBID entries extracted from APPENDIX
+                # Filter out yearless/DOI-less/URL-less GROBID entries extracted from outside BIBLIOGRAPHY
+                # (e.g. Author Contributions / Acknowledgments in BODY or APPENDIX)
                 if (
                     ref.year is None
                     and not ref.doi
                     and not ref.url
-                    and appendix_text_norm
+                    and non_bib_text_norm
                     and bib_text_norm
                 ):
                     probe = (ref.title or ref.venue or ref.raw_text or "").strip().lower()
                     probe_snip = probe[:35] if len(probe) >= 15 else ""
                     if (
                         probe_snip
-                        and probe_snip in appendix_text_norm
+                        and probe_snip in non_bib_text_norm
                         and probe_snip not in bib_text_norm
                     ):
                         logger.debug(
-                            f"Filtered APPENDIX GROBID entry before indexing: {ref.raw_text[:50]}..."
+                            f"Filtered non-bibliography GROBID entry before indexing: {ref.raw_text[:50]}..."
                         )
                         continue
+                    # Also check if the trailing segment of raw_text (e.g. "conducted pre-training experiments")
+                    # is prose from BODY/APPENDIX and absent from BIBLIOGRAPHY
+                    raw_probe = (ref.raw_text or "").strip().lower()
+                    tail_snip = raw_probe[-35:] if len(raw_probe) >= 25 else ""
+                    if (
+                        tail_snip
+                        and tail_snip in non_bib_text_norm
+                        and tail_snip not in bib_text_norm
+                    ):
+                        logger.debug(
+                            f"Filtered non-bibliography GROBID prose entry before indexing: {ref.raw_text[:50]}..."
+                        )
+                        continue
+
+                # Coalesce standalone URL fragment split by GROBID from the preceding entry
+                if (
+                    not ref.authors
+                    and ref.year is None
+                    and re.match(
+                        r"^(?:URL(?:\s+https?://\S+)?|https?://\S+)$",
+                        (ref.raw_text or ref.title or "").strip(),
+                        re.IGNORECASE,
+                    )
+                ):
+                    if grobid_refs and not grobid_refs[-1].url:
+                        u_m = re.search(r"https?://\S+", (ref.raw_text or ref.title or "").strip(), re.I)
+                        if u_m:
+                            grobid_refs[-1].url = u_m.group(0).rstrip(".,;)")
+                    continue
 
                 # Coalesce consecutive split GROBID entries where the first half has only
                 # authors + year (no title/venue/doi/url) and the second half has no authors
@@ -1555,6 +1677,14 @@ class DocumentParser:
             if not target.title and donor.title:
                 target.title = donor.title
                 target.title_normalized = donor.title_normalized
+                if donor.authors and not donor_is_multi_chunk:
+                    target.authors = [
+                        getattr(a, "raw", None) or str(a) for a in donor.authors
+                    ]
+                if donor.year and (not target.year or str(target.year).startswith("190")):
+                    target.year = donor.year
+                if donor.venue and not target.venue:
+                    target.venue = donor.venue
                 if donor.title not in (target.raw_text or ""):
                     target.raw_text = f"{(target.raw_text or '').rstrip('. ')}. {donor.title}"
                     if target.venue and target.venue not in target.raw_text:
@@ -1570,6 +1700,16 @@ class DocumentParser:
                     idx_label = donor.numeric_index or target.numeric_index
                     if idx_label is not None:
                         target.raw_text = f"[{idx_label}] {target.raw_text}"
+            elif donor.raw_text:
+                alpha_m = re.match(
+                    r"^\s*\[\s*([A-ZÀ-Ý][A-Za-zÀ-ÿ0-9+\-]{1,10}\d{2}[a-z]?)\s*\]",
+                    donor.raw_text,
+                )
+                if alpha_m and not re.match(
+                    r"^\s*\[\s*[A-ZÀ-Ý][A-Za-zÀ-ÿ0-9+\-]{1,10}\d{2}[a-z]?\s*\]",
+                    target.raw_text or "",
+                ):
+                    target.raw_text = f"[{re.sub(r'\\s+', '', alpha_m.group(1))}] {target.raw_text}"
             if donor.raw_text:
                 arxiv_m = re.search(
                     r"\barXiv\s*:\s*\d{4}\.\d{4,5}(?:v\d+)?\b",
@@ -1612,6 +1752,22 @@ class DocumentParser:
                 _enrich_grobid_ref(grobid_by_key[key], c)
                 logger.debug(f"Skipping regex duplicate by key: {c.raw_text[:50]}")
                 continue
+
+            # Check URL exact match before fuzzy duplicate scan
+            c_url_norm = (c.url or "").strip().rstrip("/.,;").lower()
+            if c_url_norm:
+                url_match_g = next(
+                    (
+                        g
+                        for g in grobid_refs
+                        if (g.url or "").strip().rstrip("/.,;").lower() == c_url_norm
+                    ),
+                    None,
+                )
+                if url_match_g is not None:
+                    _enrich_grobid_ref(url_match_g, c)
+                    logger.debug(f"Skipping regex duplicate by exact URL: {c.raw_text[:50]}")
+                    continue
 
             # Check GROBID refs directly
             dup_match = next(
@@ -1660,6 +1816,20 @@ class DocumentParser:
                 if len(g_title_norm) >= 12 and (g_title_norm in c_title_norm or g_title_norm in c_raw_norm):
                     overlap_g = g
                     break
+                if not g.title and len(c_title_norm) >= 3 and c_title_norm in g_raw_norm and (not g.year or not c.year or g.year == c.year):
+                    overlap_g = g
+                    break
+                if not g.title and c.authors and len(c.authors) >= 2:
+                    c_surnames = []
+                    for a in c.authors[:5]:
+                        a_str = (getattr(a, "last_name", None) or getattr(a, "raw", None) or str(a)).strip()
+                        sn = a_str.split(",")[0].strip().split()[-1].lower() if a_str else ""
+                        sn = re.sub(r"[^\w]", "", sn)
+                        if len(sn) >= 4:
+                            c_surnames.append(sn)
+                    if len(c_surnames) >= 2 and sum(1 for sn in c_surnames if sn in g_raw_norm) >= min(3, len(c_surnames)):
+                        overlap_g = g
+                        break
             if overlap_g is not None:
                 _enrich_grobid_ref(overlap_g, c)
                 logger.debug(f"Skipping overlapping regex entry: {c.raw_text[:50]}")

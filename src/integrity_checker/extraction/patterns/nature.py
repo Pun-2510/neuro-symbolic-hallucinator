@@ -76,7 +76,7 @@ _NATURE_REFERENCE_COMPACT = CompiledPattern.create(
     pattern=(
         r"^"
         r"(?:(?P<index>\d+)\.\s*)?"  # Optional number.
-        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b|et\s+al\.))"  # Authors. (don't stop at initial/et al.)
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|[A-ZÀ-Ý][a-zà-ÿ'\u2019\-]+(?:[.,]\s|\s+and\b|\s*&|\s+et\s+al\b)|&|and\b|et\s+al\.))"  # Authors. (don't stop at initial/et al.)
         r"(?P<title>[^.]+?)[.,]\s+"  # Title. or Title,
         r"(?P<venue>[^0-9,;]+?)\s+"  # Journal (no numbers)
         r"(?P<volume>\d+)"  # Volume
@@ -94,7 +94,7 @@ _NATURE_NUMBERED = CompiledPattern.create(
     name="nature_numbered",
     pattern=(
         r"^\[\s*(?P<index>\d+)\s*\]\s*"  # [N]
-        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b|et\s+al\.))"  # Authors.
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|[A-ZÀ-Ý][a-zà-ÿ'\u2019\-]+(?:[.,]\s|\s+and\b|\s*&|\s+et\s+al\b)|&|and\b|et\s+al\.))"  # Authors.
         r"(?P<title>[^.]+?)[.,]\s+"  # Title. or Title,
         r"(?P<venue>[^0-9,;]+?)\s+"  # Journal (no numbers)
         r"(?P<volume>\d+)"  # Volume
@@ -113,7 +113,7 @@ _NATURE_REFERENCE_DOI = CompiledPattern.create(
     pattern=(
         r"^"
         r"(?:(?P<index>\d+)\.\s*)?"  # Optional number.
-        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b|et\s+al\.))"  # Authors.
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|[A-ZÀ-Ý][a-zà-ÿ'\u2019\-]+(?:[.,]\s|\s+and\b|\s*&|\s+et\s+al\b)|&|and\b|et\s+al\.))"  # Authors.
         r"(?P<title>[^.]+?)[.,]\s+"  # Title. or Title,
         r"(?P<venue>[^0-9,;]+?)\s+"  # Journal (no numbers)
         r"(?P<volume>\d+)"  # Volume
@@ -133,8 +133,8 @@ _NATURE_BOOK = CompiledPattern.create(
     pattern=(
         r"^"
         r"(?:(?P<index>\d+)\.\s*)?"  # Optional number.
-        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b|et\s+al\.))"  # Authors.
-        r"(?P<title>[^.(]{5,}?)\s*"
+        r"(?P<authors>.+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|[A-ZÀ-Ý][a-zà-ÿ'\u2019\-]+(?:[.,]\s|\s+and\b|\s*&|\s+et\s+al\b)|&|and\b|et\s+al\.))"  # Authors.
+        r"(?P<title>[^.(]*[A-Za-z]{3,}[^.(]*?)\s*"
         r"\(\s*(?P<publisher>[^,()]+),\s*(?P<year>(?:19|20)\d{2})\s*\)\.?"
         r"(?P<rest>.*)$"
     ),
@@ -149,7 +149,7 @@ _NATURE_BOOK_CHAPTER = CompiledPattern.create(
     pattern=(
         r"^"
         r"(?:(?P<index>\d+)\.\s*)?"  # Optional number.
-        r"(?P<authors>.+?)(?:\.\s+(?!(?:[A-ZÀ-Ý]\.|&|and\b))|,\s+)"  # Authors.
+        r"(?P<authors>.+?)(?:\.\s+(?!(?:[A-ZÀ-Ý]\.|[A-ZÀ-Ý][a-zà-ÿ'\u2019\-]+(?:[.,]\s|\s+and\b|\s*&|\s+et\s+al\b)|&|and\b))|,\s+)"  # Authors.
         r"(?P<chapter_title>[^.]+?)[.,]\s+"  # Chapter title,
         r"in\s+"  # in
         r"(?P<book_title>[^()]+?)"  # Book title
@@ -171,8 +171,8 @@ _NATURE_WEBSITE = CompiledPattern.create(
         r"(?:\d+\.?\s*)?"  # Optional number.
         r"(?P<authors>.+?),?\s+"  # Authors,
         r"(?P<title>.+?),?\s+"  # Title,
-        r"(?P<url>https?://.+)"  # URL
-        r"(?:\s*\((?P<year>\d{4})\))?"  # Optional (Year)
+        r"(?P<url>https?://\S+?)"  # URL
+        r"\s*\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)\.?"  # Required (Year)
         r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -635,46 +635,115 @@ class NatureFormat:
 
     def _parse_nature_fallback(self, text: str) -> Optional[Citation]:
         """Fallback parser: extract whatever metadata possible."""
-        # Nature fallback only applies when (Year) appears at the end of the entry
-        year_m = re.search(r'\(\s*((?:19|20)\d{2})\s*\)\.?$', text)
+        # Strip trailing Springer LNCS running header ("8 Ide et al.", "Ide et al. 8", or "Ide et al.")
+        cleaned_text = re.sub(
+            r'\s+(?:\d{1,3}\s+)?[A-Z][A-Za-zÀ-ÿ\-]+\s+et\s+al\.(?:\s+\d{1,3})?\s*$',
+            '',
+            text,
+        ).strip()
+        # Nature fallback applies when (Year) or (Publisher, Year) appears at the end of the entry (optionally followed by pages or Accessed/URL)
+        year_m = re.search(
+            r'\(\s*(?:(?P<pub>[^()]{2,80}),\s*)?(?P<year>(?:18|19|20)\d{2}[a-z]?)\s*\)(?:,?\s*pp?\.\s*[\d–-]+|\.\s*Accessed\b[^()]*|\.\s*https?://\S+|\.\s*doi:\s*\S+)?\.?$',
+            cleaned_text,
+            re.IGNORECASE,
+        )
         if not year_m:
             return None
 
+        year_raw = year_m.group('year')
+        pub_raw = (year_m.group('pub') or '').strip()
         citation = Citation(
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
             style=CitationStyle.NATURE,
             matched_pattern="nature_fallback",
-            year=year_m.group(1),
+            year=year_raw[:4],
+            year_suffix=year_raw[4:] if len(year_raw) > 4 else None,
         )
 
         # Extract numeric index
-        idx_match = re.search(r'\[\s*(\d+)\s*\]', text)
+        idx_match = re.search(r'\[\s*(\d+)\s*\]', cleaned_text)
         if idx_match:
             citation.numeric_index = int(idx_match.group(1))
         else:
-            num_match = re.match(r'^(\d+)\.?\s', text)
+            num_match = re.match(r'^(\d+)\.?\s', cleaned_text)
             if num_match:
                 citation.numeric_index = int(num_match.group(1))
 
-        # Try to extract title (usually the longest quoted or capitalized segment)
         # Look for text between author and year
-        if year_m:
-            before_year = text[:year_m.start()]
-            parts = before_year.split(',')
-            if len(parts) >= 2:
-                # Title is often the second or third part
+        before_year = re.sub(r'^\s*(?:\[\s*\d+\s*\]|\d+\.?)\s*', '', cleaned_text[:year_m.start()]).strip()
+        # Springer LNCS format: "N. Authors: Title. Venue (Year)"
+        lncs_m = re.match(
+            r'^(?P<authors>[^:]{2,250}?):\s+(?P<rest>.+)$',
+            before_year,
+        )
+        if lncs_m and not re.search(r'\b(?:https?|doi|arXiv)\b', lncs_m.group('authors'), re.I):
+            authors_str = lncs_m.group('authors').strip()
+            rest_str = lncs_m.group('rest').strip()
+            citation.authors = self._parse_authors(authors_str)
+            if citation.authors:
+                if '. ' in rest_str:
+                    t_part, v_part = rest_str.split('. ', 1)
+                    citation.title = t_part.strip().rstrip('.')
+                    citation.venue = v_part.strip().rstrip('.,')
+                else:
+                    citation.title = rest_str.rstrip('.')
+                if citation.title:
+                    citation.title_normalized = self._normalize_title(citation.title)
+        parts = [p.strip() for p in before_year.split(',') if p.strip()]
+        if not citation.title and len(parts) == 1 and '. ' in before_year:
+            dot_parts = [
+                dp.strip()
+                for dp in re.split(r'(?<!\b[A-Z])\.\s+', before_year)
+                if dp.strip()
+            ]
+            if len(dot_parts) >= 2:
+                citation.authors = self._parse_authors(dot_parts[0])
+                citation.title = dot_parts[1].rstrip('.')
+                citation.title_normalized = self._normalize_title(citation.title)
+                if len(dot_parts) >= 3:
+                    citation.venue = ". ".join(dot_parts[2:]).rstrip('.,')
+        if not citation.title and len(parts) >= 2:
+            init_author_re = re.compile(
+                r'^(?:and\s+|&\s*)?(?:[A-ZÀ-Ý]\.?\s*[-–]?\s*)+[A-ZÀ-Ýa-zà-ÿ\'\u2019\-]+(?:\s+[A-ZÀ-Ýa-zà-ÿ\'\u2019\-]+){0,3}$'
+            )
+            author_end_idx = 0
+            for idx_p, p in enumerate(parts):
+                if init_author_re.match(p) or re.match(r'^(?:and\s+)?et\s+al\.?$', p, re.I):
+                    author_end_idx = idx_p + 1
+                else:
+                    break
+            if author_end_idx == 0:
+                author_end_idx = 1
+            authors_str = ", ".join(parts[:author_end_idx]).strip()
+            if authors_str:
+                citation.authors = self._parse_authors(authors_str)
+            for idx_p in range(author_end_idx, len(parts)):
+                cand = parts[idx_p].strip()
+                if len(cand) > 6 and not re.match(r'^(?:vol\.|no\.|pp?\.|\d+$)', cand, re.I):
+                    citation.title = cand
+                    citation.title_normalized = self._normalize_title(cand)
+                    if idx_p + 1 < len(parts):
+                        citation.venue = ", ".join(parts[idx_p + 1 :]).strip().rstrip('.,')
+                    break
+        if pub_raw and not citation.venue:
+            citation.venue = pub_raw
+        if citation.numeric_index is not None and citation.authors and citation.title:
+            citation.matched_pattern = "nature_comma_separated"
+            if not citation.title and len(parts) >= 2:
                 for part in parts[1:]:
-                    part = part.strip()
                     if len(part) > 10:
                         citation.title = part
                         citation.title_normalized = self._normalize_title(part)
                         break
 
-        # Extract DOI
+        # Extract DOI & URL
         doi_m = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', text)
         if doi_m:
             citation.doi = doi_m.group(0).rstrip('.')
+        url_m = re.search(r'https?://[^\s\]\)\,;]+', text)
+        if url_m:
+            citation.url = url_m.group(0).rstrip('.,;)')
 
         citation.confidence = self._estimate_confidence(citation)
         return citation if citation.title or citation.year else None

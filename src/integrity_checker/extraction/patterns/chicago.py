@@ -37,6 +37,7 @@ from typing import Optional
 
 from integrity_checker.extraction.patterns.base import CompiledPattern, PatternType
 from integrity_checker.extraction.patterns.registry import register_format
+from integrity_checker.extraction.patterns.utils import extract_publication_year
 from integrity_checker.matching.author_parser import parse_authors
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
@@ -588,9 +589,10 @@ class ChicagoFormat:
             citation.numeric_index = int(idx_match.group(1) or idx_match.group(2))
 
         # Try to extract year
-        year_m = re.search(r'\b((?:19|20)\d{2})\b', text)
-        if year_m:
-            citation.year = year_m.group(1)
+        yr, yr_suf = extract_publication_year(text, prefer_last=True)
+        if yr:
+            citation.year = yr
+            citation.year_suffix = yr_suf
 
         # Try to extract title (text between quotes or after year)
         quote_m = re.search(r'["\u201c]([^"\u201d]+)["\u201d]', text)

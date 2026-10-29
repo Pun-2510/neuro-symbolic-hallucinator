@@ -330,10 +330,26 @@ class HarvardFormat:
             return self._parse_numbered_entry(match, text)
         return None
 
+    @staticmethod
+    def _is_invalid_year2_match(authors_str: str, title_str: str) -> bool:
+        """Reject 'Author, Year.' matches when authors_str crossed a sentence boundary (e.g. plainnat 'Authors. Title. Venue, Year. URL ...')."""
+        if re.search(
+            r"(?<!\b[A-ZÀ-Ý])(?<!\bet\sal)(?<!\bJr)(?<!\bSr)\.\s+[A-ZÀ-Ý0-9][a-zA-ZÀ-ÿ0-9]{1,}",
+            authors_str or "",
+        ):
+            return True
+        if re.match(r"^(?:URL\s+|https?://|doi:|arXiv:)", (title_str or "").strip(), re.IGNORECASE):
+            return True
+        return False
+
     def _parse_article_entry(
         self, match: re.Match, text: str
     ) -> Optional[Citation]:
         """Parse Harvard article entry."""
+        if match.groupdict().get("year2") and self._is_invalid_year2_match(
+            match.group("authors"), match.group("title")
+        ):
+            return None
         citation = Citation(
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
@@ -374,6 +390,10 @@ class HarvardFormat:
         self, match: re.Match, text: str
     ) -> Optional[Citation]:
         """Parse Harvard book entry."""
+        if match.groupdict().get("year2") and self._is_invalid_year2_match(
+            match.group("authors"), match.group("title")
+        ):
+            return None
         citation = Citation(
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
@@ -420,6 +440,10 @@ class HarvardFormat:
         self, match: re.Match, text: str
     ) -> Optional[Citation]:
         """Parse Harvard book chapter entry."""
+        if match.groupdict().get("year2") and self._is_invalid_year2_match(
+            match.group("authors"), match.group("chapter_title")
+        ):
+            return None
         citation = Citation(
             raw_text=text,
             citation_type=CitationType.REFERENCE_LIST,
@@ -517,9 +541,11 @@ class HarvardFormat:
             citation.numeric_index = int(idx_match.group(1))
 
         # Try to extract year (often in parentheses)
-        year_m = re.search(r'\((\d{4})\)', text)
+        year_m = re.search(r'\(((?:19|20)\d{2}[a-z]?)\)', text)
         if year_m:
-            citation.year = year_m.group(1)
+            citation.year = year_m.group(1)[:4]
+            if len(year_m.group(1)) > 4:
+                citation.year_suffix = year_m.group(1)[4:]
 
         # Try to extract title
         # In Harvard, title often follows (Year)

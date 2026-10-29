@@ -159,6 +159,16 @@ def _grobid_bib_to_citation(bib: GrobidBibEntry, order_index: int) -> Citation:
         prefix_match = re.match(r"^(19|20)\d{2}[a-z]?\.\s+", title)
         if prefix_match:
             title = title[prefix_match.end():].strip()
+        if not year:
+            suffix_yr_m = re.search(
+                r",\s*((?:19|20)\d{2})([a-z])?\.?$",
+                title.strip(),
+            )
+            if suffix_yr_m:
+                year = suffix_yr_m.group(1)
+                if suffix_yr_m.group(2) and not year_suffix:
+                    year_suffix = suffix_yr_m.group(2)
+                title = title.strip()[: suffix_yr_m.start()].strip()
 
     venue = bib.venue
     if venue and title and venue.strip().rstrip(".,").lower() == title.strip().rstrip(".,").lower():
@@ -170,6 +180,11 @@ def _grobid_bib_to_citation(bib: GrobidBibEntry, order_index: int) -> Citation:
         host_m = re.match(r"^https?://([^/\s]+)", url, re.IGNORECASE)
         if not host_m or "." not in host_m.group(1):
             url = None
+
+    if not title and url:
+        slug = url.rstrip("/").split("/")[-1].strip()
+        if len(slug) >= 3:
+            title = slug
 
     # Build human-readable raw_text từ structured fields
     raw_parts = []

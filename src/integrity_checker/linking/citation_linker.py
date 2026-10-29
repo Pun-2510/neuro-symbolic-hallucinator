@@ -56,12 +56,12 @@ _MLA_AUTHOR_PAGE_RE = re.compile(
 # Regex cho Author et al. / và cộng sự (Year) or Author et al. Year format
 _APA_ETAL_YEAR_RE = re.compile(
     r"([A-Za-zÀ-ỹ'\u2019.\s,&\-]+?)\s+(?:et\s+a?l\.?|và\s+cộng\s+sự|và\s+cs\.?)\s*"
-    r"(?:\(\s*((?:19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)(?:\s*,\s*[^)]*)?\s*\)|((?:19|20)\d{2}[a-z]?)\b)",
+    r"(?:[\(\[]\s*((?:18|19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)(?:\s*,\s*[^)\]]*)?\s*[\)\]]|((?:18|19|20)\d{2}[a-z]?)\b)",
     re.IGNORECASE,
 )
-# Narrative citation: ``Author et al. (2018)`` or ``Author (2018)`` or ``Author A và Author B (2018)``.
+# Narrative citation: ``Author et al. (2018)`` or ``Author (2018)`` or ``Author [2018]`` or ``Author A và Author B (2018)``.
 _NARRATIVE_YEAR_RE = re.compile(
-    r"([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'\u2019.\s,&\-\[\]]*?)\s*\(\s*((?:19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)(?:\s*,\s*[^)]*)?\s*\)",
+    r"([A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9/'\u2019.\s,&\-\[\]]*?)\s*[\(\[]\s*((?:18|19|20)\d{2}[a-z]?|n\.?\s*d\.?(?:-[a-z])?)(?:\s*,\s*[^)\]]*)?\s*[\)\]]",
     re.IGNORECASE,
 )
 # Secondary citation (trích dẫn gián tiếp): "(Smith, 2005, dẫn theo Tran, 2016)" / "Smith (2005, as cited in Tran, 2016)"
@@ -1047,6 +1047,7 @@ class CitationLinker:
             cleaned,
             flags=re.IGNORECASE,
         ).strip().rstrip(",").strip(" \t\"'\u201c\u201d\u2018\u2019")
+        author_stripped = re.sub(r"(?:'s|\u2019s)\b", "", author_stripped).strip()
 
         if _INSTITUTIONAL_AUTHOR_RE.search(author_stripped) or ":" in author_stripped:
             return author_stripped.strip(" .,")

@@ -94,10 +94,10 @@ _VANCOUVER_ENTRY_RE = re.compile(
 _VANCOUVER_YEAR_FIRST_RE = re.compile(
     r"""
     ^(?P<authors>.+?)\.\s*             # authors (ends with period)
-    \(?(?P<year>\d{4})\)?             # year (with optional parens)
-    [a-z]?\.\s+                         # period + space
-    (?P<title>.+?)\.\s+                 # title (ends with period)
-    (?P<venue>.+)$                      # venue
+    \(?(?P<year>(?:18|19|20)\d{2})\)?  # year (with optional parens)
+    (?P<suffix>[a-z])?\.\s+            # period + space
+    (?P<title>.+?)(?:[.?!]\s+          # title (ends with punctuation)
+    (?P<venue>.+))?[.?!]?$             # optional venue
     """,
     re.VERBOSE,
 )
@@ -529,6 +529,25 @@ class ReferenceListParser:
         if len(ieee_inline_split) >= 2:
             return ieee_inline_split
 
+        # 3a. LaTeX alpha-style bracketed bibliography ('[ADG+16] ...', '[VSP+17] ...')
+        alpha_key_re = re.compile(
+            r"^\s*\[([A-ZÀ-Ý][A-Za-zÀ-ÿ0-9+\-]{1,8}\d{2}[a-z]?)\]\s+\S"
+        )
+        alpha_matches = [ln for ln in text.splitlines() if alpha_key_re.match(ln)]
+        if len(alpha_matches) >= 2:
+            alpha_entries: list[str] = []
+            for line in text.splitlines():
+                sline = line.strip()
+                if not sline:
+                    continue
+                if alpha_key_re.match(sline):
+                    alpha_entries.append(sline)
+                elif alpha_entries:
+                    alpha_entries[-1] = self._join_wrapped_line(alpha_entries[-1], sline)
+            alpha_result = [e for e in alpha_entries if len(e) > 20]
+            if len(alpha_result) >= 2:
+                return alpha_result
+
         # 3b. Sequentially dot/paren-numbered bibliography ('1. ...', '2. ...', '3. ...')
         dot_numbered_split = self._split_sequential_dot_numbered(text)
         if len(dot_numbered_split) >= 2:
@@ -561,6 +580,8 @@ class ReferenceListParser:
         )
         found_nums: list[int] = []
         expected = 1
+        unnumbered_prefix_lines = 0
+        unnumbered_prefix_chars = 0
         for raw_ln in lines:
             ln = raw_ln.strip()
             if not ln:
@@ -575,7 +596,16 @@ class ReferenceListParser:
                 if n == expected or (expected < n <= expected + 2) or (n == 1 and len(found_nums) >= 1):
                     found_nums.append(n)
                     expected = n + 1
-        if len(found_nums) < 2 or found_nums[0] != 1:
+                    continue
+            if not found_nums:
+                unnumbered_prefix_lines += 1
+                unnumbered_prefix_chars += len(ln)
+        if (
+            len(found_nums) < 2
+            or found_nums[0] != 1
+            or unnumbered_prefix_lines >= 3
+            or unnumbered_prefix_chars >= 200
+        ):
             return []
 
         def _flush_numbered_chunk(chunk_text: str, start_num: int | None, out_list: list[str]) -> None:
@@ -644,10 +674,14 @@ class ReferenceListParser:
             if in_unnumbered_section:
                 unnumbered_tail_lines.append(ln)
             elif curr_entry:
-                # Detect transition from numbered section (1..N) to unnumbered APA section ("Author (Year).")
-                if re.match(
-                    r"^[A-ZÀ-ÝĂÂĐÊÔƠƯ][^\n()]{1,85}\(\s*(?:(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?:18|19|20)\d{2}[a-z]?|n\.?\s*d\.?)\s*\)[.,]",
-                    ln,
+                # Detect transition from numbered section (1..N) to unnumbered APA section ("Author (Year). Title")
+                if (
+                    curr_num == found_nums[-1]
+                    and re.search(r"[.;]\s*$", curr_entry)
+                    and re.match(
+                        r"^[A-ZÀ-ÝĂÂĐÊÔƠƯ][^\n()]{1,85}\(\s*(?:(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?:18|19|20)\d{2}[a-z]?|n\.?\s*d\.?)\s*\)[.,:]\s+\S",
+                        ln,
+                    )
                 ):
                     _flush_numbered_chunk(curr_entry, curr_num, entries)
                     curr_entry = ""
@@ -719,11 +753,27 @@ class ReferenceListParser:
         if not nxt_s:
             return prev_s
 
-        # 1. URL wrapped across lines after '/' or '-' (e.g. "https://github.com/kermitt2/\ngrobid")
-        if re.search(r"https?://\S+[/\-]$", prev_s) and re.match(
-            r"^[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+$", nxt_s.split()[0]
-        ):
-            return prev_s + nxt_s
+        # 1. URL or DOI wrapped across lines (e.g. "https://github.com/kermitt2/\ngrobid",
+        # "URL https://doi.or\ng/10.48550/...", "URL https://arxiv.\norg/abs/...", "https:\n//...")
+        nxt_first = nxt_s.split()[0]
+        if re.match(r"^[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+$", nxt_first):
+            if re.search(r"(?:https?://\S+|https?:|\b10\.\d{4,9}/\S+)[/\-_?&=:#~]$", prev_s, re.IGNORECASE):
+                return prev_s + nxt_s
+            if re.search(r"https?://[^\s/]*$", prev_s, re.IGNORECASE) and re.match(
+                r"^(?://|/|[a-z0-9_~%#-]+(?:/|\.[a-z]{2,4}\b))", nxt_first
+            ):
+                return prev_s + nxt_s
+            if (
+                re.search(r"(?:https?://|\b10\.\d{4,9}/)\S+$", prev_s, re.IGNORECASE)
+                and not prev_s.endswith((".", ",", ";", ")"))
+                and re.match(r"^[a-z0-9/_~%#?&=.-]", nxt_first)
+            ):
+                return prev_s + nxt_s
+            if re.search(r"(?:https?://|\b10\.\d{4,9}/)\S+\.$", prev_s, re.IGNORECASE) and re.match(
+                r"^(?:org|com|edu|net|gov|io|ai|uk|de|fr|jp|cn|html?|pdf|[a-z]{2,8}-\d+|\d{2,})(?:[/._-]|$)",
+                nxt_first,
+            ):
+                return prev_s + nxt_s
 
         # 2. Word hyphenated at line end (e.g. "recog-\nnition", "Ide-\nSmith", "Pre-\ntraining")
         m_hyph = re.search(r"([A-Za-zÀ-ỹ]+)-$", prev_s)
@@ -830,6 +880,125 @@ class ReferenceListParser:
 
         return sub_entries
 
+    def _split_acl_year_first_lines(self, raw_lines: list[str]) -> list[str]:
+        """Split unnumbered ACL / TACL / EMNLP / NAACL bibliographies ('Authors. YYYY[a-z]?. Title.')."""
+        acl_yr_re = re.compile(
+            r"(?:^|(?<!\bvol)(?<!\bno)(?<!\bpp)\.\s+)(?:18|19|20)\d{2}[a-z]?\.(?:\s|$)",
+            re.IGNORECASE,
+        )
+        lines: list[str] = []
+        for raw_ln in raw_lines:
+            s = raw_ln.strip()
+            if not s or _BIB_HEADER_LINE_RE.match(s):
+                continue
+            lines.append(s)
+        if len(lines) < 2:
+            return []
+
+        year_line_idxs = [i for i, ln in enumerate(lines) if acl_yr_re.search(ln)]
+        if len(year_line_idxs) < 2:
+            return []
+
+        start_idxs = [0]
+        for k in range(1, len(year_line_idxs)):
+            prev_y = year_line_idxs[k - 1]
+            curr_y = year_line_idxs[k]
+            m_yr = acl_yr_re.search(lines[curr_y])
+            prefix_before_yr = lines[curr_y][: m_yr.start()].strip() if m_yr else ""
+            has_author_end_prev_line = bool(
+                not prefix_before_yr and curr_y > prev_y and lines[curr_y - 1].endswith(".")
+            )
+            best_start = curr_y if not has_author_end_prev_line else curr_y - 1
+            scan_start = curr_y - 1 if not has_author_end_prev_line else curr_y - 2
+            for j in range(scan_start, prev_y, -1):
+                ln_j = lines[j]
+                if (
+                    (ln_j.endswith(".") and not re.search(r"\b[A-ZÀ-Ý]\.$", ln_j))
+                    or re.search(r"https?://\S+$", ln_j)
+                ):
+                    best_start = j + 1
+                    break
+                if re.search(r"\b(?:In\s+Proceedings|Proceedings\s+of|arXiv|CoRR|journal|volume|pages|pp\.)\b", ln_j, re.I):
+                    best_start = j + 1
+                    break
+                best_start = j
+            if best_start <= start_idxs[-1]:
+                best_start = max(start_idxs[-1] + 1, curr_y)
+            start_idxs.append(best_start)
+
+        entries: list[str] = []
+        for idx_s, s_pos in enumerate(start_idxs):
+            e_pos = start_idxs[idx_s + 1] if idx_s + 1 < len(start_idxs) else len(lines)
+            chunk = ""
+            for ln in lines[s_pos:e_pos]:
+                chunk = self._join_wrapped_line(chunk, ln) if chunk else ln
+            if len(chunk.strip()) > 20:
+                entries.append(chunk.strip())
+        return entries if len(entries) >= 2 else []
+
+    def _split_plainnat_year_end_lines(self, raw_lines: list[str]) -> list[str]:
+        """Split unnumbered plainnat / NeurIPS / ICLR / COLM / ICML bibliographies ('Authors. Title. Venue, YYYY.')."""
+        end_re = re.compile(
+            r"(?:"
+            r"(?:,\s*|\.\s+|\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|Spring|Summer|Fall|Autumn|Winter)\.?\s+)(?:18|19|20)\d{2}[a-z]?\."
+            r"|(?:URL\s+)?https?://\S+"
+            r"|\bdoi:\s*10\.\d{4,9}/\S+"
+            r"|\b10\.\d{4,9}/\S+"
+            r"|\bISBN\s+[0-9\-X]+\."
+            r")\s*$",
+            re.IGNORECASE,
+        )
+        cont_re = re.compile(
+            r"^(?:URL\b|https?:|doi:|DOI:|ISBN\b|ISSN\b|arXiv:|abs/|volume\b|vol\.|pages\b|pp\.|note\b|Accessed\b|ProQuest\b|Google\s+Scholar\b|Association\s+for\s+Computational\s+Linguistics\.)",
+            re.IGNORECASE,
+        )
+
+        lines: list[str] = []
+        for raw_ln in raw_lines:
+            s = raw_ln.strip()
+            if not s or _BIB_HEADER_LINE_RE.match(s):
+                continue
+            lines.append(s)
+        if len(lines) < 2:
+            return []
+
+        entries: list[str] = []
+        curr = ""
+        for idx_l, ln in enumerate(lines):
+            curr = self._join_wrapped_line(curr, ln) if curr else ln
+            nxt = lines[idx_l + 1] if idx_l + 1 < len(lines) else ""
+            if not nxt:
+                if len(curr.strip()) > 20:
+                    entries.append(curr.strip())
+                curr = ""
+                continue
+            if cont_re.match(nxt):
+                continue
+            # Do not split if curr ends with an incomplete URL/DOI that wraps onto nxt
+            if re.search(r"https?://[^\s/]*$|https?:$", curr, re.I):
+                continue
+            if (
+                re.search(r"(?:https?://|\b10\.\d{4,9}/)\S+$", curr, re.I)
+                and not curr.endswith((".", ",", ";", ")"))
+                and re.match(r"^[a-z0-9/_~%#?&=.-]", nxt)
+            ):
+                continue
+            if re.search(r"(?:https?://|\b10\.\d{4,9}/)\S+\.$", curr, re.I) and re.match(
+                r"^(?:org|com|edu|net|gov|io|ai|uk|de|fr|jp|cn|html?|pdf|[a-z]{2,8}-\d+|\d{2,})(?:[/._-]|$)",
+                nxt,
+            ):
+                continue
+
+            has_year = bool(re.search(r"\b(?:18|19|20)\d{2}[a-z]?\b", curr))
+            if has_year and end_re.search(curr) and re.match(r"^[A-ZÀ-ÝĂÂĐÊÔƠƯ]", nxt):
+                if len(curr.strip()) > 20:
+                    entries.append(curr.strip())
+                curr = ""
+
+        if len(curr.strip()) > 20:
+            entries.append(curr.strip())
+        return entries if len(entries) >= 2 else []
+
     def _split_by_year_boundary(self, text: str) -> list[str]:
         """Tach entries bang URL/DOI boundaries va inline APA/legal entry starts.
 
@@ -842,6 +1011,49 @@ class ReferenceListParser:
             4. Split each chunk further on inline APA / Vietnamese legal entry boundaries.
             5. Neu 2+ entries -> tra ve. Fallback -> newline/year markers.
         """
+        # Step 0: Detect unnumbered ACL ("Authors. YYYY. Title.") or plainnat ("Authors. Title. Venue, YYYY.")
+        # line structures BEFORE flattening newlines so entries without URLs are never glued together.
+        if "\n" in text and not _STRICT_VN_DIACRITIC_RE.search(text):
+            raw_nonempty = [
+                ln.strip()
+                for ln in text.splitlines()
+                if ln.strip() and not _BIB_HEADER_LINE_RE.match(ln.strip())
+            ]
+            if len(raw_nonempty) >= 4:
+                apa_yr_count = sum(
+                    1
+                    for ln in raw_nonempty
+                    if re.search(
+                        r"\(\s*(?:(?:18|19|20)\d{2}[a-z]?(?:,\s*[A-Za-z]+\.?(?:\s+\d{1,2})?)?|n\.?\s*d\.?)\s*\)[.,:]?",
+                        ln,
+                    )
+                )
+                acl_yr_count = sum(
+                    1
+                    for ln in raw_nonempty
+                    if re.search(
+                        r"(?:^|(?<!\bvol)(?<!\bno)(?<!\bpp)\.\s+)(?:18|19|20)\d{2}[a-z]?\.(?:\s|$)",
+                        ln,
+                        re.IGNORECASE,
+                    )
+                )
+                comma_end_yr_count = sum(
+                    1
+                    for ln in raw_nonempty
+                    if re.search(
+                        r"(?:,\s*|\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|Spring|Summer|Fall|Autumn|Winter)\.?\s+)(?:18|19|20)\d{2}[a-z]?\.(?:\s*(?:URL\s+\S+|https?://\S+|doi:\s*\S+))?\s*$",
+                        ln,
+                        re.IGNORECASE,
+                    )
+                )
+                if acl_yr_count >= 2 and acl_yr_count > comma_end_yr_count and acl_yr_count >= apa_yr_count:
+                    acl_split = self._split_acl_year_first_lines(raw_nonempty)
+                    if len(acl_split) >= 2:
+                        return acl_split
+                elif comma_end_yr_count >= 2 and comma_end_yr_count > apa_yr_count:
+                    plainnat_split = self._split_plainnat_year_end_lines(raw_nonempty)
+                    if len(plainnat_split) >= 2:
+                        return plainnat_split
         # Step 1+2: Rejoin hyphen-broken wraps, flatten to a single line, repair broken URLs.
         flat = re.sub(r"-\s*\n\s*", "-", text)
         flat = re.sub(r"\s+", " ", flat).strip()
@@ -953,6 +1165,10 @@ class ReferenceListParser:
         running_header_re = re.compile(r"^[\w\s]+?\s{3,}\d{1,3}\s*$")
         running_head_prefix_re = re.compile(r"^\s*Running\s+head\s*:.*$", re.IGNORECASE)
         allcaps_header_page_re = re.compile(r"^[A-Z0-9\s,'\-:]{4,70}\s+\d{1,3}\s*$")
+        conf_running_header_re = re.compile(
+            r"^\s*(?:(?:Published|Under\s+review)\s+as\s+a\s+(?:conference|workshop)\s+paper\s+at\s+.+|Preprint\.?(?:\s+Under\s+review\.?)?|Page\s+\d+\s+of\s+\d+|(?:\d{1,3}\s+)?[A-Z][A-Za-zÀ-ÿ\-]+\s+et\s+al\.(?:\s+\d{1,3})?)\s*$",
+            re.IGNORECASE,
+        )
         vn_journal_furniture_re = re.compile(
             r"^(?:"
             r"Jos\.hueuni\.edu\.vn"
@@ -1010,6 +1226,7 @@ class ReferenceListParser:
                 running_header_re.match(stripped)
                 or running_head_prefix_re.match(stripped)
                 or allcaps_header_page_re.match(stripped)
+                or conf_running_header_re.match(stripped)
             ):
                 continue
             # Skip short repeated lines without year/URL (typical running headers)
@@ -1020,8 +1237,13 @@ class ReferenceListParser:
                 and "http" not in stripped.lower()
             ):
                 continue
-            # Strip HTML-to-PDF hyperlink anchor artifact "return to text"
+            # Strip HTML-to-PDF hyperlink anchor artifact "return to text" and LaTeX pagebackref page numbers
             line = re.sub(r"\s+\breturn\s+to\s+text\b\s*$", ".", line, flags=re.IGNORECASE)
+            line = re.sub(
+                r"((?:(?:18|19|20)\d{2}[a-z]?|https?://\S+|10\.\d{4,9}/\S+)\.)\s+\d{1,3}(?:,\s*\d{1,3})*\s*$",
+                r"\1",
+                line,
+            )
             cleaned.append(line)
         return "\n".join(cleaned)
 
@@ -1133,6 +1355,14 @@ class ReferenceListParser:
             entry = re.sub(r"(https?://\S*[/_\-~])\s+([a-z0-9_\-~])", r"\1\2", entry)
             entry = re.sub(r"(https?://\S*\.)\s+([a-z0-9_\-~])", r"\1\2", entry)
 
+        original_entry_raw = entry.strip()
+        alpha_key_m = re.match(
+            r"^\s*\[(?P<akey>[A-ZÀ-Ý][A-Za-zÀ-ÿ0-9+\-]{1,8}\d{2}[a-z]?)\]\s+",
+            entry,
+        )
+        if alpha_key_m:
+            entry = entry[alpha_key_m.end() :].strip()
+
         # FIX: Extract numeric_index first if entry starts with [N], (N), or N. prefix
         numeric_index = None
         idx_match = re.match(
@@ -1233,7 +1463,7 @@ class ReferenceListParser:
         is_cse_nameyear_specific = bool(
             not re.match(r"^\s*(?:\[\s*\d+\s*\]|\d+\.)", entry)
             and re.match(
-                r"^[A-ZÀ-Ý][a-zA-ZÀ-ÿ'-]+\s+[A-Z]{1,3}(?:,\s+[A-ZÀ-Ý][a-zA-ZÀ-ÿ'-]+\s+[A-Z]{1,3})*\.\s+(?:19|20)\d{2}\.\s+",
+                r"^[A-ZÀ-Ý][a-zA-ZÀ-ÿ'-]+\s+(?!AI\b|II\b|III\b|IV\b|LLC\b|INC\b|LTD\b|PLC\b)[A-Z]{1,3}(?:,\s+[A-ZÀ-Ý][a-zA-ZÀ-ÿ'-]+\s+[A-Z]{1,3})*\.\s+(?:19|20)\d{2}\.\s+",
                 entry,
             )
         )
@@ -1267,6 +1497,8 @@ class ReferenceListParser:
                     has_year and has_numeric_index
                 ):
                     # Set common fields
+                    if alpha_key_m:
+                        citation.raw_text = original_entry_raw
                     citation.page_num = page_num
                     citation.order_index = order_index
                     citation.citation_type = CitationType.REFERENCE_LIST
@@ -1286,6 +1518,8 @@ class ReferenceListParser:
 
         citation = self._parse_apa_entry(entry, order_index, page_num)
         if citation:
+            if alpha_key_m:
+                citation.raw_text = original_entry_raw
             if numeric_index and citation.numeric_index is None:
                 citation.numeric_index = numeric_index
             return citation
@@ -1293,6 +1527,8 @@ class ReferenceListParser:
         # Vancouver last — heuristic loose
         citation = self._parse_vancouver_entry(entry, order_index, page_num)
         if citation:
+            if alpha_key_m:
+                citation.raw_text = original_entry_raw
             if numeric_index and citation.numeric_index is None:
                 citation.numeric_index = numeric_index
             return citation
@@ -1891,14 +2127,20 @@ class ReferenceListParser:
                 order_index=order_index,
             )
             citation.year = m.group("year")
+            if m.groupdict().get("suffix"):
+                citation.year_suffix = m.group("suffix")
             title = m.group("title").strip()
             citation.title = title
             citation.title_normalized = _normalize_title(title)
-            citation.venue = m.group("venue").strip()
+            venue = (m.group("venue") or "").strip()
+            citation.venue = venue if venue else None
             citation.authors = parse_authors(m.group("authors"))
             doi_m = _DOI_RE.search(entry)
             if doi_m:
                 citation.doi = doi_m.group(0).rstrip(".")
+            url_m = _URL_RE.search(entry)
+            if url_m:
+                citation.url = url_m.group(0).rstrip(".")
             citation.confidence = _estimate_reference_confidence(citation)
             return citation
         except Exception:
