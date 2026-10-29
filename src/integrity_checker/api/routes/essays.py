@@ -522,8 +522,7 @@ async def reanalyze_essay(
 
     tracker = get_tracker()
     tracker.init(essay_id, is_retry=True)
-    await asyncio.to_thread(
-        _run_pipeline_task,
+    await _run_pipeline_task(
         essay.id,
         str(persisted_path),
         essay.user_id or current_user.id,
