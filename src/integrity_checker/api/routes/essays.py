@@ -121,6 +121,7 @@ async def _run_pipeline_task(
                         "features": evidence.get("features", {}),
                         "ratios": evidence.get("ratios", {}),
                         "explanation": evidence.get("explanation", ""),
+                        "document_diagnostics": sp.get("document_diagnostics"),
                     }
                 else:
                     style_profile_dict = {
@@ -435,6 +436,15 @@ def get_essay_status(
     verdicts = repo.get_verdicts(essay_id)
     if verdicts or essay.cis_json is not None:
         extracted = repo.get_citations(essay_id)
+        doc_diag = None
+        if essay.style_profile_json:
+            try:
+                import json as _json
+                sp_parsed = _json.loads(essay.style_profile_json)
+                if isinstance(sp_parsed, dict):
+                    doc_diag = sp_parsed.get("document_diagnostics")
+            except Exception:
+                doc_diag = None
         # Pipeline completed (possibly via cache hit or prior run)
         return {
             "status": "completed",
@@ -449,6 +459,7 @@ def get_essay_status(
             "elapsed_seconds": 0.0,
             "finished_at": None,
             "error": None,
+            "document_diagnostics": doc_diag,
         }
 
     # Server restarted before background analysis finished: auto-resume at most once
@@ -980,3 +991,676 @@ def get_essay_page_preview(
         media_type="image/png",
         headers={"Cache-Control": "private, max-age=120"},
     )
+
+
+# ---------------------------------------------------------------------------
+# P3 Killer Feature #1: Live Citation Sandbox & Synthetic PDF Manuscript Studio
+# ---------------------------------------------------------------------------
+
+def _extract_author_surname(author_name: str) -> str:
+    """Extract clean surname from 'First Middle Surname' or 'Surname, First'."""
+    import re
+
+    clean = (author_name or "").strip()
+    if not clean:
+        return "Author"
+    if "," in clean:
+        surname = clean.split(",", 1)[0].strip()
+    else:
+        parts = [p for p in clean.split() if p]
+        surname = parts[-1] if parts else clean
+    surname_clean = re.sub(r"[^A-Za-zÀ-ÿ\-']", "", surname)
+    return surname_clean or "Author"
+
+
+def _format_author_apa_single(author_name: str) -> str:
+    """Format 'Ashish Vaswani' -> 'Vaswani, A.' for APA bibliography."""
+    clean = (author_name or "").strip()
+    if not clean:
+        return "Author, A."
+    if "," in clean:
+        parts = [p.strip() for p in clean.split(",", 1)]
+        surname = parts[0]
+        given = parts[1] if len(parts) > 1 else ""
+        initials = " ".join(f"{w[0].upper()}." for w in given.split() if w)
+        return f"{surname}, {initials}".strip(", ") if initials else f"{surname}, A."
+    tokens = [t for t in clean.split() if t]
+    if len(tokens) == 1:
+        return f"{tokens[0]}, A."
+    surname = tokens[-1]
+    initials = " ".join(f"{t[0].upper()}." for t in tokens[:-1] if t)
+    return f"{surname}, {initials}"
+
+
+def _format_authors_apa_block(authors: list[str]) -> str:
+    """Format list of authors into APA bibliography author string."""
+    cleaned = [a.strip() for a in (authors or []) if str(a).strip()]
+    if not cleaned:
+        return "Author, A."
+    formatted = [_format_author_apa_single(a) for a in cleaned[:6]]
+    if len(formatted) == 1:
+        return formatted[0]
+    if len(formatted) == 2:
+        return f"{formatted[0]}, & {formatted[1]}"
+    return ", ".join(formatted[:-1]) + f", & {formatted[-1]}"
+
+
+def _format_authors_ieee_block(authors: list[str]) -> str:
+    """Format list of authors into IEEE bibliography author string."""
+    cleaned = [a.strip() for a in (authors or []) if str(a).strip()]
+    if not cleaned:
+        return "A. Author"
+    out: list[str] = []
+    for a in cleaned[:6]:
+        if "," in a:
+            parts = [p.strip() for p in a.split(",", 1)]
+            surname = parts[0]
+            given = parts[1] if len(parts) > 1 else "A."
+            initials = " ".join(f"{w[0].upper()}." for w in given.split() if w)
+            out.append(f"{initials} {surname}".strip())
+        else:
+            tokens = [t for t in a.split() if t]
+            if len(tokens) == 1:
+                out.append(f"A. {tokens[0]}")
+            else:
+                initials = " ".join(f"{t[0].upper()}." for t in tokens[:-1] if t)
+                out.append(f"{initials} {tokens[-1]}")
+    if len(out) == 1:
+        return out[0]
+    if len(out) == 2:
+        return f"{out[0]} and {out[1]}"
+    return ", ".join(out[:-1]) + f", and {out[-1]}"
+
+
+def _format_in_text_marker_apa(authors: list[str], year_str: str) -> str:
+    """Format APA in-text citation marker: (Surname, Year), (S1 & S2, Year), or (S1 et al., Year)."""
+    cleaned = [a.strip() for a in (authors or []) if str(a).strip()]
+    yr = (year_str or "2020").strip() or "2020"
+    if not cleaned:
+        return f"(Author, {yr})"
+    s1 = _extract_author_surname(cleaned[0])
+    if len(cleaned) == 1:
+        return f"({s1}, {yr})"
+    if len(cleaned) == 2:
+        s2 = _extract_author_surname(cleaned[1])
+        return f"({s1} & {s2}, {yr})"
+    return f"({s1} et al., {yr})"
+
+
+def _format_sandbox_ref_entry(
+    item: dict[str, Any],
+    style: str = "apa",
+    ref_number: int = 1,
+) -> str:
+    """Format an editable sandbox paper item into a canonical APA or IEEE reference line."""
+    authors = item.get("authors") or []
+    if isinstance(authors, str):
+        authors = [a.strip() for a in authors.split(",") if a.strip()]
+    authors_text = str(item.get("authors_text") or "").strip()
+    if authors_text:
+        if ";" in authors_text:
+            authors = [a.strip() for a in authors_text.split(";") if a.strip()]
+        else:
+            authors = [a.strip() for a in authors_text.split(",") if a.strip()]
+
+    year_str = str(item.get("year") or "2020").strip() or "2020"
+    raw_title = str(item.get("title") or "Untitled Computational Linguistics Study").strip()
+    # Replace internal periods so APA parser does not split title early
+    clean_title = raw_title.rstrip(".").replace(". ", ": ")
+    venue = str(
+        item.get("venue")
+        or "Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL)"
+    ).strip().rstrip(".")
+    doi = str(item.get("doi") or "").strip()
+    if doi.lower().startswith("https://doi.org/"):
+        doi = doi[16:].strip()
+    elif doi.lower().startswith("doi:"):
+        doi = doi[4:].strip()
+
+    norm_style = "ieee" if (style or "").strip().lower() == "ieee" else "apa"
+    if norm_style == "ieee":
+        auth_ieee = _format_authors_ieee_block(authors)
+        doi_suffix = f", doi: {doi}." if doi else "."
+        return f'[{ref_number}] {auth_ieee}, "{clean_title}," {venue}, {year_str}{doi_suffix}'
+
+    auth_apa = _format_authors_apa_block(authors)
+    doi_suffix = f" https://doi.org/{doi}" if doi else ""
+    return f"{auth_apa} ({year_str}). {clean_title}. {venue}.{doi_suffix}"
+
+
+def _build_context_sentence_for_paper(title: str, abstract: str | None, idx: int) -> str:
+    """Generate a natural academic sentence for embedding the in-text citation in the PDF body."""
+    if abstract and len(abstract.strip()) > 45:
+        first_sent = abstract.strip().split(". ")[0].strip().rstrip(".")
+        if 40 <= len(first_sent) <= 220:
+            return first_sent
+    templates = [
+        f"Recent advances in computational linguistics have demonstrated the effectiveness of neural architectures regarding {title.lower()}",
+        f"Empirical evaluations across benchmark datasets confirm significant improvements when modeling {title.lower()}",
+        f"Prior foundational investigations established rigorous theoretical formulations for {title.lower()}",
+        f"Methodological developments in representation learning have increasingly focused on {title.lower()}",
+        f"Cross-domain experiments highlight the scalability and generalization capacity of approaches addressing {title.lower()}",
+    ]
+    return templates[idx % len(templates)]
+
+
+@router.get("/sandbox/acl-sample")
+def sample_acl_papers_for_sandbox(
+    count: int = 12,
+    style: str = "apa",
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Sample 10-20 random papers from the local ACL database (128K+ papers) for interactive live testing."""
+    from integrity_checker.database import LocalDatabase
+
+    safe_count = max(5, min(int(count or 12), 25))
+    local_db = LocalDatabase()
+    sampled = local_db.sample_random_papers(count=safe_count, prefer_with_doi=True)
+    stats = local_db.get_stats()
+    total_db_papers = int(stats.get("total_papers", 0) or len(sampled))
+
+    items: list[dict[str, Any]] = []
+    for idx, p in enumerate(sampled, start=1):
+        authors_list = [str(a).strip() for a in (p.authors or []) if str(a).strip()]
+        authors_text = "; ".join(authors_list)
+        year_str = str(p.year or 2020)
+        venue_str = (
+            str(p.venue).strip()
+            if p.venue and str(p.venue).strip()
+            else "Proceedings of the Association for Computational Linguistics (ACL)"
+        )
+        doi_str = str(p.doi or "").strip()
+        context_sent = _build_context_sentence_for_paper(p.title, p.abstract, idx)
+        item_dict: dict[str, Any] = {
+            "index": idx,
+            "paper_id": p.id,
+            "title": p.title.strip().rstrip("."),
+            "authors": authors_list,
+            "authors_text": authors_text,
+            "year": year_str,
+            "venue": venue_str,
+            "doi": doi_str,
+            "abstract": (p.abstract or "")[:500],
+            "source": p.source or "acl",
+            "cite_in_text": True,
+            "include_in_references": True,
+            "in_text_year_override": "",
+            "in_text_context": context_sent,
+            "mutation_preset": "clean",
+            "original": {
+                "title": p.title.strip().rstrip("."),
+                "authors_text": authors_text,
+                "year": year_str,
+                "venue": venue_str,
+                "doi": doi_str,
+            },
+        }
+        item_dict["preview_in_text_apa"] = _format_in_text_marker_apa(authors_list, year_str)
+        item_dict["preview_reference"] = _format_sandbox_ref_entry(item_dict, style=style, ref_number=idx)
+        items.append(item_dict)
+
+    return {
+        "count": len(items),
+        "style": style,
+        "database_total_papers": total_db_papers,
+        "items": items,
+    }
+
+
+def _synthesize_academic_manuscript_pdf(
+    title: str,
+    author_name: str,
+    style: str,
+    items: list[dict[str, Any]],
+) -> tuple[bytes, int, list[str], list[str]]:
+    """Build a multi-page academic PDF manuscript containing body sections with in-text citations + References."""
+    import io
+    from html import escape
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+
+    norm_style = "ieee" if (style or "").strip().lower() == "ieee" else "apa"
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=2.2 * cm,
+        rightMargin=2.2 * cm,
+        topMargin=2.2 * cm,
+        bottomMargin=2.2 * cm,
+    )
+    styles = getSampleStyleSheet()
+    title_st = ParagraphStyle(
+        "MsTitle",
+        parent=styles["Heading1"],
+        fontName="Times-Bold",
+        fontSize=15,
+        leading=19,
+        spaceAfter=8,
+    )
+    meta_st = ParagraphStyle(
+        "MsMeta",
+        parent=styles["Normal"],
+        fontName="Times-Italic",
+        fontSize=10,
+        leading=13,
+        spaceAfter=12,
+    )
+    h1_st = ParagraphStyle(
+        "MsH1",
+        parent=styles["Heading2"],
+        fontName="Times-Bold",
+        fontSize=12,
+        leading=15,
+        spaceBefore=12,
+        spaceAfter=6,
+    )
+    body_st = ParagraphStyle(
+        "MsBody",
+        parent=styles["Normal"],
+        fontName="Times-Roman",
+        fontSize=10.5,
+        leading=15,
+        spaceAfter=8,
+    )
+    ref_st = ParagraphStyle(
+        "MsRef",
+        parent=styles["Normal"],
+        fontName="Times-Roman",
+        fontSize=10,
+        leading=14,
+        leftIndent=14,
+        firstLineIndent=-14,
+        spaceAfter=6,
+    )
+
+    elements: list[Any] = []
+    safe_doc_title = (
+        title or "Empirical Evaluation of Neural Language Representations in Computational Linguistics"
+    ).strip()
+    # Avoid words that trigger _ESSAY_TITLE_INDICATORS in CitationExtractor
+    elements.append(Paragraph(escape(safe_doc_title), title_st))
+    elements.append(
+        Paragraph(
+            escape(f"{author_name or 'CITRA Sandbox Research Group'} — Academic Manuscript"),
+            meta_st,
+        )
+    )
+
+    # Assign reference numbers for items included in the bibliography
+    ref_entries_list: list[tuple[int, dict[str, Any], str]] = []
+    item_to_ref_num: dict[int, int] = {}
+    next_ref_num = 1
+    for idx, it in enumerate(items):
+        inc_ref = bool(it.get("include_in_references", True))
+        if inc_ref:
+            ref_line = _format_sandbox_ref_entry(it, style=norm_style, ref_number=next_ref_num)
+            ref_entries_list.append((next_ref_num, it, ref_line))
+            item_to_ref_num[idx] = next_ref_num
+            next_ref_num += 1
+
+    # Collect body sentences with in-text markers
+    in_text_markers_emitted: list[str] = []
+    body_paragraphs_by_sec: list[list[str]] = [[], [], []]
+    orphan_num = next_ref_num + 4
+
+    for idx, it in enumerate(items):
+        if not bool(it.get("cite_in_text", True)):
+            continue
+        authors_raw = it.get("authors") or []
+        if isinstance(authors_raw, str):
+            authors_raw = [a.strip() for a in authors_raw.split(",") if a.strip()]
+        authors_txt = str(it.get("authors_text") or "").strip()
+        if authors_txt:
+            if ";" in authors_txt:
+                authors_raw = [a.strip() for a in authors_txt.split(";") if a.strip()]
+            else:
+                authors_raw = [a.strip() for a in authors_txt.split(",") if a.strip()]
+
+        override_yr = str(it.get("in_text_year_override") or "").strip()
+        cite_yr = override_yr if override_yr else (str(it.get("year") or "2020").strip() or "2020")
+
+        if norm_style == "ieee":
+            if idx in item_to_ref_num:
+                r_num = item_to_ref_num[idx]
+            else:
+                r_num = orphan_num
+                orphan_num += 1
+            marker = f"[{r_num}]"
+        else:
+            marker = _format_in_text_marker_apa(authors_raw, cite_yr)
+
+        in_text_markers_emitted.append(marker)
+        ctx = str(it.get("in_text_context") or "").strip().rstrip(".")
+        if not ctx:
+            ctx = _build_context_sentence_for_paper(str(it.get("title") or "neural models"), None, idx)
+        sentence = f"{ctx} {marker}. Furthermore, quantitative analyses confirm that these findings hold consistently across multiple evaluation benchmarks and experimental configurations."
+        body_paragraphs_by_sec[idx % 3].append(sentence)
+
+    section_titles = [
+        "1. Research Motivation and Problem Formulation",
+        "2. Theoretical Framework and Literature Analysis",
+        "3. Experimental Methodology and Quantitative Findings",
+    ]
+    default_filler = (
+        "Modern natural language processing systems rely heavily on contextual representations, "
+        "self-attention mechanisms, and rigorous empirical validation across standardized corpora. "
+        "Ensuring bilateral consistency between in-text claims and bibliographic records is essential "
+        "for reproducible scientific communication."
+    )
+
+    for sec_idx, sec_heading in enumerate(section_titles):
+        elements.append(Paragraph(escape(sec_heading), h1_st))
+        sec_sents = body_paragraphs_by_sec[sec_idx]
+        if not sec_sents:
+            elements.append(Paragraph(escape(default_filler), body_st))
+        else:
+            # Group 2-3 cited sentences per paragraph for realistic academic density
+            for i in range(0, len(sec_sents), 2):
+                chunk = " ".join(sec_sents[i : i + 2])
+                elements.append(Paragraph(escape(chunk), body_st))
+
+    # Bibliography section
+    elements.append(Spacer(1, 0.35 * cm))
+    elements.append(Paragraph("References", h1_st))
+    formatted_refs_only: list[str] = []
+    for _, _, ref_line in ref_entries_list:
+        formatted_refs_only.append(ref_line)
+        elements.append(Paragraph(escape(ref_line), ref_st))
+
+    doc.build(elements)
+    pdf_bytes = buf.getvalue()
+
+    num_pages = 1
+    try:
+        import fitz
+        fdoc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        num_pages = max(1, len(fdoc))
+        fdoc.close()
+    except Exception:
+        num_pages = 1
+
+    return pdf_bytes, num_pages, in_text_markers_emitted, formatted_refs_only
+
+
+@router.post("/sandbox/generate-pdf")
+async def generate_sandbox_pdf_manuscript(
+    payload: dict[str, Any],
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    pipeline: IntegrityPipeline = Depends(get_pipeline),
+) -> Any:
+    """Synthesize a complete academic PDF manuscript (Body with In-Text Citations + References) from edited ACL papers.
+
+    Supports both direct PDF download (``download_only=true``) and full end-to-end
+    pipeline execution (``run_verification=true``) to verify Layer 1 (In-text <-> Refs)
+    and Layer 2 (Multi-database metadata & hallucination check).
+    """
+    import base64
+
+    items = payload.get("items") or []
+    if not isinstance(items, list) or not items:
+        raise HTTPException(
+            status_code=400,
+            detail="Vui lòng chọn hoặc tạo ít nhất 1 bài báo trong danh sách Sandbox.",
+        )
+
+    style = str(payload.get("style") or "apa").strip().lower()
+    doc_title = str(
+        payload.get("title")
+        or "Empirical Evaluation of Neural Language Representations in Computational Linguistics"
+    ).strip()
+    author_name = str(payload.get("author_name") or current_user.username or "CITRA Researcher").strip()
+    download_only = bool(payload.get("download_only", False))
+    run_verification = bool(payload.get("run_verification", not download_only))
+    custom_filename = str(payload.get("filename") or "").strip()
+
+    pdf_bytes, num_pages, in_text_markers, ref_lines = _synthesize_academic_manuscript_pdf(
+        title=doc_title,
+        author_name=author_name,
+        style=style,
+        items=items[:25],
+    )
+
+    if not custom_filename:
+        safe_style = "IEEE" if style == "ieee" else "APA"
+        custom_filename = f"CITRA_ACL_Sandbox_{safe_style}_{len(items)}refs.pdf"
+    elif not custom_filename.lower().endswith(".pdf"):
+        custom_filename = f"{custom_filename}.pdf"
+
+    if download_only and not run_verification:
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{custom_filename}"',
+            },
+        )
+
+    # Create essay row & launch full IntegrityPipeline (In-Text <-> Refs + 15+ DBs)
+    repo = Repository(db)
+    essay = repo.create_essay_with_user(
+        filename=custom_filename,
+        num_pages=num_pages,
+        user_id=current_user.id,
+    )
+    db.commit()
+    db.refresh(essay)
+
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    persisted_path = _get_persisted_upload_path(essay.id, ext=".pdf")
+    persisted_path.write_bytes(pdf_bytes)
+
+    tracker = get_tracker()
+    tracker.init(essay.id)
+
+    background_tasks.add_task(
+        _run_pipeline_task,
+        essay.id,
+        str(persisted_path),
+        current_user.id,
+        pipeline,
+        False,
+    )
+
+    return {
+        "essay_id": essay.id,
+        "filename": essay.filename,
+        "num_pages": num_pages,
+        "in_text_count": len(in_text_markers),
+        "references_count": len(ref_lines),
+        "in_text_markers_preview": in_text_markers[:25],
+        "references_preview": ref_lines[:25],
+        "pdf_base64": base64.b64encode(pdf_bytes).decode("ascii"),
+        "status": "processing",
+    }
+
+
+@router.post("/sandbox/verify")
+async def verify_sandbox_citations_instant(
+    payload: dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    pipeline: IntegrityPipeline = Depends(get_pipeline),
+) -> dict[str, Any]:
+    """Instant 3-second live citation & Layer-1/Layer-2 verification without leaving UploadPage."""
+    import time
+    from integrity_checker.export.bibliography_formatter import build_remediated_bibliography
+    from integrity_checker.extraction.base import Document, Page
+    from integrity_checker.models.citation import Citation, CitationStyle, CitationType
+
+    t0 = time.monotonic()
+    style = str(payload.get("style") or "apa").strip().lower()
+    items = payload.get("items")
+    raw_references_text = str(payload.get("references_text") or "").strip()
+    claim_context = str(payload.get("claim_context") or "").strip()
+
+    parsed_citations: list[Citation] = []
+    layer1_statuses: list[dict[str, Any]] = []
+
+    if isinstance(items, list) and items:
+        for idx, it in enumerate(items[:20], start=1):
+            ref_line = _format_sandbox_ref_entry(it, style=style, ref_number=idx)
+            authors_raw = it.get("authors") or []
+            if isinstance(authors_raw, str):
+                authors_raw = [a.strip() for a in authors_raw.split(",") if a.strip()]
+            authors_txt = str(it.get("authors_text") or "").strip()
+            if authors_txt:
+                if ";" in authors_txt:
+                    authors_raw = [a.strip() for a in authors_txt.split(";") if a.strip()]
+                else:
+                    authors_raw = [a.strip() for a in authors_txt.split(",") if a.strip()]
+            year_val: int | None = None
+            try:
+                year_val = int(str(it.get("year") or "").strip()[:4])
+            except Exception:
+                year_val = None
+
+            doi_val = str(it.get("doi") or "").strip() or None
+            if doi_val and doi_val.lower().startswith("https://doi.org/"):
+                doi_val = doi_val[16:].strip()
+
+            cite_in_text = bool(it.get("cite_in_text", True))
+            inc_in_refs = bool(it.get("include_in_references", True))
+            override_yr = str(it.get("in_text_year_override") or "").strip()
+
+            if not inc_in_refs and cite_in_text:
+                l1_status = "missing_reference"
+                l1_note = "Có trích dẫn trong bài (In-text) nhưng thiếu mục tương ứng trong References."
+            elif inc_in_refs and not cite_in_text:
+                l1_status = "uncited_reference"
+                l1_note = "Nằm trong mục References cuối bài nhưng không được trích dẫn trong nội dung bài viết."
+            elif override_yr and override_yr != str(it.get("year") or "").strip():
+                l1_status = "in_text_mismatch"
+                l1_note = f"Lệch năm xuất bản giữa In-text ({override_yr}) và Reference ({it.get('year')})."
+            else:
+                l1_status = "matched"
+                l1_note = "Khớp hai chiều hoàn hảo giữa In-text citation và Reference entry."
+
+            cit = Citation(
+                raw_text=ref_line,
+                citation_type=CitationType.REFERENCE_LIST,
+                style=CitationStyle.IEEE if style == "ieee" else CitationStyle.APA,
+                authors=authors_raw,
+                year=year_val,
+                title=str(it.get("title") or "").strip() or None,
+                venue=str(it.get("venue") or "").strip() or None,
+                doi=doi_val,
+                page_num=1,
+                context=str(it.get("in_text_context") or claim_context or "").strip() or None,
+                mapping_status=l1_status,
+                mapping_confidence=1.0 if l1_status == "matched" else 0.65,
+            )
+            parsed_citations.append(cit)
+            layer1_statuses.append({"status": l1_status, "note": l1_note})
+    elif raw_references_text:
+        fake_doc = Document(
+            file_path="sandbox.pdf",
+            num_pages=1,
+            pages=[
+                Page(
+                    page_num=1,
+                    text=f"References\n{raw_references_text}\n",
+                    has_text_layer=True,
+                )
+            ],
+            parser_used="sandbox",
+        )
+        parsed_citations = pipeline.ref_parser.parse_reference_section(fake_doc)
+        if not parsed_citations:
+            for line in [ln.strip() for ln in raw_references_text.splitlines() if len(ln.strip()) > 12][:15]:
+                parsed_citations.append(
+                    Citation(
+                        raw_text=line,
+                        citation_type=CitationType.REFERENCE_LIST,
+                        style=CitationStyle.APA,
+                        page_num=1,
+                        context=claim_context or None,
+                        mapping_status="matched",
+                        mapping_confidence=1.0,
+                    )
+                )
+        for c in parsed_citations:
+            if claim_context:
+                c.context = claim_context
+            layer1_statuses.append({"status": "matched", "note": "Kiểm tra trực tiếp danh mục tham khảo."})
+    else:
+        raise HTTPException(status_code=400, detail="Vui lòng nhập hoặc chọn ít nhất 1 trích dẫn để kiểm tra.")
+
+    parsed_citations = parsed_citations[:20]
+    source_results = await pipeline.retriever.retrieve_many(parsed_citations)
+
+    verdict_items: list[dict[str, Any]] = []
+    raw_verdict_dicts_for_remediation: list[dict[str, Any]] = []
+
+    for idx, (citation, source) in enumerate(zip(parsed_citations, source_results), start=1):
+        verdict = pipeline.checker.check(
+            citation,
+            source,
+            citation_context=citation.context,
+            api_exhausted=source.api_exhausted,
+            used_local_db=source.used_local_db,
+        )
+        l1_info = layer1_statuses[idx - 1] if idx - 1 < len(layer1_statuses) else {"status": "matched", "note": ""}
+        best = source.best_candidate()
+        matched_src = None
+        if best:
+            matched_src = {
+                "source_name": best.source_name,
+                "title": best.title,
+                "authors": best.authors,
+                "year": best.year,
+                "venue": best.venue,
+                "doi": best.doi,
+                "url": best.url,
+                "abstract": best.abstract,
+            }
+        v_dict = {
+            "index": idx,
+            "citation_raw": citation.raw_text,
+            "cited_title": citation.title,
+            "cited_authors": citation.authors,
+            "cited_year": citation.year,
+            "cited_venue": citation.venue,
+            "cited_doi": citation.doi,
+            "label": verdict.label.value if hasattr(verdict.label, "value") else str(verdict.label),
+            "confidence": round(float(verdict.confidence or 0.0), 3),
+            "mapping_status": l1_info["status"],
+            "mapping_note": l1_info["note"],
+            "reasoning": verdict.reasoning,
+            "triggered_rules": list(verdict.triggered_rules or []),
+            "mismatched_fields": list(verdict.mismatched_fields or []),
+            "matched_source": matched_src,
+            "matched_sources": [matched_src] if matched_src else [],
+            "sources_succeeded": list(source.sources_succeeded or []),
+            "used_local_db": bool(source.used_local_db),
+        }
+        verdict_items.append(v_dict)
+        raw_verdict_dicts_for_remediation.append(v_dict)
+
+    remediation = build_remediated_bibliography(
+        essay_id=0,
+        verdicts=raw_verdict_dicts_for_remediation,
+        style=style,
+    )
+    elapsed = round(time.monotonic() - t0, 2)
+
+    verified_cnt = sum(1 for v in verdict_items if v["label"] == "verified")
+    meta_err_cnt = sum(1 for v in verdict_items if v["label"] == "metadata_error")
+    halluc_cnt = sum(1 for v in verdict_items if v["label"] == "suspected_hallucination")
+    l1_issue_cnt = sum(1 for v in verdict_items if v["mapping_status"] != "matched")
+
+    return {
+        "elapsed_seconds": elapsed,
+        "total": len(verdict_items),
+        "summary": {
+            "verified": verified_cnt,
+            "metadata_error": meta_err_cnt,
+            "suspected_hallucination": halluc_cnt,
+            "layer1_linking_issues": l1_issue_cnt,
+        },
+        "results": verdict_items,
+        "remediation": remediation,
+    }

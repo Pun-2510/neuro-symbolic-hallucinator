@@ -31,7 +31,7 @@ from integrity_checker.config import get_settings
 from integrity_checker.db.models import User
 from integrity_checker.db.repository import Repository
 from integrity_checker.export.bibliography_formatter import build_remediated_bibliography
-from integrity_checker.export.docx_exporter import export_report_to_docx
+from integrity_checker.export.docx_exporter import export_auto_healed_docx, export_report_to_docx
 from integrity_checker.pipeline.integrity_pipeline import _serialize_citation_link
 
 router = APIRouter()
@@ -41,10 +41,13 @@ router = APIRouter()
 def get_report(
     essay_id: int,
     format: str = "json",
+    auto_heal: bool = False,
+    style: str = "apa",
+    compare_with: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
-    """Export report theo format: json | csv | pdf."""
+    """Export report theo format: json | csv | pdf | docx (supports auto_heal=true)."""
     repo = Repository(db)
     essay = repo.get_essay(essay_id)
     if not essay:
@@ -81,12 +84,79 @@ def get_report(
     if format == "csv":
         return _csv_response(essay.filename, verdicts)
     if format == "json":
-        return _json_response(essay.filename, essay, verdicts, repo.get_citations(essay_id))
+        return _json_response(
+            essay.filename,
+            essay,
+            verdicts,
+            repo.get_citations(essay_id),
+            repo=repo,
+            compare_with=compare_with,
+        )
     if format == "pdf":
         return _pdf_response(essay.filename, essay, verdicts)
     if format == "docx":
+        if auto_heal:
+            return _healed_docx_response(essay.filename, essay, verdicts, style=style)
         return _docx_response(essay.filename, essay, verdicts)
     raise HTTPException(status_code=400, detail=f"Unsupported format: {format}")
+
+
+@router.get("/{essay_id}/export-healed-docx")
+def export_healed_docx_endpoint(
+    essay_id: int,
+    style: str = "apa",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    """Download an Auto-Healed Word (.docx) with repaired references & Before->After Change Log."""
+    repo = Repository(db)
+    essay = repo.get_essay(essay_id)
+    if not essay:
+        raise HTTPException(status_code=404, detail="Essay not found")
+
+    if not repo.can_user_access_essay(current_user, essay):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    policy = get_user_plan_policy(current_user)
+    if "docx" not in policy.allowed_export_formats and current_user.role == "user":
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                "Auto-Healed Word (.docx) Export is a Pro / Ultra feature. "
+                f"Your current plan is {policy.name}. Please upgrade to unlock automated Word remediation."
+            ),
+        )
+
+    verdicts = repo.get_verdicts(essay_id)
+    return _healed_docx_response(essay.filename, essay, verdicts, style=style)
+
+
+@router.get("/{essay_id}/revision-diff")
+def get_revision_diff(
+    essay_id: int,
+    compare_with: int | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Compare this essay submission against a previous revision (v1 -> v2 delta)."""
+    repo = Repository(db)
+    essay = repo.get_essay(essay_id)
+    if not essay:
+        raise HTTPException(status_code=404, detail="Essay not found")
+
+    if not repo.can_user_access_essay(current_user, essay):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    verdicts = repo.get_verdicts(essay_id)
+    diff = _compute_revision_diff(repo, essay, verdicts, compare_with_id=compare_with)
+    if diff is None:
+        return {
+            "has_previous_revision": False,
+            "current_essay_id": essay.id,
+            "current_filename": essay.filename,
+            "available_revisions": [],
+        }
+    return diff
 
 
 @router.get("/{essay_id}/remediate")
@@ -293,11 +363,293 @@ def _csv_response(filename: str, verdicts: list) -> StreamingResponse:
     )
 
 
+def _normalize_manuscript_stem(filename: str | None) -> str:
+    """Normalize a filename to its base stem for automatic v1 -> v2 revision matching."""
+    import re
+    from pathlib import Path
+
+    raw = Path(filename or "essay").stem.lower().strip()
+    cleaned = re.sub(
+        r"(?:[_\-\s]+(?:v\d+(?:\.\d+)?|rev\d*|version\d*|draft\d*|final|fixed|remediated|updated|corrected)|\s*\(\d+\))+$",
+        "",
+        raw,
+        flags=re.IGNORECASE,
+    ).strip(" _-")
+    return cleaned or raw or "essay"
+
+
+def _verdict_canonical_key(citation_raw: str | None) -> str:
+    """Build a stable matching key for comparing citations across manuscript revisions."""
+    import re
+
+    text = (citation_raw or "").strip().lower()
+    if not text:
+        return ""
+    doi_m = re.search(r"10\.\d{4,9}/[^\s,;)\]]+", text)
+    if doi_m:
+        return f"doi:{doi_m.group(0).rstrip('.')}"
+    words = re.findall(r"[a-z0-9]{3,}", text)
+    return " ".join(words[:14])
+
+
+def _extract_essay_cis_score(essay_row, verdicts_rows: list) -> float:
+    """Extract CIS score from essay row JSON or fallback to verified ratio."""
+    if getattr(essay_row, "cis_json", None):
+        try:
+            parsed = json.loads(essay_row.cis_json)
+            if isinstance(parsed, dict) and parsed.get("score") is not None:
+                return round(float(parsed["score"]), 1)
+        except Exception:
+            pass
+    academic = [v for v in verdicts_rows if getattr(v, "label", "") != "resource"]
+    if not academic:
+        return 0.0
+    ver = sum(1 for v in academic if getattr(v, "label", "") == "verified")
+    return round((ver / len(academic)) * 100.0, 1)
+
+
+def _compute_revision_diff(
+    repo: Repository,
+    essay,
+    current_verdicts: list,
+    compare_with_id: int | None = None,
+) -> dict[str, Any] | None:
+    """Compute v1 -> v2 revision delta against a prior essay submission."""
+    try:
+        if essay.user_id is not None:
+            candidates = repo.get_user_essays(essay.user_id)
+        else:
+            candidates = repo.get_all_essays()
+    except Exception:
+        return None
+
+    other_essays = [e for e in candidates if e.id != essay.id]
+    if not other_essays:
+        return None
+
+    cur_stem = _normalize_manuscript_stem(essay.filename)
+    available_revisions: list[dict[str, Any]] = []
+    chosen_prev = None
+
+    # Sort older/other essays by uploaded_at descending
+    for cand in other_essays:
+        cand_verdicts = repo.get_verdicts(cand.id)
+        if not cand_verdicts and not getattr(cand, "cis_json", None):
+            continue
+        cand_stem = _normalize_manuscript_stem(cand.filename)
+        is_same_stem = bool(cand_stem == cur_stem or cand_stem in cur_stem or cur_stem in cand_stem)
+        cand_cis = _extract_essay_cis_score(cand, cand_verdicts)
+        available_revisions.append({
+            "essay_id": cand.id,
+            "filename": cand.filename,
+            "uploaded_at": cand.uploaded_at.isoformat() if cand.uploaded_at else None,
+            "cis_score": cand_cis,
+            "num_verdicts": len(cand_verdicts),
+            "is_same_stem": is_same_stem,
+        })
+        if compare_with_id is not None and cand.id == compare_with_id:
+            chosen_prev = (cand, cand_verdicts, cand_cis, is_same_stem)
+
+    if not available_revisions:
+        return None
+
+    if chosen_prev is None:
+        # Prefer the most recent older essay with matching stem, or fallback to most recent prior essay
+        prior_same_stem = [
+            e for e in other_essays
+            if (
+                _normalize_manuscript_stem(e.filename) == cur_stem
+                or _normalize_manuscript_stem(e.filename) in cur_stem
+                or cur_stem in _normalize_manuscript_stem(e.filename)
+            )
+            and e.id < essay.id
+        ]
+        target_cand = prior_same_stem[0] if prior_same_stem else None
+        if target_cand is None:
+            older_any = [e for e in other_essays if e.id < essay.id]
+            target_cand = older_any[0] if older_any else other_essays[0]
+        if target_cand is not None:
+            tv = repo.get_verdicts(target_cand.id)
+            if tv or getattr(target_cand, "cis_json", None):
+                ts = _normalize_manuscript_stem(target_cand.filename)
+                chosen_prev = (
+                    target_cand,
+                    tv,
+                    _extract_essay_cis_score(target_cand, tv),
+                    bool(ts == cur_stem or ts in cur_stem or cur_stem in ts),
+                )
+
+    if chosen_prev is None:
+        return None
+
+    prev_essay, prev_verdicts, cis_before, is_same_stem = chosen_prev
+    cis_after = _extract_essay_cis_score(essay, current_verdicts)
+    cis_delta = round(cis_after - cis_before, 1)
+
+    def _count_labels(v_list: list) -> dict[str, int]:
+        return {
+            "total": len(v_list),
+            "verified": sum(1 for v in v_list if getattr(v, "label", "") == "verified"),
+            "metadata_error": sum(1 for v in v_list if getattr(v, "label", "") == "metadata_error"),
+            "suspected_hallucination": sum(
+                1 for v in v_list if getattr(v, "label", "") == "suspected_hallucination"
+            ),
+            "unresolved": sum(1 for v in v_list if getattr(v, "label", "") == "unresolved"),
+        }
+
+    counts_before = _count_labels(prev_verdicts)
+    counts_after = _count_labels(current_verdicts)
+    counts_delta = {
+        k: counts_after[k] - counts_before[k]
+        for k in ("total", "verified", "metadata_error", "suspected_hallucination", "unresolved")
+    }
+
+    prev_by_key = {_verdict_canonical_key(v.citation_raw): v for v in prev_verdicts if _verdict_canonical_key(v.citation_raw)}
+    cur_by_key = {_verdict_canonical_key(v.citation_raw): v for v in current_verdicts if _verdict_canonical_key(v.citation_raw)}
+
+    resolved_issues: list[dict[str, Any]] = []
+    persisting_issues: list[dict[str, Any]] = []
+    new_issues: list[dict[str, Any]] = []
+    citation_changes: list[dict[str, Any]] = []
+
+    issue_labels = {"metadata_error", "suspected_hallucination", "unresolved"}
+
+    for key, pv in prev_by_key.items():
+        p_lbl = str(getattr(pv, "label", "")).lower()
+        cv = cur_by_key.get(key)
+        if cv is not None:
+            c_lbl = str(getattr(cv, "label", "")).lower()
+            if p_lbl in issue_labels and c_lbl == "verified":
+                item = {
+                    "citation_raw": cv.citation_raw,
+                    "before_label": p_lbl,
+                    "after_label": c_lbl,
+                    "transition": "fixed",
+                }
+                resolved_issues.append(item)
+                citation_changes.append(item)
+            elif p_lbl in issue_labels and c_lbl in issue_labels:
+                item = {
+                    "citation_raw": cv.citation_raw,
+                    "before_label": p_lbl,
+                    "after_label": c_lbl,
+                    "transition": "unchanged_issue",
+                }
+                persisting_issues.append(item)
+                citation_changes.append(item)
+            elif p_lbl == "verified" and c_lbl in issue_labels:
+                item = {
+                    "citation_raw": cv.citation_raw,
+                    "before_label": p_lbl,
+                    "after_label": c_lbl,
+                    "transition": "regressed",
+                }
+                new_issues.append(item)
+                citation_changes.append(item)
+        else:
+            if p_lbl == "suspected_hallucination":
+                item = {
+                    "citation_raw": pv.citation_raw,
+                    "before_label": p_lbl,
+                    "after_label": "removed",
+                    "transition": "removed_hallucination",
+                }
+                resolved_issues.append(item)
+                citation_changes.append(item)
+            elif p_lbl == "metadata_error":
+                # Likely repaired to a new canonical string if total metadata_error decreased
+                if counts_after["metadata_error"] < counts_before["metadata_error"]:
+                    item = {
+                        "citation_raw": pv.citation_raw,
+                        "before_label": p_lbl,
+                        "after_label": "verified",
+                        "transition": "fixed_and_reformatted",
+                    }
+                    resolved_issues.append(item)
+                    citation_changes.append(item)
+
+    for key, cv in cur_by_key.items():
+        if key not in prev_by_key:
+            c_lbl = str(getattr(cv, "label", "")).lower()
+            if c_lbl in issue_labels:
+                item = {
+                    "citation_raw": cv.citation_raw,
+                    "before_label": "none",
+                    "after_label": c_lbl,
+                    "transition": "new_issue",
+                }
+                new_issues.append(item)
+                citation_changes.append(item)
+
+    return {
+        "has_previous_revision": True,
+        "is_same_manuscript_family": is_same_stem,
+        "previous_essay_id": prev_essay.id,
+        "previous_filename": prev_essay.filename,
+        "previous_uploaded_at": prev_essay.uploaded_at.isoformat() if prev_essay.uploaded_at else None,
+        "current_essay_id": essay.id,
+        "current_filename": essay.filename,
+        "current_uploaded_at": essay.uploaded_at.isoformat() if essay.uploaded_at else None,
+        "cis_before": cis_before,
+        "cis_after": cis_after,
+        "cis_delta": cis_delta,
+        "counts_before": counts_before,
+        "counts_after": counts_after,
+        "counts_delta": counts_delta,
+        "resolved_issues_count": len(resolved_issues),
+        "persisting_issues_count": len(persisting_issues),
+        "new_issues_count": len(new_issues),
+        "resolved_issues": resolved_issues[:20],
+        "persisting_issues": persisting_issues[:20],
+        "new_issues": new_issues[:20],
+        "citation_changes": citation_changes[:30],
+        "available_revisions": available_revisions[:15],
+    }
+
+
+def _extract_document_diagnostics(
+    essay,
+    style_profile_dict: dict[str, Any] | None,
+    citations: list,
+    verdicts: list,
+) -> dict[str, Any]:
+    """Build or recover Scanned PDF Guardrail diagnostics for the report payload."""
+    diag = (
+        dict(style_profile_dict.get("document_diagnostics"))
+        if isinstance(style_profile_dict, dict)
+        and isinstance(style_profile_dict.get("document_diagnostics"), dict)
+        else {}
+    )
+    if diag and "is_scanned_pdf" in diag:
+        return diag
+
+    is_docx = str(getattr(essay, "filename", "") or "").lower().endswith(".docx")
+    num_pages = int(getattr(essay, "num_pages", 0) or 0)
+    has_no_extractions = len(citations) == 0 and len(verdicts) == 0
+    is_scanned = bool(not is_docx and num_pages > 0 and has_no_extractions)
+    return {
+        "is_scanned_pdf": is_scanned,
+        "scanned_pages_count": num_pages if is_scanned else 0,
+        "total_extractable_chars": 0 if is_scanned else -1,
+        "avg_chars_per_page": 0.0 if is_scanned else -1.0,
+        "warning_code": "SCANNED_PDF_DETECTED" if is_scanned else None,
+        "warning_message": (
+            "Phát hiện tài liệu PDF dạng ảnh quét (Scanned/Image-only PDF) thiếu lớp văn bản số hóa (Text Layer). "
+            "Vui lòng chuyển đổi qua OCR hoặc tải lên bản gốc .docx / PDF xuất trực tiếp từ Word/LaTeX để đạt độ chính xác kiểm chứng trích dẫn tối đa."
+            if is_scanned
+            else None
+        ),
+        "parser_warnings": ["SCANNED_PDF_DETECTED"] if is_scanned else [],
+    }
+
+
 def _json_response(
     filename: str,
     essay,
     verdicts: list,
     citations: list | None = None,
+    repo: Repository | None = None,
+    compare_with: int | None = None,
 ) -> StreamingResponse:
     settings = get_settings()
     citations = citations or []
@@ -457,6 +809,14 @@ def _json_response(
             if c.citation_type == "reference_list"
         ],
         "cis": cis_dict,
+        "document_diagnostics": _extract_document_diagnostics(
+            essay, style_profile_dict, citations, verdicts
+        ),
+        "revision_diff": (
+            _compute_revision_diff(repo, essay, verdicts, compare_with_id=compare_with)
+            if repo is not None
+            else None
+        ),
         "disclaimer": settings.disclaimer.long,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
@@ -735,6 +1095,64 @@ def _docx_response(filename: str, essay, verdicts: list) -> StreamingResponse:
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={
             "Content-Disposition": _safe_content_disposition(filename, "report.docx")
+        },
+    )
+
+
+def _healed_docx_response(
+    filename: str,
+    essay,
+    verdicts: list,
+    style: str = "apa",
+) -> StreamingResponse:
+    """Generate an Auto-Healed Word (.docx) with repaired references & Before->After Change Log."""
+    from pathlib import Path
+
+    verdict_list = []
+    for v in verdicts:
+        features_dict = json.loads(v.features or "{}")
+        verdict_list.append({
+            "citation_raw": v.citation_raw,
+            "citation_type": getattr(v, "citation_type", None) or "reference_list",
+            "mapping_status": v.mapping_status or "matched",
+            "label": v.label,
+            "confidence": v.confidence,
+            "reasoning": v.reasoning,
+            "triggered_rules": json.loads(v.triggered_rules or "[]"),
+            "mismatched_fields": json.loads(v.mismatched_fields or "[]"),
+            "features": features_dict,
+            "matched_sources": features_dict.get("matched_sources", []),
+        })
+
+    orig_docx_path: str | None = None
+    try:
+        from integrity_checker.config import PROJECT_ROOT
+
+        for candidate_path in (
+            PROJECT_ROOT / "data" / "essays" / "uploads" / f"{essay.id}.docx",
+            Path("data/essays/uploads") / f"{essay.id}.docx",
+            Path("data/uploads") / f"{essay.id}_{essay.filename}",
+        ):
+            if candidate_path.is_file() and candidate_path.suffix.lower() == ".docx":
+                orig_docx_path = str(candidate_path)
+                break
+    except Exception:
+        orig_docx_path = None
+
+    docx_bytes = export_auto_healed_docx(
+        essay_filename=filename,
+        verdicts=verdict_list,
+        style=style,
+        original_docx_path=orig_docx_path,
+    )
+    stem = Path(filename or "essay").stem
+    return StreamingResponse(
+        iter([docx_bytes]),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": _safe_content_disposition(
+                f"{stem}_auto_healed", "docx"
+            )
         },
     )
 

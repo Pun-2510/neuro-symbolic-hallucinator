@@ -7,6 +7,7 @@ import {
   type Citation,
   type CitationLink,
   type ValidationLabel,
+  type RevisionDiffData,
 } from '@/api/client';
 import { EssayHeader } from './essay/EssayHeader';
 import { EssayActionBar } from './essay/EssayActionBar';
@@ -1481,6 +1482,27 @@ export function EssayPage() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [lockedFeatureName, setLockedFeatureName] = useState<string>('');
   const [remediationOpen, setRemediationOpen] = useState(false);
+  const [customRevisionDiff, setCustomRevisionDiff] = useState<RevisionDiffData | null>(null);
+  const [revisionExpanded, setRevisionExpanded] = useState(false);
+  const [loadingRevisionDiff, setLoadingRevisionDiff] = useState(false);
+
+  useEffect(() => {
+    setCustomRevisionDiff(null);
+    setRevisionExpanded(false);
+  }, [essayId]);
+
+  const handleCompareRevisionChange = async (targetPrevId: number) => {
+    if (!essayId || !targetPrevId) return;
+    setLoadingRevisionDiff(true);
+    try {
+      const diff = await api.getRevisionDiff(essayId, targetPrevId);
+      setCustomRevisionDiff(diff);
+    } catch {
+      // keep existing diff
+    } finally {
+      setLoadingRevisionDiff(false);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1647,6 +1669,16 @@ export function EssayPage() {
   const linksOf = (c: { citation_links?: CitationLink[]; citation_link?: CitationLink }) =>
     c.citation_links?.length ? c.citation_links : c.citation_link ? [c.citation_link] : [];
 
+  const activeRevisionDiff = customRevisionDiff ?? report.revision_diff ?? null;
+  const docDiag = report.document_diagnostics;
+  const isScannedPdfDetected = Boolean(
+    docDiag?.is_scanned_pdf ||
+      (!report.filename.toLowerCase().endsWith('.docx') &&
+        report.num_pages > 0 &&
+        report.verdicts.length === 0 &&
+        (report.extracted_citations?.length ?? 0) === 0),
+  );
+
   return (
     <div className="space-y-6 pb-10">
       {/* Top Breadcrumb, Filename & Export Buttons */}
@@ -1657,6 +1689,252 @@ export function EssayPage() {
         numCitations={report.num_citations}
         styleName={report.style_profile?.style}
       />
+
+      {/* P3 Feature #4: Scanned / Image-Only PDF Diagnostic Guardrail Banner */}
+      {isScannedPdfDetected && (
+        <div
+          data-testid="scanned-pdf-guardrail-banner"
+          className="rounded-2xl border-2 border-amber-400/80 dark:border-amber-600/80 bg-gradient-to-r from-amber-50 via-orange-50/70 to-amber-50 dark:from-amber-950/70 dark:via-slate-900 dark:to-amber-950/60 p-5 shadow-md"
+        >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="h-11 w-11 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 mt-0.5">
+                <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold bg-amber-600 text-white uppercase tracking-wider">
+                    SCANNED_PDF_DETECTED
+                  </span>
+                  <h3 className="text-sm sm:text-base font-display font-bold text-amber-950 dark:text-amber-100">
+                    {lang === 'vi'
+                      ? 'Cảnh báo: Phát hiện Tài liệu PDF dạng Ảnh quét (Thiếu lớp văn bản Text Layer)'
+                      : 'Guardrail Alert: Scanned / Image-Only PDF Detected (Missing Digital Text Layer)'}
+                  </h3>
+                </div>
+                <p className="text-xs sm:text-sm text-amber-900/90 dark:text-amber-200/90 leading-relaxed max-w-3xl">
+                  {docDiag?.warning_message ||
+                    (lang === 'vi'
+                      ? 'Tài liệu PDF này được tạo từ máy scan hoặc ảnh chụp trang giấy nên không chứa lớp ký tự số hóa (Text Layer) để GROBID và PyMuPDF bóc tách trích dẫn. Vui lòng chuyển đổi qua OCR hoặc tải lên bản gốc Word (.docx) / PDF xuất trực tiếp từ Word hoặc LaTeX.'
+                      : 'This PDF appears to be scanned from images without an extractable text layer. Please run OCR or upload the native .docx / digital PDF exported from Word or LaTeX.')}
+                </p>
+                <div className="flex flex-wrap items-center gap-3 pt-1 text-xs font-mono text-amber-800 dark:text-amber-300">
+                  <span>
+                    • {lang === 'vi' ? 'Số trang thiếu Text Layer' : 'Scanned pages'}:{' '}
+                    <strong>
+                      {docDiag?.scanned_pages_count ?? report.num_pages}/{report.num_pages}
+                    </strong>
+                  </span>
+                  {typeof docDiag?.avg_chars_per_page === 'number' && docDiag.avg_chars_per_page >= 0 && (
+                    <span>
+                      • {lang === 'vi' ? 'Mật độ ký tự trung bình' : 'Avg extractable chars/page'}:{' '}
+                      <strong>{docDiag.avg_chars_per_page} chars/page</strong>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                to="/verification/new"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-mono font-semibold bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition-colors"
+              >
+                <ArrowUpRight className="h-4 w-4" />
+                {lang === 'vi' ? 'Tải lên bản .DOCX / PDF số hóa' : 'Upload Native .DOCX / Digital PDF'}
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* P3 Feature #3: Revision Diff / Version Progress Tracker (v1 -> v2) */}
+      {activeRevisionDiff?.has_previous_revision && (
+        <div
+          data-testid="revision-diff-banner"
+          className="rounded-2xl border border-indigo-200/90 dark:border-indigo-800/80 bg-gradient-to-r from-indigo-50/90 via-white to-emerald-50/70 dark:from-indigo-950/50 dark:via-slate-900 dark:to-emerald-950/30 p-4 sm:p-5 shadow-xs"
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-indigo-600 text-white">
+                  <GitBranch className="h-3 w-3" />
+                  {lang === 'vi' ? 'THEO DÕI TIẾN BỘ QUA CÁC LẦN NỘP (v1 → v2)' : 'REVISION PROGRESS TRACKER (v1 → v2)'}
+                </span>
+                <span className="text-xs font-mono text-slate-600 dark:text-slate-300">
+                  {lang === 'vi' ? 'So sánh với:' : 'Compared against:'}{' '}
+                  <strong className="text-slate-900 dark:text-white">
+                    #{activeRevisionDiff.previous_essay_id} — {activeRevisionDiff.previous_filename}
+                  </strong>
+                </span>
+                {activeRevisionDiff.available_revisions &&
+                  activeRevisionDiff.available_revisions.length > 1 && (
+                    <select
+                      data-testid="revision-compare-select"
+                      aria-label="Select previous revision to compare"
+                      value={activeRevisionDiff.previous_essay_id ?? ''}
+                      disabled={loadingRevisionDiff}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        if (val) void handleCompareRevisionChange(val);
+                      }}
+                      className="text-xs font-mono px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                    >
+                      {activeRevisionDiff.available_revisions.map((rev) => (
+                        <option key={rev.essay_id} value={rev.essay_id}>
+                          #{rev.essay_id} {rev.filename} (CIS {rev.cis_score.toFixed(1)}%)
+                        </option>
+                      ))}
+                    </select>
+                  )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                {/* CIS Delta Pill */}
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">CIS:</span>
+                  <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
+                    {(activeRevisionDiff.cis_before ?? 0).toFixed(1)}%
+                  </span>
+                  <span className="text-slate-400">→</span>
+                  <span className="text-sm font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                    {(activeRevisionDiff.cis_after ?? report.cis.score).toFixed(1)}%
+                  </span>
+                  <span
+                    data-testid="revision-cis-delta-badge"
+                    className={`px-2 py-0.5 rounded-md text-xs font-mono font-bold ${
+                      (activeRevisionDiff.cis_delta ?? 0) >= 0
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                    }`}
+                  >
+                    {(activeRevisionDiff.cis_delta ?? 0) >= 0
+                      ? `+${(activeRevisionDiff.cis_delta ?? 0).toFixed(1)}%`
+                      : `${(activeRevisionDiff.cis_delta ?? 0).toFixed(1)}%`}
+                  </span>
+                </div>
+
+                {/* Resolved Issues Pill */}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs font-mono text-emerald-800 dark:text-emerald-300">
+                  <Check className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>
+                    {lang === 'vi' ? 'Đã khắc phục:' : 'Resolved Issues:'}{' '}
+                    <strong>{activeRevisionDiff.resolved_issues_count ?? 0}</strong>
+                  </span>
+                </div>
+
+                {/* Metadata Error Before -> After */}
+                {activeRevisionDiff.counts_before && activeRevisionDiff.counts_after && (
+                  <>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300">
+                      <span>{lang === 'vi' ? 'Lỗi Metadata:' : 'Metadata Errors:'}</span>
+                      <strong>{activeRevisionDiff.counts_before.metadata_error}</strong>
+                      <span>→</span>
+                      <strong className="text-emerald-600 dark:text-emerald-400">
+                        {activeRevisionDiff.counts_after.metadata_error}
+                      </strong>
+                    </div>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300">
+                      <span>{lang === 'vi' ? 'Nghi vấn Bịa đặt:' : 'Hallucinations:'}</span>
+                      <strong>{activeRevisionDiff.counts_before.suspected_hallucination}</strong>
+                      <span>→</span>
+                      <strong className="text-emerald-600 dark:text-emerald-400">
+                        {activeRevisionDiff.counts_after.suspected_hallucination}
+                      </strong>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                data-testid="revision-diff-details-btn"
+                onClick={() => setRevisionExpanded((v) => !v)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-semibold bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 transition-colors"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {revisionExpanded
+                  ? lang === 'vi'
+                    ? 'Thu gọn Chi tiết Tiến bộ'
+                    : 'Hide Revision Diff'
+                  : lang === 'vi'
+                    ? 'Xem Chi tiết Thay đổi (v1 → v2)'
+                    : 'View Detailed Changes (v1 → v2)'}
+              </button>
+              <Link
+                to={`/verification/report/${activeRevisionDiff.previous_essay_id}`}
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-indigo-600 transition-colors"
+              >
+                {lang === 'vi' ? 'Mở bản cũ' : 'Open v1'}
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {revisionExpanded && (
+            <div
+              data-testid="revision-diff-details-panel"
+              className="mt-4 pt-4 border-t border-indigo-200/70 dark:border-indigo-800/60 space-y-3"
+            >
+              {activeRevisionDiff.citation_changes && activeRevisionDiff.citation_changes.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto pr-1">
+                  {activeRevisionDiff.citation_changes.map((chg, idx) => {
+                    const isGood =
+                      chg.transition === 'fixed' ||
+                      chg.transition === 'removed_hallucination' ||
+                      chg.transition === 'fixed_and_reformatted';
+                    return (
+                      <div
+                        key={idx}
+                        className={`p-3 rounded-xl border text-xs flex flex-col gap-1 ${
+                          isGood
+                            ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/70'
+                            : 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/70'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 font-mono font-bold">
+                          <span
+                            className={
+                              isGood
+                                ? 'text-emerald-700 dark:text-emerald-300'
+                                : 'text-amber-700 dark:text-amber-300'
+                            }
+                          >
+                            {chg.transition === 'removed_hallucination'
+                              ? lang === 'vi'
+                                ? '✓ ĐÃ LOẠI BỎ NGUỒN BỊA ĐẶT'
+                                : '✓ REMOVED HALLUCINATION'
+                              : isGood
+                                ? lang === 'vi'
+                                  ? '✓ ĐÃ SỬA LỖI THÀNH CÔNG'
+                                  : '✓ REPAIRED TO VERIFIED'
+                                : lang === 'vi'
+                                  ? '⚠ CẦN KIỂM TRA THÊM'
+                                  : '⚠ REQUIRES ATTENTION'}
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-white/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {chg.before_label.toUpperCase()} → {chg.after_label.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-slate-700 dark:text-slate-300 line-clamp-2 font-mono text-[11px]">
+                          {chg.citation_raw}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs font-mono text-slate-600 dark:text-slate-400">
+                  {lang === 'vi'
+                    ? `Đã đối chiếu tự động giữa #${activeRevisionDiff.previous_essay_id} (CIS ${(activeRevisionDiff.cis_before ?? 0).toFixed(1)}%) và #${activeRevisionDiff.current_essay_id} (CIS ${(activeRevisionDiff.cis_after ?? 0).toFixed(1)}%).`
+                    : `Automatically compared #${activeRevisionDiff.previous_essay_id} and #${activeRevisionDiff.current_essay_id}.`}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quick Diagnostic Sub-Pages Navigation */}
       <div className="flex flex-wrap items-center justify-between gap-4">

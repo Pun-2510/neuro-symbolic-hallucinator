@@ -193,12 +193,38 @@ class DocumentParser:
             parser_used = "regex"  # Fallback to regex since PyMuPDF failed
 
         total_chars = sum(len((p.text or "").strip()) for p in (text_doc.pages or []))
+        doc_meta = dict(text_doc.metadata or {})
+        is_scanned_pdf = bool(
+            not is_docx
+            and (
+                doc_meta.get("is_scanned_pdf")
+                or (text_doc.num_pages > 0 and total_chars / max(1, len(text_doc.pages or [])) < 55.0)
+            )
+        )
         is_scanned_empty_pdf = bool(
             not is_docx
             and text_doc.num_pages > 0
             and total_chars == 0
             and self._grobid_post_fn is None
         )
+        if is_scanned_pdf:
+            scanned_pages = sum(1 for p in (text_doc.pages or []) if len((p.text or "").strip()) < 40)
+            avg_chars = round(total_chars / max(1, len(text_doc.pages or [])), 1)
+            doc_meta["is_scanned_pdf"] = True
+            doc_meta["scanned_pages_count"] = int(doc_meta.get("scanned_pages_count", scanned_pages))
+            doc_meta["total_extractable_chars"] = int(doc_meta.get("total_extractable_chars", total_chars))
+            doc_meta["avg_chars_per_page"] = float(doc_meta.get("avg_chars_per_page", avg_chars))
+            doc_meta["warning_code"] = "SCANNED_PDF_DETECTED"
+            doc_meta["warning_message"] = (
+                doc_meta.get("warning_message")
+                or "Phát hiện tài liệu PDF dạng ảnh quét (Scanned/Image-only PDF) thiếu lớp văn bản số hóa (Text Layer). "
+                "Vui lòng chuyển đổi qua OCR hoặc tải lên bản gốc .docx / PDF xuất trực tiếp từ Word/LaTeX để đạt độ chính xác kiểm chứng trích dẫn tối đa."
+            )
+            text_doc.metadata = doc_meta
+            warnings.append(
+                f"SCANNED_PDF_DETECTED: Document contains {doc_meta['scanned_pages_count']}/{max(1, len(text_doc.pages or []))} scanned/image-only pages "
+                f"(avg {doc_meta['avg_chars_per_page']} chars/page)."
+            )
         if is_scanned_empty_pdf:
             warnings.append(
                 "SCANNED_PDF_NO_TEXT_LAYER: Document has pages but 0 extractable text characters; OCR is required."

@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import { useToast } from '@/contexts/ToastContext';
 import { UpgradeModal } from '@/components/UpgradeModal';
+import { LiveCitationSandbox } from '@/components/LiveCitationSandbox';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -566,6 +567,9 @@ export function UploadPage() {
           </div>
         </div>
       </Card>
+
+      {/* P3 Killer Feature #1: Live Citation Sandbox & Synthetic Academic PDF Generator from ACL Database */}
+      <LiveCitationSandbox lang={lang} />
 
       {/* 3-Step Verification Pipeline Architecture Strip (Teacher / Admin only) */}
       {!isUser && (

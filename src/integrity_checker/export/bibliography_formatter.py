@@ -608,8 +608,9 @@ def build_remediated_bibliography(
                 and fallback_meta["doi"].lower() == cand_doi_raw.lower()
             )
             is_same_work = (
-                best_source in ("vn_legal_registry", "known_papers")
+                best_source in ("vn_legal_registry", "known_papers", "acl", "local_db")
                 or doi_matches
+                or token_overlap >= 0.70
                 or ((title_sim >= 0.65 or best_score >= 0.65) and token_overlap >= 0.55)
             )
             if is_same_work:

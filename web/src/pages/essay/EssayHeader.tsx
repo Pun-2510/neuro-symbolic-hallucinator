@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, FileText, Quote, Clock, Download, ShieldCheck, Lock } from 'lucide-react';
+import { ArrowLeft, FileText, Quote, Clock, Download, ShieldCheck, Lock, Sparkles } from 'lucide-react';
 import { api } from '@/api/client';
 import { useRole } from '@/hooks/useRole';
 import { UpgradeModal } from '@/components/UpgradeModal';
@@ -45,6 +45,17 @@ export function EssayHeader({
       return;
     }
     void api.downloadReportFile(essayId, fmt, filename);
+  };
+
+  const handleDownloadHealedDocx = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (isBasic) {
+      setLockedFormat('AUTO-HEALED DOCX');
+      setUpgradeOpen(true);
+      return;
+    }
+    const targetStyle = (styleName || '').toLowerCase().includes('ieee') ? 'ieee' : 'apa';
+    void api.downloadAutoHealedDocx(essayId, targetStyle, filename);
   };
 
   return (
@@ -164,6 +175,21 @@ export function EssayHeader({
                   </span>
                 )}
               </a>
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleDownloadHealedDocx}
+              data-testid="export-healed-docx-btn"
+              className="h-8 font-mono text-xs rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto"
+            >
+              {isBasic ? <Lock className="h-3.5 w-3.5 text-amber-300" /> : <Sparkles className="h-3.5 w-3.5" />}
+              {lang === 'vi' ? 'Auto-Healed .DOCX' : 'Auto-Healed .DOCX'}
+              {isBasic && (
+                <span className="ml-1 px-1 py-0.2 rounded bg-amber-400/20 text-amber-200 text-[9px] font-bold">
+                  PRO
+                </span>
+              )}
             </Button>
           </div>
         </div>

@@ -299,6 +299,26 @@ export function ProcessingPage() {
         </Alert>
       )}
 
+      {/* Scanned PDF Guardrail banner during/after processing */}
+      {status?.document_diagnostics?.is_scanned_pdf && (
+        <div
+          data-testid="scanned-pdf-processing-banner"
+          className="rounded-2xl border border-amber-400 dark:border-amber-700 bg-amber-50/90 dark:bg-amber-950/60 p-4 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-3"
+        >
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold font-display">
+              {lang === 'vi'
+                ? 'Phát hiện tài liệu PDF dạng ảnh quét (Scanned PDF — Thiếu lớp văn bản số hóa)'
+                : 'Scanned / Image-Only PDF Detected (Missing Digital Text Layer)'}
+            </p>
+            <p className="mt-0.5">
+              {status.document_diagnostics.warning_message}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 4 Live Telemetry Stat Cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard

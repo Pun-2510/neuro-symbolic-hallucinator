@@ -185,6 +185,152 @@ export interface CIS {
 
 // --- Full Report ---
 
+export interface DocumentDiagnostics {
+  is_scanned_pdf: boolean;
+  scanned_pages_count: number;
+  total_extractable_chars: number;
+  avg_chars_per_page: number;
+  warning_code?: string | null;
+  warning_message?: string | null;
+  parser_warnings?: string[];
+}
+
+export interface RevisionChangeItem {
+  citation_raw: string;
+  before_label: string;
+  after_label: string;
+  transition: string;
+}
+
+export interface RevisionDiffData {
+  has_previous_revision: boolean;
+  is_same_manuscript_family?: boolean;
+  previous_essay_id?: number;
+  previous_filename?: string;
+  previous_uploaded_at?: string | null;
+  current_essay_id: number;
+  current_filename: string;
+  current_uploaded_at?: string | null;
+  cis_before?: number;
+  cis_after?: number;
+  cis_delta?: number;
+  counts_before?: {
+    total: number;
+    verified: number;
+    metadata_error: number;
+    suspected_hallucination: number;
+    unresolved: number;
+  };
+  counts_after?: {
+    total: number;
+    verified: number;
+    metadata_error: number;
+    suspected_hallucination: number;
+    unresolved: number;
+  };
+  counts_delta?: {
+    total: number;
+    verified: number;
+    metadata_error: number;
+    suspected_hallucination: number;
+    unresolved: number;
+  };
+  resolved_issues_count?: number;
+  persisting_issues_count?: number;
+  new_issues_count?: number;
+  resolved_issues?: RevisionChangeItem[];
+  persisting_issues?: RevisionChangeItem[];
+  new_issues?: RevisionChangeItem[];
+  citation_changes?: RevisionChangeItem[];
+  available_revisions?: Array<{
+    essay_id: number;
+    filename: string;
+    uploaded_at: string | null;
+    cis_score: number;
+    num_verdicts: number;
+    is_same_stem: boolean;
+  }>;
+}
+
+export interface SandboxAclPaperItem {
+  index: number;
+  paper_id?: number | null;
+  title: string;
+  authors: string[];
+  authors_text: string;
+  year: string;
+  venue: string;
+  doi: string;
+  abstract?: string;
+  source?: string;
+  cite_in_text: boolean;
+  include_in_references: boolean;
+  in_text_year_override: string;
+  in_text_context: string;
+  mutation_preset?: string;
+  preview_in_text_apa?: string;
+  preview_reference?: string;
+  original?: {
+    title: string;
+    authors_text: string;
+    year: string;
+    venue: string;
+    doi: string;
+  };
+}
+
+export interface SandboxAclSampleResponse {
+  count: number;
+  style: string;
+  database_total_papers: number;
+  items: SandboxAclPaperItem[];
+}
+
+export interface SandboxGeneratePdfResponse {
+  essay_id: number;
+  filename: string;
+  num_pages: number;
+  in_text_count: number;
+  references_count: number;
+  in_text_markers_preview: string[];
+  references_preview: string[];
+  pdf_base64: string;
+  status: string;
+}
+
+export interface SandboxInstantVerdictItem {
+  index: number;
+  citation_raw: string;
+  cited_title?: string | null;
+  cited_authors?: string[];
+  cited_year?: number | string | null;
+  cited_venue?: string | null;
+  cited_doi?: string | null;
+  label: string;
+  confidence: number;
+  mapping_status: string;
+  mapping_note: string;
+  reasoning: string;
+  triggered_rules: string[];
+  mismatched_fields: string[];
+  matched_source?: MatchedSource | null;
+  sources_succeeded?: string[];
+  used_local_db?: boolean;
+}
+
+export interface SandboxInstantVerifyResponse {
+  elapsed_seconds: number;
+  total: number;
+  summary: {
+    verified: number;
+    metadata_error: number;
+    suspected_hallucination: number;
+    layer1_linking_issues: number;
+  };
+  results: SandboxInstantVerdictItem[];
+  remediation?: RemediatedBibliographyResponse;
+}
+
 export interface AnalysisReport {
   essay_id: number;
   filename: string;
@@ -199,6 +345,8 @@ export interface AnalysisReport {
   verdicts: Verdict[];
   references?: Citation[];
   cis: CIS;
+  document_diagnostics?: DocumentDiagnostics;
+  revision_diff?: RevisionDiffData | null;
   disclaimer: string;
 }
 
@@ -218,6 +366,7 @@ export interface EssayStatus {
   elapsed_seconds: number;
   finished_at: number | null;
   error: string | null;
+  document_diagnostics?: DocumentDiagnostics | null;
 }
 
 // --- Upload ---
@@ -1017,6 +1166,106 @@ export const api = {
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
   },
+
+  downloadAutoHealedDocx: async (
+    id: number,
+    style: 'apa' | 'ieee' = 'apa',
+    baseFilename?: string,
+  ): Promise<void> => {
+    const token = localStorage.getItem('token');
+    const resp = await fetch(
+      `${BASE_URL}/essays/${id}/export-healed-docx?style=${encodeURIComponent(style)}`,
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      },
+    );
+    if (!resp.ok) {
+      throw new Error(`API ${resp.status}: ${await resp.text()}`);
+    }
+    const blob = await resp.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const cleanName = (baseFilename || `essay_${id}`).replace(/\.[^/.]+$/, '');
+    link.href = url;
+    link.download = `${cleanName}_auto_healed.docx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+
+  getRevisionDiff: (id: number, compareWithId?: number) => {
+    const qs = compareWithId ? `?compare_with=${compareWithId}` : '';
+    return request<RevisionDiffData>(`/essays/${id}/revision-diff${qs}`);
+  },
+
+  sampleSandboxAclPapers: (count: number = 12, style: 'apa' | 'ieee' = 'apa') =>
+    request<SandboxAclSampleResponse>(
+      `/essays/sandbox/acl-sample?count=${count}&style=${encodeURIComponent(style)}`,
+    ),
+
+  generateSandboxPdfManuscript: (payload: {
+    title?: string;
+    author_name?: string;
+    style?: 'apa' | 'ieee';
+    items: SandboxAclPaperItem[];
+    run_verification?: boolean;
+    download_only?: boolean;
+    filename?: string;
+  }) =>
+    request<SandboxGeneratePdfResponse>('/essays/sandbox/generate-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }),
+
+  downloadSandboxPdfManuscript: async (payload: {
+    title?: string;
+    author_name?: string;
+    style?: 'apa' | 'ieee';
+    items: SandboxAclPaperItem[];
+    filename?: string;
+  }): Promise<void> => {
+    const token = localStorage.getItem('token');
+    const resp = await fetch(`${BASE_URL}/essays/sandbox/generate-pdf`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        ...payload,
+        download_only: true,
+        run_verification: false,
+      }),
+    });
+    if (!resp.ok) {
+      throw new Error(`API ${resp.status}: ${await resp.text()}`);
+    }
+    const blob = await resp.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download =
+      payload.filename ||
+      `CITRA_ACL_Sandbox_${(payload.style || 'apa').toUpperCase()}_${payload.items.length}refs.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+
+  verifySandboxCitationsInstant: (payload: {
+    style?: 'apa' | 'ieee';
+    items?: SandboxAclPaperItem[];
+    references_text?: string;
+    claim_context?: string;
+  }) =>
+    request<SandboxInstantVerifyResponse>('/essays/sandbox/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }),
 
   overrideVerdict: (id: number, body: OverrideRequest) =>
     request<Verdict>(`/essays/${id}/verdicts/${body.verdict_id}/override`, {

@@ -120,18 +120,59 @@ class MuPdfParser(BasePDFParser):
                     f"Document has {total_doc_pages} pages; truncated to first {MAX_PDF_PAGES} pages."
                 )
 
+            scanned_pages_count = 0
+            total_extractable_chars = 0
+
             for idx in range(page_limit):
                 try:
                     page = doc[idx]
                     text = self._extract_page_text_reading_order(page)
-                    has_text = len(text.strip()) > 0
+                    stripped = text.strip()
+                    char_len = len(stripped)
+                    total_extractable_chars += char_len
+                    has_text = char_len >= 40
+                    if not has_text:
+                        scanned_pages_count += 1
                     pages.append(
                         Page(page_num=idx + 1, text=text, has_text_layer=has_text)
                     )
                 except Exception as e:  # noqa: BLE001
                     errors.append(f"Page {idx + 1}: {e!s}")
 
+            avg_chars_per_page = (
+                total_extractable_chars / page_limit if page_limit > 0 else 0.0
+            )
+            scanned_ratio = (
+                scanned_pages_count / page_limit if page_limit > 0 else 0.0
+            )
+            is_scanned_pdf = bool(
+                page_limit > 0
+                and (
+                    avg_chars_per_page < 55.0
+                    or (scanned_ratio >= 0.70 and avg_chars_per_page < 120.0)
+                )
+            )
+
             metadata = dict(doc.metadata or {})
+            metadata["is_scanned_pdf"] = is_scanned_pdf
+            metadata["scanned_pages_count"] = scanned_pages_count
+            metadata["total_extractable_chars"] = total_extractable_chars
+            metadata["avg_chars_per_page"] = round(avg_chars_per_page, 1)
+            metadata["scanned_ratio"] = round(scanned_ratio, 3)
+            metadata["warning_code"] = (
+                "SCANNED_PDF_DETECTED" if is_scanned_pdf else None
+            )
+            metadata["warning_message"] = (
+                "Phát hiện tài liệu PDF dạng ảnh quét (Scanned/Image-only PDF) thiếu lớp văn bản số hóa (Text Layer). "
+                "Vui lòng chuyển đổi qua OCR hoặc tải lên bản gốc .docx / PDF xuất trực tiếp từ Word/LaTeX để đạt độ chính xác kiểm chứng trích dẫn tối đa."
+                if is_scanned_pdf
+                else None
+            )
+            if is_scanned_pdf:
+                errors.append(
+                    f"SCANNED_PDF_DETECTED: {scanned_pages_count}/{page_limit} pages lack an extractable text layer "
+                    f"(avg {avg_chars_per_page:.1f} chars/page)."
+                )
             return Document(
                 file_path=str(path),
                 num_pages=len(doc),

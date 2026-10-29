@@ -540,6 +540,8 @@ class IntegrityPipeline:
             # Modern path: DocumentParser (PyMuPDF + GROBID + SectionSegmenter)
             parsed = self.document_parser.parse(pdf_path)
             num_pages = parsed.document.num_pages  # FIX: lấy num_pages từ document gốc
+            raw_doc_meta = getattr(parsed.document, "metadata", None)
+            doc_metadata = dict(raw_doc_meta) if isinstance(raw_doc_meta, dict) else {}
             in_text_citations = list(parsed.body_citations) + [
                 c
                 for c in (parsed.appendix_citations or [])
@@ -559,6 +561,8 @@ class IntegrityPipeline:
             # Legacy fallback path
             doc = self.parser.parse(pdf_path)
             num_pages = doc.num_pages
+            raw_doc_meta = getattr(doc, "metadata", None)
+            doc_metadata = dict(raw_doc_meta) if isinstance(raw_doc_meta, dict) else {}
             in_text_citations = self.extractor.extract_from_document(doc)
             ref_citations = self.ref_parser.parse_reference_section(doc)
             document_pages = doc.pages  # Store for context extraction
@@ -588,6 +592,48 @@ class IntegrityPipeline:
         ]
         style_profile = self._detect_style(academic_in_text, academic_references)
         style_profile_dict = self._serialize_style_profile(style_profile)
+        total_extractable_chars = int(
+            doc_metadata.get("total_extractable_chars")
+            if doc_metadata.get("total_extractable_chars") is not None
+            else sum(len((p.text or "").strip()) for p in (document_pages or []))
+        )
+        scanned_pages_count = int(
+            doc_metadata.get("scanned_pages_count")
+            if doc_metadata.get("scanned_pages_count") is not None
+            else sum(1 for p in (document_pages or []) if len((p.text or "").strip()) < 40)
+        )
+        avg_chars_per_page = float(
+            doc_metadata.get("avg_chars_per_page")
+            if doc_metadata.get("avg_chars_per_page") is not None
+            else round(total_extractable_chars / max(1, len(document_pages or [])), 1)
+        )
+        is_scanned_pdf = bool(
+            doc_metadata.get("is_scanned_pdf")
+            or (
+                num_pages > 0
+                and not str(pdf_path).lower().endswith(".docx")
+                and avg_chars_per_page < 55.0
+                and len(in_text_citations) == 0
+                and len(ref_citations) == 0
+            )
+        )
+        style_profile_dict["document_diagnostics"] = {
+            "is_scanned_pdf": is_scanned_pdf,
+            "scanned_pages_count": scanned_pages_count,
+            "total_extractable_chars": total_extractable_chars,
+            "avg_chars_per_page": avg_chars_per_page,
+            "warning_code": "SCANNED_PDF_DETECTED" if is_scanned_pdf else None,
+            "warning_message": (
+                doc_metadata.get("warning_message")
+                or (
+                    "Phát hiện tài liệu PDF dạng ảnh quét (Scanned/Image-only PDF) thiếu lớp văn bản số hóa (Text Layer). "
+                    "Vui lòng chuyển đổi qua OCR hoặc tải lên bản gốc .docx / PDF xuất trực tiếp từ Word/LaTeX để đạt độ chính xác kiểm chứng trích dẫn tối đa."
+                    if is_scanned_pdf
+                    else None
+                )
+            ),
+            "parser_warnings": list(parser_warnings or []),
+        }
 
         # 1c. Citation linking (in-text ↔ reference) — v1.2 §3.5
         _emit(

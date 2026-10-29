@@ -666,4 +666,100 @@ describe('Premium Subscription, Pricing, Stripe Checkout & Paywall UI/UX Flows',
     expect(screen.getByText('Seminal Whitelist')).toBeDefined();
     expect(document.body.textContent).not.toContain('интерактив');
   });
+
+  it('UploadPage LiveCitationSandbox samples random ACL papers, injects defense suite, edits metadata, and generates full PDF manuscript', async () => {
+    vi.spyOn(api, 'listEnrolledClasses').mockResolvedValue([]);
+    const sampleSpy = vi.spyOn(api, 'sampleSandboxAclPapers').mockResolvedValue({
+      count: 2,
+      style: 'apa',
+      database_total_papers: 128626,
+      items: [
+        {
+          index: 1,
+          paper_id: 101,
+          title: 'Attention Is All You Need',
+          authors: ['Ashish Vaswani', 'Noam Shazeer'],
+          authors_text: 'Ashish Vaswani; Noam Shazeer',
+          year: '2017',
+          venue: 'NeurIPS',
+          doi: '10.48550/arXiv.1706.03762',
+          cite_in_text: true,
+          include_in_references: true,
+          in_text_year_override: '',
+          in_text_context: 'Transformer architectures dispense with recurrence',
+          mutation_preset: 'clean',
+          original: {
+            title: 'Attention Is All You Need',
+            authors_text: 'Ashish Vaswani; Noam Shazeer',
+            year: '2017',
+            venue: 'NeurIPS',
+            doi: '10.48550/arXiv.1706.03762',
+          },
+        },
+        {
+          index: 2,
+          paper_id: 102,
+          title: 'BERT Pre-training of Deep Bidirectional Transformers',
+          authors: ['Jacob Devlin', 'Ming-Wei Chang'],
+          authors_text: 'Jacob Devlin; Ming-Wei Chang',
+          year: '2019',
+          venue: 'NAACL',
+          doi: '10.18653/v1/N19-1423',
+          cite_in_text: true,
+          include_in_references: true,
+          in_text_year_override: '',
+          in_text_context: 'Bidirectional pretraining improves language understanding',
+          mutation_preset: 'clean',
+          original: {
+            title: 'BERT Pre-training of Deep Bidirectional Transformers',
+            authors_text: 'Jacob Devlin; Ming-Wei Chang',
+            year: '2019',
+            venue: 'NAACL',
+            doi: '10.18653/v1/N19-1423',
+          },
+        },
+      ],
+    });
+    const genPdfSpy = vi.spyOn(api, 'generateSandboxPdfManuscript').mockResolvedValue({
+      essay_id: 77,
+      filename: 'CITRA_ACL_Sandbox_APA_2refs.pdf',
+      num_pages: 2,
+      in_text_count: 2,
+      references_count: 2,
+      in_text_markers_preview: ['(Vaswani & Shazeer, 2017)', '(Devlin & Chang, 2022)'],
+      references_preview: [],
+      pdf_base64: 'JVBERi0xLjQK',
+      status: 'processing',
+    });
+
+    renderWithAuth(
+      <Routes>
+        <Route path="/verification/new" element={<UploadPage />} />
+        <Route path="/verification/processing/:id" element={<div>Processing #77</div>} />
+      </Routes>,
+      {
+        user: createMockUser({ plan_tier: 'ultra', role: 'user' }),
+        initialEntries: ['/verification/new'],
+      },
+    );
+
+    const sampleBtn = screen.getByTestId('sandbox-random-acl-btn');
+    fireEvent.click(sampleBtn);
+
+    await waitFor(() => {
+      expect(sampleSpy).toHaveBeenCalled();
+      expect(screen.getByTestId('sandbox-item-title-0')).toBeDefined();
+    });
+
+    // Click auto-inject defense suite
+    fireEvent.click(screen.getByTestId('sandbox-auto-inject-suite-btn'));
+    expect((screen.getByTestId('sandbox-item-year-1') as HTMLInputElement).value).toBe('2022');
+
+    // Generate full PDF and verify
+    fireEvent.click(screen.getByTestId('sandbox-generate-verify-pdf-btn'));
+    await waitFor(() => {
+      expect(genPdfSpy).toHaveBeenCalled();
+      expect(screen.getByText('Processing #77')).toBeDefined();
+    });
+  });
 });

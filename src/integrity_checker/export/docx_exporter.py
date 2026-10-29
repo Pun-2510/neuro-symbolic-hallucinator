@@ -360,3 +360,192 @@ def export_report_to_docx(
     doc.save(buffer)
     buffer.seek(0)
     return buffer.getvalue()
+
+
+def export_auto_healed_docx(
+    essay_filename: str,
+    verdicts: list[dict[str, Any]],
+    style: str = "apa",
+    original_docx_path: str | None = None,
+) -> bytes:
+    """Export an Auto-Healed Word (.docx) manuscript or standardized bibliography package.
+
+    If ``original_docx_path`` points to an existing ``.docx`` file on disk, heals
+    ``METADATA_ERROR`` bibliography paragraphs in-place, flags ``SUSPECTED_HALLUCINATION``
+    paragraphs in red, and appends a structured Before -> After Change Log table.
+    Otherwise (e.g. for ``.pdf`` uploads), generates a clean Word ``.docx`` containing
+    the ready-to-paste Auto-Healed Bibliography, Before -> After Change Log table,
+    and BibTeX appendix.
+    """
+    from pathlib import Path
+    from integrity_checker.export.bibliography_formatter import build_remediated_bibliography
+
+    norm_style = "ieee" if (style or "").strip().lower() == "ieee" else "apa"
+    rem_data = build_remediated_bibliography(essay_id=0, verdicts=verdicts, style=norm_style)
+    entries: list[dict[str, Any]] = rem_data.get("entries") or []
+
+    in_place_healed_count = 0
+    used_original_docx = False
+    doc = None
+
+    if original_docx_path:
+        orig_path = Path(original_docx_path)
+        if orig_path.is_file() and orig_path.suffix.lower() == ".docx":
+            try:
+                doc = Document(str(orig_path))
+                used_original_docx = True
+            except Exception:
+                doc = None
+                used_original_docx = False
+
+    if doc is None:
+        doc = Document()
+        title = doc.add_heading("CITRA Auto-Healed Bibliography & Change Log", level=0)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        sub = doc.add_paragraph()
+        sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r_sub = sub.add_run(
+            f"Source Manuscript: {essay_filename}  |  Target Style: {norm_style.upper()}"
+        )
+        r_sub.italic = True
+        r_sub.font.color.rgb = RGBColor(100, 116, 139)
+    else:
+        # Heal matching paragraphs in-place in the original .docx
+        for para in doc.paragraphs:
+            p_text = (para.text or "").strip()
+            if len(p_text) < 15:
+                continue
+            p_lower = p_text.lower()
+            for entry in entries:
+                orig_raw = str(entry.get("original_raw") or "").strip()
+                cited_title = str((entry.get("cited") or {}).get("title") or "").strip()
+                matched = False
+                if orig_raw and len(orig_raw) >= 18 and orig_raw[:45].lower() in p_lower:
+                    matched = True
+                elif cited_title and len(cited_title) >= 18 and cited_title.lower() in p_lower:
+                    matched = True
+                if not matched:
+                    continue
+
+                healed_text = str(entry.get(norm_style) or entry.get("formatted") or "")
+                if entry.get("is_hallucination"):
+                    para.clear()
+                    r_flag = para.add_run(
+                        f"[CẢNH BÁO ĐỎ CITRA — NGHI VẤN NGUỒN BỊA ĐẶT / HALLUCINATION (CẦN XÓA)]: {p_text}"
+                    )
+                    r_flag.bold = True
+                    r_flag.font.color.rgb = RGBColor(220, 38, 38)
+                    in_place_healed_count += 1
+                elif entry.get("is_error") and healed_text:
+                    para.clear()
+                    r_healed = para.add_run(healed_text)
+                    r_healed.font.color.rgb = RGBColor(21, 128, 61)
+                    r_tag = para.add_run(
+                        f"  [Auto-Healed by CITRA: {', '.join(entry.get('diff_fields') or ['metadata'])}]"
+                    )
+                    r_tag.bold = True
+                    r_tag.font.size = Pt(9)
+                    r_tag.font.color.rgb = RGBColor(22, 163, 74)
+                    in_place_healed_count += 1
+                break
+
+        doc.add_page_break()
+        doc.add_heading("CITRA Auto-Remediation Appendix & Change Log", level=1)
+
+    # Summary KPI paragraph
+    total_cnt = int(rem_data.get("total_entries", len(entries)))
+    repaired_cnt = int(rem_data.get("remediated_count", rem_data.get("repaired_count", 0)))
+    hallucinated_cnt = int(rem_data.get("hallucination_count", rem_data.get("hallucinated_count", 0)))
+    verified_cnt = max(0, total_cnt - repaired_cnt - hallucinated_cnt)
+
+    kpi_p = doc.add_paragraph()
+    kpi_run = kpi_p.add_run(
+        f"Summary: {total_cnt} Total References  •  "
+        f"{verified_cnt} Verified  •  "
+        f"{repaired_cnt} Auto-Healed Metadata Errors  •  "
+        f"{hallucinated_cnt} Flagged Hallucinations"
+        + (f"  •  {in_place_healed_count} Paragraphs Healed In-Place" if used_original_docx else "")
+    )
+    kpi_run.bold = True
+
+    # Section 1: Standardized Auto-Healed Reference List (Ready to Paste)
+    doc.add_heading(
+        f"1. Standardized Reference List ({norm_style.upper()}) — Auto-Healed",
+        level=1,
+    )
+    if entries:
+        for e in entries:
+            p_ref = doc.add_paragraph()
+            formatted_ref = str(e.get(norm_style) or e.get("formatted") or "")
+            if e.get("is_hallucination"):
+                r_bad = p_ref.add_run(
+                    f"[REMOVE — SUSPECTED HALLUCINATION] {e.get('original_raw') or formatted_ref}"
+                )
+                r_bad.bold = True
+                r_bad.font.color.rgb = RGBColor(220, 38, 38)
+            elif e.get("is_error"):
+                r_good = p_ref.add_run(formatted_ref)
+                r_good.bold = True
+                r_good.font.color.rgb = RGBColor(21, 128, 61)
+                r_note = p_ref.add_run(
+                    f"  [Auto-Healed: {', '.join(e.get('diff_fields') or ['metadata'])}]"
+                )
+                r_note.italic = True
+                r_note.font.size = Pt(9)
+                r_note.font.color.rgb = RGBColor(21, 128, 61)
+            else:
+                p_ref.add_run(formatted_ref)
+    else:
+        doc.add_paragraph("No bibliography entries found.")
+
+    # Section 2: Before -> After Change Log Table
+    doc.add_heading("2. Before → After Auto-Remediation Change Log", level=1)
+    if entries:
+        table = doc.add_table(rows=1, cols=5)
+        table.style = "Table Grid"
+        headers = [
+            "#",
+            "Status",
+            "Repaired Fields",
+            "Before (Original in Manuscript)",
+            f"After (Canonical {norm_style.upper()})",
+        ]
+        for col_idx, h_text in enumerate(headers):
+            cell = table.rows[0].cells[col_idx]
+            cell.text = h_text
+            if cell.paragraphs and cell.paragraphs[0].runs:
+                cell.paragraphs[0].runs[0].bold = True
+
+        for e in entries:
+            row_cells = table.add_row().cells
+            row_cells[0].text = str(e.get("index", ""))
+            if e.get("is_hallucination"):
+                status_str = "HALLUCINATION (REMOVE)"
+            elif e.get("is_error"):
+                status_str = "AUTO-HEALED"
+            else:
+                status_str = "VERIFIED"
+            row_cells[1].text = status_str
+            diff_fields = e.get("diff_fields") or []
+            row_cells[2].text = ", ".join(str(f) for f in diff_fields) if diff_fields else "—"
+            row_cells[3].text = str(e.get("original_raw") or "")
+            row_cells[4].text = (
+                "[DO NOT CITE — UNVERIFIED / FABRICATED SOURCE]"
+                if e.get("is_hallucination")
+                else str(e.get(norm_style) or e.get("formatted") or "")
+            )
+    else:
+        doc.add_paragraph("No remediation changes recorded.")
+
+    # Section 3: BibTeX Export Block
+    combined_bibtex = str(rem_data.get("combined_bibtex") or "").strip()
+    if combined_bibtex:
+        doc.add_heading("3. Standardized BibTeX Entries (.bib)", level=1)
+        p_bib = doc.add_paragraph()
+        r_bib = p_bib.add_run(combined_bibtex)
+        r_bib.font.size = Pt(8.5)
+
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer.getvalue()
