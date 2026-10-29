@@ -153,8 +153,8 @@ export function BibliographyRemediationModal({
               </div>
               <p className="text-xs text-slate-300 mt-0.5">
                 {lang === 'vi'
-                  ? 'Tự động đối chiếu & khôi phục Năm xuất bản, Tiêu đề, Tác giả, Tạp chí và DOI chuẩn xác từ 9 CSDL học thuật.'
-                  : 'Automatically repairs mismatched Year, Title, Authors, Venue & DOI using canonical records from 9 scholarly databases.'}
+                  ? 'Tự động đối chiếu & khôi phục Năm xuất bản, Tiêu đề, Tác giả, Tạp chí và DOI chuẩn xác từ 15+ CSDL học thuật.'
+                  : 'Automatically repairs mismatched Year, Title, Authors, Venue & DOI using canonical records from 15+ scholarly databases.'}
               </p>
             </div>
           </div>

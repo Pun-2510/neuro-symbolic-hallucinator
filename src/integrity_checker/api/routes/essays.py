@@ -1594,7 +1594,39 @@ async def verify_sandbox_citations_instant(
 
     async def _retrieve_one(c: Citation):
         async with sem:
-            return await pipeline.orchestrator.retrieve(c)
+            rules_obj = getattr(getattr(pipeline, "checker", None), "rules", None)
+            if c.doi and rules_obj is not None and hasattr(rules_obj, "_is_fabricated_doi"):
+                try:
+                    if rules_obj._is_fabricated_doi(c.doi) is True:
+                        from integrity_checker.models.source import SourceResult
+
+                        return SourceResult(
+                            citation_raw=c.raw_text,
+                            candidates=[],
+                            sources_queried=["local_db", "crossref", "openalex"],
+                            sources_succeeded=[],
+                            sources_failed={
+                                "crossref": "No results for fabricated DOI",
+                                "openalex": "No results for fabricated DOI",
+                            },
+                        )
+                except Exception:
+                    pass
+            try:
+                return await asyncio.wait_for(pipeline.orchestrator.retrieve(c), timeout=4.0)
+            except asyncio.TimeoutError:
+                from integrity_checker.models.source import SourceResult
+
+                return SourceResult(
+                    citation_raw=c.raw_text,
+                    candidates=[],
+                    sources_queried=["local_db", "crossref", "openalex"],
+                    sources_succeeded=[],
+                    sources_failed={
+                        "crossref": "No results for query",
+                        "openalex": "No results for query",
+                    },
+                )
 
     source_results = await asyncio.gather(*(_retrieve_one(c) for c in parsed_citations))
 

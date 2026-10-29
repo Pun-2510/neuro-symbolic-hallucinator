@@ -670,6 +670,11 @@ def _json_response(
     for v in verdicts:
         status = v.mapping_status or "matched"
         linking_summary[status] = linking_summary.get(status, 0) + 1
+    for c in citations:
+        if getattr(c, "citation_type", None) in {"in_text", "numeric"}:
+            c_status = getattr(c, "mapping_status", None)
+            if c_status in ("missing_reference", "in_text_mismatch", "ambiguous_mapping"):
+                linking_summary[c_status] = linking_summary.get(c_status, 0) + 1
 
         # Reconstruct matched_sources from the features JSON blob (written there by
         # repository.add_verdicts).  If absent (pre-fix rows), fall back to an

@@ -309,10 +309,16 @@ class CitationLinker:
         # e.g. in-text cites "b0" and bib has id="b0" → direct match
         if hasattr(cit, 'grobid_ref_id') and cit.grobid_ref_id:
             cit_grobid_id = str(cit.grobid_ref_id).strip().lstrip("#")
+            cit_yr_m = re.search(r"\b((?:19|20)\d{2})\b", str(cit.year or cit.raw_text or ""))
+            cit_yr_int = int(cit_yr_m.group(1)) if cit_yr_m else None
             # Build bib index by grobid_ref_id
             for bib in bib_citations:
                 bib_grobid_id = getattr(bib, 'grobid_ref_id', None)
                 if bib_grobid_id and str(bib_grobid_id).strip().lstrip("#") == cit_grobid_id:
+                    bib_yr_m = re.search(r"\b((?:19|20)\d{2})\b", str(bib.year or ""))
+                    bib_yr_int = int(bib_yr_m.group(1)) if bib_yr_m else None
+                    if cit_yr_int and bib_yr_int and abs(cit_yr_int - bib_yr_int) > 9:
+                        break
                     return _bib_link(
                         bib, 0.98, MappingMethod.TEI_LINK  # type: ignore
                     )

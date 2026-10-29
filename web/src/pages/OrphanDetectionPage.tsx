@@ -40,10 +40,32 @@ interface UncitedReference {
   raw_text: string;
 }
 
-function getOrphanStats(verdicts: Verdict[], references?: Citation[]) {
-  const citationsWithoutReference = verdicts.filter(
-    (v) => v.mapping_status === 'missing_reference'
+function getOrphanStats(
+  verdicts: Verdict[],
+  references?: Citation[],
+  extractedCitations?: Citation[]
+) {
+  const verdictOrphans = verdicts.filter(
+    (v) => v.mapping_status === 'missing_reference' || v.mapping_status === 'in_text_mismatch'
   );
+  const seenOrphanRaw = new Set(verdictOrphans.map((v) => v.citation_raw));
+  const extraOrphansFromExtracted: OrphanCitation[] = (extractedCitations ?? [])
+    .filter(
+      (c) =>
+        (c.mapping_status === 'missing_reference' || c.mapping_status === 'in_text_mismatch') &&
+        !seenOrphanRaw.has(c.raw_text)
+    )
+    .map((c, i) => ({
+      citation_id: String(c.id ?? `occ-orphan-${i}`),
+      citation_raw: c.raw_text,
+      label: 'unresolved',
+      mapping_status: c.mapping_status || 'missing_reference',
+    }));
+
+  const citationsWithoutReference: OrphanCitation[] = [
+    ...verdictOrphans,
+    ...extraOrphansFromExtracted,
+  ];
   const verdictUncited = verdicts.filter(
     (v) => v.mapping_status === 'uncited_reference'
   );
@@ -251,7 +273,7 @@ export function OrphanDetectionPage() {
 
   const stats = useMemo(() => {
     if (!report) return null;
-    return getOrphanStats(report.verdicts, report.references);
+    return getOrphanStats(report.verdicts, report.references, report.extracted_citations);
   }, [report]);
 
   if (errorMessage) {

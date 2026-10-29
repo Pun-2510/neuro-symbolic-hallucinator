@@ -522,6 +522,69 @@ class SymbolicRules:
 
         return None
 
+    def _rule_local_db_metadata_error(
+        self,
+        source: SourceResult,
+        features: MatchFeatures,
+        style_penalty: float = 0.0,
+        citation_doi: str | None = None,
+    ) -> RuleOutcome | None:
+        """Rule: LOCAL_DB / curated knowledge base match with metadata discrepancy → METADATA_ERROR.
+
+        Applies when the best candidate comes from the local ACL / scholarly SQLite
+        knowledge base (or known_papers) and has a strong identity anchor (exact DOI
+        or fuzzy title >= 0.90 or author >= 0.80 with matching year), but differs in
+        publication year, author attribution, or title wording.
+        """
+        if not source.sources_succeeded:
+            return None
+        best = source.best_candidate()
+        if not best:
+            return None
+        if best.source_name not in _NON_LIVE_SOURCES and any(
+            s not in _NON_LIVE_SOURCES for s in source.sources_succeeded
+        ):
+            return None
+
+        title_sim_fuzzy = features.title_sim_fuzzy
+        author_sim = features.author_jaccard
+        year_dist = features.year_distance
+        doi_match = features.doi_exact_match
+
+        has_strong_identity = (
+            (title_sim_fuzzy >= 0.90 and (doi_match or author_sim >= 0.35 or year_dist <= self.year_tolerance))
+            or (doi_match and title_sim_fuzzy >= 0.35)
+            or (author_sim >= 0.80 and year_dist <= self.year_tolerance and 0.55 <= title_sim_fuzzy < 0.90)
+        )
+        if not has_strong_identity:
+            return None
+
+        mismatched: list[str] = []
+        if title_sim_fuzzy < 0.90:
+            mismatched.append("title")
+        if author_sim < 0.50:
+            mismatched.append("author")
+        if year_dist > self.year_tolerance and year_dist < 900:
+            mismatched.append("year")
+        if citation_doi and best.doi and not doi_match:
+            mismatched.append("doi")
+
+        if not mismatched:
+            return None
+
+        return RuleOutcome(
+            label=ValidationLabel.METADATA_ERROR,
+            confidence=max(0.0, 0.78 - style_penalty),
+            reasoning=(
+                f"Matched canonical record in local ACL / scholarly database ('{best.title}', {best.year}) "
+                f"(title_sim={title_sim_fuzzy:.2f}, author_sim={author_sim:.2f}, DOI match={doi_match}) "
+                f"with metadata discrepancy in: {', '.join(mismatched)}."
+            ),
+            triggered_rules=["R-LOCAL_DB_METADATA_ERROR", "R-SINGLE-SOURCE-PARTIAL"],
+            mismatched_fields=mismatched,
+            style_penalty=style_penalty,
+        )
+
     def _is_fabricated_doi(self, citation_doi: str | None) -> bool:
         """Check if DOI matches known fabricated patterns.
 
@@ -1483,6 +1546,13 @@ class SymbolicRules:
                 mismatched_fields=mismatched,
                 style_penalty=style_penalty,
             )
+
+        # --- Rule 4a3: Local ACL / SQLite DB canonical match with metadata discrepancy → METADATA_ERROR ---
+        local_meta_err = self._rule_local_db_metadata_error(
+            source, features, style_penalty, citation_doi=citation_doi
+        )
+        if local_meta_err:
+            return local_meta_err
 
         # --- Rule 4b (NEW v1.3): METADATA_ERROR detection for known authors ---
         # If citation has known academic author + title mismatch + year mismatch

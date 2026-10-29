@@ -38,7 +38,7 @@ export function EssayActionBar({ essayId }: EssayActionBarProps) {
 
   return (
     <>
-      <div className="flex sm:inline-flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-x-auto scrollbar-none max-w-full">
+      <div className="flex flex-wrap sm:inline-flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-x-auto scrollbar-none max-w-full">
         <Button
           asChild
           variant={isReportRoot ? 'default' : 'ghost'}

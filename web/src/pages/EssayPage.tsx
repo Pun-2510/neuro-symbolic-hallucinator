@@ -1772,16 +1772,16 @@ export function EssayPage() {
       {activeRevisionDiff?.has_previous_revision && (
         <div
           data-testid="revision-diff-banner"
-          className="rounded-2xl border border-indigo-200/90 dark:border-indigo-800/80 bg-gradient-to-r from-indigo-50/90 via-white to-emerald-50/70 dark:from-indigo-950/50 dark:via-slate-900 dark:to-emerald-950/30 p-4 sm:p-5 shadow-xs"
+          className="rounded-2xl border border-indigo-200/90 dark:border-indigo-800/80 bg-gradient-to-r from-indigo-50/90 via-white to-emerald-50/70 dark:from-indigo-950/50 dark:via-slate-900 dark:to-emerald-950/30 p-4 sm:p-5 shadow-xs overflow-hidden"
         >
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0 max-w-full">
+            <div className="space-y-1.5 min-w-0 max-w-full">
+              <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-indigo-600 text-white">
-                  <GitBranch className="h-3 w-3" />
+                  <GitBranch className="h-3 w-3 shrink-0" />
                   {lang === 'vi' ? 'THEO DÕI TIẾN BỘ QUA CÁC LẦN NỘP (v1 → v2)' : 'REVISION PROGRESS TRACKER (v1 → v2)'}
                 </span>
-                <span className="text-xs font-mono text-slate-600 dark:text-slate-300">
+                <span className="text-xs font-mono text-slate-600 dark:text-slate-300 break-words [overflow-wrap:anywhere]">
                   {lang === 'vi' ? 'So sánh với:' : 'Compared against:'}{' '}
                   <strong className="text-slate-900 dark:text-white">
                     #{activeRevisionDiff.previous_essay_id} — {activeRevisionDiff.previous_filename}
@@ -1798,11 +1798,13 @@ export function EssayPage() {
                         const val = Number(e.target.value);
                         if (val) void handleCompareRevisionChange(val);
                       }}
-                      className="text-xs font-mono px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                      className="w-full sm:w-auto max-w-full sm:max-w-[320px] min-w-0 truncate text-xs font-mono px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
                     >
                       {activeRevisionDiff.available_revisions.map((rev) => (
                         <option key={rev.essay_id} value={rev.essay_id}>
-                          #{rev.essay_id} {rev.filename} (CIS {rev.cis_score.toFixed(1)}%)
+                          #{rev.essay_id}{' '}
+                          {rev.filename.length > 32 ? `${rev.filename.slice(0, 29)}...` : rev.filename}{' '}
+                          (CIS {rev.cis_score.toFixed(1)}%)
                         </option>
                       ))}
                     </select>

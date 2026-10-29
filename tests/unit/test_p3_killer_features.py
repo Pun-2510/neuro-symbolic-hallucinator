@@ -261,6 +261,8 @@ def test_sandbox_instant_verify_endpoint_logic() -> None:
     assert resp["total"] == 1
     assert resp["summary"]["layer1_linking_issues"] == 1
     assert resp["results"][0]["mapping_status"] == "in_text_mismatch"
+    assert resp["results"][0]["label"] == "metadata_error"
+    assert "year" in resp["results"][0]["mismatched_fields"]
     assert len(resp["remediation"]["entries"]) == 1
     assert resp["remediation"]["combined_bibtex"]
 

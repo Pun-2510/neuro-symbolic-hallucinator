@@ -144,7 +144,7 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
         const origYr = parseInt(orig.year, 10) || 2020;
 
         if (preset === 'wrong_year') {
-          base.year = String(Math.min(2025, origYr + 3));
+          base.year = String(origYr >= 2023 ? origYr - 4 : origYr + 3);
         } else if (preset === 'wrong_author') {
           base.authors_text = 'Michael Anderson; Elena Rostova';
           base.authors = ['Michael Anderson', 'Elena Rostova'];
@@ -156,7 +156,7 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
           base.venue = 'International Journal of Synthetic Hallucinated AI Systems';
           base.doi = `10.9999/hallucinated.acl.2025.${idx + 101}`;
         } else if (preset === 'year_mismatch_intext') {
-          base.in_text_year_override = String(Math.max(1999, origYr - 4));
+          base.in_text_year_override = String(Math.max(1995, origYr - 12));
         } else if (preset === 'uncited_ref') {
           base.cite_in_text = false;
           base.include_in_references = true;
@@ -200,7 +200,7 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
         if (idx === 1) {
           return {
             ...cleanItem,
-            year: String(Math.min(2025, origYr + 3)),
+            year: String(origYr >= 2023 ? origYr - 4 : origYr + 3),
             mutation_preset: 'wrong_year',
           };
         }
@@ -228,7 +228,7 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
         if (idx === 4) {
           return {
             ...cleanItem,
-            in_text_year_override: String(Math.max(1999, origYr - 4)),
+            in_text_year_override: String(Math.max(1995, origYr - 12)),
             mutation_preset: 'year_mismatch_intext',
           };
         }
@@ -442,9 +442,9 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
           <>
             {/* Control Bar: Count, Style, Random Sample Button & Defense Suite Injector */}
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/90 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300">
+              <div className="flex flex-wrap items-center gap-2.5 min-w-0 max-w-full">
+                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+                  <label className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 shrink-0">
                     {lang === 'vi' ? 'Số lượng:' : 'Papers:'}
                   </label>
                   <select
@@ -452,7 +452,7 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                     aria-label="Number of ACL papers to sample"
                     value={sampleCount}
                     onChange={(e) => setSampleCount(Number(e.target.value))}
-                    className="h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                    className="h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 max-w-full"
                   >
                     <option value={10}>10 bài báo ACL</option>
                     <option value={12}>12 bài báo ACL</option>
@@ -461,8 +461,8 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                   </select>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300">
+                <div className="flex flex-wrap items-center gap-1.5 min-w-0 max-w-full">
+                  <label className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 shrink-0">
                     {lang === 'vi' ? 'Chuẩn trích dẫn:' : 'Citation Style:'}
                   </label>
                   <select
@@ -470,7 +470,7 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                     aria-label="Target citation style for generated PDF"
                     value={style}
                     onChange={(e) => setStyle(e.target.value as 'apa' | 'ieee')}
-                    className="h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                    className="h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 w-full sm:w-auto max-w-full min-w-0 truncate"
                   >
                     <option value="apa">APA 7th — (Author, Year) ↔ References</option>
                     <option value="ieee">IEEE Numeric — [1]..[N] ↔ References</option>
@@ -482,12 +482,12 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                   data-testid="sandbox-random-acl-btn"
                   disabled={loadingSample}
                   onClick={() => void handleSampleRandomAcl()}
-                  className="h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs"
+                  className="w-full sm:w-auto h-auto min-h-9 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs whitespace-normal text-center leading-snug max-w-full"
                 >
                   {loadingSample ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                   ) : (
-                    <Shuffle className="h-4 w-4" />
+                    <Shuffle className="h-4 w-4 shrink-0" />
                   )}
                   <span>
                     {lang === 'vi'
@@ -498,16 +498,16 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
               </div>
 
               {items.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     data-testid="sandbox-auto-inject-suite-btn"
                     onClick={handleAutoInjectDefenseSuite}
-                    className="h-9 rounded-xl text-xs font-mono font-semibold border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-100"
+                    className="w-full sm:w-auto h-auto min-h-9 py-2 rounded-xl text-xs font-mono font-semibold border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-100 whitespace-normal text-left leading-snug max-w-full"
                   >
-                    <Wand2 className="h-3.5 w-3.5 text-amber-600" />
+                    <Wand2 className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                     <span>
                       {lang === 'vi'
                         ? 'Gài Tự động Bộ Lỗi Mẫu Hội Đồng (Layer 1 + Layer 2)'
@@ -759,19 +759,19 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2.5 min-w-0 max-w-full">
                     <Button
                       type="button"
                       variant="outline"
                       data-testid="sandbox-download-pdf-btn"
                       disabled={downloadingPdf || generatingPdf}
                       onClick={() => void handleDownloadPdfOnly()}
-                      className="h-10 rounded-xl text-xs font-mono font-semibold border-slate-300 dark:border-slate-700"
+                      className="w-full sm:w-auto h-auto min-h-10 py-2.5 px-3.5 rounded-xl text-xs font-mono font-semibold border-slate-300 dark:border-slate-700 whitespace-normal text-center leading-snug max-w-full"
                     >
                       {downloadingPdf ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                       ) : (
-                        <Download className="h-4 w-4 text-indigo-600" />
+                        <Download className="h-4 w-4 text-indigo-600 shrink-0" />
                       )}
                       <span>
                         {lang === 'vi'
@@ -786,12 +786,12 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                       data-testid="sandbox-verify-submit-btn"
                       disabled={verifyingInstant || generatingPdf}
                       onClick={() => void handleInstantVerify()}
-                      className="h-10 rounded-xl text-xs font-mono font-semibold border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300"
+                      className="w-full sm:w-auto h-auto min-h-10 py-2.5 px-3.5 rounded-xl text-xs font-mono font-semibold border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 whitespace-normal text-center leading-snug max-w-full"
                     >
                       {verifyingInstant ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                       ) : (
-                        <Zap className="h-4 w-4 text-amber-500" />
+                        <Zap className="h-4 w-4 text-amber-500 shrink-0" />
                       )}
                       <span>
                         {lang === 'vi' ? 'Kiểm tra Nhanh 3 Giây' : 'Instant 3s Check'}
@@ -803,12 +803,12 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                       data-testid="sandbox-generate-verify-pdf-btn"
                       disabled={generatingPdf}
                       onClick={() => void handleGenerateAndVerifyPdf()}
-                      className="h-10 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-600/20"
+                      className="w-full sm:w-auto h-auto min-h-10 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 whitespace-normal text-center leading-snug max-w-full"
                     >
                       {generatingPdf ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                       ) : (
-                        <FileText className="h-4 w-4" />
+                        <FileText className="h-4 w-4 shrink-0" />
                       )}
                       <span>
                         {lang === 'vi'
@@ -957,10 +957,10 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                         Rules: {(r.triggered_rules || []).join(', ') || 'R01'}
                       </span>
                     </div>
-                    <p className="font-mono text-[11px] text-slate-800 dark:text-slate-200">
+                    <p className="font-mono text-[11px] text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]">
                       {r.citation_raw}
                     </p>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 break-words [overflow-wrap:anywhere]">
                       {r.reasoning} {r.mapping_note ? ` • ${r.mapping_note}` : ''}
                     </p>
                   </div>
