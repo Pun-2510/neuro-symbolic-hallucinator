@@ -281,3 +281,31 @@ class TestPlattCalibratorAndHybridMLScorer:
         assert loaded.weights == scorer.weights
         assert loaded.platt.a == pytest.approx(scorer.platt.a)
         assert loaded.platt.b == pytest.approx(scorer.platt.b)
+
+    def test_default_120k_benchmark_artifacts_and_leakage_audit(self) -> None:
+        import json
+        from integrity_checker.logic.calibration import DEFAULT_WEIGHTS_PATH
+
+        scorer = HybridMLScorer.load_default()
+        meta = scorer.training_metadata
+        assert meta["total_samples"] == 120_000
+        assert meta["train_samples"] == 84_000
+        assert meta["val_samples"] == 18_000
+        assert meta["test_samples"] == 18_000
+        assert meta["test_ece_after_platt"] < meta["test_ece_before_platt"]
+        assert meta["test_brier_after_platt"] < meta["test_brier_before_platt"]
+
+        report_path = DEFAULT_WEIGHTS_PATH.parent / "neuro_symbolic_benchmark_report.json"
+        with open(report_path, encoding="utf-8") as f:
+            report = json.load(f)
+
+        ds = report["dataset_summary"]
+        assert ds["total_samples"] == 120_000
+        assert ds["splits"] == {"train": 84_000, "val": 18_000, "test": 18_000}
+        audit = ds["leakage_audit"]
+        assert audit["zero_leakage_verified"] is True
+        assert audit["train_val_overlap"] == 0
+        assert audit["train_test_overlap"] == 0
+        assert audit["val_test_overlap"] == 0
+        assert "bootstrap_95_ci" in report["neuro_symbolic_platt_calibrated"]
+

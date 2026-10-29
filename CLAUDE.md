@@ -22,7 +22,7 @@ essay-integrity-checker/
 │   ├── config.py             # Centralized Pydantic settings (YAML + environment variables)
 │   ├── database/             # Local SQLite + FTS5 paper knowledge base (127K+ ACL & scholarly papers)
 │   ├── db/                   # Application database (SQLAlchemy: Users, Classes, Essays, Citations, Verdicts, AuditLogs)
-│   ├── evaluation/           # Metrics, Baselines (B0–B4), 2,500-sample Benchmark & Ablation Runner
+│   ├── evaluation/           # Metrics, Baselines (B0–B5), 120,000-sample Paper-Disjoint Benchmark & Ablation Runner
 │   ├── export/               # Multi-format report exporters (JSON, CSV, PDF, DOCX, Class CSV/ZIP)
 │   ├── extraction/           # Hybrid PDF parsing (PyMuPDF + GROBID TEI XML + 11 modular regex styles)
 │   ├── linking/              # Bidirectional in-text <-> bibliography CitationLinker (7 link statuses)
