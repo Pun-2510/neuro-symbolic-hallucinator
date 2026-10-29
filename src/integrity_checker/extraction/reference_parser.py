@@ -1213,7 +1213,14 @@ class ReferenceListParser:
             ):
                 break
             # Skip standalone page numbers or PDF font encoding bullet '®'
+            # (unless the previous line ended mid-DOI/URL, e.g. "...2020.acl-main.\n740")
             if re.fullmatch(r"(?:\d{1,4}|\[\d{3,4}\]|®)", stripped):
+                if stripped.isdigit() and cleaned and re.search(
+                    r"(?:https?://|\b10\.\d{4,9}/)\S*[./\-_]$",
+                    cleaned[-1].strip(),
+                    re.IGNORECASE,
+                ):
+                    cleaned.append(stripped)
                 continue
             # Skip bibliography header lines
             if _BIB_HEADER_LINE_RE.match(stripped):

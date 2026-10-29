@@ -165,9 +165,9 @@ def _is_date_only_citation(extracted_text: str) -> bool:
         return True
 
     # Non-citation range, chemistry/math label, or biblical chapter parenthetical:
-    # "(Years 1–3)", "(ages 18-25)", "(Acts 18)", "(Scope 1, 2, 3)", "(Scheme 1)", "(Compound 2)"
+    # "(Years 1–3)", "(ages 18-25)", "(Acts 18)", "(Scope 1, 2, 3)", "(Scheme 1)", "(Compound 2)", "(Round 1)"
     if re.match(
-        r"^(?:years?|ages?|grades?|phases?|steps?|stages?|weeks?|months?|days?|chapters?|subchapters?|sections?|scopes?|parts?|clauses?|tables?|figures?|schemes?|charts?|entries|entry|runs?|compounds?|reactions?|pathways?|models?|equations?|eqs?\.?|experiments?|trials?|cases?|groups?|types?|classes|levels?|rules?|theorems?|lemmas?|propositions?|corollaries|definitions?|examples?|algorithms?|listings?|appendices|appendix|supplements?|notes?|acts|genesis|exodus|psalms?|matthew|mark|luke|john|romans|corinthians)\s+\d",
+        r"^(?:years?|ages?|grades?|phases?|steps?|stages?|rounds?|cycles?|iterations?|passes?|tiers?|splits?|clusters?|topics?|tasks?|items?|points?|nodes?|edges?|blocks?|heads?|prompts?|queries|query|samples?|users?|comments?|labels?|versions?|drafts?|folds?|epochs?|batches?|layers?|seeds?|scores?|ranks?|rates?|ratios?|indices|index|values?|limits?|codes?|errors?|ports?|weeks?|months?|days?|chapters?|subchapters?|sections?|scopes?|parts?|clauses?|tables?|figures?|figs?\.?|schemes?|charts?|entries|entry|runs?|compounds?|reactions?|pathways?|models?|equations?|eqs?\.?|experiments?|trials?|cases?|groups?|types?|classes|levels?|rules?|theorems?|lemmas?|propositions?|corollaries|definitions?|examples?|algorithms?|listings?|appendices|appendix|supplements?|notes?|acts|genesis|exodus|psalms?|matthew|mark|luke|john|romans|corinthians)\s+\d",
         inner,
         re.IGNORECASE,
     ):
@@ -427,10 +427,10 @@ class CitationExtractor:
                     continue
                 seen_spans.add(span_key)
 
-                # Bug fix 1: Filter out IEEE [N] reference list markers and array/year/interval brackets ([0], [0, 1], [2020])
+                # Bug fix 1: Filter out IEEE [N] reference list markers and array/year/interval/ORCID brackets ([0], [0, 1], [2020], [0000-0000-0000-0000])
                 # "[4] Xiao, Y., ..." at start of line is a reference list entry, not in-text citation
                 if citation_type == CitationType.NUMERIC or raw.startswith("["):
-                    if re.fullmatch(r"\[\s*(?:0|(?:18|19|20)\d{2})\s*\]", raw) or re.match(r"^\[\s*0\b", raw):
+                    if re.fullmatch(r"\[\s*(?:0|(?:18|19|20)\d{2})\s*\]", raw) or re.match(r"^\[\s*0", raw):
                         continue
                     if (
                         citation_type == CitationType.NUMERIC

@@ -494,6 +494,45 @@ def get_essay_status(
     }
 
 
+@router.post("/{essay_id}/reanalyze")
+async def reanalyze_essay(
+    essay_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    pipeline: IntegrityPipeline = Depends(get_pipeline),
+) -> dict[str, Any]:
+    """Re-run the verification pipeline in-place for an existing essay if its file is persisted on disk."""
+    repo = Repository(db)
+    essay = repo.get_essay(essay_id)
+    if not essay:
+        raise HTTPException(status_code=404, detail="Essay not found")
+
+    if not repo.can_user_access_essay(current_user, essay):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    ext = ".docx" if str(essay.filename or "").lower().endswith(".docx") else ".pdf"
+    persisted_path = _get_persisted_upload_path(essay_id, ext=ext)
+    if not persisted_path.is_file():
+        alt_ext = ".pdf" if ext == ".docx" else ".docx"
+        alt_path = _get_persisted_upload_path(essay_id, ext=alt_ext)
+        if alt_path.is_file():
+            persisted_path = alt_path
+        else:
+            raise HTTPException(status_code=404, detail="Persisted document file not found on disk")
+
+    tracker = get_tracker()
+    tracker.init(essay_id, is_retry=True)
+    await asyncio.to_thread(
+        _run_pipeline_task,
+        essay.id,
+        str(persisted_path),
+        essay.user_id or current_user.id,
+        pipeline,
+        False,
+    )
+    return {"status": "completed", "essay_id": essay.id}
+
+
 def _serialize_essay_summary(
     repo: Repository,
     e: Any,
@@ -1618,6 +1657,35 @@ async def verify_sandbox_citations_instant(
                     local_hit = orch._lookup_local_db(c)
                     if isinstance(local_hit, SourceResult) and local_hit.candidates:
                         return local_hit
+                    if c.title and hasattr(orch._local_db, "search_by_title"):
+                        from integrity_checker.models.source import SourceCandidate
+                        from integrity_checker.retrieval.utils import title_similarity
+
+                        title_hits = orch._local_db.search_by_title(c.title, limit=3) or []
+                        for p in title_hits:
+                            if p.title and title_similarity(c.title, p.title) >= 0.92:
+                                cand = SourceCandidate(
+                                    source_name="local_db",
+                                    found=True,
+                                    doi=p.doi,
+                                    title=p.title,
+                                    authors=p.authors,
+                                    year=str(p.year) if p.year else None,
+                                    venue=p.venue,
+                                    url=(p.external_ids or {}).get("url") if p.external_ids else None,
+                                    abstract=p.abstract,
+                                    external_ids=p.external_ids or {},
+                                    confidence=0.90,
+                                    cached=True,
+                                    paper_id=p.id,
+                                )
+                                return SourceResult(
+                                    citation_raw=c.raw_text,
+                                    candidates=[cand],
+                                    sources_queried=["local_db"],
+                                    sources_succeeded=["local_db"],
+                                    sources_failed={},
+                                )
                 except Exception:
                     pass
             try:

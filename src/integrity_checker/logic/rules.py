@@ -495,11 +495,29 @@ class SymbolicRules:
         author_sim = features.author_jaccard
         year_dist = features.year_distance
 
+        is_arxiv_vs_pub_doi = bool(
+            citation_doi
+            and best.doi
+            and (
+                "10.48550/arxiv" in citation_doi.lower()
+                or "10.48550/arxiv" in best.doi.lower()
+            )
+            and features.title_sim_fuzzy >= 0.90
+        )
+
         # Good match: fuzzy title >= 0.90, title >= 0.95 AND (author >= 0.5 or exact DOI/arXiv + author >= 0.35) AND year match
         if (
             features.title_sim_fuzzy >= 0.90
             and title_sim >= 0.95
-            and (author_sim >= 0.5 or (features.doi_exact_match and author_sim >= 0.35))
+            and (
+                author_sim >= 0.5
+                or ((features.doi_exact_match or is_arxiv_vs_pub_doi) and author_sim >= 0.35)
+                or (
+                    features.title_sim_fuzzy >= 0.98
+                    and author_sim >= 0.35
+                    and not (citation_doi and best.doi and not features.doi_exact_match and not is_arxiv_vs_pub_doi)
+                )
+            )
             and year_dist <= self.year_tolerance
         ):
             confidence = max(0.0, 0.75 - style_penalty)
@@ -1217,7 +1235,7 @@ class SymbolicRules:
                 or "10.48550/arxiv" in best.doi.lower()
             )
             and features.title_sim_fuzzy >= 0.85
-            and author_sim >= 0.50
+            and author_sim >= 0.35
         )
         has_doi_conflict = bool(citation_doi and best.doi and not doi_match and not is_arxiv_vs_pub_doi)
         if (

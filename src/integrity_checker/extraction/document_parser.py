@@ -407,7 +407,16 @@ class DocumentParser:
 
         # 3.3b MLA reference-guided in-text extraction (for MLA documents with page-less
         # parentheticals like "(Felson)", "(Goodreads)", or narrative "George Athas ... (260)")
-        if references and any(c.style == CitationStyle.MLA for c in body_citations):
+        mla_body_count = sum(1 for c in body_citations if c.style == CitationStyle.MLA)
+        num_body_count = sum(1 for c in body_citations if c.citation_type == CitationType.NUMERIC)
+        if (
+            references
+            and mla_body_count > 0
+            and (
+                any(r.style == CitationStyle.MLA for r in references)
+                or mla_body_count >= num_body_count
+            )
+        ):
             guided = self._extract_mla_reference_guided_citations(
                 sections, text_doc, body_citations, references
             )
@@ -1632,13 +1641,20 @@ class DocumentParser:
 
             # Fix GROBID dropping main title before bracketed section tag (e.g. "Docker [IT infrastructure]"
             # where GROBID sets title="IT infrastructure"), hallucinating Appendix code into title,
-            # or stripping compound hyphens across line breaks (e.g. "Scikitlearn" vs "Scikit-learn")
+            # stripping compound hyphens across line breaks (e.g. "Scikitlearn" vs "Scikit-learn"),
+            # or mistaking a colon-prefix acronym of the title (e.g. "UIT-VSFC: ...") for the author
             if target.title and donor.title and len(donor.title.strip()) >= 5:
                 t_clean = target.title.strip()
                 d_clean = donor.title.strip()
+                is_colon_prefix_drop = (
+                    ":" in d_clean
+                    and d_clean.lower().endswith(t_clean.lower())
+                    and len(d_clean) > len(t_clean) + 2
+                )
                 if (
                     f"[{t_clean.lower()}]" in d_clean.lower()
                     or re.search(r"',\s*'", t_clean)
+                    or is_colon_prefix_drop
                     or (
                         d_clean.count("-") > t_clean.count("-")
                         and re.sub(r"[\s\-–]+", "", t_clean.lower())
@@ -1648,6 +1664,18 @@ class DocumentParser:
                     old_t = target.title
                     target.title = donor.title
                     target.title_normalized = donor.title_normalized
+                    if is_colon_prefix_drop and donor.authors and len(donor.authors) > len(target.authors or []):
+                        old_auth_str = ", ".join(
+                            getattr(a, "raw", None) or str(a) for a in (target.authors or [])
+                        )
+                        target.authors = [
+                            getattr(a, "raw", None) or str(a) for a in donor.authors
+                        ]
+                        new_auth_str = ", ".join(target.authors)
+                        if old_auth_str and old_auth_str in (target.raw_text or ""):
+                            target.raw_text = (target.raw_text or "").replace(
+                                old_auth_str, new_auth_str, 1
+                            )
                     if old_t and old_t in (target.raw_text or ""):
                         target.raw_text = (target.raw_text or "").replace(old_t, donor.title, 1)
 
@@ -1747,6 +1775,63 @@ class DocumentParser:
                     target.raw_text = f"{target.raw_text}. {arxiv_m.group(0)}"
                 if target.url and target.url not in (target.raw_text or ""):
                     target.raw_text = f"{target.raw_text}. Retrieved from {target.url}"
+
+        # Coalesce adjacent split GROBID <biblStruct> fragments when GROBID split a
+        # single bibliography entry across two consecutive items (e.g., author+year
+        # header in b8 and colon-prefixed title+DOI in b9, or author+title in b20
+        # and trailing publisher+DOI in b21).
+        if len(grobid_refs) >= 2 and len(grobid_refs) > len(regex_refs) >= 5:
+            coalesced_grobid: list[Citation] = []
+            gi = 0
+            while gi < len(grobid_refs):
+                cur = grobid_refs[gi]
+                if gi + 1 < len(grobid_refs):
+                    nxt = grobid_refs[gi + 1]
+                    cur_has_title = bool((cur.title or "").strip())
+                    nxt_has_title = bool((nxt.title or "").strip())
+                    # Split Pattern A: cur has authors+year only (no title/DOI/URL), nxt has title + same year
+                    if (
+                        not cur_has_title
+                        and not cur.doi
+                        and not cur.url
+                        and cur.authors
+                        and cur.year
+                        and nxt_has_title
+                        and (not nxt.year or nxt.year == cur.year)
+                        and len(nxt.authors or []) <= 1
+                    ):
+                        nxt.authors = list(cur.authors)
+                        nxt.year = nxt.year or cur.year
+                        auth_str = ", ".join(str(a) for a in nxt.authors)
+                        nxt.raw_text = f"{auth_str} ({nxt.year}) {nxt.title}" + (
+                            f" DOI: {nxt.doi}" if nxt.doi else ""
+                        )
+                        coalesced_grobid.append(nxt)
+                        gi += 2
+                        continue
+                    # Split Pattern B: cur has authors+title (no DOI), nxt has DOI/URL only (no title, no year)
+                    if (
+                        cur_has_title
+                        and cur.authors
+                        and not cur.doi
+                        and not nxt_has_title
+                        and not nxt.year
+                        and (nxt.doi or nxt.url)
+                    ):
+                        cur.doi = nxt.doi
+                        cur.url = cur.url or nxt.url
+                        cur.raw_text = f"{(cur.raw_text or '').rstrip('. ')}. {(nxt.raw_text or '').strip()}"
+                        coalesced_grobid.append(cur)
+                        gi += 2
+                        continue
+                coalesced_grobid.append(cur)
+                gi += 1
+
+            if len(coalesced_grobid) < len(grobid_refs):
+                for new_idx, g_cit in enumerate(coalesced_grobid, start=1):
+                    if not re.match(r"^\s*\[\s*\d+\s*\]", g_cit.raw_text or ""):
+                        g_cit.numeric_index = new_idx
+                grobid_refs = coalesced_grobid
 
         merged: list[Citation] = []
 

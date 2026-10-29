@@ -47,11 +47,15 @@ _MLA_INTEXT_PARENTHETICAL_PAGE = CompiledPattern.create(
     name="mla_intext_parenthetical_page",
     pattern=(
         r"\((?!(?:Table|Figure|Fig|Section|Chapter|Part|Page|Eq|Equation|Appendix|"
-        r"Stage|Step|Phase|Level|Grade|Group|Type|Class|Model|Case|Test|Rule|Item|"
+        r"Stage|Step|Phase|Round|Cycle|Iteration|Pass|Tier|Split|Cluster|Topic|Task|"
+        r"Level|Grade|Group|Type|Class|Model|Case|Test|Rule|Item|Point|Edge|Head|"
+        r"Prompt|Query|Sample|User|Comment|Label|Draft|Scheme|Chart|Compound|Reaction|"
+        r"Pathway|Experiment|Theorem|Lemma|Proposition|Corollary|Definition|Example|"
+        r"Algorithm|Listing|Supplement|Note|Clause|Scope|"
         r"Line|Row|Col|Column|Version|Ver|Vol|No|Issue|Series|Set|Run|Trial|Block|"
         r"Layer|Node|Fold|Epoch|Batch|Seed|Score|Rank|Rate|Ratio|Index|Value|Limit|"
         r"Code|Error|Port|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|"
-        r"January|February|March|April|June|July|August|September|October|November|December)\b)"
+        r"January|February|March|April|June|July|August|September|October|November|December)s?\b)"
         r"(?:"
         r"([A-ZÀ-Ý][a-zA-Zà-ÿ'\u2019]{2,}(?:\s+(?:III|II|IV|Jr\.?|Sr\.?))?"
         r"(?:\s+(?:and|&|và)\s+[A-ZÀ-Ý][a-zA-Zà-ÿ'\u2019]{2,}|\s+et\s+al\.)?)"

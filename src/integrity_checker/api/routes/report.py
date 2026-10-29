@@ -651,8 +651,24 @@ def _json_response(
     repo: Repository | None = None,
     compare_with: int | None = None,
 ) -> StreamingResponse:
+    import re as _re
+
     settings = get_settings()
     citations = citations or []
+
+    # Filter legacy false-positive noise tokens (e.g. "(Round 1)", "[0000-0000-0000-0000]")
+    _legacy_noise_intext_re = _re.compile(
+        r"^(?:\(\s*(?:Round|Cycle|Iteration|Pass|Tier|Split|Cluster|Stage|Step|Phase|Part|Level|Group|Fold|Batch|Epoch|Layer|Block|Module|Section|Table|Fig(?:ure)?|Appendix|Model|Method|Case|Type|Class|Grade|Rank|Score|Item|Point|Rule|Task|Topic|Sample|User|Comment|Label|Prompt|Query)s?\s+\d+\s*\)|\[\s*0[\d\s,\-\u2013\u2014]*\])$",
+        _re.IGNORECASE,
+    )
+    citations = [
+        c
+        for c in citations
+        if not (
+            getattr(c, "citation_type", None) in {"in_text", "numeric"}
+            and _legacy_noise_intext_re.match((getattr(c, "raw_text", "") or "").strip())
+        )
+    ]
 
     # Build linking summary
     linking_summary = {
@@ -667,14 +683,15 @@ def _json_response(
     }
     verdict_list = []
     citation_types = {c.raw_text: c.citation_type for c in citations}
-    for v in verdicts:
-        status = v.mapping_status or "matched"
-        linking_summary[status] = linking_summary.get(status, 0) + 1
     for c in citations:
         if getattr(c, "citation_type", None) in {"in_text", "numeric"}:
             c_status = getattr(c, "mapping_status", None)
             if c_status in ("missing_reference", "in_text_mismatch", "ambiguous_mapping"):
                 linking_summary[c_status] = linking_summary.get(c_status, 0) + 1
+
+    for v in verdicts:
+        status = v.mapping_status or "matched"
+        linking_summary[status] = linking_summary.get(status, 0) + 1
 
         # Reconstruct matched_sources from the features JSON blob (written there by
         # repository.add_verdicts).  If absent (pre-fix rows), fall back to an
