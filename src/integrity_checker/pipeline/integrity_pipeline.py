@@ -525,8 +525,9 @@ class IntegrityPipeline:
                 _emit("done", 7, message="Loaded from cache")
                 return cached_report
 
-        # 1. Parse PDF
-        _emit("parsing", 0, message="Parsing PDF...")
+        # 1. Parse PDF / DOCX
+        _doc_label = "DOCX" if str(pdf_path).lower().endswith(".docx") else "PDF"
+        _emit("parsing", 0, message=f"Parsing {_doc_label} structure...")
         num_pages = 0
         in_text_citations: list[Citation] = []
         ref_citations: list[Citation] = []
@@ -721,11 +722,40 @@ class IntegrityPipeline:
                 _src_status[name] = f"failed:{_src_fails[name]}"
             else:
                 _src_status[name] = "pending"
+        _source_display_names = {
+            "local_db": "ACL FTS5",
+            "known_papers": "Seminal",
+            "vn_legal": "VN Legal",
+            "crossref": "Crossref",
+            "openalex": "OpenAlex",
+            "datacite": "DataCite",
+            "doaj": "DOAJ",
+            "openaire_hal": "OpenAIRE/HAL",
+            "ncbi_biorxiv": "NCBI/bioRxiv",
+            "dblp": "DBLP",
+            "arxiv": "arXiv",
+            "openlibrary": "OpenLibrary",
+            "europepmc": "Europe PMC",
+            "huggingface": "Hugging Face",
+            "tech_standard": "RFC/PyPI",
+            "doi_ra": "DOI RA",
+            "semantic_scholar": "Semantic Scholar",
+            "core": "CORE",
+            "serpapi": "Google Scholar",
+        }
+        _total_hits = sum(_src_hits.values())
+        _hit_parts = [
+            f"{_source_display_names.get(k, k)}: {v}"
+            for k, v in sorted(_src_hits.items(), key=lambda kv: (-kv[1], kv[0]))
+            if v > 0
+        ]
+        _joined_hits = " · ".join(_hit_parts)
+        _hit_breakdown = f" ({_joined_hits})" if _joined_hits else ""
         _emit(
             "comparing",
             5,
             sources_queried=_src_status,
-            message=f"Compared {_src_hits} source hits across {len(_src_status)} databases",
+            message=f"Compared {_total_hits} source hits across {len(_src_status)} databases{_hit_breakdown}",
         )
 
         verdicts: list[CitationVerdict] = []

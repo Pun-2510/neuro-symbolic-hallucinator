@@ -271,3 +271,82 @@ class TestPipelineWithDocumentParser:
 
         pipeline = IntegrityPipeline(use_document_parser=False)
         assert pipeline._use_document_parser is False
+
+    @pytest.mark.asyncio
+    async def test_pipeline_comparing_progress_formats_source_hits_cleanly(self):
+        """comparing step message formats total hits and human-readable source labels without raw dict."""
+        ref1 = _make_citation(
+            "Smith, J. (2020). Study one.", title="Study one", year="2020",
+            citation_type=CitationType.REFERENCE_LIST,
+        )
+        ref2 = _make_citation(
+            "Doe, A. (2021). Study two.", title="Study two", year="2021",
+            citation_type=CitationType.REFERENCE_LIST,
+        )
+        parsed = ParsedDocument(
+            document=Document(file_path="/fake/manuscript.docx", num_pages=4, pages=[]),
+            body_citations=[],
+            references=[ref1, ref2],
+            appendix_citations=[],
+            sections=[],
+            parser_warnings=[],
+        )
+        mock_doc_parser = MagicMock()
+        mock_doc_parser.parse.return_value = parsed
+
+        mock_orchestrator = MagicMock()
+
+        async def mock_retrieve(citation):
+            from integrity_checker.models.source import SourceCandidate, SourceResult
+            return SourceResult(
+                citation_raw=citation.raw_text,
+                candidates=[SourceCandidate(source_name="local_db", found=True)],
+                sources_queried=["local_db", "openalex"],
+                sources_succeeded=["local_db", "openalex"] if "Smith" in citation.raw_text else ["local_db"],
+                sources_failed={},
+            )
+
+        mock_orchestrator.retrieve = mock_retrieve
+
+        mock_checker = MagicMock()
+        mock_verdict = MagicMock()
+        mock_verdict.label.value = "verified"
+        mock_verdict.confidence = 0.95
+        mock_verdict.citation = ref1
+        mock_verdict.features.title_sim_fuzzy = 1.0
+        mock_verdict.features.title_sim_semantic = 1.0
+        mock_verdict.features.author_jaccard = 1.0
+        mock_verdict.features.year_distance = 0
+        mock_verdict.features.doi_exact_match = True
+        mock_verdict.features.source_consensus = 2
+        mock_verdict.reasoning = "verified"
+        mock_verdict.triggered_rules = ["R01"]
+        mock_verdict.mismatched_fields = []
+        mock_checker.check.return_value = mock_verdict
+
+        from integrity_checker.logic.cis import CISCalculator
+        pipeline = IntegrityPipeline(
+            document_parser=mock_doc_parser,
+            use_document_parser=True,
+            orchestrator=mock_orchestrator,
+            checker=mock_checker,
+            cis_calc=CISCalculator(),
+        )
+
+        emitted: list[tuple[str, int, dict]] = []
+        await pipeline.run_async(
+            "/fake/manuscript.docx",
+            essay_id=99,
+            progress_callback=lambda step, idx, stats: emitted.append((step, idx, stats)),
+        )
+
+        parsing_events = [e for e in emitted if e[0] == "parsing"]
+        assert parsing_events
+        assert parsing_events[0][2]["message"] == "Parsing DOCX structure..."
+
+        comparing_events = [e for e in emitted if e[0] == "comparing"]
+        assert comparing_events
+        msg = comparing_events[0][2]["message"]
+        assert "{" not in msg
+        assert "'local_db'" not in msg
+        assert msg == "Compared 3 source hits across 2 databases (ACL FTS5: 2 · OpenAlex: 1)"

@@ -2139,8 +2139,8 @@ export function EssayPage() {
                               onClick={() => {
                                 setLockedFeatureName(
                                   lang === 'vi'
-                                    ? 'Tập Luật Suy diễn Hình thức (23 Symbolic Rules)'
-                                    : '23 Deterministic Symbolic Rules Trace'
+                                    ? 'Tập Luật Suy diễn Hình thức (28 Symbolic Rules)'
+                                    : '28 Deterministic Symbolic Rules Trace'
                                 );
                                 setUpgradeOpen(true);
                               }}
@@ -2157,8 +2157,8 @@ export function EssayPage() {
                               onClick={() => {
                                 setLockedFeatureName(
                                   lang === 'vi'
-                                    ? 'Đối chiếu Liên hợp 8 CSDL Học thuật (Federated Source Retrieval)'
-                                    : 'Federated 8-Registry Source Retrieval'
+                                    ? 'Đối chiếu Liên hợp 15+ CSDL Học thuật (Federated Source Retrieval)'
+                                    : 'Federated 15+ Registry Source Retrieval'
                                 );
                                 setUpgradeOpen(true);
                               }}

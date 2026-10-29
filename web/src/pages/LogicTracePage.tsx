@@ -183,7 +183,7 @@ function buildTraceSteps(verdict: Verdict, lang: 'vi' | 'en'): TraceStep[] {
             ? 'Không phát hiện cảnh báo quy tắc bổ sung.'
             : 'No additional warnings were raised.',
       status: verdict.triggered_rules.length > 0 ? 'completed' : 'pending',
-      tag: 'SYMBOLIC RULES R01–R12',
+      tag: '28 SYMBOLIC RULES',
     },
     {
       id: 'verdict',

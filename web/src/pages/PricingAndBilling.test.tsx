@@ -11,6 +11,7 @@ import { PricingPage } from './PricingPage';
 import { StripeDemoCheckoutPage } from './StripeDemoCheckoutPage';
 import { BillingSuccessPage } from './BillingSuccessPage';
 import { UploadPage } from './UploadPage';
+import { ProcessingPage } from './ProcessingPage';
 import { SettingsPage } from './SettingsPage';
 import { EssayHeader } from './essay/EssayHeader';
 import { EssayActionBar } from './essay/EssayActionBar';
@@ -618,5 +619,51 @@ describe('Premium Subscription, Pricing, Stripe Checkout & Paywall UI/UX Flows',
 
     expect(screen.getByTestId('sidebar-plan-badge').textContent).toBe('PRO');
     expect(screen.getByTestId('sidebar-quota-text').textContent).toBe('2 / 50');
+  });
+
+  it('ProcessingPage renders 15+ source retrieval tiles, 28 symbolic rules label, and clean telemetry message for Student/Ultra users', async () => {
+    vi.spyOn(api, 'getEssayStatus').mockResolvedValue({
+      status: 'processing',
+      step: 'comparing',
+      step_index: 5,
+      total_steps: 8,
+      message: 'Compared 42 source hits across 5 databases (ACL FTS5: 35 · OpenAlex: 3 · Seminal: 2 · arXiv: 1 · DBLP: 1)',
+      citations_found: 85,
+      references_found: 40,
+      linked: 85,
+      sources_queried: {
+        local_db: 'ok',
+        openalex: 'ok',
+        known_papers: 'ok',
+        arxiv: 'ok',
+        dblp: 'ok',
+      },
+      elapsed_seconds: 12.4,
+      finished_at: null,
+      error: null,
+    });
+
+    renderWithAuth(
+      <Routes>
+        <Route path="/verification/processing/:id" element={<ProcessingPage />} />
+      </Routes>,
+      {
+        user: createMockUser({ plan_tier: 'ultra', role: 'user' }),
+        initialEntries: ['/verification/processing/25'],
+      },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('federated-source-retrieval-card')).toBeDefined();
+    });
+
+    expect(
+      screen.getByText(/Compared 42 source hits across 5 databases/i),
+    ).toBeDefined();
+    expect(screen.getByText('15+ INDEXES')).toBeDefined();
+    expect(screen.getByText('28 SYMBOLIC RULES')).toBeDefined();
+    expect(screen.getByText('Local ACL FTS5 (128K+)')).toBeDefined();
+    expect(screen.getByText('Seminal Whitelist')).toBeDefined();
+    expect(document.body.textContent).not.toContain('интерактив');
   });
 });

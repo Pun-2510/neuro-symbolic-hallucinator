@@ -399,8 +399,8 @@ export function ClassDetailPage() {
               <div className="p-4 rounded-xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800">
                 <p className="text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5">
                   {lang === 'vi'
-                    ? 'Luật Symbolic (R01–R12) Kích hoạt Nhiều nhất'
-                    : 'Most Triggered Symbolic Rules (R01–R12)'}
+                    ? 'Luật Symbolic Kích hoạt Nhiều nhất'
+                    : 'Most Triggered Symbolic Rules'}
                 </p>
                 {analytics.top_triggered_rules.length === 0 ? (
                   <p className="text-xs font-mono text-slate-400">

@@ -540,10 +540,9 @@ export function UploadPage() {
           {/* Action Bar */}
           <div className="mt-6 pt-5 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-xs font-mono text-slate-500 dark:text-slate-400">
-              {!isUser &&
-                (lang === 'vi'
-                  ? 'Pipeline: Bóc tách PDF → 7 CSDL Học thuật → Suy diễn Luật R01–R12'
-                  : 'Pipeline: PDF Extraction → 7 Scholarly Indexes → Symbolic Rules R01–R12')}
+              {lang === 'vi'
+                ? 'Pipeline: Bóc tách PDF/DOCX → 15+ CSDL Học thuật → 28 Luật Neuro-Symbolic'
+                : 'Pipeline: PDF/DOCX Extraction → 15+ Scholarly Indexes → 28 Symbolic Rules'}
             </div>
 
             <Button
