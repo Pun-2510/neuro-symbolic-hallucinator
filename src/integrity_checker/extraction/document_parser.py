@@ -1709,7 +1709,8 @@ class DocumentParser:
                     r"^\s*\[\s*[A-ZÀ-Ý][A-Za-zÀ-ÿ0-9+\-]{1,10}\d{2}[a-z]?\s*\]",
                     target.raw_text or "",
                 ):
-                    target.raw_text = f"[{re.sub(r'\\s+', '', alpha_m.group(1))}] {target.raw_text}"
+                    alpha_label = re.sub(r"\s+", "", alpha_m.group(1))
+                    target.raw_text = f"[{alpha_label}] {target.raw_text}"
             if donor.raw_text:
                 arxiv_m = re.search(
                     r"\barXiv\s*:\s*\d{4}\.\d{4,5}(?:v\d+)?\b",
