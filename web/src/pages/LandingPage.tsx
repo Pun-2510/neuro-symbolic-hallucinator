@@ -413,7 +413,7 @@ function RevealOnScroll({
     <div
       ref={ref}
       style={{ transitionDelay: `${delay}ms` }}
-      className={`transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform ${
+      className={`min-w-0 max-w-full transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform ${
         visible
           ? 'opacity-100 translate-y-0 scale-100'
           : 'opacity-0 translate-y-6 scale-[0.985]'
@@ -436,7 +436,7 @@ export function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 text-slate-900 dark:text-slate-50 selection:bg-indigo-500/20 selection:text-indigo-600 dark:selection:text-indigo-300">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50/60 dark:bg-slate-950 text-slate-900 dark:text-slate-50 selection:bg-indigo-500/20 selection:text-indigo-600 dark:selection:text-indigo-300">
       <LandingHeader
         lang={lang}
         onToggleLanguage={toggleLanguage}
@@ -1139,7 +1139,7 @@ function InteractiveInspectorSection({ lang }: { lang: Lang }) {
             {/* Split-Pane Debugger Body */}
             <div className="grid lg:grid-cols-12">
               {/* Left Pane: Extracted Citations Queue (5 cols) */}
-              <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/50 p-4 sm:p-5 flex flex-col justify-between">
+              <div className="lg:col-span-5 min-w-0 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/50 p-4 sm:p-5 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-mono uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">
@@ -1248,12 +1248,12 @@ function InteractiveInspectorSection({ lang }: { lang: Lang }) {
               </div>
 
               {/* Right Pane: Reference Inspector & Symbolic Trace (7 cols) */}
-              <div className="lg:col-span-7 p-4 sm:p-6 bg-white dark:bg-slate-950 flex flex-col justify-between">
+              <div className="lg:col-span-7 min-w-0 p-4 sm:p-6 bg-white dark:bg-slate-950 flex flex-col justify-between">
                 <div key={activeCitation.id} className="animate-debugger-switch">
                   {/* Inspector Header */}
                   <div className="flex flex-wrap items-start justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
                         <span className="font-mono text-xs text-slate-400">
                           INSPECTING REFERENCE
                         </span>
@@ -1264,12 +1264,12 @@ function InteractiveInspectorSection({ lang }: { lang: Lang }) {
                           · Confidence {activeCitation.confidence}%
                         </span>
                       </div>
-                      <h3 className="font-display text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                      <h3 className="font-display text-lg sm:text-xl font-bold text-slate-900 dark:text-white break-words">
                         {activeCitation.citedMeta.title}
                       </h3>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={`verdict-badge ${activeCitation.verdictBadgeClass} text-xs px-3 py-1 font-mono`}
                       >
@@ -1324,16 +1324,16 @@ function InteractiveInspectorSection({ lang }: { lang: Lang }) {
 
                   {/* Inspector Tabs: Metadata Diff | Symbolic Rules | Federated Sources */}
                   <Tabs defaultValue="diff" className="w-full">
-                    <TabsList className="w-full justify-start bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-auto flex-wrap sm:flex-nowrap gap-1">
-                      <TabsTrigger value="diff" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
+                    <TabsList className="grid grid-cols-1 sm:grid-cols-3 w-full bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-auto gap-1">
+                      <TabsTrigger value="diff" className="w-full text-xs font-mono py-2 sm:py-1.5 px-2.5">
                         {lang === 'vi' ? '1. Đối chiếu Metadata' : '1. Metadata Diff'}
                       </TabsTrigger>
-                      <TabsTrigger value="rules" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
+                      <TabsTrigger value="rules" className="w-full text-xs font-mono py-2 sm:py-1.5 px-2.5">
                         {lang === 'vi'
                           ? `2. Luật Suy diễn (${activeCitation.rules.length})`
                           : `2. Symbolic Rules (${activeCitation.rules.length})`}
                       </TabsTrigger>
-                      <TabsTrigger value="sources" className="flex-1 text-[11px] sm:text-xs font-mono py-1.5 px-2 sm:px-3 min-w-[96px]">
+                      <TabsTrigger value="sources" className="w-full text-xs font-mono py-2 sm:py-1.5 px-2.5">
                         {lang === 'vi' ? '3. Nguồn Truy hồi' : '3. Source Retrieval'}
                       </TabsTrigger>
                     </TabsList>
@@ -1412,17 +1412,17 @@ function InteractiveInspectorSection({ lang }: { lang: Lang }) {
                                   : 'bg-red-50/50 dark:bg-red-950/30 border-red-200 dark:border-red-800/70'
                             }`}
                           >
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="flex items-center gap-2">
-                                <span className="px-2 py-0.5 rounded bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold text-[11px]">
+                            <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="px-2 py-0.5 rounded bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold text-[11px] shrink-0">
                                   {rule.code}
                                 </span>
-                                <span className="font-bold text-slate-900 dark:text-white">
+                                <span className="font-bold text-slate-900 dark:text-white break-words">
                                   {rule.name}
                                 </span>
                               </div>
                               <span
-                                className={`text-[11px] font-bold uppercase ${
+                                className={`text-[11px] font-bold uppercase shrink-0 ${
                                   rule.status === 'passed'
                                     ? 'text-emerald-700 dark:text-emerald-400'
                                     : rule.status === 'warning'
@@ -1787,17 +1787,17 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
                 ].map((src) => (
                   <div
                     key={src.name}
-                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 transition-all duration-200 hover:border-indigo-300 dark:hover:border-indigo-700 hover:translate-x-1"
+                    className="flex items-center justify-between gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 transition-all duration-200 hover:border-indigo-300 dark:hover:border-indigo-700 hover:translate-x-1"
                   >
-                    <div>
-                      <p className="text-xs font-semibold text-slate-900 dark:text-white">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white break-words">
                         {src.name}
                       </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 break-words">
                         {src.meta}
                       </p>
                     </div>
-                    <span className={`source-badge ${src.badgeClass} text-[10px]`}>
+                    <span className={`source-badge ${src.badgeClass} text-[10px] shrink-0`}>
                       {src.badge}
                     </span>
                   </div>
@@ -1833,9 +1833,9 @@ function BentoArchitectureSection({ lang }: { lang: Lang }) {
 
               <CardContent className="pt-1">
                 <div className="rounded-xl bg-slate-900 dark:bg-slate-950 border border-slate-800 p-4 font-mono text-xs text-slate-300 space-y-2.5 shadow-inner">
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pb-2 border-b border-slate-800">
-                    <span>rule_engine/symbolic_verifier.py</span>
-                    <span className="inline-flex items-center gap-1.5 text-emerald-400">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 pb-2 border-b border-slate-800">
+                    <span className="truncate">rule_engine/symbolic_verifier.py</span>
+                    <span className="inline-flex items-center gap-1.5 text-emerald-400 shrink-0">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       Deterministic Evaluation
                     </span>

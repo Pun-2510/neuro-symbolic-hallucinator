@@ -211,11 +211,11 @@ export function MyClassesPage() {
                     #{String(idx + 1).padStart(2, '0')}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-display font-semibold text-base text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    <h3 className="font-display font-semibold text-base text-slate-900 dark:text-white break-words group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                       {c.name}
                     </h3>
                     {c.description && (
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 break-words">
                         {c.description}
                       </p>
                     )}

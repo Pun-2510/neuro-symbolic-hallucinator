@@ -246,7 +246,7 @@ export function ClassDetailPage() {
               )}
             </div>
 
-            <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white truncate tracking-tight">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white break-words tracking-tight">
               {cls.name}
             </h1>
             {cls.description && (
@@ -490,15 +490,15 @@ export function ClassDetailPage() {
 
       {/* Students Roster IDE Container */}
       <section className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
               <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
             </div>
-            <Separator orientation="vertical" className="h-4" />
-            <Users className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <Separator orientation="vertical" className="h-4 shrink-0" />
+            <Users className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
             <h2 className="text-sm font-display font-semibold text-slate-900 dark:text-white">
               {t('teacher.students')} ({students.length})
             </h2>
@@ -506,7 +506,7 @@ export function ClassDetailPage() {
           <Button
             size="sm"
             onClick={() => setAddOpen(true)}
-            className="gap-1.5 rounded-xl h-8 text-xs"
+            className="gap-1.5 rounded-xl h-8 text-xs shrink-0"
           >
             <UserPlus className="h-3.5 w-3.5" />
             {t('teacher.addStudent')}
@@ -554,20 +554,20 @@ export function ClassDetailPage() {
 
       {/* Submissions IDE Container */}
       <section className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
               <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
             </div>
-            <Separator orientation="vertical" className="h-4" />
-            <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <Separator orientation="vertical" className="h-4 shrink-0" />
+            <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
             <h2 className="text-sm font-display font-semibold text-slate-900 dark:text-white">
               {t('teacher.submissions')} ({essays.length})
             </h2>
           </div>
-          <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
+          <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1 shrink-0">
             <Terminal className="h-3 w-3" />
             cohort_submissions.log
           </span>

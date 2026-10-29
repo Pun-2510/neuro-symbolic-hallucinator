@@ -382,7 +382,7 @@ export function UploadPage() {
                     ? 'Nộp bài vào Lớp học / Học phần (Tùy chọn)'
                     : 'Submit to Cohort / Class (Optional)'}
                 </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   {lang === 'vi'
                     ? 'Chọn lớp đã tham gia hoặc nhập mã CITRA-XXXX từ giảng viên'
                     : 'Select an enrolled class or enter a CITRA-XXXX join code from your instructor'}
@@ -390,7 +390,7 @@ export function UploadPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto min-w-0">
               {enrolledClasses.length > 0 && (
                 <select
                   aria-label="Select class"
@@ -402,19 +402,19 @@ export function UploadPage() {
                   className="h-9 px-3 rounded-xl text-xs font-mono w-full sm:w-auto max-w-full truncate bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
                 >
                   <option value="">
-                    {lang === 'vi' ? '— Kiểm tra cá nhân (Không gán lớp) —' : '— Personal Check (No Class) —'}
+                    {lang === 'vi' ? '— Kiểm tra cá nhân —' : '— Personal Check —'}
                   </option>
                   {enrolledClasses.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} {c.join_code ? `(${c.join_code})` : ''}
+                      {c.name.length > 16 ? `${c.name.slice(0, 15)}…` : c.name} {c.join_code ? `(${c.join_code})` : ''}
                     </option>
                   ))}
                 </select>
               )}
 
               {isUser && (
-                <div className="flex items-center gap-1.5">
-                  <div className="relative">
+                <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:flex-initial min-w-0">
                     <KeyRound className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
@@ -423,7 +423,7 @@ export function UploadPage() {
                       onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
                       placeholder="CITRA-XXXX"
                       maxLength={16}
-                      className="h-9 w-32 pl-8 pr-2.5 rounded-xl text-xs font-mono uppercase bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="h-9 w-full sm:w-32 pl-8 pr-2.5 rounded-xl text-xs font-mono uppercase bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                   <Button
@@ -540,17 +540,17 @@ export function UploadPage() {
 
           {/* Action Bar */}
           <div className="mt-6 pt-5 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-xs font-mono text-slate-500 dark:text-slate-400">
+            <div className="text-xs font-mono text-slate-500 dark:text-slate-400 min-w-0">
               {lang === 'vi'
-                ? 'Pipeline: Bóc tách PDF/DOCX → 15+ CSDL Học thuật → 28 Luật Neuro-Symbolic'
-                : 'Pipeline: PDF/DOCX Extraction → 15+ Scholarly Indexes → 28 Symbolic Rules'}
+                ? 'Pipeline: Bóc tách PDF/DOCX → 28+ CSDL Học thuật → 28 Luật Neuro-Symbolic'
+                : 'Pipeline: PDF/DOCX Extraction → 28+ Scholarly Indexes → 28 Symbolic Rules'}
             </div>
 
             <Button
               size="lg"
               onClick={handleUpload}
               disabled={!file || uploading}
-              className="w-full sm:w-auto h-11 px-7 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md shadow-indigo-600/20 disabled:opacity-50 btn-shimmer"
+              className="w-full sm:w-auto shrink-0 whitespace-nowrap h-11 px-7 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md shadow-indigo-600/20 disabled:opacity-50 btn-shimmer"
             >
               {uploading ? (
                 <>

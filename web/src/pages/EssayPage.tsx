@@ -1803,7 +1803,7 @@ export function EssayPage() {
                       {activeRevisionDiff.available_revisions.map((rev) => (
                         <option key={rev.essay_id} value={rev.essay_id}>
                           #{rev.essay_id}{' '}
-                          {rev.filename.length > 32 ? `${rev.filename.slice(0, 29)}...` : rev.filename}{' '}
+                          {rev.filename.length > 18 ? `${rev.filename.slice(0, 16)}...` : rev.filename}{' '}
                           (CIS {rev.cis_score.toFixed(1)}%)
                         </option>
                       ))}
@@ -2410,24 +2410,24 @@ export function EssayPage() {
 
                     {/* Inspector Tabs: Metadata Diff (All) | Symbolic Rules, Sources & Evidence Graph (Pro/Ultra/Teacher/Admin) */}
                     <Tabs defaultValue="diff" className="w-full mt-4">
-                      <TabsList className="grid grid-cols-2 w-full bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-auto gap-1">
-                        <TabsTrigger value="diff" className="w-full text-[11px] sm:text-xs font-mono py-1.5 px-2 truncate">
+                      <TabsList className="grid grid-cols-1 sm:grid-cols-2 w-full bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-auto gap-1">
+                        <TabsTrigger value="diff" className="w-full text-xs font-mono py-2 sm:py-1.5 px-2.5 truncate">
                           {lang === 'vi' ? '1. Đối chiếu Metadata' : '1. Metadata Diff'}
                         </TabsTrigger>
                         {canViewDeepTrace ? (
                           <>
-                            <TabsTrigger value="rules" className="w-full text-[11px] sm:text-xs font-mono py-1.5 px-2 truncate">
+                            <TabsTrigger value="rules" className="w-full text-xs font-mono py-2 sm:py-1.5 px-2.5 truncate">
                               {lang === 'vi'
                                 ? `2. Luật Suy diễn (${activeItem.rules.length})`
                                 : `2. Symbolic Rules (${activeItem.rules.length})`}
                             </TabsTrigger>
-                            <TabsTrigger value="sources" className="w-full text-[11px] sm:text-xs font-mono py-1.5 px-2 truncate">
+                            <TabsTrigger value="sources" className="w-full text-xs font-mono py-2 sm:py-1.5 px-2.5 truncate">
                               {lang === 'vi' ? '3. Nguồn Truy hồi' : '3. Source Retrieval'}
                             </TabsTrigger>
                             <TabsTrigger
                               value="graph"
                               data-testid="inspector-tab-graph"
-                              className="w-full text-[11px] sm:text-xs font-mono py-1.5 px-2 gap-1 truncate"
+                              className="w-full text-xs font-mono py-2 sm:py-1.5 px-2.5 gap-1 truncate"
                             >
                               <GitBranch className="h-3 w-3 shrink-0 text-violet-500" />
                               <span className="truncate">{lang === 'vi' ? '4. Đồ thị Bằng chứng' : '4. Evidence Graph'}</span>

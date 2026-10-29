@@ -409,42 +409,42 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
         </div>
 
         {/* Mode Switcher */}
-        <div className="inline-flex items-center p-1 rounded-xl bg-slate-800/90 border border-slate-700 shrink-0 self-start md:self-auto">
+        <div className="grid grid-cols-2 sm:inline-flex w-full md:w-auto items-center p-1 rounded-xl bg-slate-800/90 border border-slate-700 gap-1 shrink-0 self-start md:self-auto">
           <button
             type="button"
             data-testid="sandbox-mode-acl-btn"
             onClick={() => setMode('acl_studio')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all ${
+            className={`w-full sm:w-auto justify-center text-center whitespace-nowrap px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-semibold transition-all ${
               mode === 'acl_studio'
                 ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-300 hover:text-white'
             }`}
           >
-            {lang === 'vi' ? '🎲 CSDL ACL → Tạo PDF' : '🎲 ACL DB → Full PDF'}
+            {lang === 'vi' ? '🎲 CSDL ACL → PDF' : '🎲 ACL DB → Full PDF'}
           </button>
           <button
             type="button"
             data-testid="sandbox-mode-raw-btn"
             onClick={() => setMode('raw_paste')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all ${
+            className={`w-full sm:w-auto justify-center text-center whitespace-nowrap px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-semibold transition-all ${
               mode === 'raw_paste'
                 ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-300 hover:text-white'
             }`}
           >
-            {lang === 'vi' ? '⚡ Dán Text / BibTeX (3s)' : '⚡ Quick Paste (3s)'}
+            {lang === 'vi' ? '⚡ Dán Nhanh (3s)' : '⚡ Quick Paste (3s)'}
           </button>
         </div>
       </div>
 
-      <div className="p-5 sm:p-6 space-y-5">
+      <div className="p-4 sm:p-6 space-y-5">
         {mode === 'acl_studio' ? (
           <>
             {/* Control Bar: Count, Style, Random Sample Button & Defense Suite Injector */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/90 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2.5 min-w-0 max-w-full">
-                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-                  <label className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 shrink-0">
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/90 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap items-stretch sm:items-center gap-2.5 w-full lg:w-auto min-w-0 max-w-full">
+                <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto min-w-0 max-w-full">
+                  <label className="w-[68px] sm:w-auto whitespace-nowrap text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 shrink-0">
                     {lang === 'vi' ? 'Số lượng:' : 'Papers:'}
                   </label>
                   <select
@@ -452,28 +452,28 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                     aria-label="Number of ACL papers to sample"
                     value={sampleCount}
                     onChange={(e) => setSampleCount(Number(e.target.value))}
-                    className="h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 max-w-full"
+                    className="h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 flex-1 sm:flex-initial min-w-0 max-w-full"
                   >
-                    <option value={10}>10 bài báo ACL</option>
-                    <option value={12}>12 bài báo ACL</option>
-                    <option value={15}>15 bài báo ACL</option>
-                    <option value={20}>20 bài báo ACL</option>
+                    <option value={10}>{lang === 'vi' ? '10 bài báo ACL' : '10 ACL Papers'}</option>
+                    <option value={12}>{lang === 'vi' ? '12 bài báo ACL' : '12 ACL Papers'}</option>
+                    <option value={15}>{lang === 'vi' ? '15 bài báo ACL' : '15 ACL Papers'}</option>
+                    <option value={20}>{lang === 'vi' ? '20 bài báo ACL' : '20 ACL Papers'}</option>
                   </select>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5 min-w-0 max-w-full">
-                  <label className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 shrink-0">
-                    {lang === 'vi' ? 'Chuẩn trích dẫn:' : 'Citation Style:'}
+                <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto min-w-0 max-w-full">
+                  <label className="w-[68px] sm:w-auto whitespace-nowrap text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 shrink-0">
+                    {lang === 'vi' ? 'Chuẩn:' : 'Style:'}
                   </label>
                   <select
                     data-testid="sandbox-acl-style-select"
                     aria-label="Target citation style for generated PDF"
                     value={style}
                     onChange={(e) => setStyle(e.target.value as 'apa' | 'ieee')}
-                    className="h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 w-full sm:w-auto max-w-full min-w-0 truncate"
+                    className="h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 flex-1 sm:flex-initial min-w-0 max-w-full"
                   >
-                    <option value="apa">APA 7th — (Author, Year) ↔ References</option>
-                    <option value="ieee">IEEE Numeric — [1]..[N] ↔ References</option>
+                    <option value="apa">APA 7th (Author-Year)</option>
+                    <option value="ieee">IEEE Numeric [1]..[N]</option>
                   </select>
                 </div>
 
@@ -482,7 +482,7 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                   data-testid="sandbox-random-acl-btn"
                   disabled={loadingSample}
                   onClick={() => void handleSampleRandomAcl()}
-                  className="w-full sm:w-auto h-auto min-h-9 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs whitespace-normal text-center leading-snug max-w-full"
+                  className="w-full sm:col-span-2 lg:w-auto h-auto min-h-9 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs whitespace-normal text-center leading-snug max-w-full"
                 >
                   {loadingSample ? (
                     <Loader2 className="h-4 w-4 animate-spin shrink-0" />
@@ -544,7 +544,7 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                     data-testid="sandbox-manuscript-title-input"
                     value={manuscriptTitle}
                     onChange={(e) => setManuscriptTitle(e.target.value)}
-                    className="flex-1 h-8 px-3 rounded-lg text-xs font-medium bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                    className="w-full sm:flex-1 h-9 px-3 rounded-lg text-xs font-medium bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
                   />
                 </div>
 
@@ -724,7 +724,7 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                           </label>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2 w-full sm:w-auto">
                           <span className="text-[11px] font-mono text-slate-500">
                             Năm In-text ghi đè (nếu muốn test lệch năm):
                           </span>
@@ -736,7 +736,7 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
                             onChange={(e) =>
                               updateItemField(idx, 'in_text_year_override', e.target.value)
                             }
-                            className="w-20 h-7 px-2 rounded-md text-xs font-mono text-center bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                            className="w-20 h-8 px-2 rounded-md text-xs font-mono text-center bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white shrink-0"
                           />
                         </div>
                       </div>

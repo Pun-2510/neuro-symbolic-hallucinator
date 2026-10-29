@@ -79,7 +79,7 @@ export function EssayHeader({
           </div>
 
           <h1
-            className="font-display text-xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate tracking-tight max-w-full"
+            className="font-display text-lg sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere] tracking-tight max-w-full"
             title={filename}
           >
             {filename}
