@@ -203,3 +203,64 @@ def test_scanned_pdf_guardrail_detection(tmp_path: Path) -> None:
     parsed = DocumentParser().parse(str(scanned_path))
     assert parsed.document.metadata["is_scanned_pdf"] is True
     assert any("SCANNED_PDF" in w for w in parsed.parser_warnings)
+
+
+def test_sandbox_instant_verify_endpoint_logic() -> None:
+    """Feature #1 (Instant 3s Verify): Verify verify_sandbox_citations_instant executes end-to-end without error."""
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock
+    from integrity_checker.api.routes.essays import verify_sandbox_citations_instant
+    from integrity_checker.models.source import SourceCandidate, SourceResult
+    from integrity_checker.pipeline.integrity_pipeline import IntegrityPipeline
+
+    fake_pipeline = MagicMock(spec=IntegrityPipeline)
+    real_checker = IntegrityPipeline().checker
+    fake_pipeline.checker = real_checker
+    fake_pipeline.orchestrator = MagicMock()
+    fake_pipeline.orchestrator.retrieve = AsyncMock(
+        return_value=SourceResult(
+            citation_raw="Vaswani, A. (2019). Attention Is All You Need.",
+            candidates=[
+                SourceCandidate(
+                    source_name="acl",
+                    found=True,
+                    title="Attention Is All You Need",
+                    authors=["Ashish Vaswani", "Noam Shazeer"],
+                    year="2017",
+                    venue="NeurIPS",
+                    doi="10.48550/arXiv.1706.03762",
+                    confidence=0.95,
+                )
+            ],
+            sources_queried=["local_db"],
+            sources_succeeded=["local_db"],
+        )
+    )
+
+    resp = asyncio.run(
+        verify_sandbox_citations_instant(
+            payload={
+                "style": "apa",
+                "items": [
+                    {
+                        "title": "Attention Is All You Need",
+                        "authors": ["Ashish Vaswani", "Noam Shazeer"],
+                        "year": "2019",
+                        "venue": "NeurIPS",
+                        "doi": "10.48550/arXiv.1706.03762",
+                        "cite_in_text": True,
+                        "include_in_references": True,
+                        "in_text_year_override": "2018",
+                    }
+                ],
+            },
+            current_user=MagicMock(id=1),
+            pipeline=fake_pipeline,
+        )
+    )
+    assert resp["total"] == 1
+    assert resp["summary"]["layer1_linking_issues"] == 1
+    assert resp["results"][0]["mapping_status"] == "in_text_mismatch"
+    assert len(resp["remediation"]["entries"]) == 1
+    assert resp["remediation"]["combined_bibtex"]
+

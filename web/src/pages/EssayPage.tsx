@@ -1736,7 +1736,7 @@ export function EssayPage() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Link
-                to="/verification/new"
+                to="/upload"
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-mono font-semibold bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition-colors"
               >
                 <ArrowUpRight className="h-4 w-4" />

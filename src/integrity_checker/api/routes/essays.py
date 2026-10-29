@@ -1544,7 +1544,7 @@ async def verify_sandbox_citations_instant(
                 citation_type=CitationType.REFERENCE_LIST,
                 style=CitationStyle.IEEE if style == "ieee" else CitationStyle.APA,
                 authors=authors_raw,
-                year=year_val,
+                year=str(year_val) if year_val is not None else None,
                 title=str(it.get("title") or "").strip() or None,
                 venue=str(it.get("venue") or "").strip() or None,
                 doi=doi_val,
@@ -1590,18 +1590,25 @@ async def verify_sandbox_citations_instant(
         raise HTTPException(status_code=400, detail="Vui lòng nhập hoặc chọn ít nhất 1 trích dẫn để kiểm tra.")
 
     parsed_citations = parsed_citations[:20]
-    source_results = await pipeline.retriever.retrieve_many(parsed_citations)
+    sem = asyncio.Semaphore(8)
+
+    async def _retrieve_one(c: Citation):
+        async with sem:
+            return await pipeline.orchestrator.retrieve(c)
+
+    source_results = await asyncio.gather(*(_retrieve_one(c) for c in parsed_citations))
 
     verdict_items: list[dict[str, Any]] = []
     raw_verdict_dicts_for_remediation: list[dict[str, Any]] = []
 
     for idx, (citation, source) in enumerate(zip(parsed_citations, source_results), start=1):
+        used_local = "local_db" in (source.sources_succeeded or [])
         verdict = pipeline.checker.check(
             citation,
             source,
             citation_context=citation.context,
-            api_exhausted=source.api_exhausted,
-            used_local_db=source.used_local_db,
+            api_exhausted=bool(getattr(source, "api_exhausted", False)),
+            used_local_db=used_local,
         )
         l1_info = layer1_statuses[idx - 1] if idx - 1 < len(layer1_statuses) else {"status": "matched", "note": ""}
         best = source.best_candidate()
@@ -1635,7 +1642,7 @@ async def verify_sandbox_citations_instant(
             "matched_source": matched_src,
             "matched_sources": [matched_src] if matched_src else [],
             "sources_succeeded": list(source.sources_succeeded or []),
-            "used_local_db": bool(source.used_local_db),
+            "used_local_db": used_local,
         }
         verdict_items.append(v_dict)
         raw_verdict_dicts_for_remediation.append(v_dict)
