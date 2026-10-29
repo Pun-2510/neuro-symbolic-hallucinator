@@ -150,6 +150,98 @@ YEAR_PATTERN = CompiledPattern.create(
 
 # Pre-compiled regex for direct use
 _YEAR_REGEX = re.compile(r"\b(19|20)\d{2}[a-z]?\b")
+_YEAR_CAPTURE_REGEX = re.compile(r"\b((?:19|20)\d{2})([a-z]?)\b")
+_YEAR_CAPTURE_1800_REGEX = re.compile(r"\b((?:18|19|20)\d{2})([a-z]?)\b")
+
+# Numeric spans in bibliographic strings that contain 4-digit numbers (19xx/20xx)
+# which are NOT publication years: URLs, DOIs, arXiv IDs, open-ended founding
+# years "(1974-)", explicit page numbers/ranges ("pp. 1895–1923"), volume/issue/
+# article/series numbers ("LNCS 1984", "art. no. 2021"), and colon page numbers
+# ("10(7): 1895–1923").
+_NON_YEAR_SPAN_REGEX = re.compile(
+    r"(?:"
+    r"https?://\S+|www\.\S+"
+    r"|\b10\.\d{4,9}/\S+"
+    r"|\barxiv\s*:\s*(?:[a-z\-]+/\d+|\d{4}\.\d+(?:v\d+)?)"
+    r"|\(\s*(?:18|19|20)\d{2}\s*[-–—‑\u2212]\s*\)"
+    r"|\b(?:pp?\.?|pages?|tr(?:ang|\.)?)\s*[A-Za-z]?\d+(?:\s*[-–—‑\u2212/]\s*[A-Za-z]?\d+)?\b"
+    r"|\b(?:vol(?:ume)?|no|number|iss(?:ue)?|art(?:icle)?(?:\s+(?:no|id)\.?)?|lncs|lnai|lnbip|ccis|spie|isbn|issn|pmid|pmcid)\.?\s*[A-Za-z]?\d+(?:\s*[-–—‑\u2212/]\s*[A-Za-z]?\d+)?\b"
+    r"|(?<=[\d\)])\s*:\s*\d+(?:\s*[-–—‑\u2212]\s*\d+)?\b"
+    r")",
+    re.IGNORECASE,
+)
+
+# Access / retrieval date clauses (used only as fallback when no publication year exists)
+_ACCESS_DATE_SPAN_REGEX = re.compile(
+    r"(?:"
+    r"[\(\[]\s*(?:ac-?\s*cessed|re-?\s*trieved|truy\s+cập|ngày\s+truy\s+cập|last\s+accessed)\b[^)\]]*[\)\]]"
+    r"|\b(?:ac-?\s*cessed|re-?\s*trieved(?:\s+on|\s+from)?|truy\s+cập(?:\s+ngày)?|last\s+accessed)\s*:?\s*(?:(?:\d{1,2}\s+[A-Za-zÀ-ỹ.]+\s+|[A-Za-zÀ-ỹ.]+\s+\d{1,2}\s*,?\s*|\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)(?:19|20)\d{2}|(?:19|20)\d{2})\b"
+    r")",
+    re.IGNORECASE,
+)
+
+# Bare 3-to-5 digit hyphenated/en-dash ranges (e.g. "1895–1923", "1920-1935")
+_BARE_PAGE_RANGE_REGEX = re.compile(r"\b[A-Za-z]?\d{3,5}\s*[-–—‑\u2212]\s*[A-Za-z]?\d{3,5}\b")
+
+
+def extract_publication_year(
+    text: str,
+    *,
+    prefer_last: bool = True,
+    allow_1800s: bool = False,
+) -> tuple[Optional[str], Optional[str]]:
+    """Extract (year, year_suffix) from reference/venue text while ignoring page numbers,
+    volume/issue/article numbers, DOIs, URLs, arXiv IDs, and preferring publication
+    dates over access/retrieval dates.
+    """
+    if not text:
+        return None, None
+
+    year_re = _YEAR_CAPTURE_1800_REGEX if allow_1800s else _YEAR_CAPTURE_REGEX
+
+    # Step 1: Strip URLs, DOIs, arXiv IDs, explicit page/vol/issue/article numbers
+    cleaned = _NON_YEAR_SPAN_REGEX.sub(" ", text)
+
+    # Step 2: Strip access/retrieval date clauses for primary search
+    non_accessed = _ACCESS_DATE_SPAN_REGEX.sub(" ", cleaned)
+
+    # Step 3: Strip bare 3-5 digit ranges (e.g., "1895–1923") for primary search
+    no_bare_ranges = _BARE_PAGE_RANGE_REGEX.sub(" ", non_accessed)
+
+    for candidate_text in (no_bare_ranges, non_accessed, cleaned):
+        matches = list(year_re.finditer(candidate_text))
+        if not matches:
+            continue
+        if len(matches) == 1:
+            m = matches[0]
+            return m.group(1), (m.group(2) or None)
+
+        # If multiple candidate years remain:
+        # 1. Check for a standalone year near the end of the venue/entry (e.g., ", 1998.")
+        trailing_m = re.search(
+            r"(?:,\s*|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+)"
+            + (r"((?:18|19|20)\d{2})([a-z]?)" if allow_1800s else r"((?:19|20)\d{2})([a-z]?)")
+            + r"\s*[.;)]*\s*(?:\[online\].*)?$",
+            candidate_text.strip(),
+            re.IGNORECASE,
+        )
+        if trailing_m:
+            return trailing_m.group(1), (trailing_m.group(2) or None)
+
+        # 2. Check for an explicit parenthetical/bracketed year "(2020)" / "[2020]"
+        paren_m = re.search(
+            r"[\(\[]\s*"
+            + (r"((?:18|19|20)\d{2})([a-z]?)" if allow_1800s else r"((?:19|20)\d{2})([a-z]?)")
+            + r"\s*[\)\]]",
+            candidate_text,
+        )
+        if paren_m:
+            return paren_m.group(1), (paren_m.group(2) or None)
+
+        chosen = matches[-1] if prefer_last else matches[0]
+        return chosen.group(1), (chosen.group(2) or None)
+
+    return None, None
 
 
 def extract_year(text: str) -> Optional[str]:
@@ -167,14 +259,20 @@ def extract_year(text: str) -> Optional[str]:
         >>> extract_year("Vaswani et al. (2017)")
         '2017'
         >>> extract_year("Smith (2020a) and Jones (2020b)")
-        '2020'
+        '2020a'
         >>> extract_year("No year here")
         None
     """
     if not text:
         return None
-    match = _YEAR_REGEX.search(text)
-    return match.group(0) if match else None
+    cleaned = _NON_YEAR_SPAN_REGEX.sub(" ", text)
+    non_accessed = _ACCESS_DATE_SPAN_REGEX.sub(" ", cleaned)
+    no_bare_ranges = _BARE_PAGE_RANGE_REGEX.sub(" ", non_accessed)
+    for candidate_text in (no_bare_ranges, non_accessed, cleaned):
+        match = _YEAR_REGEX.search(candidate_text)
+        if match:
+            return match.group(0)
+    return None
 
 
 # =============================================================================
@@ -200,4 +298,5 @@ __all__ = [
     "extract_doi",
     "extract_url",
     "extract_year",
+    "extract_publication_year",
 ]

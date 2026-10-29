@@ -95,6 +95,17 @@ class TestUtilityPatterns:
         # 2100s are not valid
         assert extract_year("2100") is None
 
+    def test_extract_year_ignores_page_ranges_and_dois(self):
+        """Test year extraction ignores 4-digit page numbers, DOIs, URLs, and LNCS numbers."""
+        assert (
+            extract_year(
+                "Neural Computation, vol. 10, no. 7, pp. 1895–1923, 1998. doi: 10.1162/089976698300017197."
+            )
+            == "1998"
+        )
+        assert extract_year("vol. 15, pp. 1920-1935, 2018.") == "2018"
+        assert extract_year("LNCS 1984, pp. 1-10, 2001.") == "2001"
+
 
 class TestCompiledPattern:
     """Tests for CompiledPattern class."""

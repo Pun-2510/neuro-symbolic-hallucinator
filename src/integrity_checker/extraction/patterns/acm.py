@@ -30,6 +30,7 @@ from typing import Optional
 
 from integrity_checker.extraction.patterns.base import CompiledPattern, PatternType
 from integrity_checker.extraction.patterns.registry import register_format
+from integrity_checker.extraction.patterns.utils import extract_publication_year
 from integrity_checker.matching.author_parser import parse_authors
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
@@ -444,10 +445,8 @@ class ACMFormat:
 
         venue_year = remainder[close_q + 1:].strip().lstrip(',').strip()
 
-        # Year usually at end
-        year_m = re.search(r'\b((?:19|20)\d{2})([a-z]?)\b', venue_year)
-        year = year_m.group(1) if year_m else None
-        year_suffix = year_m.group(2) if year_m and year_m.group(2) else None
+        # Year usually at end (ignore page numbers/ranges, DOIs, URLs, etc.)
+        year, year_suffix = extract_publication_year(venue_year, prefer_last=True)
 
         citation = Citation(
             raw_text=text.strip(),
@@ -857,11 +856,7 @@ class ACMFormat:
         )
 
         # Try to extract year
-        year_m = re.search(r'\b((?:19|20)\d{2})([a-z]?)\b', text)
-        if year_m:
-            citation.year = year_m.group(1)
-            if year_m.group(2):
-                citation.year_suffix = year_m.group(2)
+        citation.year, citation.year_suffix = extract_publication_year(text, prefer_last=True)
 
         # Try to extract title from quoted text
         quote_m = re.search(r'["""\u201c]([^""""\u201d]+)["""\u201d]', text)
@@ -940,9 +935,11 @@ class ACMFormat:
 
         # Extract year from venue if not already set
         if not citation.year:
-            yr_m = re.search(r'\b((?:19|20)\d{2})\b', venue_text)
-            if yr_m:
-                citation.year = yr_m.group(1)
+            yr, yr_suf = extract_publication_year(venue_text, prefer_last=True)
+            if yr:
+                citation.year = yr
+                if yr_suf and not citation.year_suffix:
+                    citation.year_suffix = yr_suf
 
         # Extract venue name (before volume/issue/pages)
         venue_name_match = re.search(

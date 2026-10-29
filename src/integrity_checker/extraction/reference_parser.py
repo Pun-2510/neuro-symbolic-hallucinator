@@ -41,6 +41,7 @@ from integrity_checker.extraction.citation_extractor import CitationExtractor
 from integrity_checker.extraction.patterns import get_format, get_all_formats
 from integrity_checker.extraction.patterns.apa import is_vn_legal_reference, parse_vn_legal_reference
 from integrity_checker.extraction.patterns.base import CitationFormat
+from integrity_checker.extraction.patterns.utils import extract_publication_year
 from integrity_checker.matching.author_parser import parse_authors
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
@@ -1346,8 +1347,7 @@ class ReferenceListParser:
         doi = doi_m.group(0).rstrip(".,;") if doi_m else None
         url_m = re.search(r"(https?://[^\s,;)\]]+)", cleaned, re.IGNORECASE)
         url = url_m.group(1).rstrip(".,;") if url_m else None
-        year_matches = re.findall(r"\b((?:18|19|20)\d{2})\b", cleaned)
-        year = year_matches[-1] if year_matches else None
+        year, _ = extract_publication_year(cleaned, prefer_last=True, allow_1800s=True)
 
         # Subcase A: Quoted title (e.g. '[3] Trương Đắc Linh và Nguyễn Mạnh Hùng, “Giới thiệu Hiến pháp mới”, Tạp chí...')
         q_m = re.match(
@@ -1646,26 +1646,9 @@ class ReferenceListParser:
         title_raw = remainder[first_q + 1:close_q].strip().rstrip(",").rstrip().lstrip('\u2018\u2019"\'')
         venue_year = remainder[close_q + 1:].strip().lstrip(",").strip()
 
-        # Extract year: for arXiv entries (e.g., arXiv:1911.09339, 2019), prefer the
-        # publication year (after comma) over the arXiv ID year or access year.
-        year_matches = list(_YEAR_RE.finditer(venue_year))
-        pub_after_arxiv = re.search(
-            r'arxiv:\s*\d{4}\.\d+[^\d]+((?:19|20)\d{2})\b',
-            venue_year,
-            re.IGNORECASE,
-        )
-        if pub_after_arxiv:
-            year_m = pub_after_arxiv
-        elif year_matches:
-            year_m = year_matches[0]
-        else:
-            year_m = None
-        year = year_m.group(1) if year_m else None
-        suffix = (
-            year_m.group(2)
-            if year_m and year_m.lastindex and year_m.lastindex >= 2 and year_m.group(2)
-            else None
-        )
+        # Extract year: ignore page numbers/ranges, volume/issue numbers, DOIs, URLs,
+        # and arXiv IDs, while preferring publication year over access year.
+        year, suffix = extract_publication_year(venue_year, prefer_last=True)
 
         citation = Citation(
             raw_text=entry.strip(),
@@ -1708,9 +1691,12 @@ class ReferenceListParser:
         arxiv_id = arxiv_m.group(1) if arxiv_m else None
 
         # Extract year
-        year_m = _YEAR_RE.search(text)
-        year = year_m.group(1) if year_m else None
-        year_suffix = year_m.group(2) if year_m and year_m.group(2) else None
+        year, year_suffix = extract_publication_year(text, prefer_last=True)
+        year_m = (
+            re.search(rf"\b{re.escape(year + (year_suffix or ''))}\b", text)
+            if year
+            else _YEAR_RE.search(text)
+        )
 
         # Extract authors: everything after [N] / (N) / N. up to first recognizable year/doi
         # Pattern: [N] Authors, "Title" OR just Authors (year) until next [N]

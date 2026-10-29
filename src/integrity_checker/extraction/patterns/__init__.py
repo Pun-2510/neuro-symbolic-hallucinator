@@ -61,6 +61,7 @@ from integrity_checker.extraction.patterns.utils import (
     extract_doi,
     extract_url,
     extract_year,
+    extract_publication_year,
 )
 
 # Import registry functions
@@ -168,6 +169,7 @@ __all__ = [
     "extract_doi",
     "extract_url",
     "extract_year",
+    "extract_publication_year",
     # Registry functions
     "get_format",
     "get_all_formats",

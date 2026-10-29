@@ -98,8 +98,14 @@ def _extract_raw_fallback_metadata(raw_text: str) -> dict[str, Any]:
     # Strip leading [N] or N.
     cleaned_no_num = re.sub(r"^\s*(?:\[\d+\]|\d+[\.\)])\s*", "", cleaned)
 
-    year_m = _YEAR_RE.search(cleaned_no_num)
-    year = year_m.group(1) if year_m else ""
+    from integrity_checker.extraction.patterns.utils import extract_publication_year
+
+    pub_yr, pub_suf = extract_publication_year(cleaned_no_num, prefer_last=True, allow_1800s=True)
+    if pub_yr:
+        year = pub_yr + (pub_suf or "")
+    else:
+        year_m = _YEAR_RE.search(cleaned_no_num)
+        year = year_m.group(1) if year_m else ""
 
     doi_m = _DOI_RE.search(cleaned_no_num)
     doi = doi_m.group(0).rstrip(".,;)") if doi_m else ""

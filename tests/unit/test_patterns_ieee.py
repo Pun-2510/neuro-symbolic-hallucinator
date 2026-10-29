@@ -397,6 +397,64 @@ class TestIEEERealWorldExamples:
         assert citation is not None
         assert citation.title == "Paper Title"
 
+    def test_dietterich_1998_page_range_not_mistaken_for_year(self):
+        """Regression test: pp. 1895–1923 must not be extracted as year=1923 instead of 1998."""
+        format_obj = IEEEFormat()
+        text = (
+            '[30] T. G. Dietterich, “Approximate statistical tests for comparing '
+            'supervised classification learning algorithms,” Neural Computation, '
+            'vol. 10, no. 7, pp. 1895–1923, 1998. doi: 10.1162/089976698300017197.'
+        )
+
+        citation = format_obj.parse_reference_entry(text)
+        assert citation is not None
+        assert citation.numeric_index == 30
+        assert citation.title == (
+            "Approximate statistical tests for comparing supervised classification learning algorithms"
+        )
+        assert citation.year == "1998"
+        assert citation.volume == "10"
+        assert citation.issue == "7"
+        assert citation.pages == "1895–1923"
+        assert citation.doi == "10.1162/089976698300017197"
+
+    def test_four_digit_page_ranges_and_series_numbers_ignored_for_year(self):
+        """4-digit page ranges (1920-1935, 2001-2015) and LNCS/article numbers must not be parsed as year."""
+        format_obj = IEEEFormat()
+
+        text_pages_19xx = (
+            '[12] A. Author, "Deep Models," J. Mach. Learn. Res., vol. 19, no. 4, pp. 1920-1935, 2018.'
+        )
+        cit1 = format_obj.parse_reference_entry(text_pages_19xx)
+        assert cit1 is not None
+        assert cit1.year == "2018"
+        assert cit1.pages == "1920-1935"
+
+        text_pages_20xx = (
+            '[13] B. Author, "Vision Transformers," IEEE Access, vol. 9, pp. 2001–2015, 2021.'
+        )
+        cit2 = format_obj.parse_reference_entry(text_pages_20xx)
+        assert cit2 is not None
+        assert cit2.year == "2021"
+        assert cit2.pages == "2001–2015"
+
+        text_arxiv_accessed = (
+            '[5] D. H.-C. Ho et al., “Emotion recognition for Vietnamese social media text,” '
+            'arXiv preprint arXiv:1911.09339, 2019, doi: 10.48550/arXiv.1911.09339. '
+            '[Online]. Available: https://arxiv.org/abs/1911.09339 (Accessed: Oct. 15, 2026).'
+        )
+        cit3 = format_obj.parse_reference_entry(text_arxiv_accessed)
+        assert cit3 is not None
+        assert cit3.year == "2019"
+
+        text_only_accessed = (
+            '[16] Underthesea Team, “Underthesea: Vietnamese NLP Toolkit,” GitHub repository. '
+            '[Online]. Available: https://github.com/undertheseanlp/underthesea (Accessed: Oct. 15, 2026).'
+        )
+        cit4 = format_obj.parse_reference_entry(text_only_accessed)
+        assert cit4 is not None
+        assert cit4.year == "2026"
+
 
 class TestIEEEErrorHandling:
     """Tests for IEEE format error handling."""

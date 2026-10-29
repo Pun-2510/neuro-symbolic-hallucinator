@@ -29,6 +29,7 @@ from typing import Optional
 
 from integrity_checker.extraction.patterns.base import CompiledPattern, PatternType
 from integrity_checker.extraction.patterns.registry import register_format
+from integrity_checker.extraction.patterns.utils import extract_publication_year
 from integrity_checker.matching.author_parser import parse_authors
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
@@ -523,9 +524,7 @@ class MLAFormat:
             citation.numeric_index = int(idx_match.group(1))
 
         # Try to extract year
-        year_m = re.search(r'\b((?:19|20)\d{2})\b', text)
-        if year_m:
-            citation.year = year_m.group(1)
+        citation.year, _ = extract_publication_year(text, prefer_last=True)
 
         # Try to extract title (text between quotes)
         quote_m = re.search(r'["\u201c]([^"\u201d]+)["\u201d]', text)
@@ -574,9 +573,9 @@ class MLAFormat:
         if issue_m:
             citation.issue = issue_m.group(1)
 
-        year_m = re.search(r'\b((?:19|20)\d{2})\b', venue_text)
-        if year_m:
-            citation.year = year_m.group(1)
+        yr, _ = extract_publication_year(venue_text, prefer_last=True)
+        if yr:
+            citation.year = yr
 
         pages_m = re.search(r'\bpp?\.\s*([\d–-]+)', venue_text, re.IGNORECASE)
         if pages_m:

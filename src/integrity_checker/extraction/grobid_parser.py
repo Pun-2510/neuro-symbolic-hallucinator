@@ -726,6 +726,15 @@ def _parse_raw_bib_segment(raw_seg: str, entry_id: str) -> GrobidBibEntry:
         seg_no_url,
         flags=re.IGNORECASE,
     )
+    non_accessed = re.sub(
+        r"\b10\.\d{4,9}/\S+|\barxiv\s*:\s*\d{4}\.\d+(?:v\d+)?"
+        r"|\b(?:pp?\.?|pages?|tr(?:ang|\.)?|vol(?:ume)?\.?|no\.?|iss(?:ue)?\.?|art(?:icle)?(?:\s+(?:no|id)\.?)?|lncs|lnai)\s*[A-Za-z]?\d+(?:\s*[-–—‑]\s*[A-Za-z]?\d+)?\b"
+        r"|(?<=[\d\)])\s*:\s*\d+(?:\s*[-–—‑]\s*\d+)?\b"
+        r"|\b\d{3,5}\s*[-–—‑]\s*\d{3,5}\b",
+        " ",
+        non_accessed,
+        flags=re.IGNORECASE,
+    )
     years = re.findall(r"\b((?:19|20)\d{2})\b", non_accessed)
     if years:
         year = years[-1] if re.search(r",\s*(?:19|20)\d{2}\.?$", non_accessed) else years[0]
@@ -1417,11 +1426,19 @@ def _extract_bibliography(root: ET.Element) -> list[GrobidBibEntry]:
                     # Explicit (n.d.) entry: do not let GROBID use a year from the URL or title
                     year = None
             else:
-                # 2. Ignore journal founding years like "(1974-)" and Accessed dates when a publication year exists
+                # 2. Ignore journal founding years like "(1974-)", page ranges, DOIs, and Accessed dates when a publication year exists
                 cleaned_for_yr = re.sub(r"\(\s*(?:18|19|20)\d{2}-\s*\)", "", raw_ref_text)
-                cleaned_for_yr = re.sub(r"https?://\S+", "", cleaned_for_yr)
+                cleaned_for_yr = re.sub(r"https?://\S+|\b10\.\d{4,9}/\S+|\barxiv\s*:\s*\d{4}\.\d+(?:v\d+)?", " ", cleaned_for_yr, flags=re.IGNORECASE)
+                cleaned_for_yr = re.sub(
+                    r"\b(?:pp?\.?|pages?|tr(?:ang|\.)?|vol(?:ume)?\.?|no\.?|iss(?:ue)?\.?|art(?:icle)?(?:\s+(?:no|id)\.?)?|lncs|lnai)\s*[A-Za-z]?\d+(?:\s*[-–—‑]\s*[A-Za-z]?\d+)?\b"
+                    r"|(?<=[\d\)])\s*:\s*\d+(?:\s*[-–—‑]\s*\d+)?\b"
+                    r"|\b\d{3,5}\s*[-–—‑]\s*\d{3,5}\b",
+                    " ",
+                    cleaned_for_yr,
+                    flags=re.IGNORECASE,
+                )
                 non_accessed = re.sub(
-                    r"\bAccessed\s+(?:\d{1,2}\s+[A-Za-z.]+\s+|[A-Za-z.]+\s+\d{1,2},\s*)(?:19|20)\d{2}\.?",
+                    r"[\(\[]?\b(?:Accessed|Retrieved|Truy\s+cập)\b[^)\].;]*[\)\]]?",
                     "",
                     cleaned_for_yr,
                     flags=re.IGNORECASE,

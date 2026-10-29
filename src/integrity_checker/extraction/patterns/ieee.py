@@ -24,6 +24,7 @@ from typing import Optional
 
 from integrity_checker.extraction.patterns.base import CompiledPattern, PatternType
 from integrity_checker.extraction.patterns.registry import register_format
+from integrity_checker.extraction.patterns.utils import extract_publication_year
 from integrity_checker.matching.author_parser import parse_authors
 from integrity_checker.models.citation import Citation, CitationStyle, CitationType
 
@@ -306,28 +307,10 @@ class IEEEFormat:
                     title_raw = remainder[second_open + 1:second_close].strip().rstrip(',').rstrip()
         venue_year = remainder[close_q + 1:].strip().lstrip(',').strip()
 
-        # Extract year: prefer the arXiv/publication year (YYYY after arXiv:XXXX),
-        # not the access year (Accessed: ... YYYY).
-        # Pattern: arXiv:1911.09339, 2019 → year=2019, not the trailing access year.
-        years = list(re.finditer(r'\b((?:19|20)\d{2})([a-z]?)\b', venue_year))
-        # Explicit publication year immediately following an arXiv identifier.
-        pub_after_arxiv = re.search(
-            r'arxiv:\s*\d{4}\.\d+[^\d]+((?:19|20)\d{2})\b',
-            venue_year,
-            re.IGNORECASE,
-        )
-        if pub_after_arxiv:
-            year_m = pub_after_arxiv
-        elif years:
-            year_m = years[0]
-        else:
-            year_m = None
-        year = year_m.group(1) if year_m else None
-        year_suffix = (
-            year_m.group(2)
-            if year_m and year_m.lastindex and year_m.lastindex >= 2 and year_m.group(2)
-            else None
-        )
+        # Extract year: ignore page numbers/ranges (e.g., pp. 1895–1923), volume/issue
+        # numbers, DOIs, URLs, and arXiv IDs, while preferring publication year over
+        # access year (Accessed: ... YYYY).
+        year, year_suffix = extract_publication_year(venue_year, prefer_last=True)
 
         citation = Citation(
             raw_text=text.strip(),
@@ -384,11 +367,9 @@ class IEEEFormat:
         venue = match.group('venue').strip()
         self._parse_venue(citation, venue)
 
-        # Extract year
-        year_m = re.search(r'\b((?:19|20)\d{2})([a-z]?)\b', venue)
-        if year_m:
-            citation.year = year_m.group(1)
-            citation.year_suffix = year_m.group(2) if year_m.group(2) else None
+        # Extract year from the full venue+year tail (since the regex may strip trailing year from group('venue'))
+        venue_tail = text[match.start('venue'):].strip()
+        citation.year, citation.year_suffix = extract_publication_year(venue_tail, prefer_last=True)
 
         # Extract DOI
         doi_m = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', text)
@@ -610,11 +591,7 @@ class IEEEFormat:
         )
 
         # Try to extract year
-        year_m = re.search(r'\b((?:19|20)\d{2})([a-z]?)\b', text)
-        if year_m:
-            citation.year = year_m.group(1)
-            if year_m.group(2):
-                citation.year_suffix = year_m.group(2)
+        citation.year, citation.year_suffix = extract_publication_year(text, prefer_last=True)
 
         # Try to extract title from quoted text
         quote_m = re.search(r'["""\u201c]([^""""\u201d]+)["""\u201d]', text)
