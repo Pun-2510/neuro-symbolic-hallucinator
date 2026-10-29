@@ -2096,12 +2096,14 @@ class RetrievalOrchestrator:
                         )
                         if r_sim < 0.85:
                             continue
-                        if cit_year_int is not None:
-                            if not r_paper.year or abs(int(r_paper.year) - cit_year_int) > 1:
-                                continue
-                        if citation.authors:
-                            if not r_paper.authors or author_match_score(citation.authors, r_paper.authors) < 0.50:
-                                continue
+                        is_exact_long_title = r_sim >= 0.94 and len(citation.title.split()) >= 5
+                        if not is_exact_long_title:
+                            if cit_year_int is not None:
+                                if not r_paper.year or abs(int(r_paper.year) - cit_year_int) > 1:
+                                    continue
+                            if citation.authors:
+                                if not r_paper.authors or author_match_score(citation.authors, r_paper.authors) < 0.50:
+                                    continue
                         if r_sim > best_score:
                             best_score = r_sim
                             best_paper = r_paper

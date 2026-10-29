@@ -1593,13 +1593,13 @@ async def verify_sandbox_citations_instant(
     sem = asyncio.Semaphore(8)
 
     async def _retrieve_one(c: Citation):
+        from integrity_checker.models.source import SourceResult
+
         async with sem:
             rules_obj = getattr(getattr(pipeline, "checker", None), "rules", None)
             if c.doi and rules_obj is not None and hasattr(rules_obj, "_is_fabricated_doi"):
                 try:
                     if rules_obj._is_fabricated_doi(c.doi) is True:
-                        from integrity_checker.models.source import SourceResult
-
                         return SourceResult(
                             citation_raw=c.raw_text,
                             candidates=[],
@@ -1612,11 +1612,17 @@ async def verify_sandbox_citations_instant(
                         )
                 except Exception:
                     pass
+            orch = getattr(pipeline, "orchestrator", None)
+            if getattr(orch, "_local_db", None) is not None and callable(getattr(orch, "_lookup_local_db", None)):
+                try:
+                    local_hit = orch._lookup_local_db(c)
+                    if isinstance(local_hit, SourceResult) and local_hit.candidates:
+                        return local_hit
+                except Exception:
+                    pass
             try:
-                return await asyncio.wait_for(pipeline.orchestrator.retrieve(c), timeout=4.0)
+                return await asyncio.wait_for(pipeline.orchestrator.retrieve(c), timeout=5.0)
             except asyncio.TimeoutError:
-                from integrity_checker.models.source import SourceResult
-
                 return SourceResult(
                     citation_raw=c.raw_text,
                     candidates=[],

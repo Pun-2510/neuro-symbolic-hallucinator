@@ -764,17 +764,33 @@ class LocalDatabase:
                     while len(picked) < target and attempts < max_attempts:
                         attempts += 1
                         rand_id = random.randint(min_id, max_id)
-                        rows = conn.execute(
-                            """
-                            SELECT * FROM papers
-                            WHERE id >= ?
-                              AND title IS NOT NULL AND TRIM(title) <> ''
-                              AND year IS NOT NULL AND year >= 1998
-                              AND authors IS NOT NULL AND authors NOT IN ('[]', '')
-                            LIMIT 6
-                            """,
-                            (rand_id,),
-                        ).fetchall()
+                        require_abs = attempts <= max_attempts // 2
+                        if require_abs:
+                            rows = conn.execute(
+                                """
+                                SELECT * FROM papers
+                                WHERE id >= ?
+                                  AND title IS NOT NULL AND TRIM(title) <> ''
+                                  AND year IS NOT NULL AND year >= 1998
+                                  AND authors IS NOT NULL AND authors NOT IN ('[]', '')
+                                  AND doi IS NOT NULL AND TRIM(doi) <> ''
+                                  AND abstract IS NOT NULL AND TRIM(abstract) <> ''
+                                LIMIT 6
+                                """,
+                                (rand_id,),
+                            ).fetchall()
+                        else:
+                            rows = conn.execute(
+                                """
+                                SELECT * FROM papers
+                                WHERE id >= ?
+                                  AND title IS NOT NULL AND TRIM(title) <> ''
+                                  AND year IS NOT NULL AND year >= 1998
+                                  AND authors IS NOT NULL AND authors NOT IN ('[]', '')
+                                LIMIT 6
+                                """,
+                                (rand_id,),
+                            ).fetchall()
                         for r in rows:
                             paper = Paper.from_dict(dict(r))
                             if not _is_clean_candidate(paper):
