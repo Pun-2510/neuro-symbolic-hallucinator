@@ -178,11 +178,31 @@ def test_revision_diff_computation() -> None:
     diff = _compute_revision_diff(repo, e_v2, v2_list)  # type: ignore[arg-type]
     assert diff is not None
     assert diff["has_previous_revision"] is True
+    assert diff["is_same_manuscript_family"] is True
     assert diff["previous_essay_id"] == 10
     assert diff["cis_before"] == 62.5
     assert diff["cis_after"] == 94.0
     assert diff["cis_delta"] == 31.5
     assert diff["resolved_issues_count"] == 2
+
+    # Sandbox manuscript (#29 CITRA_ACL_Sandbox_APA_10refs.pdf) MUST NOT compare against #28 VietDepression_Springer_KAIS.pdf
+    e_viet = DummyEssay(28, "VietDepression_Springer_KAIS.pdf", 100.0)
+    e_sandbox = DummyEssay(29, "CITRA_ACL_Sandbox_APA_10refs.pdf", 87.5)
+    repo_sandbox = DummyRepo(e_viet, e_sandbox, v2_list, v1_list)
+    assert _compute_revision_diff(repo_sandbox, e_sandbox, v1_list) is None  # type: ignore[arg-type]
+
+    # Unrelated manuscript (#30 Other_Paper.pdf) MUST NOT compare against #28 VietDepression_Springer_KAIS.pdf
+    e_unrelated = DummyEssay(30, "GraphRAG_Survey_2026.pdf", 80.0)
+    repo_unrelated = DummyRepo(e_viet, e_unrelated, v2_list, v1_list)
+    assert _compute_revision_diff(repo_unrelated, e_unrelated, v1_list) is None  # type: ignore[arg-type]
+
+    # Auto-healed .docx re-upload of the same manuscript SHOULD match v1
+    e_healed = DummyEssay(31, "VietDepression_Springer_KAIS_auto_healed.docx", 100.0)
+    repo_healed = DummyRepo(e_viet, e_healed, v1_list, v2_list)
+    diff_healed = _compute_revision_diff(repo_healed, e_healed, v2_list)  # type: ignore[arg-type]
+    assert diff_healed is not None
+    assert diff_healed["previous_essay_id"] == 28
+    assert diff_healed["is_same_manuscript_family"] is True
 
 
 def test_scanned_pdf_guardrail_detection(tmp_path: Path) -> None:

@@ -363,6 +363,16 @@ def _csv_response(filename: str, verdicts: list) -> StreamingResponse:
     )
 
 
+def _is_sandbox_manuscript(filename: str | None) -> bool:
+    """Return True if the filename belongs to a synthetic Live Sandbox run."""
+    raw = (filename or "").strip().lower()
+    return (
+        raw.startswith("citra_acl_sandbox")
+        or "acl_sandbox" in raw
+        or raw in {"sandbox.pdf", "sandbox"}
+    )
+
+
 def _normalize_manuscript_stem(filename: str | None) -> str:
     """Normalize a filename to its base stem for automatic v1 -> v2 revision matching."""
     import re
@@ -370,12 +380,30 @@ def _normalize_manuscript_stem(filename: str | None) -> str:
 
     raw = Path(filename or "essay").stem.lower().strip()
     cleaned = re.sub(
-        r"(?:[_\-\s]+(?:v\d+(?:\.\d+)?|rev\d*|version\d*|draft\d*|final|fixed|remediated|updated|corrected)|\s*\(\d+\))+$",
+        r"(?:[_\-\s]+(?:v\d+(?:\.\d+)?|rev\d*|version\d*|draft\d*|final|fixed|remediated|updated|corrected|revised|edited|healed|auto[_\-\s]*healed|clean|copy)|\s*\(\d+\))+$",
         "",
         raw,
         flags=re.IGNORECASE,
     ).strip(" _-")
     return cleaned or raw or "essay"
+
+
+def _is_same_manuscript_family(stem_a: str, stem_b: str) -> bool:
+    """Check whether two normalized manuscript stems represent revisions of the same paper."""
+    a = (stem_a or "").strip().lower()
+    b = (stem_b or "").strip().lower()
+    if not a or not b or a == "essay" or b == "essay":
+        return False
+    if a == b:
+        return True
+    shorter, longer = (a, b) if len(a) <= len(b) else (b, a)
+    if len(shorter) >= 12 and (
+        longer.startswith(f"{shorter}_")
+        or longer.startswith(f"{shorter}-")
+        or longer.startswith(f"{shorter} ")
+    ):
+        return True
+    return False
 
 
 def _verdict_canonical_key(citation_raw: str | None) -> str:
@@ -414,7 +442,11 @@ def _compute_revision_diff(
     current_verdicts: list,
     compare_with_id: int | None = None,
 ) -> dict[str, Any] | None:
-    """Compute v1 -> v2 revision delta against a prior essay submission."""
+    """Compute v1 -> v2 revision delta against a prior essay submission of the same manuscript."""
+    # Synthetic Live Sandbox runs are standalone test manuscripts, not v1 -> v2 revisions
+    if compare_with_id is None and _is_sandbox_manuscript(getattr(essay, "filename", None)):
+        return None
+
     try:
         if essay.user_id is not None:
             candidates = repo.get_user_essays(essay.user_id)
@@ -431,13 +463,20 @@ def _compute_revision_diff(
     available_revisions: list[dict[str, Any]] = []
     chosen_prev = None
 
-    # Sort older/other essays by uploaded_at descending
+    # Sort older/other essays by uploaded_at descending; only include revisions of the same manuscript
     for cand in other_essays:
+        is_explicit_target = compare_with_id is not None and cand.id == compare_with_id
+        if not is_explicit_target and _is_sandbox_manuscript(getattr(cand, "filename", None)):
+            continue
         cand_verdicts = repo.get_verdicts(cand.id)
         if not cand_verdicts and not getattr(cand, "cis_json", None):
             continue
         cand_stem = _normalize_manuscript_stem(cand.filename)
-        is_same_stem = bool(cand_stem == cur_stem or cand_stem in cur_stem or cur_stem in cand_stem)
+        is_same_stem = _is_same_manuscript_family(cur_stem, cand_stem)
+        if not is_same_stem and not is_explicit_target:
+            continue
+        if cand.id > essay.id and not is_explicit_target:
+            continue
         cand_cis = _extract_essay_cis_score(cand, cand_verdicts)
         available_revisions.append({
             "essay_id": cand.id,
@@ -447,27 +486,21 @@ def _compute_revision_diff(
             "num_verdicts": len(cand_verdicts),
             "is_same_stem": is_same_stem,
         })
-        if compare_with_id is not None and cand.id == compare_with_id:
+        if is_explicit_target:
             chosen_prev = (cand, cand_verdicts, cand_cis, is_same_stem)
 
     if not available_revisions:
         return None
 
     if chosen_prev is None:
-        # Prefer the most recent older essay with matching stem, or fallback to most recent prior essay
+        # Only match the most recent older essay belonging to the same manuscript family
         prior_same_stem = [
             e for e in other_essays
-            if (
-                _normalize_manuscript_stem(e.filename) == cur_stem
-                or _normalize_manuscript_stem(e.filename) in cur_stem
-                or cur_stem in _normalize_manuscript_stem(e.filename)
-            )
+            if not _is_sandbox_manuscript(getattr(e, "filename", None))
+            and _is_same_manuscript_family(cur_stem, _normalize_manuscript_stem(e.filename))
             and e.id < essay.id
         ]
         target_cand = prior_same_stem[0] if prior_same_stem else None
-        if target_cand is None:
-            older_any = [e for e in other_essays if e.id < essay.id]
-            target_cand = older_any[0] if older_any else other_essays[0]
         if target_cand is not None:
             tv = repo.get_verdicts(target_cand.id)
             if tv or getattr(target_cand, "cis_json", None):
@@ -476,7 +509,7 @@ def _compute_revision_diff(
                     target_cand,
                     tv,
                     _extract_essay_cis_score(target_cand, tv),
-                    bool(ts == cur_stem or ts in cur_stem or cur_stem in ts),
+                    _is_same_manuscript_family(cur_stem, ts),
                 )
 
     if chosen_prev is None:

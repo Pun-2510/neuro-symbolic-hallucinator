@@ -1691,6 +1691,18 @@ export function EssayPage() {
     c.citation_links?.length ? c.citation_links : c.citation_link ? [c.citation_link] : [];
 
   const activeRevisionDiff = customRevisionDiff ?? report.revision_diff ?? null;
+  const isSandboxManuscript = Boolean(
+    report.filename &&
+      (/^citra_acl_sandbox/i.test(report.filename) || /acl_sandbox/i.test(report.filename)),
+  );
+  const shouldShowRevisionDiff = Boolean(
+    !isSandboxManuscript &&
+      activeRevisionDiff?.has_previous_revision &&
+      (customRevisionDiff !== null || activeRevisionDiff.is_same_manuscript_family !== false),
+  );
+  const sameFamilyRevisions = (activeRevisionDiff?.available_revisions ?? []).filter(
+    (rev) => rev.is_same_stem !== false && !/acl_sandbox/i.test(rev.filename),
+  );
   const docDiag = report.document_diagnostics;
   const isScannedPdfDetected = Boolean(
     docDiag?.is_scanned_pdf ||
@@ -1769,7 +1781,7 @@ export function EssayPage() {
       )}
 
       {/* P3 Feature #3: Revision Diff / Version Progress Tracker (v1 -> v2) */}
-      {activeRevisionDiff?.has_previous_revision && (
+      {shouldShowRevisionDiff && activeRevisionDiff && (
         <div
           data-testid="revision-diff-banner"
           className="rounded-2xl border border-indigo-200/90 dark:border-indigo-800/80 bg-gradient-to-r from-indigo-50/90 via-white to-emerald-50/70 dark:from-indigo-950/50 dark:via-slate-900 dark:to-emerald-950/30 p-4 sm:p-5 shadow-xs overflow-hidden"
@@ -1787,8 +1799,7 @@ export function EssayPage() {
                     #{activeRevisionDiff.previous_essay_id} — {activeRevisionDiff.previous_filename}
                   </strong>
                 </span>
-                {activeRevisionDiff.available_revisions &&
-                  activeRevisionDiff.available_revisions.length > 1 && (
+                {sameFamilyRevisions.length > 1 && (
                     <select
                       data-testid="revision-compare-select"
                       aria-label="Select previous revision to compare"
@@ -1800,7 +1811,7 @@ export function EssayPage() {
                       }}
                       className="w-full sm:w-auto max-w-full sm:max-w-[320px] min-w-0 truncate text-xs font-mono px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
                     >
-                      {activeRevisionDiff.available_revisions.map((rev) => (
+                      {sameFamilyRevisions.map((rev) => (
                         <option key={rev.essay_id} value={rev.essay_id}>
                           #{rev.essay_id}{' '}
                           {rev.filename.length > 18 ? `${rev.filename.slice(0, 16)}...` : rev.filename}{' '}

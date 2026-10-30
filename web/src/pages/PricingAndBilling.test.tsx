@@ -12,6 +12,7 @@ import { StripeDemoCheckoutPage } from './StripeDemoCheckoutPage';
 import { BillingSuccessPage } from './BillingSuccessPage';
 import { UploadPage } from './UploadPage';
 import { SandboxPage } from './SandboxPage';
+import { EssayPage } from './EssayPage';
 import { ProcessingPage } from './ProcessingPage';
 import { SettingsPage } from './SettingsPage';
 import { EssayHeader } from './essay/EssayHeader';
@@ -770,5 +771,104 @@ describe('Premium Subscription, Pricing, Stripe Checkout & Paywall UI/UX Flows',
       expect(genPdfSpy).toHaveBeenCalled();
       expect(screen.getByText('Processing #77')).toBeDefined();
     });
+  });
+
+  it('EssayPage suppresses Revision Progress Tracker for CITRA_ACL_Sandbox reports and unrelated manuscripts, and shows it only for same-family revisions', async () => {
+    const baseReport = {
+      essay_id: 29,
+      filename: 'CITRA_ACL_Sandbox_APA_10refs.pdf',
+      num_pages: 2,
+      num_citations: 10,
+      num_references: 10,
+      extracted_citations: [],
+      essay: {
+        id: 29,
+        filename: 'CITRA_ACL_Sandbox_APA_10refs.pdf',
+        num_pages: 2,
+        uploaded_at: '2026-10-30T03:00:00Z',
+      },
+      style_profile: { style: 'apa-like', confidence: 0.95 },
+      linking_summary: { total_in_text: 10, matched: 10, unmatched_in_text: 0, uncited_references: 0 },
+      verdicts: [],
+      references: [],
+      cis: { score: 87.5, grade: 'B', total_academic: 10, verified: 8 },
+      revision_diff: {
+        has_previous_revision: true,
+        is_same_manuscript_family: false,
+        previous_essay_id: 28,
+        previous_filename: 'VietDepression_Springer_KAIS.pdf',
+        current_essay_id: 29,
+        current_filename: 'CITRA_ACL_Sandbox_APA_10refs.pdf',
+        cis_before: 100.0,
+        cis_after: 87.5,
+        cis_delta: -12.5,
+      },
+      disclaimer: '',
+      generated_at: '2026-10-30T03:00:00Z',
+    };
+
+    const getReportSpy = vi.spyOn(api, 'getEssay').mockResolvedValue(baseReport as never);
+
+    const { unmount } = renderWithAuth(
+      <Routes>
+        <Route path="/verification/report/:id" element={<EssayPage />} />
+      </Routes>,
+      {
+        user: createMockUser({ plan_tier: 'ultra', role: 'user' }),
+        initialEntries: ['/verification/report/29'],
+      },
+    );
+
+    await waitFor(() => {
+      expect(getReportSpy).toHaveBeenCalledWith(29);
+      expect(screen.getAllByText('CITRA_ACL_Sandbox_APA_10refs.pdf').length).toBeGreaterThan(0);
+    });
+
+    // Must NOT show revision diff banner comparing Sandbox against #28 VietDepression_Springer_KAIS.pdf
+    expect(screen.queryByTestId('revision-diff-banner')).toBeNull();
+    expect(document.body.textContent).not.toContain('VietDepression_Springer_KAIS.pdf');
+    unmount();
+
+    // Now render a true v2 revision of the same manuscript family -> banner SHOULD appear
+    getReportSpy.mockResolvedValueOnce({
+      ...baseReport,
+      essay_id: 31,
+      filename: 'VietDepression_Springer_KAIS_v2_fixed.pdf',
+      essay: {
+        id: 31,
+        filename: 'VietDepression_Springer_KAIS_v2_fixed.pdf',
+        num_pages: 12,
+        uploaded_at: '2026-10-30T03:10:00Z',
+      },
+      revision_diff: {
+        has_previous_revision: true,
+        is_same_manuscript_family: true,
+        previous_essay_id: 28,
+        previous_filename: 'VietDepression_Springer_KAIS.pdf',
+        current_essay_id: 31,
+        current_filename: 'VietDepression_Springer_KAIS_v2_fixed.pdf',
+        cis_before: 85.0,
+        cis_after: 100.0,
+        cis_delta: 15.0,
+        resolved_issues_count: 2,
+      },
+    } as never);
+
+    renderWithAuth(
+      <Routes>
+        <Route path="/verification/report/:id" element={<EssayPage />} />
+      </Routes>,
+      {
+        user: createMockUser({ plan_tier: 'ultra', role: 'user' }),
+        initialEntries: ['/verification/report/31'],
+      },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('revision-diff-banner')).toBeDefined();
+    });
+    expect(screen.getByTestId('revision-diff-banner').textContent).toContain(
+      '#28 — VietDepression_Springer_KAIS.pdf',
+    );
   });
 });

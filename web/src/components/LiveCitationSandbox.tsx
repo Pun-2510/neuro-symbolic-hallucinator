@@ -149,7 +149,13 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
           base.authors_text = 'Michael Anderson; Elena Rostova';
           base.authors = ['Michael Anderson', 'Elena Rostova'];
         } else if (preset === 'hallucinated') {
-          base.title = `Autonomous Quantum Hyper-Graph Prompting for Zero-Shot ${orig.title.slice(0, 28)}`;
+          const topicWords = orig.title
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 5)
+            .join(' ')
+            .replace(/[.,:;!?]+$/, '');
+          base.title = `Autonomous Quantum Hyper-Graph Prompting for Zero-Shot ${topicWords || 'Neural Reasoning'}`;
           base.authors_text = 'Jonathan Sterling; Victoria Vance';
           base.authors = ['Jonathan Sterling', 'Victoria Vance'];
           base.year = '2025';
