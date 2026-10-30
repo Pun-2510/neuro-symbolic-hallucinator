@@ -1223,17 +1223,19 @@ export function StickyCardWidget({
       }}
       className="solva-glass-ring w-full max-w-[340px] rounded-[12px] p-5 space-y-3.5 text-left border border-[#E7E3D9]/80 dark:border-[#332F26]"
     >
-      <div style={getStaggerStyle(40)} className="flex items-center justify-between">
+      <div style={getStaggerStyle(40)} className="flex items-center justify-between gap-2">
         <span
           style={{ color: 'var(--solva-ink)' }}
-          className="text-[13px] font-medium flex items-center gap-1.5"
+          className="text-[13px] font-medium flex items-center gap-1.5 min-w-0"
         >
           <Sparkles className="w-4 h-4 shrink-0" />
-          {lang === 'vi'
-            ? 'Theo dõi Tiến độ Chỉnh sửa Bản thảo'
-            : 'Revision Progress & Integrity Score'}
+          <span className="leading-snug">
+            {lang === 'vi'
+              ? 'Theo dõi Tiến độ Chỉnh sửa Bản thảo'
+              : 'Revision Progress & Integrity Score'}
+          </span>
         </span>
-        <span className="text-[11px] font-mono font-bold text-emerald-700 dark:text-emerald-300 shrink-0 ml-2">
+        <span className="text-[11px] font-mono font-bold text-emerald-700 dark:text-emerald-300 shrink-0 whitespace-nowrap">
           <SolvaLiveNumber
             value={currentCisDelta}
             prefix="+"
@@ -1609,12 +1611,12 @@ export function BottomCTAMockup({ lang }: { lang: Lang }) {
     >
       <div
         style={getStaggerStyle(40)}
-        className="flex items-center justify-between border-b border-[#E7E3D9] dark:border-[#332F26] pb-3"
+        className="flex items-center justify-between gap-3 border-b border-[#E7E3D9] dark:border-[#332F26] pb-3"
       >
-        <div>
+        <div className="min-w-0">
           <div
             style={{ color: 'var(--solva-muted)' }}
-            className="text-[10px] font-mono uppercase"
+            className="text-[10px] font-mono uppercase truncate"
           >
             {lang === 'vi'
               ? 'BÁO CÁO KIỂM CHỨNG TOÀN DIỆN'
@@ -1622,9 +1624,9 @@ export function BottomCTAMockup({ lang }: { lang: Lang }) {
           </div>
           <div
             style={{ color: 'var(--solva-ink)' }}
-            className="text-[15px] font-medium mt-0.5"
+            className="text-[13px] sm:text-[15px] font-medium mt-0.5 truncate"
           >
-            graduation_thesis_final_v3.pdf
+            thesis_final_v3.pdf
           </div>
         </div>
         <span
@@ -1632,7 +1634,7 @@ export function BottomCTAMockup({ lang }: { lang: Lang }) {
             backgroundColor: 'var(--solva-btn-bg)',
             color: 'var(--solva-btn-fg)',
           }}
-          className="px-2.5 py-1 rounded-[6px] font-mono text-[11px] font-semibold"
+          className="px-2.5 py-1 rounded-[6px] font-mono text-[11px] font-semibold shrink-0 whitespace-nowrap"
         >
           CIS{' '}
           <SolvaLiveNumber
