@@ -62,6 +62,7 @@ export function useFloralCardAnimation(replayIntervalMs = 5200) {
   useEffect(() => {
     if (!isVisible || replayIntervalMs <= 0) return;
     const timer = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       setReplaySeed((prev) => prev + 1);
     }, replayIntervalMs);
     return () => window.clearInterval(timer);
@@ -80,10 +81,34 @@ export function useFloralCardAnimation(replayIntervalMs = 5200) {
   return { containerRef, isVisible, replaySeed, getStaggerStyle };
 }
 
+function formatSolvaLiveNumber(
+  num: number,
+  decimals: number,
+  padDigits: number,
+  formatThousands: boolean,
+  thousandSeparator: string,
+  prefix: string,
+  suffix: string
+): string {
+  const fixed = num.toFixed(decimals);
+  let body: string;
+  if (padDigits > 0 && decimals === 0) {
+    body = Math.round(num).toString().padStart(padDigits, '0');
+  } else if (!formatThousands) {
+    body = fixed;
+  } else {
+    const [intPart, decPart] = fixed.split('.');
+    const withSep = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousandSeparator);
+    body = decPart !== undefined ? `${withSep}.${decPart}` : withSep;
+  }
+  return `${prefix}${body}${suffix}`;
+}
+
 /**
  * Smooth Quartic Ease-Out Animated Number (`SolvaLiveNumber`)
  * Replicates and extends the smooth count-up feel of `SolvaAnimatedMetric` (15+, 96.4%, 4.9/5)
  * inside every floral demo card.
+ * Updates DOM `textContent` directly in `requestAnimationFrame` to avoid ~4,200 React re-renders/sec.
  */
 export function SolvaLiveNumber({
   value,
@@ -110,8 +135,8 @@ export function SolvaLiveNumber({
   thousandSeparator?: string;
   className?: string;
 }) {
-  const [displayVal, setDisplayVal] = useState<number>(startValue);
-  const currentValRef = useRef<number>(startValue);
+  const spanRef = useRef<HTMLSpanElement>(null);
+  const currentValRef = useRef<number>(value);
   const prevSeedRef = useRef<number>(replaySeed);
   const prevTargetRef = useRef<number>(value);
   const rafRef = useRef<number | null>(null);
@@ -121,6 +146,11 @@ export function SolvaLiveNumber({
     const targetChanged = value !== prevTargetRef.current;
     prevSeedRef.current = replaySeed;
     prevTargetRef.current = value;
+
+    if (!seedChanged && !targetChanged && replaySeed === 0) {
+      currentValRef.current = value;
+      return;
+    }
 
     const fromVal = seedChanged
       ? startValue
@@ -135,19 +165,35 @@ export function SolvaLiveNumber({
     }
 
     const startTime = performance.now();
+    let lastText = '';
+
     const tick = (now: number) => {
       const elapsed = now - startTime;
       const progress = Math.min(1, elapsed / Math.max(140, activeDuration));
       // Quartic ease-out for silky deceleration matching SolvaAnimatedMetric
       const eased = 1 - Math.pow(1 - progress, 4);
-      const next = fromVal + (value - fromVal) * eased;
+      const next = progress < 1 ? fromVal + (value - fromVal) * eased : value;
       currentValRef.current = next;
-      setDisplayVal(next);
+
+      if (spanRef.current) {
+        const text = formatSolvaLiveNumber(
+          next,
+          decimals,
+          padDigits,
+          formatThousands,
+          thousandSeparator,
+          prefix,
+          suffix
+        );
+        if (text !== lastText) {
+          spanRef.current.textContent = text;
+          lastText = text;
+        }
+      }
+
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(tick);
       } else {
-        currentValRef.current = value;
-        setDisplayVal(value);
         rafRef.current = null;
       }
     };
@@ -156,26 +202,35 @@ export function SolvaLiveNumber({
     return () => {
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
     };
-  }, [value, startValue, durationMs, replaySeed]);
+  }, [
+    value,
+    startValue,
+    durationMs,
+    replaySeed,
+    decimals,
+    padDigits,
+    formatThousands,
+    thousandSeparator,
+    prefix,
+    suffix,
+  ]);
 
-  const formattedNumber = (() => {
-    const fixed = displayVal.toFixed(decimals);
-    if (padDigits > 0 && decimals === 0) {
-      return Math.round(displayVal).toString().padStart(padDigits, '0');
-    }
-    if (!formatThousands) return fixed;
-    const [intPart, decPart] = fixed.split('.');
-    const withSep = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousandSeparator);
-    return decPart !== undefined ? `${withSep}.${decPart}` : withSep;
-  })();
+  const formattedTarget = formatSolvaLiveNumber(
+    value,
+    decimals,
+    padDigits,
+    formatThousands,
+    thousandSeparator,
+    prefix,
+    suffix
+  );
 
   return (
-    <span className={`tabular-nums ${className}`}>
-      {prefix}
-      {formattedNumber}
-      {suffix}
+    <span ref={spanRef} className={`tabular-nums ${className}`}>
+      {formattedTarget}
     </span>
   );
 }
@@ -194,15 +249,16 @@ export function HeroVerificationMockup({
   activeStep: number;
   onSelectStep?: (step: number) => void;
 }) {
-  const { containerRef, replaySeed, getStaggerStyle } = useFloralCardAnimation(5800);
+  const { containerRef, isVisible, replaySeed, getStaggerStyle } = useFloralCardAnimation(5800);
   const [activeApiPulse, setActiveApiPulse] = useState(0);
 
   useEffect(() => {
+    if (!isVisible) return;
     const timer = window.setInterval(() => {
       setActiveApiPulse((prev) => (prev + 1) % 3);
     }, 1050);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [isVisible]);
 
   const citations = [
     {
@@ -549,17 +605,18 @@ export function FeatureCardWidget({
   index: 0 | 1 | 2;
   lang: Lang;
 }) {
-  const { containerRef, replaySeed, getStaggerStyle } = useFloralCardAnimation(5000);
+  const { containerRef, isVisible, replaySeed, getStaggerStyle } = useFloralCardAnimation(5000);
   const [cycleStep, setCycleStep] = useState(0);
 
   useEffect(() => {
+    if (!isVisible) return;
     const intervalMs = index === 1 ? 1100 : 2300;
     const maxSteps = index === 1 ? 5 : 3;
     const timer = window.setInterval(() => {
       setCycleStep((prev) => (prev + 1) % maxSteps);
     }, intervalMs);
     return () => window.clearInterval(timer);
-  }, [index]);
+  }, [index, isVisible]);
 
   if (index === 0) {
     // Widget 1: Two-Layer Orthogonal Matrix
@@ -902,17 +959,18 @@ export function StickyCardWidget({
   index: 0 | 1 | 2;
   lang: Lang;
 }) {
-  const { containerRef, replaySeed, getStaggerStyle } = useFloralCardAnimation(4800);
+  const { containerRef, isVisible, replaySeed, getStaggerStyle } = useFloralCardAnimation(4800);
   const [activePhase, setActivePhase] = useState(0);
 
   useEffect(() => {
+    if (!isVisible) return;
     const intervalMs = index === 0 ? 1500 : index === 1 ? 2000 : 2200;
     const steps = index === 0 ? 4 : 3;
     const timer = window.setInterval(() => {
       setActivePhase((prev) => (prev + 1) % steps);
     }, intervalMs);
     return () => window.clearInterval(timer);
-  }, [index]);
+  }, [index, isVisible]);
 
   if (index === 0) {
     // Card 0: GROBID TEI-XML + Cross-Validator (Screenshot 0)
@@ -1350,15 +1408,16 @@ export function PipelineStageVisual({
   tabIndex: number;
   lang: Lang;
 }) {
-  const { containerRef, replaySeed, getStaggerStyle } = useFloralCardAnimation(5200);
+  const { containerRef, isVisible, replaySeed, getStaggerStyle } = useFloralCardAnimation(5200);
   const [activeRow, setActiveRow] = useState(0);
 
   useEffect(() => {
+    if (!isVisible) return;
     const timer = window.setInterval(() => {
       setActiveRow((prev) => (prev + 1) % 3);
     }, 1600);
     return () => window.clearInterval(timer);
-  }, [tabIndex]);
+  }, [tabIndex, isVisible]);
 
   const stages = [
     {
@@ -1579,15 +1638,16 @@ export function PipelineStageVisual({
  * 5. BOTTOM CTA MOCKUP CARD (`800x533px` cropped style inside 588x376px painterly frame)
  */
 export function BottomCTAMockup({ lang }: { lang: Lang }) {
-  const { containerRef, replaySeed, getStaggerStyle } = useFloralCardAnimation(5200);
+  const { containerRef, isVisible, replaySeed, getStaggerStyle } = useFloralCardAnimation(5200);
   const [activeBox, setActiveBox] = useState(0);
 
   useEffect(() => {
+    if (!isVisible) return;
     const timer = window.setInterval(() => {
       setActiveBox((prev) => (prev + 1) % 3);
     }, 2000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [isVisible]);
 
   const stats = [
     {
@@ -1721,15 +1781,16 @@ export function BottomCTAMockup({ lang }: { lang: Lang }) {
  * directly illustrating the "120 graduation theses on Monday morning" case study.
  */
 export function CohortBatchAuditWidget({ lang }: { lang: Lang }) {
-  const { containerRef, replaySeed, getStaggerStyle } = useFloralCardAnimation(5200);
+  const { containerRef, isVisible, replaySeed, getStaggerStyle } = useFloralCardAnimation(5200);
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
+    if (!isVisible) return;
     const timer = window.setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % 3);
     }, 3400);
     return () => window.clearInterval(timer);
-  }, [activeIndex]);
+  }, [activeIndex, isVisible]);
 
   const theses = [
     {

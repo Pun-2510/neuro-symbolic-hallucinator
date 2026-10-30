@@ -23,11 +23,6 @@ import {
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
-import { ActivateAccountPage } from './pages/ActivateAccountPage';
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
-import { ResetPasswordPage } from './pages/ResetPasswordPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { UploadPage } from './pages/UploadPage';
 
 /* ============================================================
    SourceLogic — Router Configuration
@@ -60,8 +55,13 @@ function LegacyEssayRedirect() {
   return <Navigate to={`/verification/report/${id}`} replace />;
 }
 
-// Secondary authenticated pages are code-split with lazyWithRetry so that transient
-// network blips or stale chunk hashes across deployments recover automatically.
+// Secondary and authenticated pages are code-split with lazyWithRetry so that the
+// landing page initial bundle stays lean and transient chunk errors recover automatically.
+const ActivateAccountPage = lazyWithRetry(() => import('./pages/ActivateAccountPage').then((m) => ({ default: m.ActivateAccountPage })));
+const ForgotPasswordPage = lazyWithRetry(() => import('./pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazyWithRetry(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
+const DashboardPage = lazyWithRetry(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const UploadPage = lazyWithRetry(() => import('./pages/UploadPage').then((m) => ({ default: m.UploadPage })));
 const SandboxPage = lazyWithRetry(() => import('./pages/SandboxPage').then((m) => ({ default: m.SandboxPage })));
 const BatchUploadPage = lazyWithRetry(() => import('./pages/BatchUploadPage').then((m) => ({ default: m.BatchUploadPage })));
 const ProcessingPage = lazyWithRetry(() => import('./pages/ProcessingPage').then((m) => ({ default: m.ProcessingPage })));
@@ -272,17 +272,17 @@ export const router = createBrowserRouter([
         path: '/forgot-password',
         element: (
           <PublicRoute>
-            <ForgotPasswordPage />
+            {withSuspense(ForgotPasswordPage)}
           </PublicRoute>
         ),
       },
       {
         path: '/activate-account',
-        element: <ActivateAccountPage />,
+        element: withSuspense(ActivateAccountPage),
       },
       {
         path: '/reset-password',
-        element: <ResetPasswordPage />,
+        element: withSuspense(ResetPasswordPage),
       },
       {
         path: '/pricing',
@@ -300,8 +300,8 @@ export const router = createBrowserRouter([
         ),
         errorElement: <RouteErrorBoundary />,
         children: [
-          { path: '/dashboard', element: <DashboardPage /> },
-          { path: '/upload', element: <UploadPage /> },
+          { path: '/dashboard', element: withSuspense(DashboardPage) },
+          { path: '/upload', element: withSuspense(UploadPage) },
           { path: '/sandbox', element: withSuspense(SandboxPage) },
           {
             path: '/batch-upload',

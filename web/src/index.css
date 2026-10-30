@@ -1123,6 +1123,8 @@
   background-repeat: repeat;
   background-size: 160px auto;
   background-position: left top;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 
 .solva-glass-ring {
@@ -1181,6 +1183,9 @@
 .animate-solva-marquee {
   display: flex;
   width: max-content;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
   animation: solvaMarquee 34s linear infinite;
 }
 

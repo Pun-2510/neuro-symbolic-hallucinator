@@ -9,54 +9,150 @@ import { Link } from 'react-router-dom';
 export type Lang = 'en' | 'vi';
 
 /* ------------------------------------------------------------
-   SHARED RAF SCROLL SUBSCRIBER (120fps GPU-composited updates)
+   120FPS TWO-PHASE (READ -> WRITE) RAF SCROLL ENGINE
+   + VIEWPORT-PROXIMITY INTERSECTION CULLING
+   Eliminates forced synchronous reflows (layout thrashing) so all
+   scroll-linked reveals, parallax paintings & sticky cards run
+   well within the 8.33ms frame budget of 120Hz ProMotion displays.
    ------------------------------------------------------------ */
-type ScrollCallback = () => void;
-const scrollSubscribers = new Set<ScrollCallback>();
+type WriteCallback = () => void;
+type ScrollTask = (
+  vh: number,
+  vw: number,
+  scheduleWrite: (writeFn: WriteCallback) => void
+) => void;
+
+interface ScrollEntry {
+  el: Element | null;
+  task: ScrollTask;
+  isNear: boolean;
+  needsSync: boolean;
+}
+
+const scrollEntries = new Set<ScrollEntry>();
+const elementToEntry = new WeakMap<Element, ScrollEntry>();
+const writeQueue: WriteCallback[] = [];
 let rafId: number | null = null;
 let listenersAttached = false;
+let forceFullSync = true;
+let lastScrollY = 0;
+let sharedObserver: IntersectionObserver | null = null;
+
+function scheduleWrite(fn: WriteCallback) {
+  writeQueue.push(fn);
+}
 
 function flushScrollSubscribers() {
   rafId = null;
-  scrollSubscribers.forEach((cb) => cb());
+  if (typeof window === 'undefined') return;
+
+  const vh = window.innerHeight || 900;
+  const vw = window.innerWidth || 1440;
+  const currentScrollY = window.scrollY || window.pageYOffset || 0;
+  const isLargeJump = Math.abs(currentScrollY - lastScrollY) > vh * 0.55;
+  lastScrollY = currentScrollY;
+
+  const runAll = forceFullSync || isLargeJump;
+  forceFullSync = false;
+
+  // PHASE 1: Batch all DOM geometry reads (getBoundingClientRect) while layout tree is clean
+  scrollEntries.forEach((entry) => {
+    if (!runAll && !entry.isNear && !entry.needsSync) return;
+    entry.needsSync = false;
+    entry.task(vh, vw, scheduleWrite);
+  });
+
+  // PHASE 2: Batch all DOM style mutations & React state transitions after reads finish
+  for (let i = 0; i < writeQueue.length; i += 1) {
+    writeQueue[i]();
+  }
+  writeQueue.length = 0;
 }
 
-function handleGlobalScrollOrResize() {
+function requestScrollFrame(fullSync = false) {
+  if (fullSync) {
+    forceFullSync = true;
+  }
   if (rafId === null && typeof window !== 'undefined') {
     rafId = window.requestAnimationFrame(flushScrollSubscribers);
   }
 }
 
-function subscribeToScroll(cb: ScrollCallback): () => void {
-  scrollSubscribers.add(cb);
+function handleGlobalScroll() {
+  requestScrollFrame(false);
+}
+
+function handleGlobalResize() {
+  requestScrollFrame(true);
+}
+
+function getSharedObserver(): IntersectionObserver | null {
+  if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') {
+    return null;
+  }
+  if (!sharedObserver) {
+    sharedObserver = new IntersectionObserver(
+      (ioEntries) => {
+        let shouldTick = false;
+        for (let i = 0; i < ioEntries.length; i += 1) {
+          const ioEntry = ioEntries[i];
+          const sub = elementToEntry.get(ioEntry.target);
+          if (!sub) continue;
+          if (ioEntry.isIntersecting) {
+            sub.isNear = true;
+            sub.needsSync = true;
+            shouldTick = true;
+          } else {
+            sub.isNear = false;
+            // Perform one final sync so off-screen 'below'/'above' state is exact
+            sub.needsSync = true;
+            shouldTick = true;
+          }
+        }
+        if (shouldTick) {
+          requestScrollFrame(false);
+        }
+      },
+      { rootMargin: '320px 0px 320px 0px', threshold: 0 }
+    );
+  }
+  return sharedObserver;
+}
+
+function subscribeToScroll(el: Element | null, task: ScrollTask): () => void {
+  const entry: ScrollEntry = {
+    el,
+    task,
+    isNear: true,
+    needsSync: true,
+  };
+  scrollEntries.add(entry);
+
+  const observer = el ? getSharedObserver() : null;
+  if (observer && el) {
+    elementToEntry.set(el, entry);
+    observer.observe(el);
+  }
+
   if (!listenersAttached && typeof window !== 'undefined') {
     listenersAttached = true;
-    window.addEventListener('scroll', handleGlobalScrollOrResize, { passive: true });
-    window.addEventListener('resize', handleGlobalScrollOrResize, { passive: true });
+    lastScrollY = window.scrollY || window.pageYOffset || 0;
+    window.addEventListener('scroll', handleGlobalScroll, { passive: true });
+    window.addEventListener('resize', handleGlobalResize, { passive: true });
   }
-  let initRaf1: number | null = null;
-  let initRaf2: number | null = null;
-  if (typeof window !== 'undefined') {
-    initRaf1 = window.requestAnimationFrame(() => {
-      initRaf2 = window.requestAnimationFrame(() => {
-        if (scrollSubscribers.has(cb)) {
-          cb();
-        }
-      });
-    });
-  }
+
+  requestScrollFrame(false);
+
   return () => {
-    if (initRaf1 !== null && typeof window !== 'undefined') {
-      window.cancelAnimationFrame(initRaf1);
+    if (observer && el) {
+      observer.unobserve(el);
+      elementToEntry.delete(el);
     }
-    if (initRaf2 !== null && typeof window !== 'undefined') {
-      window.cancelAnimationFrame(initRaf2);
-    }
-    scrollSubscribers.delete(cb);
-    if (scrollSubscribers.size === 0 && listenersAttached && typeof window !== 'undefined') {
+    scrollEntries.delete(entry);
+    if (scrollEntries.size === 0 && listenersAttached && typeof window !== 'undefined') {
       listenersAttached = false;
-      window.removeEventListener('scroll', handleGlobalScrollOrResize);
-      window.removeEventListener('resize', handleGlobalScrollOrResize);
+      window.removeEventListener('scroll', handleGlobalScroll);
+      window.removeEventListener('resize', handleGlobalResize);
     }
   };
 }
@@ -87,26 +183,44 @@ export function SolvaScrollReveal({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const phaseRef = useRef<'visible' | 'below' | 'above'>('below');
   const [phase, setPhase] = useState<'visible' | 'below' | 'above'>('below');
+  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
-    return subscribeToScroll(() => {
-      const el = ref.current;
-      if (!el || typeof window === 'undefined') return;
+    const el = ref.current;
+    if (!el) return;
+    return subscribeToScroll(el, (vh, _vw, schedule) => {
       const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight || 900;
-
+      let nextPhase: 'visible' | 'below' | 'above';
       if (rect.top > vh * triggerRatio) {
-        setPhase((prev) => (prev === 'below' ? prev : 'below'));
+        nextPhase = 'below';
       } else if (rect.bottom < 48) {
-        setPhase((prev) => (prev === 'above' ? prev : 'above'));
+        nextPhase = 'above';
       } else {
-        setPhase((prev) => (prev === 'visible' ? prev : 'visible'));
+        nextPhase = 'visible';
+      }
+
+      if (nextPhase !== phaseRef.current) {
+        phaseRef.current = nextPhase;
+        schedule(() => setPhase(nextPhase));
       }
     });
   }, [triggerRatio]);
 
   const isVisible = phase === 'visible';
+
+  useEffect(() => {
+    if (!isVisible) {
+      setSettled(false);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setSettled(true);
+    }, delayMs + 720);
+    return () => window.clearTimeout(timer);
+  }, [isVisible, delayMs]);
+
   const translateY = phase === 'below' ? yOffset : phase === 'above' ? -16 : 0;
   const currentScale = isVisible ? 1 : scaleFrom;
   const currentOpacity = isVisible ? 1 : 0.001;
@@ -118,13 +232,13 @@ export function SolvaScrollReveal({
       ref={ref}
       style={{
         opacity: currentOpacity,
-        transform: `translate3d(0, ${translateY}px, 0) scale(${currentScale})`,
+        transform: settled ? 'none' : `translate3d(0, ${translateY}px, 0) scale(${currentScale})`,
         filter: currentBlur > 0 ? `blur(${currentBlur}px)` : 'none',
         transitionProperty: 'opacity, transform, filter',
         transitionDuration: isVisible ? '700ms' : '420ms',
         transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
         transitionDelay: `${activeDelay}ms`,
-        willChange: 'transform, opacity, filter',
+        willChange: settled ? 'auto' : 'transform, opacity, filter',
       }}
       className={className}
     >
@@ -193,21 +307,27 @@ export function SolvaTwoToneHeading({
   className?: string;
 }) {
   const ref = useRef<HTMLHeadingElement>(null);
+  const phaseRef = useRef<'visible' | 'below' | 'above'>('below');
   const [phase, setPhase] = useState<'visible' | 'below' | 'above'>('below');
+  const [wordsSettled, setWordsSettled] = useState(false);
 
   useEffect(() => {
-    return subscribeToScroll(() => {
-      const el = ref.current;
-      if (!el || typeof window === 'undefined') return;
+    const el = ref.current;
+    if (!el) return;
+    return subscribeToScroll(el, (vh, _vw, schedule) => {
       const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight || 900;
-
+      let nextPhase: 'visible' | 'below' | 'above';
       if (rect.top > vh * 0.91) {
-        setPhase((prev) => (prev === 'below' ? prev : 'below'));
+        nextPhase = 'below';
       } else if (rect.bottom < 44) {
-        setPhase((prev) => (prev === 'above' ? prev : 'above'));
+        nextPhase = 'above';
       } else {
-        setPhase((prev) => (prev === 'visible' ? prev : 'visible'));
+        nextPhase = 'visible';
+      }
+
+      if (nextPhase !== phaseRef.current) {
+        phaseRef.current = nextPhase;
+        schedule(() => setPhase(nextPhase));
       }
     });
   }, []);
@@ -222,6 +342,19 @@ export function SolvaTwoToneHeading({
   const isVisible = phase === 'visible';
   const wordY = phase === 'below' ? 28 : phase === 'above' ? -14 : 0;
 
+  useEffect(() => {
+    if (!isVisible) {
+      setWordsSettled(false);
+      return;
+    }
+    const totalWords = primaryWords.length + secondaryWords.length;
+    const maxDelay = delayMs + Math.min(totalWords * 34, 420) + 660;
+    const timer = window.setTimeout(() => {
+      setWordsSettled(true);
+    }, maxDelay);
+    return () => window.clearTimeout(timer);
+  }, [isVisible, delayMs, primaryWords.length, secondaryWords.length]);
+
   const renderAnimatedWords = (words: string[], startIndex: number) =>
     words.map((word, idx) => {
       const globalIdx = startIndex + idx;
@@ -229,15 +362,16 @@ export function SolvaTwoToneHeading({
       return (
         <Fragment key={`${word}-${idx}`}>
           <span
-            className="inline-block will-change-[transform,opacity,filter]"
+            className="inline-block"
             style={{
               opacity: isVisible ? 1 : 0.001,
-              transform: `translate3d(0, ${wordY}px, 0)`,
+              transform: wordsSettled ? 'none' : `translate3d(0, ${wordY}px, 0)`,
               filter: isVisible ? 'none' : 'blur(4px)',
               transitionProperty: 'opacity, transform, filter',
               transitionDuration: isVisible ? '640ms' : '360ms',
               transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
               transitionDelay: `${delay}ms`,
+              willChange: wordsSettled ? 'auto' : 'transform, opacity, filter',
             }}
           >
             {word}
@@ -371,6 +505,7 @@ export function SolvaButton({
 /**
  * 4. Painterly Frame + Film Grain Noise Overlay (opacity: 0.05, 160px tile)
  * Includes continuous scroll-linked parallax on the oil painting and floating inner widget.
+ * Uses direct DOM ref transforms (zero React re-renders during scroll) and skips off-screen work.
  */
 export function SolvaPainterlyFrame({
   paintingSrc,
@@ -378,51 +513,76 @@ export function SolvaPainterlyFrame({
   children,
   className = '',
   radiusClass = 'rounded-[16px]',
+  priority = false,
 }: {
   paintingSrc: string;
   alt?: string;
   children: ReactNode;
   className?: string;
   radiusClass?: string;
+  priority?: boolean;
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
-  const [parallaxOffset, setParallaxOffset] = useState(0);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const lastParallaxRef = useRef<number>(999);
 
   useEffect(() => {
-    return subscribeToScroll(() => {
-      const el = frameRef.current;
-      if (!el || typeof window === 'undefined') return;
+    const el = frameRef.current;
+    if (!el) return;
+    return subscribeToScroll(el, (vh, _vw, schedule) => {
       const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight || 900;
+      // Skip DOM updates when the frame is outside the active viewport band
+      if (rect.bottom < -120 || rect.top > vh + 120) return;
+
       const centerOffset = (rect.top + rect.height / 2 - vh / 2) / (vh / 2);
       const clamped = Math.max(-1.2, Math.min(1.2, centerOffset));
-      setParallaxOffset(clamped);
+      if (Math.abs(clamped - lastParallaxRef.current) < 0.0008) return;
+      lastParallaxRef.current = clamped;
+
+      const imgY = (clamped * -10).toFixed(2);
+      const innerY = (clamped * 8).toFixed(2);
+
+      schedule(() => {
+        if (imgRef.current) {
+          imgRef.current.style.transform = `translate3d(0, ${imgY}px, 0) scale3d(1.06, 1.06, 1)`;
+        }
+        if (innerRef.current) {
+          innerRef.current.style.transform = `translate3d(0, ${innerY}px, 0)`;
+        }
+      });
     });
   }, []);
 
   return (
     <div
       ref={frameRef}
+      style={{ contain: 'layout paint' }}
       className={`relative overflow-hidden ${radiusClass} ${className}`}
     >
       <img
+        ref={imgRef}
         src={paintingSrc}
         alt={alt}
         loading="eager"
         decoding="async"
+        fetchPriority={priority ? 'high' : 'low'}
         style={{
-          transform: `scale(1.06) translate3d(0, ${(parallaxOffset * -10).toFixed(1)}px, 0)`,
-          transition: 'transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
+          transform: 'translate3d(0, 0px, 0) scale3d(1.06, 1.06, 1)',
+          willChange: 'transform',
+          backfaceVisibility: 'hidden',
         }}
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none will-change-transform"
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
       />
       <div className="solva-noise-overlay" aria-hidden="true" />
       <div
+        ref={innerRef}
         style={{
-          transform: `translate3d(0, ${(parallaxOffset * 8).toFixed(1)}px, 0)`,
-          transition: 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)',
+          transform: 'translate3d(0, 0px, 0)',
+          willChange: 'transform',
+          backfaceVisibility: 'hidden',
         }}
-        className="relative z-10 w-full h-full will-change-transform"
+        className="relative z-10 w-full h-full"
       >
         {children}
       </div>
@@ -433,6 +593,7 @@ export function SolvaPainterlyFrame({
 /**
  * 5. Scroll-Triggered Sticky Stacking Card (`scale(1)` -> `scale(0.92)`)
  * Replicates Solva's Section 3 Sticky Container 1..3 stacking effect + reversible entrance.
+ * Uses 2-phase Read/Write RAF updates + direct GPU `scale3d` for locked 120fps scrolling.
  */
 export function SolvaStickyStackCard({
   index,
@@ -444,43 +605,69 @@ export function SolvaStickyStackCard({
   children: ReactNode;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
+  const scaleRef = useRef(1);
+  const inViewRef = useRef(false);
   const [inView, setInView] = useState(false);
+  const [entranceSettled, setEntranceSettled] = useState(false);
 
   useEffect(() => {
-    return subscribeToScroll(() => {
-      const el = cardRef.current;
-      if (!el || typeof window === 'undefined') return;
+    if (!inView) {
+      setEntranceSettled(false);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setEntranceSettled(true);
+    }, 580);
+    return () => window.clearTimeout(timer);
+  }, [inView]);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    return subscribeToScroll(el, (viewportH, viewportW, schedule) => {
       const rect = el.getBoundingClientRect();
-      const viewportH = window.innerHeight || 900;
 
       // Reversible entrance when scrolling down/up
-      setInView(rect.top <= viewportH * 0.92);
+      const nextInView = rect.top <= viewportH * 0.92;
+      const inViewChanged = nextInView !== inViewRef.current;
 
       // Only apply sticky scale-down on desktop (lg: 1024px+) where cards are sticky
-      if (window.innerWidth < 1024 || index >= total - 1) {
-        setScale(1);
-        return;
+      let nextScale = 1;
+      if (viewportW >= 1024 && index < total - 1 && rect.bottom > -100 && rect.top < viewportH + 100) {
+        const parent = el.parentElement;
+        const nextSibling = parent?.children[index + 1] as HTMLElement | undefined;
+        if (nextSibling) {
+          const nextRect = nextSibling.getBoundingClientRect();
+          const startY = viewportH * 0.88;
+          const endY = 140;
+          if (nextRect.top < startY) {
+            const progress = Math.max(
+              0,
+              Math.min(1, (startY - nextRect.top) / Math.max(1, startY - endY))
+            );
+            nextScale = 1 - progress * 0.085; // Smoothly scales from 1.0 down to 0.915
+          }
+        }
       }
-      const parent = el.parentElement;
-      if (!parent) return;
-      const nextSibling = parent.children[index + 1] as HTMLElement | undefined;
-      if (!nextSibling) return;
 
-      const nextRect = nextSibling.getBoundingClientRect();
-      const startY = viewportH * 0.88;
-      const endY = 140;
-      if (nextRect.top < startY) {
-        const progress = Math.max(
-          0,
-          Math.min(1, (startY - nextRect.top) / Math.max(1, startY - endY))
-        );
-        setScale(1 - progress * 0.085); // Smoothly scales from 1.0 down to 0.915
-      } else {
-        setScale(1);
+      const scaleChanged = Math.abs(nextScale - scaleRef.current) >= 0.0005;
+      if (inViewChanged || scaleChanged) {
+        inViewRef.current = nextInView;
+        scaleRef.current = nextScale;
+        const effectiveScale = (nextInView ? nextScale : nextScale * 0.97).toFixed(4);
+        const yPx = nextInView ? 0 : 32;
+        schedule(() => {
+          if (inViewChanged) {
+            setInView(nextInView);
+          }
+          el.style.transform = `translate3d(0, ${yPx}px, 0) scale3d(${effectiveScale}, ${effectiveScale}, 1)`;
+        });
       }
     });
   }, [index, total]);
+
+  const currentScale = scaleRef.current;
+  const initScale = (inView ? currentScale : currentScale * 0.97).toFixed(4);
 
   return (
     <div
@@ -489,13 +676,16 @@ export function SolvaStickyStackCard({
         zIndex: index + 1,
         opacity: inView ? 1 : 0.001,
         filter: inView ? 'none' : 'blur(3.5px)',
-        transform: `translate3d(0, ${inView ? 0 : 32}px, 0) scale(${inView ? scale : scale * 0.97})`,
+        transform: `translate3d(0, ${inView ? 0 : 32}px, 0) scale3d(${initScale}, ${initScale}, 1)`,
         transformOrigin: 'top center',
         backgroundColor: 'var(--solva-surface)',
-        transition:
-          'opacity 560ms cubic-bezier(0.22, 1, 0.36, 1), filter 500ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms ease-out',
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
+        transition: entranceSettled
+          ? 'opacity 560ms cubic-bezier(0.22, 1, 0.36, 1), filter 500ms cubic-bezier(0.22, 1, 0.36, 1)'
+          : 'opacity 560ms cubic-bezier(0.22, 1, 0.36, 1), filter 500ms cubic-bezier(0.22, 1, 0.36, 1), transform 520ms cubic-bezier(0.22, 1, 0.36, 1)',
       }}
-      className="lg:sticky lg:top-[116px] w-full rounded-[16px] p-[12px] will-change-[transform,opacity,filter]"
+      className="lg:sticky lg:top-[116px] w-full rounded-[16px] p-[12px]"
     >
       {children}
     </div>
@@ -505,6 +695,7 @@ export function SolvaStickyStackCard({
 /**
  * 6. Reversible Scroll-Triggered Animated Count-Up Metric (`Sentient` 40px Light)
  * Counts up when scrolled into view; resets and fades out when scrolled back up above it.
+ * Updates DOM textContent directly during RAF ticks (zero React re-renders per frame).
  */
 export function SolvaAnimatedMetric({
   targetValue,
@@ -520,26 +711,32 @@ export function SolvaAnimatedMetric({
   label: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [displayVal, setDisplayVal] = useState<number>(0);
+  const numRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
   const hasAnimated = useRef(false);
   const animRafRef = useRef<number | null>(null);
+
+  const formatMetric = (val: number) => `${prefix}${val.toFixed(decimals)}${suffix}`;
 
   const runCountAnimation = (fromVal: number, toVal: number, durationMs: number) => {
     if (animRafRef.current !== null) {
       cancelAnimationFrame(animRafRef.current);
     }
     const startTime = performance.now();
+    let lastText = '';
     const tick = (now: number) => {
       const elapsed = now - startTime;
       const progress = Math.min(1, elapsed / durationMs);
       const eased = 1 - Math.pow(1 - progress, 4);
       const current = fromVal + (toVal - fromVal) * eased;
-      setDisplayVal(current);
+      const nextText = formatMetric(progress < 1 && hasAnimated.current ? current : toVal);
+      if (numRef.current && nextText !== lastText) {
+        lastText = nextText;
+        numRef.current.textContent = nextText;
+      }
       if (progress < 1 && hasAnimated.current) {
         animRafRef.current = requestAnimationFrame(tick);
       } else {
-        setDisplayVal(toVal);
         animRafRef.current = null;
       }
     };
@@ -547,24 +744,27 @@ export function SolvaAnimatedMetric({
   };
 
   useEffect(() => {
-    const unsub = subscribeToScroll(() => {
-      const el = ref.current;
-      if (!el || typeof window === 'undefined') return;
+    const el = ref.current;
+    if (!el) return;
+    const unsub = subscribeToScroll(el, (vh, _vw, schedule) => {
       const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight || 900;
 
       if (rect.top > vh * 0.93 || rect.bottom < 32) {
         if (hasAnimated.current) {
-          setIsVisible(false);
           hasAnimated.current = false;
-          setDisplayVal(0);
+          schedule(() => {
+            setIsVisible(false);
+            if (numRef.current) {
+              numRef.current.textContent = formatMetric(0);
+            }
+          });
         }
-      } else {
-        setIsVisible(true);
-        if (!hasAnimated.current) {
-          hasAnimated.current = true;
+      } else if (!hasAnimated.current) {
+        hasAnimated.current = true;
+        schedule(() => {
+          setIsVisible(true);
           runCountAnimation(0, targetValue, 1500);
-        }
+        });
       }
     });
 
@@ -574,18 +774,18 @@ export function SolvaAnimatedMetric({
         cancelAnimationFrame(animRafRef.current);
       }
     };
-  }, [targetValue]);
+  }, [targetValue, decimals, prefix, suffix]);
 
   // Continuous gentle live count refresh while visible in viewport
   useEffect(() => {
     if (!isVisible) return;
     const interval = window.setInterval(() => {
-      if (hasAnimated.current) {
+      if (hasAnimated.current && document.visibilityState === 'visible') {
         runCountAnimation(0, targetValue, 1450);
       }
     }, 5200);
     return () => window.clearInterval(interval);
-  }, [isVisible, targetValue]);
+  }, [isVisible, targetValue, decimals, prefix, suffix]);
 
   return (
     <div
@@ -597,15 +797,14 @@ export function SolvaAnimatedMetric({
         transition:
           'opacity 560ms cubic-bezier(0.22, 1, 0.36, 1), transform 580ms cubic-bezier(0.22, 1, 0.36, 1), filter 480ms cubic-bezier(0.22, 1, 0.36, 1)',
       }}
-      className="flex flex-col gap-[4px] will-change-[transform,opacity,filter]"
+      className="flex flex-col gap-[4px]"
     >
       <div
+        ref={numRef}
         className="font-solva-serif font-light text-[32px] sm:text-[40px] leading-[1.2] tracking-[-0.05em] tabular-nums"
         style={{ color: 'var(--solva-ink)' }}
       >
-        {prefix}
-        {displayVal.toFixed(decimals)}
-        {suffix}
+        {formatMetric(targetValue)}
       </div>
       <div
         className="font-solva-sans text-[14px] leading-[21px]"

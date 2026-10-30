@@ -23,11 +23,22 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    try {
+      return typeof window !== 'undefined' && Boolean(localStorage.getItem('token'));
+    } catch {
+      return false;
+    }
+  });
 
   // Check for existing session on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
+    let storedToken: string | null = null;
+    try {
+      storedToken = localStorage.getItem('token');
+    } catch {
+      storedToken = null;
+    }
     if (storedToken) {
       validateToken(storedToken);
     } else {

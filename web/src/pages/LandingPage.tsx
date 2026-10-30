@@ -430,23 +430,33 @@ function SolvaHeader({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [headerEntered, setHeaderEntered] = useState(false);
+  const [headerSettled, setHeaderSettled] = useState(false);
 
   useEffect(() => {
-    const closeOnScroll = () => setDropdownOpen(false);
-    window.addEventListener('scroll', closeOnScroll, { passive: true });
     let raf1 = 0;
     let raf2 = 0;
+    let settleTimer = 0;
     raf1 = window.requestAnimationFrame(() => {
       raf2 = window.requestAnimationFrame(() => {
         setHeaderEntered(true);
+        settleTimer = window.setTimeout(() => {
+          setHeaderSettled(true);
+        }, 680);
       });
     });
     return () => {
-      window.removeEventListener('scroll', closeOnScroll);
       window.cancelAnimationFrame(raf1);
       window.cancelAnimationFrame(raf2);
+      if (settleTimer) window.clearTimeout(settleTimer);
     };
   }, []);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const closeOnScroll = () => setDropdownOpen(false);
+    window.addEventListener('scroll', closeOnScroll, { passive: true });
+    return () => window.removeEventListener('scroll', closeOnScroll);
+  }, [dropdownOpen]);
 
   const dropdownItems =
     lang === 'vi'
@@ -522,10 +532,13 @@ function SolvaHeader({
         opacity: headerEntered ? 1 : 0.001,
         transform: headerEntered ? 'translate3d(0, 0, 0)' : 'translate3d(0, -12px, 0)',
         filter: headerEntered ? 'none' : 'blur(2.5px)',
-        transition:
-          'opacity 620ms cubic-bezier(0.22, 1, 0.36, 1), transform 620ms cubic-bezier(0.22, 1, 0.36, 1), filter 520ms cubic-bezier(0.22, 1, 0.36, 1), background-color 200ms ease',
+        transition: headerSettled
+          ? 'background-color 200ms ease'
+          : 'opacity 620ms cubic-bezier(0.22, 1, 0.36, 1), transform 620ms cubic-bezier(0.22, 1, 0.36, 1), filter 520ms cubic-bezier(0.22, 1, 0.36, 1), background-color 200ms ease',
+        willChange: headerSettled ? 'transform' : 'transform, opacity, filter',
+        backfaceVisibility: 'hidden',
       }}
-      className="fixed top-0 left-0 right-0 z-50 will-change-[transform,opacity,filter]"
+      className="fixed top-0 left-0 right-0 z-50"
     >
       <div className="max-w-[1280px] mx-auto px-5 sm:px-6 lg:px-[40px] h-[64px] lg:h-[76px] flex items-center justify-between gap-4">
         {/* Left: Brand Logo */}
@@ -1021,7 +1034,8 @@ function SolvaHeroSection({
             className="w-full lg:w-[660px] shrink-0"
           >
             <SolvaPainterlyFrame
-              paintingSrc="/solva/hero-bg.png"
+              paintingSrc="/solva/hero-bg.webp"
+              priority
               alt="Impressionist wildflower meadow oil painting backdrop"
               className="w-full min-h-[420px] sm:min-h-[490px] lg:h-[521px] p-4 sm:p-8 lg:p-0"
             >
@@ -1971,7 +1985,7 @@ function SolvaBenchmark120KSection({ lang }: { lang: Lang }) {
 function SolvaFeaturesSection({ lang }: { lang: Lang }) {
   const features = [
     {
-      painting: '/solva/feature-1-bg.png',
+      painting: '/solva/feature-1-bg.webp',
       title:
         lang === 'vi'
           ? 'Kiểm chứng 2 tầng trực giao (L1 × L2)'
@@ -1982,7 +1996,7 @@ function SolvaFeaturesSection({ lang }: { lang: Lang }) {
           : 'Cleanly decouples internal manuscript consistency (Layer 1: In-text to Bibliography mapping) from external bibliographic existence (Layer 2: Canonical truth).',
     },
     {
-      painting: '/solva/feature-2-bg.png',
+      painting: '/solva/feature-2-bg.webp',
       title:
         lang === 'vi'
           ? 'Truy hồi song song trên 15+ CSDL học thuật'
@@ -1993,7 +2007,7 @@ function SolvaFeaturesSection({ lang }: { lang: Lang }) {
           : 'Queries Crossref, OpenAlex, Semantic Scholar, PubMed, arXiv, DBLP, DOAJ, and ORCID concurrently with sub-10ms SQLite FTS5 local caching.',
     },
     {
-      painting: '/solva/feature-3-bg.png',
+      painting: '/solva/feature-3-bg.webp',
       title:
         lang === 'vi'
           ? 'Suy diễn Neuro-Symbolic & Thái độ trích dẫn'
@@ -2086,7 +2100,7 @@ function SolvaStickySection({
 }) {
   const stickyBlocks = [
     {
-      painting: '/solva/sticky-1-bg.png',
+      painting: '/solva/sticky-1-bg.webp',
       title:
         lang === 'vi'
           ? 'Bóc tách cấu trúc bằng GROBID TEI-XML, không phụ thuộc mẫu cố định'
@@ -2098,7 +2112,7 @@ function SolvaStickySection({
       cta: lang === 'vi' ? 'Thử nghiệm ngay' : 'Get started',
     },
     {
-      painting: '/solva/sticky-2-bg.png',
+      painting: '/solva/sticky-2-bg.webp',
       title:
         lang === 'vi'
           ? 'Tường minh từng quy tắc cho giảng viên, tự động hóa cho sinh viên'
@@ -2110,7 +2124,7 @@ function SolvaStickySection({
       cta: lang === 'vi' ? 'Khám phá luật' : 'Explore rules',
     },
     {
-      painting: '/solva/sticky-3-bg.png',
+      painting: '/solva/sticky-3-bg.webp',
       title:
         lang === 'vi'
           ? 'Phát hiện trích dẫn ảo giác AI trước khi nộp hội đồng'
@@ -2205,13 +2219,17 @@ function SolvaStickySection({
 function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
   const [selectedId, setSelectedId] = useState<string>(DEMO_CITATIONS[1].id);
   const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(true);
-  const { containerRef: debuggerRef, replaySeed: debuggerSeed } = useFloralCardAnimation(5600);
+  const {
+    containerRef: debuggerRef,
+    isVisible: debuggerVisible,
+    replaySeed: debuggerSeed,
+  } = useFloralCardAnimation(5600);
 
   const activeCitation =
     DEMO_CITATIONS.find((c) => c.id === selectedId) || DEMO_CITATIONS[0];
 
   useEffect(() => {
-    if (!isAutoPlaying) return;
+    if (!isAutoPlaying || !debuggerVisible) return;
     const timer = window.setInterval(() => {
       setSelectedId((prev) => {
         const idx = DEMO_CITATIONS.findIndex((c) => c.id === prev);
@@ -2220,7 +2238,7 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
       });
     }, 4200);
     return () => window.clearInterval(timer);
-  }, [isAutoPlaying]);
+  }, [isAutoPlaying, debuggerVisible]);
 
   const handleSelectCitation = (id: string) => {
     setSelectedId(id);
@@ -2869,20 +2887,36 @@ function SolvaUseCasesSection({
 }) {
   const [activeTab, setActiveTab] = useState(0);
   const [autoCycleTabs, setAutoCycleTabs] = useState(true);
+  const { containerRef: useCasesRef, isVisible: useCasesVisible } = useFloralCardAnimation(0);
 
   useEffect(() => {
-    if (!autoCycleTabs) return;
+    if (!autoCycleTabs || !useCasesVisible) return;
     const timer = window.setInterval(() => {
       setActiveTab((prev) => (prev + 1) % 4);
     }, 4600);
     return () => window.clearInterval(timer);
-  }, [autoCycleTabs]);
+  }, [autoCycleTabs, useCasesVisible]);
+
+  // Pre-decode inactive tab WebP paintings during browser idle time so tab switching is instant
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const timer = window.setTimeout(() => {
+      ['/solva/usecase-2-bg.webp', '/solva/usecase-3-bg.webp', '/solva/usecase-4-bg.webp'].forEach(
+        (src) => {
+          const img = new Image();
+          img.decoding = 'async';
+          img.src = src;
+        }
+      );
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const tabs = [
     {
       label: lang === 'vi' ? '1. Bóc tách GROBID TEI' : 'PDF & GROBID TEI',
       icon: FileText,
-      painting: '/solva/usecase-1-bg.png',
+      painting: '/solva/usecase-1-bg.webp',
       headline:
         lang === 'vi'
           ? 'Bóc tách mọi trích dẫn và danh mục tài liệu trong tích tắc'
@@ -2923,7 +2957,7 @@ function SolvaUseCasesSection({
     {
       label: lang === 'vi' ? '2. Truy hồi 15+ API' : '15+ API Retrieval',
       icon: Database,
-      painting: '/solva/usecase-2-bg.png',
+      painting: '/solva/usecase-2-bg.webp',
       headline:
         lang === 'vi'
           ? 'Truy vấn song song trên 15+ cơ sở dữ liệu học thuật toàn cầu'
@@ -2964,7 +2998,7 @@ function SolvaUseCasesSection({
     {
       label: lang === 'vi' ? '3. Luật Neuro-Symbolic' : 'Neuro-Symbolic Rules',
       icon: Scale,
-      painting: '/solva/usecase-3-bg.png',
+      painting: '/solva/usecase-3-bg.webp',
       headline:
         lang === 'vi'
           ? 'Suy diễn minh bạch với 20 quy tắc hình thức R01–R20'
@@ -3005,7 +3039,7 @@ function SolvaUseCasesSection({
     {
       label: lang === 'vi' ? '4. Ngữ nghĩa & Thái độ' : 'Semantic & NLI Stance',
       icon: Cpu,
-      painting: '/solva/usecase-4-bg.png',
+      painting: '/solva/usecase-4-bg.webp',
       headline:
         lang === 'vi'
           ? 'Kiểm tra ngữ cảnh trích dẫn có thực sự khớp với tóm tắt bài gốc'
@@ -3071,6 +3105,7 @@ function SolvaUseCasesSection({
         {/* Outer Interactive Container (`#F4F2EC`, `rounded-[16px]`) */}
         <SolvaScrollReveal delayMs={90} yOffset={36}>
           <div
+            ref={useCasesRef}
             style={{ backgroundColor: 'var(--solva-surface)' }}
             className="w-full rounded-[16px] flex flex-col"
           >
@@ -3513,8 +3548,11 @@ function SolvaTaxonomyPricingSection({
                       aria-hidden="true"
                     >
                       <img
-                        src="/solva/pricing-floral.png"
+                        src="/solva/pricing-floral.webp"
                         alt=""
+                        loading="eager"
+                        decoding="async"
+                        fetchPriority="low"
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -3661,7 +3699,7 @@ function SolvaClientResultsSection({ lang }: { lang: Lang }) {
             {/* Left Interactive Cohort Case Study Frame (`442x476px` equivalent) */}
             <div className="lg:col-span-5">
               <SolvaPainterlyFrame
-                paintingSrc="/solva/usecase-4-bg.png"
+                paintingSrc="/solva/usecase-4-bg.webp"
                 alt="Impressionist botanical painting backdrop for cohort thesis audit"
                 radiusClass="rounded-[10px]"
                 className="w-full min-h-[380px] sm:min-h-[420px] lg:h-[476px] p-4 sm:p-6 flex items-center justify-center"
@@ -4236,7 +4274,7 @@ function SolvaBottomCTASection({
             {/* Right Painterly Frame (`588x376px` equivalent) */}
             <div className="lg:col-span-6">
               <SolvaPainterlyFrame
-                paintingSrc="/solva/hero-bg.png"
+                paintingSrc="/solva/hero-bg.webp"
                 alt="Impressionist floral painting backdrop"
                 radiusClass="rounded-[12px]"
                 className="w-full min-h-[320px] sm:h-[376px] p-6 sm:p-8 flex items-center justify-center"
