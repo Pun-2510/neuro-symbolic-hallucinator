@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import {
   createBrowserRouter,
   matchPath,
@@ -6,17 +6,28 @@ import {
   Outlet,
   useLocation,
   useParams,
+  useRouteError,
 } from 'react-router-dom';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppLayout } from './components/AppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PageSkeleton } from './components/PageSkeleton';
+import {
+  attemptChunkReload,
+  clearChunkReloadState,
+  installChunkErrorHandlers,
+  isChunkLoadError,
+  lazyWithRetry,
+} from './lib/lazyWithRetry';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ActivateAccountPage } from './pages/ActivateAccountPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { UploadPage } from './pages/UploadPage';
 
 /* ============================================================
    SourceLogic — Router Configuration
@@ -49,30 +60,80 @@ function LegacyEssayRedirect() {
   return <Navigate to={`/verification/report/${id}`} replace />;
 }
 
-// All authenticated pages are lazy-loaded so the initial bundle stays small.
-// Each route is fetched on first navigation, then cached by the browser.
-const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
-const UploadPage = lazy(() => import('./pages/UploadPage').then((m) => ({ default: m.UploadPage })));
-const SandboxPage = lazy(() => import('./pages/SandboxPage').then((m) => ({ default: m.SandboxPage })));
-const BatchUploadPage = lazy(() => import('./pages/BatchUploadPage').then((m) => ({ default: m.BatchUploadPage })));
-const ProcessingPage = lazy(() => import('./pages/ProcessingPage').then((m) => ({ default: m.ProcessingPage })));
-const EssayPage = lazy(() => import('./pages/EssayPage').then((m) => ({ default: m.EssayPage })));
-const IssuesPage = lazy(() => import('./pages/IssuesPage').then((m) => ({ default: m.IssuesPage })));
-const LogicTracePage = lazy(() => import('./pages/LogicTracePage').then((m) => ({ default: m.LogicTracePage })));
-const DocumentInspectorPage = lazy(() => import('./pages/DocumentInspectorPage').then((m) => ({ default: m.DocumentInspectorPage })));
-const OrphanDetectionPage = lazy(() => import('./pages/OrphanDetectionPage').then((m) => ({ default: m.OrphanDetectionPage })));
-const HistoryPage = lazy(() => import('./pages/HistoryPage').then((m) => ({ default: m.HistoryPage })));
-const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
-const AccountManagementPage = lazy(() => import('./pages/AccountManagementPage').then((m) => ({ default: m.AccountManagementPage })));
-const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
-const MyClassesPage = lazy(() => import('./pages/MyClassesPage').then((m) => ({ default: m.MyClassesPage })));
-const ClassDetailPage = lazy(() => import('./pages/ClassDetailPage').then((m) => ({ default: m.ClassDetailPage })));
-const PendingReviewsPage = lazy(() => import('./pages/PendingReviewsPage').then((m) => ({ default: m.PendingReviewsPage })));
-const SystemHealthPage = lazy(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
-const AuditLogPage = lazy(() => import('./pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
-const PricingPage = lazy(() => import('./pages/PricingPage').then((m) => ({ default: m.PricingPage })));
-const StripeDemoCheckoutPage = lazy(() => import('./pages/StripeDemoCheckoutPage').then((m) => ({ default: m.StripeDemoCheckoutPage })));
-const BillingSuccessPage = lazy(() => import('./pages/BillingSuccessPage').then((m) => ({ default: m.BillingSuccessPage })));
+// Secondary authenticated pages are code-split with lazyWithRetry so that transient
+// network blips or stale chunk hashes across deployments recover automatically.
+const SandboxPage = lazyWithRetry(() => import('./pages/SandboxPage').then((m) => ({ default: m.SandboxPage })));
+const BatchUploadPage = lazyWithRetry(() => import('./pages/BatchUploadPage').then((m) => ({ default: m.BatchUploadPage })));
+const ProcessingPage = lazyWithRetry(() => import('./pages/ProcessingPage').then((m) => ({ default: m.ProcessingPage })));
+const EssayPage = lazyWithRetry(() => import('./pages/EssayPage').then((m) => ({ default: m.EssayPage })));
+const IssuesPage = lazyWithRetry(() => import('./pages/IssuesPage').then((m) => ({ default: m.IssuesPage })));
+const LogicTracePage = lazyWithRetry(() => import('./pages/LogicTracePage').then((m) => ({ default: m.LogicTracePage })));
+const DocumentInspectorPage = lazyWithRetry(() => import('./pages/DocumentInspectorPage').then((m) => ({ default: m.DocumentInspectorPage })));
+const OrphanDetectionPage = lazyWithRetry(() => import('./pages/OrphanDetectionPage').then((m) => ({ default: m.OrphanDetectionPage })));
+const HistoryPage = lazyWithRetry(() => import('./pages/HistoryPage').then((m) => ({ default: m.HistoryPage })));
+const ProfilePage = lazyWithRetry(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
+const AccountManagementPage = lazyWithRetry(() => import('./pages/AccountManagementPage').then((m) => ({ default: m.AccountManagementPage })));
+const SettingsPage = lazyWithRetry(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const MyClassesPage = lazyWithRetry(() => import('./pages/MyClassesPage').then((m) => ({ default: m.MyClassesPage })));
+const ClassDetailPage = lazyWithRetry(() => import('./pages/ClassDetailPage').then((m) => ({ default: m.ClassDetailPage })));
+const PendingReviewsPage = lazyWithRetry(() => import('./pages/PendingReviewsPage').then((m) => ({ default: m.PendingReviewsPage })));
+const SystemHealthPage = lazyWithRetry(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
+const AuditLogPage = lazyWithRetry(() => import('./pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
+const PricingPage = lazyWithRetry(() => import('./pages/PricingPage').then((m) => ({ default: m.PricingPage })));
+const StripeDemoCheckoutPage = lazyWithRetry(() => import('./pages/StripeDemoCheckoutPage').then((m) => ({ default: m.StripeDemoCheckoutPage })));
+const BillingSuccessPage = lazyWithRetry(() => import('./pages/BillingSuccessPage').then((m) => ({ default: m.BillingSuccessPage })));
+
+// Route-level ErrorBoundary that overrides React Router's raw "Unexpected Application Error!"
+// screen and automatically recovers from stale dynamic import chunk errors after deployments.
+export function RouteErrorBoundary() {
+  const error = useRouteError();
+  const chunkError = isChunkLoadError(error);
+
+  useEffect(() => {
+    if (chunkError) {
+      attemptChunkReload();
+    }
+  }, [chunkError]);
+
+  const handleHardReload = () => {
+    clearChunkReloadState();
+    window.location.reload();
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 px-4">
+      <div className="max-w-md w-full text-center">
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+          <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+        </div>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+          Something went wrong
+        </h1>
+        <p className="text-slate-600 dark:text-slate-400 mb-6 text-sm">
+          {chunkError
+            ? 'A newer version of CITRA is available. Please refresh the page to load the latest workspace.'
+            : 'An unexpected error occurred. Please try refreshing the page.'}
+        </p>
+        <div className="flex gap-3 justify-center">
+          <button
+            type="button"
+            onClick={handleHardReload}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh Page
+          </button>
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium transition-colors"
+          >
+            Go Home
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Hybrid route: renders inside AppLayout when authenticated, or standalone when visited publicly
 function HybridPricingRoute() {
@@ -184,6 +245,7 @@ function RootLayout() {
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       // Public routes (eager — small, needed for first paint)
       {
@@ -227,7 +289,7 @@ export const router = createBrowserRouter([
         element: <HybridPricingRoute />,
       },
 
-      // Protected routes with AppLayout (sidebar navigation) — all lazy
+      // Protected routes with AppLayout (sidebar navigation)
       {
         element: (
           <ProtectedRoute>
@@ -236,9 +298,10 @@ export const router = createBrowserRouter([
             </AppLayout>
           </ProtectedRoute>
         ),
+        errorElement: <RouteErrorBoundary />,
         children: [
-          { path: '/dashboard', element: withSuspense(DashboardPage) },
-          { path: '/upload', element: withSuspense(UploadPage) },
+          { path: '/dashboard', element: <DashboardPage /> },
+          { path: '/upload', element: <UploadPage /> },
           { path: '/sandbox', element: withSuspense(SandboxPage) },
           {
             path: '/batch-upload',
@@ -366,6 +429,7 @@ export const router = createBrowserRouter([
 ]);
 
 if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+  installChunkErrorHandlers();
   document.title = getDocumentTitle(window.location.pathname);
   router.subscribe((state) => {
     document.title = getDocumentTitle(state.location.pathname);

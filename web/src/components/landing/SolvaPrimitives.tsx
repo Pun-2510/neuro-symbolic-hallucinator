@@ -34,8 +34,24 @@ function subscribeToScroll(cb: ScrollCallback): () => void {
     window.addEventListener('scroll', handleGlobalScrollOrResize, { passive: true });
     window.addEventListener('resize', handleGlobalScrollOrResize, { passive: true });
   }
-  cb();
+  let initRaf1: number | null = null;
+  let initRaf2: number | null = null;
+  if (typeof window !== 'undefined') {
+    initRaf1 = window.requestAnimationFrame(() => {
+      initRaf2 = window.requestAnimationFrame(() => {
+        if (scrollSubscribers.has(cb)) {
+          cb();
+        }
+      });
+    });
+  }
   return () => {
+    if (initRaf1 !== null && typeof window !== 'undefined') {
+      window.cancelAnimationFrame(initRaf1);
+    }
+    if (initRaf2 !== null && typeof window !== 'undefined') {
+      window.cancelAnimationFrame(initRaf2);
+    }
     scrollSubscribers.delete(cb);
     if (scrollSubscribers.size === 0 && listenersAttached && typeof window !== 'undefined') {
       listenersAttached = false;
@@ -47,8 +63,8 @@ function subscribeToScroll(cb: ScrollCallback): () => void {
 
 /**
  * 0. Reversible Scroll-Linked Reveal Wrapper (`SolvaScrollReveal`)
- * - Scrolling down into view: smoothly transitions from faded/blurred/shifted
- *   (`opacity: 0.02`, `translate3d(0, yOffset, 0)`, `scale(scaleFrom)`, `blur(blurPx)`)
+ * - Initial page load / refresh & scrolling down into view: smoothly transitions from
+ *   faded/blurred/shifted (`opacity: 0.001`, `translate3d(0, yOffset, 0)`, `scale(scaleFrom)`, `blur(blurPx)`)
  *   to crisp full visibility (`opacity: 1`, `translate3d(0,0,0)`, `scale(1)`, `blur(0px)`).
  * - Scrolling back up (`lùi lại`): as elements move back down toward the bottom edge
  *   of the viewport, they smoothly fade, blur, and glide back down.
@@ -71,7 +87,7 @@ export function SolvaScrollReveal({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [phase, setPhase] = useState<'visible' | 'below' | 'above'>('visible');
+  const [phase, setPhase] = useState<'visible' | 'below' | 'above'>('below');
 
   useEffect(() => {
     return subscribeToScroll(() => {
@@ -93,7 +109,7 @@ export function SolvaScrollReveal({
   const isVisible = phase === 'visible';
   const translateY = phase === 'below' ? yOffset : phase === 'above' ? -16 : 0;
   const currentScale = isVisible ? 1 : scaleFrom;
-  const currentOpacity = isVisible ? 1 : 0.02;
+  const currentOpacity = isVisible ? 1 : 0.001;
   const currentBlur = isVisible ? 0 : blurPx;
   const activeDelay = isVisible ? delayMs : 0;
 
@@ -105,7 +121,7 @@ export function SolvaScrollReveal({
         transform: `translate3d(0, ${translateY}px, 0) scale(${currentScale})`,
         filter: currentBlur > 0 ? `blur(${currentBlur}px)` : 'none',
         transitionProperty: 'opacity, transform, filter',
-        transitionDuration: isVisible ? '640ms' : '420ms',
+        transitionDuration: isVisible ? '700ms' : '420ms',
         transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
         transitionDelay: `${activeDelay}ms`,
         willChange: 'transform, opacity, filter',
@@ -165,6 +181,7 @@ export function SolvaTwoToneHeading({
   secondary,
   size = 'h2',
   centered = false,
+  delayMs = 0,
   className = '',
 }: {
   as?: 'h1' | 'h2';
@@ -172,10 +189,11 @@ export function SolvaTwoToneHeading({
   secondary?: string;
   size?: 'h1' | 'h2';
   centered?: boolean;
+  delayMs?: number;
   className?: string;
 }) {
   const ref = useRef<HTMLHeadingElement>(null);
-  const [phase, setPhase] = useState<'visible' | 'below' | 'above'>('visible');
+  const [phase, setPhase] = useState<'visible' | 'below' | 'above'>('below');
 
   useEffect(() => {
     return subscribeToScroll(() => {
@@ -207,17 +225,17 @@ export function SolvaTwoToneHeading({
   const renderAnimatedWords = (words: string[], startIndex: number) =>
     words.map((word, idx) => {
       const globalIdx = startIndex + idx;
-      const delay = isVisible ? Math.min(globalIdx * 28, 360) : 0;
+      const delay = isVisible ? delayMs + Math.min(globalIdx * 34, 420) : 0;
       return (
         <Fragment key={`${word}-${idx}`}>
           <span
             className="inline-block will-change-[transform,opacity,filter]"
             style={{
-              opacity: isVisible ? 1 : 0.02,
+              opacity: isVisible ? 1 : 0.001,
               transform: `translate3d(0, ${wordY}px, 0)`,
-              filter: isVisible ? 'none' : 'blur(3.5px)',
+              filter: isVisible ? 'none' : 'blur(4px)',
               transitionProperty: 'opacity, transform, filter',
-              transitionDuration: isVisible ? '580ms' : '360ms',
+              transitionDuration: isVisible ? '640ms' : '360ms',
               transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
               transitionDelay: `${delay}ms`,
             }}

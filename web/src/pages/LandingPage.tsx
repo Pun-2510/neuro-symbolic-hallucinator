@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { AuthContext } from '@/contexts/AuthContext';
 import {
   FileSearch,
   Database,
@@ -51,6 +52,7 @@ import {
   PipelineStageVisual,
   BottomCTAMockup,
 } from '@/components/landing/SolvaMockupWidgets';
+import { ScholarlySourceLogo } from '@/components/landing/ScholarlySourceLogos';
 
 /* ============================================================
    CITRA (SourceLogic) — Warm Editorial AI SaaS Landing Page
@@ -368,8 +370,13 @@ function SourceLogicLogo({ size = 24 }: { size?: number }) {
 export function LandingPage() {
   const { i18n } = useTranslation();
   const lang: Lang = i18n.language?.startsWith('vi') ? 'vi' : 'en';
-  const isAuthenticated =
-    typeof window !== 'undefined' && Boolean(localStorage.getItem('token'));
+  const auth = useContext(AuthContext);
+  const isAuthenticated = auth
+    ? Boolean(
+        auth.user ||
+          (auth.isLoading && typeof window !== 'undefined' && localStorage.getItem('token')),
+      )
+    : typeof window !== 'undefined' && Boolean(localStorage.getItem('token'));
 
   const toggleLanguage = () => {
     const next = lang === 'en' ? 'vi' : 'en';
@@ -623,7 +630,7 @@ function SolvaHeader({
           <ThemeToggle size="sm" />
 
           <Link
-            to="/login"
+            to={isAuthenticated ? '/dashboard' : '/login'}
             style={{ color: 'var(--solva-muted)' }}
             className="hidden sm:inline-flex items-center h-[44px] px-[12px] rounded-[8px] font-solva-sans text-[15px] font-normal hover:opacity-80 transition-opacity"
           >
@@ -716,7 +723,7 @@ function SolvaHeader({
 
           <div className="pt-2 flex items-center gap-2">
             <SolvaButton
-              to="/login"
+              to={isAuthenticated ? '/dashboard' : '/login'}
               variant="outline"
               fullWidth
               onClick={() => setMobileMenuOpen(false)}
@@ -887,10 +894,14 @@ function SolvaHeroSection({
                 <div
                   key={`${apiName}-${idx}`}
                   style={{ color: 'var(--solva-ink)' }}
-                  className="inline-flex items-center gap-2.5 shrink-0 select-none opacity-85 hover:opacity-100 transition-opacity"
+                  className="inline-flex items-center gap-2.5 shrink-0 select-none opacity-80 hover:opacity-100 transition-opacity duration-200"
                 >
-                  <Database className="w-[18px] h-[18px] opacity-75" />
-                  <span className="font-sans text-[17px] sm:text-[18px] font-medium tracking-[-0.03em] whitespace-nowrap">
+                  <ScholarlySourceLogo
+                    name={apiName}
+                    size={20}
+                    className="opacity-90"
+                  />
+                  <span className="font-solva-sans text-[17px] sm:text-[18px] font-medium tracking-[-0.03em] whitespace-nowrap">
                     {apiName}
                   </span>
                 </div>
@@ -1695,18 +1706,30 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
                             }}
                             className="p-3.5 rounded-[10px] border flex items-center justify-between gap-2"
                           >
-                            <div>
-                              <div
-                                style={{ color: 'var(--solva-ink)' }}
-                                className="text-sm font-medium"
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span
+                                style={{
+                                  backgroundColor: 'var(--solva-bg)',
+                                  borderColor: 'var(--solva-border)',
+                                  color: 'var(--solva-ink)',
+                                }}
+                                className="w-8 h-8 rounded-[8px] border flex items-center justify-center shrink-0"
                               >
-                                {src.name}
-                              </div>
-                              <div
-                                style={{ color: 'var(--solva-muted)' }}
-                                className="text-xs font-mono"
-                              >
-                                Latency: {src.latency}
+                                <ScholarlySourceLogo name={src.name} size={16} />
+                              </span>
+                              <div className="min-w-0">
+                                <div
+                                  style={{ color: 'var(--solva-ink)' }}
+                                  className="text-sm font-medium truncate"
+                                >
+                                  {src.name}
+                                </div>
+                                <div
+                                  style={{ color: 'var(--solva-muted)' }}
+                                  className="text-xs font-mono"
+                                >
+                                  Latency: {src.latency}
+                                </div>
                               </div>
                             </div>
                             <span

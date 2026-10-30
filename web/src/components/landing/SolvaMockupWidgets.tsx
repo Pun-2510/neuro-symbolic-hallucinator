@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { type Lang } from './SolvaPrimitives';
+import { ScholarlySourceLogo } from './ScholarlySourceLogos';
 
 /* ============================================================
    SOLVA FLOATING UI MOCKUP CARDS (WITH 8PX FROSTED GLASS RING)
@@ -275,10 +276,18 @@ export function HeroVerificationMockup({
                     backgroundColor: 'var(--solva-bg)',
                     borderColor: 'var(--solva-border)',
                   }}
-                  className="px-2 py-1.5 rounded-[6px] border flex items-center justify-between"
+                  className="px-2 py-1.5 rounded-[6px] border flex items-center justify-between gap-1"
                 >
-                  <span style={{ color: 'var(--solva-ink)' }}>{s.name}</span>
-                  <span style={{ color: 'var(--solva-muted)' }}>{s.ms}</span>
+                  <span
+                    style={{ color: 'var(--solva-ink)' }}
+                    className="inline-flex items-center gap-1 truncate"
+                  >
+                    <ScholarlySourceLogo name={s.name} size={11} />
+                    <span className="truncate">{s.name}</span>
+                  </span>
+                  <span style={{ color: 'var(--solva-muted)' }} className="shrink-0">
+                    {s.ms}
+                  </span>
                 </div>
               ))}
             </div>
@@ -405,9 +414,10 @@ export function FeatureCardWidget({
             >
               <span
                 style={{ color: 'var(--solva-ink)' }}
-                className="font-medium truncate"
+                className="font-medium truncate inline-flex items-center gap-1.5"
               >
-                {api.name}
+                <ScholarlySourceLogo name={api.name} size={13} className="opacity-85" />
+                <span className="truncate">{api.name}</span>
               </span>
               <span className="font-mono text-[10px] text-emerald-700 dark:text-emerald-300 shrink-0 ml-2">
                 {api.status} · {api.time}
