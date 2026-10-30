@@ -11,7 +11,6 @@ import {
   Globe,
   Bell,
   Info,
-  ChevronRight,
   Check,
   ShieldCheck,
   Terminal,
@@ -197,7 +196,7 @@ export function SettingsPage(): JSX.Element {
               </span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/70 dark:border-emerald-800/70 text-[11px] font-mono text-emerald-700 dark:text-emerald-300">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                v2.0.0
+                v3.1.18
               </span>
             </div>
 
@@ -581,23 +580,11 @@ export function SettingsPage(): JSX.Element {
         </div>
 
         <div className="p-6 space-y-3">
-          <InfoRow label={t('settings.version')} value="2.0.0" />
+          <InfoRow label={t('settings.version')} value="3.1.18" />
           <InfoRow
             label={t('settings.buildDate')}
-            value="2026-10-23"
+            value="2026-10-30"
           />
-
-          <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
-            <a
-              href="https://github.com/iannwendy/citra"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-              {t('settings.viewSourceCode')}
-              <ChevronRight className="w-3.5 h-3.5" />
-            </a>
-          </div>
         </div>
       </div>
     </div>
