@@ -1,5 +1,25 @@
-@import url('https://api.fontshare.com/v2/css?f[]=sentient@300,400&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Onest:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,500;8..60,600;8..60,700&display=swap');
+
+/* Self-hosted Sentient (Fontshare Editorial Serif) — Immune to CSP & zero external latency */
+@font-face {
+  font-family: 'Sentient';
+  src:
+    url('/fonts/Sentient-Light.woff2') format('woff2'),
+    url('https://cdn.fontshare.com/wf/43OAXICAEMXK2ZL74G7H76KFIYNEDOYN/35V5DYORRU36WSBMUAXF43PXJDG6AK72/M6X7C56BMVHUUEP2JAWS7SGZ7N6BGP7I.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sentient';
+  src:
+    url('/fonts/Sentient-Regular.woff2') format('woff2'),
+    url('https://cdn.fontshare.com/wf/RVTZPYAA57KV4AMXRX7ZIPJXSTYCRP7A/36OUS5CBIXRKI2QU7G7OUHOK7HHA53Y2/SIH66VPT4WS2HIF5PEJNDU4INNUF54LG.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
