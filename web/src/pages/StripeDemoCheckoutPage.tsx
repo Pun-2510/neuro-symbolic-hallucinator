@@ -174,10 +174,21 @@ export function StripeDemoCheckoutPage() {
             <div className="flex items-center justify-between gap-2">
               <Link
                 to="/pricing?canceled=1"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-300 hover:text-white transition-colors"
+                className="inline-flex items-center gap-2 text-xs font-medium text-slate-300 hover:text-white transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>{details.merchant_name}</span>
+                <span className="w-[24px] h-[24px] rounded-[6px] bg-white dark:bg-[#1E1C17] border border-[#E7E3D9] dark:border-[#332F26] shadow-2xs flex items-center justify-center p-0.5 shrink-0">
+                  <img
+                    src="/citra-logo.png"
+                    alt="CITRA Logo"
+                    width={15}
+                    height={15}
+                    className="object-contain select-none dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)]"
+                  />
+                </span>
+                <span className="font-solva-sans text-sm font-medium tracking-[-0.02em] text-white">
+                  {details.merchant_name}
+                </span>
               </Link>
               <span className="px-2.5 py-0.5 rounded-md bg-amber-400/20 border border-amber-400/40 text-amber-300 font-mono text-[10px] font-bold uppercase tracking-wider">
                 STRIPE TEST MODE

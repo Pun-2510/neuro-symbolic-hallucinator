@@ -199,13 +199,34 @@ export function PricingPage() {
       {/* Top Navigation if accessed publicly */}
       {!user && (
         <div className="flex items-center justify-between pt-4">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {lang === 'vi' ? 'Quay về Trang chủ' : 'Back to Home'}
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-[8px] rounded-[6px] focus:outline-none"
+            >
+              <span className="w-[28px] h-[28px] rounded-[7px] bg-white dark:bg-[#1E1C17] border border-[#E7E3D9] dark:border-[#332F26] shadow-2xs flex items-center justify-center p-1 shrink-0 transition-colors">
+                <img
+                  src="/citra-logo.png"
+                  alt="CITRA Logo"
+                  width={18}
+                  height={18}
+                  loading="eager"
+                  decoding="async"
+                  className="object-contain select-none dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)]"
+                />
+              </span>
+              <span className="font-solva-sans text-[20px] font-medium tracking-[-0.02em] leading-none text-[#1C1A15] dark:text-[#FBFAF6]">
+                CITRA
+              </span>
+            </Link>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {lang === 'vi' ? 'Quay về Trang chủ' : 'Back to Home'}
+            </Link>
+          </div>
           <div className="flex items-center gap-3">
             <Button asChild variant="outline" size="sm" className="rounded-xl">
               <Link to="/login">{lang === 'vi' ? 'Đăng nhập' : 'Sign In'}</Link>

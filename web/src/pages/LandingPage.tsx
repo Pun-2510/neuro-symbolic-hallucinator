@@ -422,11 +422,23 @@ function SolvaHeader({
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [headerEntered, setHeaderEntered] = useState(false);
 
   useEffect(() => {
     const closeOnScroll = () => setDropdownOpen(false);
     window.addEventListener('scroll', closeOnScroll, { passive: true });
-    return () => window.removeEventListener('scroll', closeOnScroll);
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        setHeaderEntered(true);
+      });
+    });
+    return () => {
+      window.removeEventListener('scroll', closeOnScroll);
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+    };
   }, []);
 
   const dropdownItems =
@@ -486,14 +498,22 @@ function SolvaHeader({
 
   return (
     <header
-      style={{ backgroundColor: 'var(--solva-bg)' }}
-      className="fixed top-0 left-0 right-0 z-50 transition-colors duration-200"
+      style={{
+        backgroundColor: 'var(--solva-bg)',
+        opacity: headerEntered ? 1 : 0.001,
+        transform: headerEntered ? 'translate3d(0, 0, 0)' : 'translate3d(0, -12px, 0)',
+        filter: headerEntered ? 'none' : 'blur(2.5px)',
+        transition:
+          'opacity 620ms cubic-bezier(0.22, 1, 0.36, 1), transform 620ms cubic-bezier(0.22, 1, 0.36, 1), filter 520ms cubic-bezier(0.22, 1, 0.36, 1), background-color 200ms ease',
+      }}
+      className="fixed top-0 left-0 right-0 z-50 will-change-[transform,opacity,filter]"
     >
       <div className="max-w-[1280px] mx-auto px-5 sm:px-6 lg:px-[40px] h-[76px] flex items-center justify-between gap-4">
         {/* Left: Brand Logo */}
         <div className="flex items-center lg:w-[190px] shrink-0">
           <Link
             to="/"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="inline-flex items-center gap-[8px] rounded-[6px] focus:outline-none"
           >
             <span className="w-[28px] h-[28px] rounded-[7px] bg-white dark:bg-[#1E1C17] border border-[#E7E3D9] dark:border-[#332F26] shadow-2xs flex items-center justify-center p-1 shrink-0 transition-colors">
@@ -534,7 +554,7 @@ function SolvaHeader({
             </button>
 
             {dropdownOpen && (
-              <div className="absolute left-0 top-[44px] pt-1 z-50">
+              <div className="absolute left-0 top-[44px] pt-1 z-50 animate-debugger-switch">
                 <div
                   style={{
                     backgroundColor: 'var(--solva-bg)',
@@ -676,7 +696,7 @@ function SolvaHeader({
             backgroundColor: 'var(--solva-bg)',
             borderColor: 'var(--solva-border)',
           }}
-          className="lg:hidden border-t border-b px-5 py-4 space-y-2 shadow-lg"
+          className="lg:hidden border-t border-b px-5 py-4 space-y-2 shadow-lg animate-debugger-switch"
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {[
@@ -763,7 +783,7 @@ function SolvaHeroSection({
       setActiveStep((prev) => (prev + 1) % 3);
     }, 3200);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [activeStep]);
 
   const scholarlyApis = [
     'Crossref',
@@ -792,7 +812,7 @@ function SolvaHeroSection({
           <div className="w-full lg:w-[516px] xl:w-[540px] flex flex-col items-start gap-[32px] lg:pb-[24px]">
             <div className="flex flex-col items-start gap-[24px]">
               {/* Announcement Badge (`NEW | Neuro-Symbolic v2.3 is live ->`) */}
-              <SolvaScrollReveal yOffset={18} blurPx={2.5}>
+              <SolvaScrollReveal delayMs={40} yOffset={20} blurPx={3}>
                 <a
                   href="#interactive-demo"
                   className="group inline-flex items-center gap-[8px] font-solva-sans"
@@ -825,6 +845,7 @@ function SolvaHeroSection({
               <SolvaTwoToneHeading
                 as="h1"
                 size="h1"
+                delayMs={85}
                 primary={
                   lang === 'vi'
                     ? 'Trợ lý kiểm chứng trích dẫn'
@@ -838,7 +859,7 @@ function SolvaHeroSection({
               />
 
               {/* Subtitle (400px–430px max-width, Onest 18px Regular) */}
-              <SolvaScrollReveal delayMs={100} yOffset={22}>
+              <SolvaScrollReveal delayMs={190} yOffset={24} blurPx={3.5}>
                 <p
                   style={{ color: 'var(--solva-muted)' }}
                   className="font-solva-sans text-[17px] sm:text-[18px] font-normal leading-[25.2px] max-w-[430px]"
@@ -851,7 +872,7 @@ function SolvaHeroSection({
             </div>
 
             {/* CTA Buttons */}
-            <SolvaScrollReveal delayMs={170} yOffset={24}>
+            <SolvaScrollReveal delayMs={260} yOffset={24} blurPx={3}>
               <div className="flex flex-wrap items-center gap-3">
                 <SolvaButton
                   to={isAuthenticated ? '/upload' : '/login'}
@@ -873,21 +894,31 @@ function SolvaHeroSection({
           </div>
 
           {/* Right Column: Painterly Mockup Frame (`660x521px` on Desktop) */}
-          <SolvaScrollReveal delayMs={120} yOffset={36} className="w-full lg:w-[660px] shrink-0">
+          <SolvaScrollReveal
+            delayMs={150}
+            yOffset={36}
+            scaleFrom={0.975}
+            blurPx={4}
+            className="w-full lg:w-[660px] shrink-0"
+          >
             <SolvaPainterlyFrame
               paintingSrc="/solva/hero-bg.png"
               alt="Impressionist wildflower meadow oil painting backdrop"
               className="w-full min-h-[420px] sm:min-h-[490px] lg:h-[521px] p-4 sm:p-8 lg:p-0"
             >
               <div className="lg:absolute lg:top-[52px] lg:left-[52px] lg:right-[-24px]">
-                <HeroVerificationMockup lang={lang} activeStep={activeStep} />
+                <HeroVerificationMockup
+                  lang={lang}
+                  activeStep={activeStep}
+                  onSelectStep={setActiveStep}
+                />
               </div>
             </SolvaPainterlyFrame>
           </SolvaScrollReveal>
         </div>
 
         {/* Bottom Infinite Edge-Masked Scholarly API Ticker (`1200x112px`) */}
-        <SolvaScrollReveal delayMs={80} yOffset={20}>
+        <SolvaScrollReveal delayMs={320} yOffset={20} blurPx={2.5}>
           <div className="w-full py-[24px] sm:py-[32px] overflow-hidden solva-ticker-mask">
             <div className="animate-solva-marquee flex items-center gap-[56px] sm:gap-[72px]">
               {[...scholarlyApis, ...scholarlyApis].map((apiName, idx) => (
@@ -1444,11 +1475,12 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
 
                 {/* Manuscript Context Box */}
                 <div
+                  key={`ctx-${activeCitation.id}`}
                   style={{
                     backgroundColor: 'var(--solva-surface)',
                     borderColor: 'var(--solva-border)',
                   }}
-                  className="mt-5 p-3.5 rounded-[10px] border"
+                  className="mt-5 p-3.5 rounded-[10px] border animate-debugger-switch"
                 >
                   <div
                     style={{ color: 'var(--solva-muted)' }}
@@ -1481,7 +1513,7 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
                 style={{ backgroundColor: 'var(--solva-card-elevated)' }}
                 className="lg:col-span-7 min-w-0 p-4 sm:p-6 flex flex-col justify-between"
               >
-                <div>
+                <div key={activeCitation.id} className="animate-debugger-switch">
                   <div
                     style={{ borderColor: 'var(--solva-border)' }}
                     className="flex flex-wrap items-start justify-between gap-4 pb-4 border-b"
@@ -1576,7 +1608,7 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
                     </TabsList>
 
                     {/* TAB 1: Side-by-side Metadata Diff */}
-                    <TabsContent value="diff" className="mt-4">
+                    <TabsContent value="diff" className="mt-4 animate-debugger-switch">
                       <div
                         style={{ borderColor: 'var(--solva-border)' }}
                         className="rounded-[10px] border overflow-hidden"
@@ -1647,7 +1679,7 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
                     </TabsContent>
 
                     {/* TAB 2: Symbolic Rules */}
-                    <TabsContent value="rules" className="mt-4 space-y-2.5">
+                    <TabsContent value="rules" className="mt-4 space-y-2.5 animate-debugger-switch">
                       {activeCitation.rules.map((rule) => (
                         <div
                           key={rule.code}
@@ -1695,7 +1727,7 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
                     </TabsContent>
 
                     {/* TAB 3: Source Retrieval */}
-                    <TabsContent value="sources" className="mt-4">
+                    <TabsContent value="sources" className="mt-4 animate-debugger-switch">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         {activeCitation.sources.map((src) => (
                           <div
@@ -1989,8 +2021,9 @@ function SolvaUseCasesSection({
             {/* Bottom Content Well (`#FBFAF6` inset with `12px` bezel) */}
             <div className="px-[8px] pb-[8px] sm:px-[12px] sm:pb-[12px]">
               <div
+                key={activeTab}
                 style={{ backgroundColor: 'var(--solva-bg)' }}
-                className="rounded-[14px] p-3 sm:p-[12px] grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch"
+                className="rounded-[14px] p-3 sm:p-[12px] grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch animate-debugger-switch"
               >
                 {/* Left Column (`412px` equivalent on Desktop, `padding: 28px`) */}
                 <div className="lg:col-span-5 p-4 sm:p-[28px] flex flex-col justify-between gap-[32px]">

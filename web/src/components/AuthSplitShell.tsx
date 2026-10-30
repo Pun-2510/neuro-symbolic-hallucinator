@@ -100,21 +100,14 @@ export function AuthSplitShell({
         <div className="relative z-10 flex items-center justify-between gap-4">
           <Link
             to="/"
-            className="flex items-center gap-3.5 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            className="inline-flex items-center gap-[8px] rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
-            <div className="w-11 h-11 rounded-xl bg-white dark:bg-[#1E1C17] p-1.5 flex items-center justify-center shadow-sm ring-1 ring-slate-200/90 dark:ring-[#332F26] group-hover:scale-[1.03] transition-transform">
-              <SourceLogicBrandMark size={30} />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <h1 className="font-display text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-none">
-                  CITRA
-                </h1>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
-                {t('nav.academicVerification')}
-              </p>
-            </div>
+            <span className="w-[28px] h-[28px] rounded-[7px] bg-white dark:bg-[#1E1C17] border border-[#E7E3D9] dark:border-[#332F26] shadow-2xs flex items-center justify-center p-1 shrink-0 transition-colors">
+              <SourceLogicBrandMark size={18} />
+            </span>
+            <span className="font-solva-sans text-[20px] font-medium tracking-[-0.02em] leading-none text-[#1C1A15] dark:text-[#FBFAF6]">
+              CITRA
+            </span>
           </Link>
         </div>
 
@@ -261,19 +254,14 @@ export function AuthSplitShell({
           <div className="flex items-center gap-3 min-w-0">
             <Link
               to="/"
-              className="lg:hidden flex items-center gap-2.5 group rounded-xl shrink-0"
+              className="lg:hidden inline-flex items-center gap-[8px] rounded-[6px] shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             >
-              <div className="w-9 h-9 bg-white dark:bg-[#1E1C17] p-1.5 rounded-xl flex items-center justify-center shadow-sm ring-1 ring-slate-200/90 dark:ring-[#332F26]">
-                <SourceLogicBrandMark size={24} />
-              </div>
-              <div>
-                <span className="font-display text-base font-bold text-slate-900 dark:text-white block leading-none">
-                  CITRA
-                </span>
-                <span className="hidden sm:block text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  {t('nav.academicVerification')}
-                </span>
-              </div>
+              <span className="w-[28px] h-[28px] rounded-[7px] bg-white dark:bg-[#1E1C17] border border-[#E7E3D9] dark:border-[#332F26] shadow-2xs flex items-center justify-center p-1 shrink-0 transition-colors">
+                <SourceLogicBrandMark size={18} />
+              </span>
+              <span className="font-solva-sans text-[20px] font-medium tracking-[-0.02em] leading-none text-[#1C1A15] dark:text-[#FBFAF6]">
+                CITRA
+              </span>
             </Link>
 
             <Link

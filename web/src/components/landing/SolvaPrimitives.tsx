@@ -445,7 +445,7 @@ export function SolvaStickyStackCard({
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const [inView, setInView] = useState(true);
+  const [inView, setInView] = useState(false);
 
   useEffect(() => {
     return subscribeToScroll(() => {
@@ -483,13 +483,13 @@ export function SolvaStickyStackCard({
       ref={cardRef}
       style={{
         zIndex: index + 1,
-        opacity: inView ? 1 : 0.02,
+        opacity: inView ? 1 : 0.001,
         filter: inView ? 'none' : 'blur(3.5px)',
         transform: `translate3d(0, ${inView ? 0 : 32}px, 0) scale(${inView ? scale : scale * 0.97})`,
         transformOrigin: 'top center',
         backgroundColor: 'var(--solva-surface)',
         transition:
-          'opacity 520ms cubic-bezier(0.22, 1, 0.36, 1), filter 480ms cubic-bezier(0.22, 1, 0.36, 1), transform 140ms ease-out',
+          'opacity 560ms cubic-bezier(0.22, 1, 0.36, 1), filter 500ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms ease-out',
       }}
       className="lg:sticky lg:top-[116px] w-full rounded-[16px] p-[12px] will-change-[transform,opacity,filter]"
     >
@@ -517,7 +517,7 @@ export function SolvaAnimatedMetric({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [displayVal, setDisplayVal] = useState<number>(targetValue);
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
   const hasAnimated = useRef(false);
 
   useEffect(() => {
@@ -560,11 +560,11 @@ export function SolvaAnimatedMetric({
     <div
       ref={ref}
       style={{
-        opacity: isVisible ? 1 : 0.02,
+        opacity: isVisible ? 1 : 0.001,
         transform: `translate3d(0, ${isVisible ? 0 : 20}px, 0)`,
         filter: isVisible ? 'none' : 'blur(3px)',
         transition:
-          'opacity 520ms cubic-bezier(0.22, 1, 0.36, 1), transform 540ms cubic-bezier(0.22, 1, 0.36, 1), filter 460ms cubic-bezier(0.22, 1, 0.36, 1)',
+          'opacity 560ms cubic-bezier(0.22, 1, 0.36, 1), transform 580ms cubic-bezier(0.22, 1, 0.36, 1), filter 480ms cubic-bezier(0.22, 1, 0.36, 1)',
       }}
       className="flex flex-col gap-[4px] will-change-[transform,opacity,filter]"
     >

@@ -180,19 +180,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             to="/dashboard"
             onClick={() => setMobileOpen(false)}
             aria-label="Go to dashboard"
-            className="group flex items-center gap-2 min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            className="inline-flex items-center gap-[8px] rounded-[6px] min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
-            <div className="w-7 h-7 rounded-lg bg-white dark:bg-[#1E1C17] p-1 flex items-center justify-center shadow-2xs ring-1 ring-slate-200/90 dark:ring-[#332F26] shrink-0 group-hover:scale-[1.03] transition-transform">
+            <span className="w-[28px] h-[28px] rounded-[7px] bg-white dark:bg-[#1E1C17] border border-[#E7E3D9] dark:border-[#332F26] shadow-2xs flex items-center justify-center p-1 shrink-0 transition-colors">
               <img
                 src="/citra-logo.png"
-                alt="CITRA"
-                width={20}
-                height={20}
+                alt="CITRA Logo"
+                width={18}
+                height={18}
+                loading="eager"
                 decoding="async"
-                className="w-full h-full object-contain select-none dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)]"
+                className="object-contain select-none dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)]"
               />
-            </div>
-            <span className="font-display text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
+            </span>
+            <span className="font-solva-sans text-[20px] font-medium tracking-[-0.02em] leading-none text-[#1C1A15] dark:text-[#FBFAF6] truncate">
               CITRA
             </span>
           </Link>
@@ -240,32 +241,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               to="/dashboard"
               onClick={() => setMobileOpen(false)}
               aria-label="Go to dashboard"
-              className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+              className="inline-flex items-center gap-[8px] rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             >
-              <div className="flex items-center gap-3.5">
-                {/* CITRA Brand Mark */}
-                <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#1E1C17] p-1.5 flex items-center justify-center shadow-sm ring-1 ring-slate-200/90 dark:ring-[#332F26] shrink-0 group-hover:scale-[1.03] transition-transform">
-                  <img
-                    src="/citra-logo.png"
-                    alt="CITRA Logo"
-                    width={28}
-                    height={28}
-                    loading="eager"
-                    decoding="async"
-                    className="w-full h-full object-contain select-none dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)]"
-                  />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h1 className="font-display text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none">
-                      CITRA
-                    </h1>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
-                    {t('nav.academicVerification')}
-                  </p>
-                </div>
-              </div>
+              <span className="w-[28px] h-[28px] rounded-[7px] bg-white dark:bg-[#1E1C17] border border-[#E7E3D9] dark:border-[#332F26] shadow-2xs flex items-center justify-center p-1 shrink-0 transition-colors">
+                <img
+                  src="/citra-logo.png"
+                  alt="CITRA Logo"
+                  width={18}
+                  height={18}
+                  loading="eager"
+                  decoding="async"
+                  className="object-contain select-none dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)]"
+                />
+              </span>
+              <span className="font-solva-sans text-[20px] font-medium tracking-[-0.02em] leading-none text-[#1C1A15] dark:text-[#FBFAF6]">
+                CITRA
+              </span>
             </Link>
           </div>
 
@@ -497,11 +488,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <footer className="relative z-10 shrink-0 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-3.5 sm:px-6 py-2.5 sm:py-3">
           <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 text-center sm:text-left">
             <p className="flex items-center justify-center sm:justify-start gap-2 font-medium">
-              <img
-                src="/citra-logo.png"
-                alt="CITRA"
-                className="h-4 w-4 object-contain dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)] select-none shrink-0"
-              />
+              <span className="w-[20px] h-[20px] rounded-[5px] bg-white dark:bg-[#1E1C17] border border-[#E7E3D9] dark:border-[#332F26] shadow-2xs flex items-center justify-center p-0.5 shrink-0 transition-colors">
+                <img
+                  src="/citra-logo.png"
+                  alt="CITRA"
+                  width={13}
+                  height={13}
+                  className="object-contain dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)] select-none shrink-0"
+                />
+              </span>
               <span className="truncate">{t('nav.footerBrand')}</span>
             </p>
             <p className="font-mono text-[10px] sm:text-[11px] truncate max-w-full">{t('nav.footerSystem')}</p>

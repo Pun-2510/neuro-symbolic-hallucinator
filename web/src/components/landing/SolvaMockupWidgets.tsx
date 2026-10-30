@@ -29,9 +29,11 @@ import { ScholarlySourceLogo } from './ScholarlySourceLogos';
 export function HeroVerificationMockup({
   lang,
   activeStep,
+  onSelectStep,
 }: {
   lang: Lang;
   activeStep: number;
+  onSelectStep?: (step: number) => void;
 }) {
   const citations = [
     {
@@ -128,6 +130,7 @@ export function HeroVerificationMockup({
             return (
               <div
                 key={item.marker}
+                onClick={() => onSelectStep?.(idx)}
                 style={{
                   backgroundColor: isActive
                     ? 'var(--solva-surface)'
@@ -136,7 +139,7 @@ export function HeroVerificationMockup({
                     ? 'var(--solva-ink)'
                     : 'var(--solva-border)',
                 }}
-                className="p-2.5 rounded-[8px] border transition-all duration-300"
+                className="p-2.5 rounded-[8px] border transition-all duration-300 cursor-pointer hover:opacity-90"
               >
                 <div className="flex items-center justify-between gap-1.5 mb-1">
                   <span
@@ -174,7 +177,10 @@ export function HeroVerificationMockup({
         </div>
 
         {/* Right Live Verdict Trace */}
-        <div className="sm:col-span-7 p-4 space-y-3">
+        <div
+          key={selected.marker}
+          className="sm:col-span-7 p-4 space-y-3 animate-debugger-switch"
+        >
           <div className="flex items-start justify-between gap-2">
             <div>
               <div
@@ -794,8 +800,9 @@ export function PipelineStageVisual({
 
   return (
     <div
+      key={tabIndex}
       style={{ backgroundColor: 'var(--solva-card-elevated)' }}
-      className="solva-glass-ring w-full rounded-[8px] p-5 sm:p-6 space-y-4 text-left border border-[#E7E3D9]/80 dark:border-[#332F26]"
+      className="solva-glass-ring w-full rounded-[8px] p-5 sm:p-6 space-y-4 text-left border border-[#E7E3D9]/80 dark:border-[#332F26] animate-debugger-switch"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#E7E3D9] dark:border-[#332F26]">
         <span
