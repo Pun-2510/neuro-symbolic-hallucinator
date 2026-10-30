@@ -441,13 +441,14 @@ test.describe('Responsive Layout — Public & Auth Pages', () => {
       expect(firstLogoBox).not.toBeNull();
       expect(firstLogoBox!.height).toBeGreaterThanOrEqual(34);
 
-      // Verify focus-within pauses marquee animation so mobile/tablet/keyboard users can tap/activate cleanly
+      // Verify marquee continues running after clicking/focusing a logo (never gets stuck paused)
       const openAlexLink = page.getByTestId('hero-ticker-logo-openalex-1');
       await openAlexLink.focus();
+      await page.mouse.move(0, 0);
       const playState = await ticker
         .locator('.animate-solva-marquee')
         .evaluate((el) => window.getComputedStyle(el).animationPlayState);
-      expect(playState).toBe('paused');
+      expect(playState).toBe('running');
 
       await assertNoHorizontalOverflow(page, `/ (Hero Ticker) @ ${vp.name}`);
     }

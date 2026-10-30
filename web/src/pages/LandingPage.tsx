@@ -1055,6 +1055,7 @@ function SolvaHeroSection({
                     aria-label={`${apiName} official website`}
                     title={`${apiName} (${href.replace(/^https?:\/\//, '')})`}
                     data-testid={`hero-ticker-logo-${slug}-${idx}`}
+                    onClick={(e) => e.currentTarget.blur()}
                     style={{ color: 'var(--solva-ink)' }}
                     className="group inline-flex items-center gap-2.5 px-2.5 py-2 -mx-2.5 -my-1.5 rounded-[8px] shrink-0 select-none cursor-pointer opacity-80 hover:opacity-100 active:opacity-100 focus-visible:opacity-100 hover:-translate-y-[1px] active:scale-[0.98] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1C1A15]/30 dark:focus-visible:ring-[#FBFAF6]/30"
                   >
