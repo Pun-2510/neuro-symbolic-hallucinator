@@ -468,6 +468,11 @@ class DocumentParser:
         """
         citations: list[Citation] = []
         by_page = {p.page_num: p for p in source_doc.pages}
+        has_real_bib_section = any(
+            s.section_type == SectionType.BIBLIOGRAPHY
+            and not (s.metadata or {}).get("synthetic_footnote_bibliography")
+            for s in sections
+        )
         for section in sections:
             if section.section_type != SectionType.BODY:
                 continue
@@ -485,7 +490,11 @@ class DocumentParser:
                     num_pages=max(page_nums),
                     pages=[by_page[n] for n in page_nums],
                 )
-                citations.extend(self._citation_extractor.extract_from_document(doc))
+                citations.extend(
+                    self._citation_extractor.extract_from_document(
+                        doc, stop_at_bibliography=not has_real_bib_section
+                    )
+                )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Body citation extraction failed: %s", exc)
 
@@ -673,6 +682,20 @@ class DocumentParser:
         import unicodedata
 
         has_numbered_refs = sum(1 for r in references if r.numeric_index is not None) >= 3
+        is_notes_bib = any(
+            s.section_type == SectionType.BIBLIOGRAPHY
+            and (
+                (s.metadata or {}).get("synthetic_footnote_bibliography")
+                or bool(
+                    re.match(
+                        r"^\s*(?:(?:\d+(?:\.\d+)*\.?|[IVXLC]+\.)\s+)?(?:notes(?:\s+and\s+references)?|endnotes?)\b",
+                        (s.text or "").strip(),
+                        re.IGNORECASE,
+                    )
+                )
+            )
+            for s in sections
+        )
         if has_numbered_refs and sum(1 for c in existing_body if c.citation_type == CitationType.NUMERIC) >= 3:
             return existing_body
 
@@ -811,11 +834,11 @@ class DocumentParser:
             and re.search(r"[A-Za-z]{2,}", c.raw_text or "")
         )
         if existing_matched_count >= 10 or (
-            author_year_body_count >= 5 and not has_ibid and has_pub_city < 2
+            existing_matched_count >= 6 and not has_ibid and has_pub_city < 2
         ):
             return existing_body
 
-        if not (has_ibid or has_pub_city >= 2 or len(fn_blocks) >= 5 or (len(references) >= 5 and existing_matched_count <= 5)):
+        if not (has_ibid or has_pub_city >= 2 or len(fn_blocks) >= 5 or (len(references) >= 5 and existing_matched_count <= 6)):
             return existing_body
 
         def _match_fn_text(fn_txt: str) -> list[dict]:
@@ -870,11 +893,16 @@ class DocumentParser:
                 ref = prof["ref"]
                 matched_ref_indices.add(prof["idx"])
                 sn_disp = prof["surname"]
-                raw_cit = f"({sn_disp}, {ref.year})" if ref.year else f"({sn_disp})"
+                if is_notes_bib and ref.numeric_index is not None:
+                    raw_cit = f"[{ref.numeric_index}]"
+                    c_type = CitationType.NUMERIC
+                else:
+                    raw_cit = f"({sn_disp}, {ref.year})" if ref.year else f"({sn_disp})"
+                    c_type = CitationType.IN_TEXT
                 chicago_cits.append(
                     Citation(
                         raw_text=raw_cit,
-                        citation_type=CitationType.IN_TEXT,
+                        citation_type=c_type,
                         style=CitationStyle.CHICAGO,
                         page_num=p_num,
                         authors=[prof["first_raw"]],
@@ -882,6 +910,7 @@ class DocumentParser:
                         year_suffix=ref.year_suffix,
                         title=ref.title,
                         title_normalized=ref.title_normalized,
+                        numeric_index=ref.numeric_index if is_notes_bib else None,
                         matched_pattern="chicago_footnote",
                         confidence=0.90,
                     )
@@ -911,11 +940,16 @@ class DocumentParser:
                     ref = prof["ref"]
                     matched_ref_indices.add(prof["idx"])
                     sn_disp = prof["surname"]
-                    raw_cit = f"({sn_disp}, {ref.year})" if ref.year else f"({sn_disp})"
+                    if is_notes_bib and ref.numeric_index is not None:
+                        raw_cit = f"[{ref.numeric_index}]"
+                        c_type = CitationType.NUMERIC
+                    else:
+                        raw_cit = f"({sn_disp}, {ref.year})" if ref.year else f"({sn_disp})"
+                        c_type = CitationType.IN_TEXT
                     chicago_cits.append(
                         Citation(
                             raw_text=raw_cit,
-                            citation_type=CitationType.IN_TEXT,
+                            citation_type=c_type,
                             style=CitationStyle.CHICAGO,
                             page_num=p_num,
                             authors=[prof["first_raw"]],
@@ -923,6 +957,7 @@ class DocumentParser:
                             year_suffix=ref.year_suffix,
                             title=ref.title,
                             title_normalized=ref.title_normalized,
+                            numeric_index=ref.numeric_index if is_notes_bib else None,
                             matched_pattern="chicago_footnote",
                             confidence=0.88,
                         )
@@ -932,10 +967,11 @@ class DocumentParser:
         if not chicago_cits:
             return existing_body
 
-        # Keep only existing_body citations that match a known bibliography author surname
+        # Keep existing_body citations that are numeric or match a known bibliography author surname
         valid_existing = [
             c for c in existing_body
-            if any(
+            if c.citation_type == CitationType.NUMERIC
+            or any(
                 prof["sn_fold"] and len(prof["sn_fold"]) >= 3 and prof["sn_fold"] in _fold(c.raw_text)
                 for prof in ref_profiles
             )
@@ -1124,7 +1160,11 @@ class DocumentParser:
         numbered_refs = [r for r in references if r.numeric_index is not None]
         if len(numbered_refs) < 3 or len(numbered_refs) < len(references) // 2:
             return existing_body
-        existing_numeric_count = sum(1 for c in existing_body if c.citation_type == CitationType.NUMERIC)
+        existing_numeric_count = sum(
+            1
+            for c in existing_body
+            if c.citation_type == CitationType.NUMERIC and c.matched_pattern != "chicago_footnote"
+        )
         if existing_numeric_count >= 5:
             return existing_body
 
@@ -1533,8 +1573,11 @@ class DocumentParser:
                             continue
                         if _is_essay_title_entry(entry):
                             continue
-                        citation = self._reference_parser._parse_entry(
-                            entry, order_index=idx, page_num=section.start_page
+                        citation = self._reference_parser._parse_entry_with_dash_inheritance(
+                            entry,
+                            order_index=idx,
+                            page_num=section.start_page,
+                            prev_citations=all_citations,
                         )
                         if citation:
                             # Mark as regex source

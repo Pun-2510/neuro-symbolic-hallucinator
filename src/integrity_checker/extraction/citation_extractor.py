@@ -21,7 +21,7 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # Header / footer keywords để phát hiện reference section
 _REFERENCE_HEADERS = re.compile(
-    r"^\s*(?:\d+\.?\s+)?(references?|reference\s+list|bibliography|works?\s+cited|literature(?:\s+cited)?|cited\s+literature"
+    r"^\s*(?:\d+\.?\s+)?(references?|reference\s+list|bibliography|works?\s+cited|literature(?:\s+cited)?|cited\s+literature|notes(?:\s+and\s+references)?|endnotes?"
     r"|danh\s+mục\s+tài\s+liệu(?:\s+tham\s+khảo)?|tài\s+liệu\s+tham\s+khảo)\s*[:.]?\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
@@ -287,26 +287,49 @@ class CitationExtractor:
 
     @staticmethod
     def _find_valid_ref_header_match(raw_text: str) -> re.Match | None:
-        """Return first valid bibliography header match on a page, ignoring singular 'Reference' labels in tables/figures."""
+        """Return first valid bibliography header match on a page, ignoring 'Reference(s)' labels in tables/figures."""
+        table_col_re = re.compile(
+            r"(?:Entities(?:,\s*n)?|Entity|Attribute|Recall|Precision|F1(?:\s*Score)?|Accuracy|Score|Metric|Support|"
+            r"Strengths?|Weaknesses|Limitations?|Advantages|Disadvantages|Sensor\s+Type|Aspect|Comparison|Criterion|Criteria|Carbon\s+source)"
+            r"(?:\s+(?:Recall|Precision|F1(?:\s*Score)?))*",
+            re.IGNORECASE,
+        )
         for m in _REFERENCE_HEADERS.finditer(raw_text or ""):
             matched_word = (m.group(1) or "").strip()
             if matched_word.islower():
                 continue
-            if re.fullmatch(r"reference", matched_word, re.IGNORECASE):
-                prev_win = raw_text[max(0, m.start() - 300) : m.start()]
+            prev_win = raw_text[max(0, m.start() - 300) : m.start()]
+            after_lines = [ln.strip() for ln in raw_text[m.end() :].splitlines()[:12] if ln.strip()]
+            before_lines = [ln.strip() for ln in prev_win.splitlines()[-6:] if ln.strip()]
+            if sum(1 for ln in (before_lines + after_lines[:8]) if table_col_re.fullmatch(ln)) >= 2:
+                continue
+            if re.fullmatch(r"references?|literature", matched_word, re.IGNORECASE):
                 if re.search(r"\b(?:table|bảng)\s+\d+", prev_win, re.IGNORECASE):
-                    continue
-                after_lines = raw_text[m.end() :].splitlines()[:16]
+                    if not before_lines or not before_lines[-1].endswith("."):
+                        continue
+            if re.fullmatch(r"reference", matched_word, re.IGNORECASE):
                 if len(after_lines) > 4 and not re.search(
                     r"\b(?:18|19|20)\d{2}\b|\[\d+\]|https?://|doi:",
                     "\n".join(after_lines),
                     re.IGNORECASE,
                 ):
                     continue
+            if re.fullmatch(r"(?:notes(?:\s+and\s+references)?|endnotes?)", matched_word, re.IGNORECASE):
+                has_numbered_note = any(
+                    re.match(r"^(?:\[\d+\]|\d{1,2}(?:[\.\)]|\s+[A-ZÀ-Ý“\"‘']))", ln)
+                    for ln in after_lines[:6]
+                )
+                has_bib_cue = bool(
+                    re.search(r"\b(?:18|19|20)\d{2}\b|https?://|doi:", "\n".join(after_lines[:10]), re.IGNORECASE)
+                )
+                if not (has_numbered_note and has_bib_cue):
+                    continue
             return m
         return None
 
-    def extract_from_document(self, doc: Document) -> list[Citation]:
+    def extract_from_document(
+        self, doc: Document, *, stop_at_bibliography: bool = True
+    ) -> list[Citation]:
         """Trích xuất mọi *occurrence* citation trong Document.
 
         Không được dedupe theo ``raw_text``: một nguồn có thể được trích dẫn
@@ -315,11 +338,15 @@ class CitationExtractor:
         trong ``_extract_from_text``.
         """
         citations: list[Citation] = []
-        bib_candidates = [
-            p.page_num
-            for p in (doc.pages or [])
-            if self._find_valid_ref_header_match(p.text or "") is not None
-        ]
+        bib_candidates = (
+            [
+                p.page_num
+                for p in (doc.pages or [])
+                if self._find_valid_ref_header_match(p.text or "") is not None
+            ]
+            if stop_at_bibliography
+            else []
+        )
         target_bib_page: int | None = None
         if bib_candidates:
             if len(bib_candidates) > 1 and doc.num_pages:
@@ -335,7 +362,10 @@ class CitationExtractor:
             raw_text = page.text  # Keep raw text for whitespace detection
             ref_header_m = (
                 self._find_valid_ref_header_match(raw_text)
-                if (target_bib_page is None or page.page_num == target_bib_page)
+                if (
+                    stop_at_bibliography
+                    and (target_bib_page is None or page.page_num == target_bib_page)
+                )
                 else None
             )
             if ref_header_m:

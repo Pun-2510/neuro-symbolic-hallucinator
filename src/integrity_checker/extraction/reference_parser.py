@@ -132,7 +132,7 @@ _LONG_TEXT_NO_YEAR_RE = re.compile(r"^[A-Za-z]{50,}")
 # (used to drop it wherever it lands once running headers/page numbers have been stripped).
 _BIB_HEADER_LINE_RE = re.compile(
     r"^\s*(?:(?:\d+|[A-Z]|[IVX]+)\s*[\.\)]\s*)?(?:"
-    r"references?|reference\s+list|bibliography|works?\s+cited|literature(?:\s+cited)?"
+    r"references?|reference\s+list|bibliography|works?\s+cited|literature(?:\s+cited)?|notes(?:\s+and\s+references)?|endnotes?"
     r"|bibliografia(?:/bibliografía/bibliographie/works?\s+cited)?|bibliografía|bibliographie"
     r"|referências(?:\s+bibliográficas)?|referencias(?:\s+bibliográficas)?|daftar\s+pustaka"
     r"|(?:[^/\n]{2,50}/\s*)?list\s+of\s+references"
@@ -158,12 +158,12 @@ _LEADING_SUBHEADER_RE = re.compile(
 
 _UPPER_VN_R = r"[A-ZÀ-ÝĂÂĐÊÔƠƯĨŨẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ]"
 _PERSONAL_AUTHOR_HEAD_R = (
-    rf"(?:(?:van|de|der|den|von|le|la|du|di|da)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s*"
+    rf"(?:\*\s*)?(?:(?:van|de|der|den|von|le|la|du|di|da)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s*"
     rf"(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+"
-    rf"(?:,\s*(?:&\s*|và\s*|and\s*)?(?:(?:van|de|der|den|von)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s*(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+)*"
-    rf"(?:\s+(?:&|và|and)\s+(?:(?:van|de|der|den|von)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s*(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+)*"
+    rf"(?:[;,]\s*(?:&\s*|và\s*|and\s*|(?:\.\s*\.\s*\.|…)\s*)?(?:(?:van|de|der|den|von)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s*(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+)*"
+    rf"(?:\s+(?:&|và|and|(?:\.\s*\.\s*\.|…))\s+(?:(?:van|de|der|den|von)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s*(?:{_UPPER_VN_R}\.?\s*[-–]?\s*)+)*"
     r"(?:\s*,?\s*(?:et\s+al\.?|và\s+cộng\s+sự|và\s+cs\.?))?"
-    r"\s*\(\s*(?:(?:19|20)\d{2}[a-z]?(?:,\s*[A-Za-z]+\.?(?:\s+\d{1,2})?)?|n\.?\s*d\.?)\s*\)"
+    r"\s*\(\s*(?:(?:18|19|20)\d{2}[a-z]?(?:,\s*[A-Za-z]+\.?(?:\s+\d{1,2})?)?|n\.?\s*d\.?)\s*\)"
 )
 _VN_FULLNAME_AUTHOR_HEAD_R = (
     rf"(?:\d{{1,2}}\s*[\.\)]\s*)?{_UPPER_VN_R}[a-zà-ỹ]+(?:\s+{_UPPER_VN_R}[a-zà-ỹ]+){{1,4}}"
@@ -188,7 +188,7 @@ _MLA_BOOK_AUTHOR_HEAD_R = (
     rf"(?:{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s+{_UPPER_VN_R}[A-Za-zÀ-ỹ.\s'\u2019\-]{{1,35}}?(?:,\s*et\s+al\.|\.)"
     r"|(?:Homer|Aeschylus|Euripides|Herodotus|Sophocles|Plato|Aristotle|Virgil|Ovid|Seneca|Epictetus|Augustine|Aquinas|Cicero|Plutarch|Thucydides|Tacitus|Dante|Boethius)\."
     r"|(?:The\s+)?(?:English\s+Standard\s+Version|ESV(?:\s+Study)?|King\s+James|New\s+International\s+Version|NIV|NKJV|NASB|Holy)\s+Bible[.,]"
-    r"|[\-\u2013\u2014_]{3,}\.)\s+(?=[A-Z0-9\"\u201c])"
+    r"|[\-\u2013\u2014_]{3,}\.)\s+(?=[A-Z0-9\"\u201c\u2018'])"
 )
 _CSE_AUTHOR_HEAD_R = (
     rf"(?:(?:van|de|der|den|von|le|la|du|di|da|el|al)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+\s+[A-Z]{{1,4}}\.?"
@@ -201,8 +201,13 @@ _NAMEYEAR_DOT_AUTHOR_HEAD_R = (
     rf"(?:{_UPPER_VN_R}[A-Za-zÀ-ỹ.\s,&;\u00a0'\u2019\-]{{0,90}}?|\s*et\s+al\.)\.)"
     r"\s+(?:18|19|20)\d{2}[a-z]?(?:\s*\[(?:18|19|20)\d{2}\])?\.\s+(?=[A-ZÀ-Ý\"\u201c\u2018])"
 )
+_AU_HARVARD_AUTHOR_HEAD_R = (
+    rf"(?:(?:van|de|der|den|von|le|la|du|di|da)\s+)*{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s+"
+    rf"(?:[A-Z]{{1,3}}(?:,\s+{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s+[A-Z]{{1,3}})*(?:\s+(?:&|and)\s+{_UPPER_VN_R}[a-zA-ZÀ-ỹ'\u2019\-]+,\s+[A-Z]{{1,3}})?)"
+    r"\s+(?:18|19|20)\d{2}[a-z]?[,:]?\s+(?=[\u2018'\u201c\"A-ZÀ-Ý])"
+)
 _INLINE_ENTRY_START_RE = re.compile(
-    rf"(?:{_PERSONAL_AUTHOR_HEAD_R}|{_CSE_AUTHOR_HEAD_R}|{_NAMEYEAR_DOT_AUTHOR_HEAD_R}|{_VN_FULLNAME_AUTHOR_HEAD_R}|{_DATED_WEB_AUTHOR_HEAD_R}|{_CORP_AUTHOR_HEAD_R}|{_LEGAL_HEAD_R})"
+    rf"(?:{_PERSONAL_AUTHOR_HEAD_R}|{_CSE_AUTHOR_HEAD_R}|{_NAMEYEAR_DOT_AUTHOR_HEAD_R}|{_AU_HARVARD_AUTHOR_HEAD_R}|{_VN_FULLNAME_AUTHOR_HEAD_R}|{_DATED_WEB_AUTHOR_HEAD_R}|{_CORP_AUTHOR_HEAD_R}|{_LEGAL_HEAD_R})"
 )
 _MLA_INLINE_SPLIT_RE = re.compile(
     rf"(?:(?<=\b(?:19|20)\d{{2}}\.)|(?<=ProQuest Ebook Central\.)|(?<=Google Scholar\.))\s+(?={_MLA_BOOK_AUTHOR_HEAD_R})"
@@ -212,7 +217,7 @@ _MLA_INLINE_SPLIT_RE = re.compile(
 # (optionally followed by MLA "Accessed DD Mon. YYYY." or Vietnamese ", truy cập ngày DD/MM/YYYY."),
 # which makes them a reliable boundary between consecutive reference entries.
 _URL_BOUNDARY_RE = re.compile(
-    r"(?:(?:https?://|www\.|doi\.org/)\S+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|org|edu|gov|net)/\S+)"
+    r"(?:(?:https?://|www\.|doi\.org/)\S+|\bdoi\s*:\s*10\.\d{4,9}/\S+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|org|edu|gov|net)/\S+)"
     r"(?:"
     r"\s+Accessed\s+(?:\d{1,2}\s+)?[A-Za-z.]+\s+(?:19|20)\d{2}\.?"
     r"|\s*\(\s*accessed\s+(?:\d{1,2}\s+)?[A-Za-z.]+\s+(?:19|20)\d{2}\s*\)\.?"
@@ -435,22 +440,9 @@ class ReferenceListParser:
                 logger.debug(f"Skipping fake entry: {entry[:50]}...")
                 continue
 
-            # Support Chicago/MLA 3-em dash (———.) or font-omitted dash leading period (. "Title") author inheritance
-            dash_m = re.match(
-                r"^\s*(?:[\u2014\u2013\u2012―—–_-]{2,}\.?|\.)\s+(?P<rest>[\"\u201c\u2018A-ZÀ-Ý].+)$",
-                entry,
-                flags=re.DOTALL,
+            citation = self._parse_entry_with_dash_inheritance(
+                entry, order_index=idx, page_num=start, prev_citations=citations
             )
-            if dash_m and citations and citations[-1].authors:
-                prev_authors = list(citations[-1].authors)
-                lead_author = str(prev_authors[0]).rstrip(".")
-                synth_entry = f"{lead_author}. {dash_m.group('rest').strip()}"
-                citation = self._parse_entry(synth_entry, order_index=idx, page_num=start)
-                if citation:
-                    citation.raw_text = entry.strip()
-                    citation.authors = prev_authors
-            else:
-                citation = self._parse_entry(entry, order_index=idx, page_num=start)
 
             if citation:
                 # FIX v1.11: Double-check parsed citation is not fake
@@ -460,6 +452,49 @@ class ReferenceListParser:
                     continue
                 citations.append(citation)
         return citations
+
+    def _parse_entry_with_dash_inheritance(
+        self,
+        entry: str,
+        *,
+        order_index: int,
+        page_num: int,
+        prev_citations: list[Citation],
+    ) -> Citation | None:
+        """Parse an entry while supporting Chicago/MLA 3-em dash or leading-period author inheritance."""
+        dash_m = re.match(
+            r"^\s*(?:[\u2014\u2013\u2012―—–_-]{2,}\.?|\.)\s+(?P<rest>[\"\u201c\u2018'A-ZÀ-Ý].+)$",
+            entry,
+            flags=re.DOTALL,
+        )
+        if dash_m and prev_citations and prev_citations[-1].authors:
+            prev_authors = list(prev_citations[-1].authors)
+            lead_author = str(prev_authors[0]).rstrip(".")
+            synth_entry = f"{lead_author}. {dash_m.group('rest').strip()}"
+            citation = self._parse_entry(synth_entry, order_index=order_index, page_num=page_num)
+            if citation:
+                citation.raw_text = entry.strip()
+                citation.authors = prev_authors
+            return citation
+
+        single_hyphen_m = re.match(
+            r"^\s*-\s*,\s*(?P<given>[A-ZÀ-Ý]\.(?:\s*[A-ZÀ-Ý]\.)?)\s*,?\s*(?P<rest>.+)$",
+            entry,
+            flags=re.DOTALL,
+        )
+        if single_hyphen_m and prev_citations and prev_citations[-1].authors:
+            prev_first = str(prev_citations[-1].authors[0]).split(",", 1)[0].strip().rstrip(".")
+            if prev_first:
+                synth_entry = (
+                    f"{prev_first}, {single_hyphen_m.group('given')}, "
+                    f"{single_hyphen_m.group('rest').strip()}"
+                )
+                citation = self._parse_entry(synth_entry, order_index=order_index, page_num=page_num)
+                if citation:
+                    citation.raw_text = entry.strip()
+                return citation
+
+        return self._parse_entry(entry, order_index=order_index, page_num=page_num)
 
     def _split_entries(self, text: str) -> list[str]:
         """Tách các entry riêng.
@@ -474,7 +509,7 @@ class ReferenceListParser:
         """
         # 1. Strip header prefix
         header_strip_re = re.compile(
-            r"^\s*(?:(?:\d+|[A-Z]|[IVX]+)\.?\s+)?(?:references?|reference\s+list|bibliography|literature(?:\s+cited)?"
+            r"^\s*(?:(?:\d+|[A-Z]|[IVX]+)\.?\s+)?(?:references?|reference\s+list|bibliography|literature(?:\s+cited)?|notes(?:\s+and\s+references)?|endnotes?"
             r"|bibliografia(?:/bibliografía/bibliographie/works?\s+cited)?|bibliografía|bibliographie"
             r"|referências(?:\s+bibliográficas)?|referencias(?:\s+bibliográficas)?|daftar\s+pustaka"
             r"|(?:[^/\n]{2,50}/\s*)?list\s+of\s+references"
@@ -831,6 +866,9 @@ class ReferenceListParser:
                 valid_starts.append(pos)
                 continue
             prefix = cleaned_chunk[:pos]
+            # Never split right after an APA 6th/7th ellipsis (". . . " or "… ") in an 8+ author list
+            if re.search(r"(?:\.\s*\.\s*\.|…)\s+$", prefix):
+                continue
             # Never split a legal/statute title away from its own leading 'Author (Year).' header
             prev_seg = cleaned_chunk[valid_starts[-1]:pos].strip() if valid_starts else prefix.strip()
             if len(prev_seg) < 100 and re.search(
@@ -838,9 +876,14 @@ class ReferenceListParser:
                 prev_seg,
             ):
                 continue
-            # Must follow a sentence-ending period/semicolon, a URL, or a sub-header
+            # Never split on a semicolon inside a semicolon-separated author list (before any year/URL appears)
+            if re.search(r";\s+$", prefix) and not re.search(
+                r"\b(?:18|19|20)\d{2}\b|https?://|\bdoi\s*:", prev_seg, re.IGNORECASE
+            ):
+                continue
+            # Must follow a sentence-ending period/semicolon, a URL/DOI, a CSE vol:page range, or a sub-header
             if re.search(
-                r"(?:[\.;]|https?://\S+)\s+$"
+                r"(?:[\.;]|https?://\S+|\bdoi\s*:\s*10\.\d{4,9}/\S+|\b\d+\s*[:,\s]\s*\d+\s*[\-–]\s*\d+)\s+$"
                 r"|(?:văn\s+bản\s+(?:quy\s+phạm\s+)?pháp\s+luật|tài\s+liệu\s+tham\s+khảo"
                 r"|tiếng\s+việt|tiếng\s+anh|tiếng\s+pháp)\s*[:.]?\s+$",
                 prefix,
@@ -937,10 +980,12 @@ class ReferenceListParser:
         return entries if len(entries) >= 2 else []
 
     def _split_plainnat_year_end_lines(self, raw_lines: list[str]) -> list[str]:
-        """Split unnumbered plainnat / NeurIPS / ICLR / COLM / ICML bibliographies ('Authors. Title. Venue, YYYY.')."""
+        """Split unnumbered plainnat / NeurIPS / ICLR / Chicago / MLA bibliographies."""
         end_re = re.compile(
             r"(?:"
             r"(?:,\s*|\.\s+|\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|Spring|Summer|Fall|Autumn|Winter)\.?\s+)(?:18|19|20)\d{2}[a-z]?\."
+            r"|(?:,\s*|\(\s*)(?:18|19|20)\d{2}[a-z]?\)?(?:,\s*|\s*:\s*)(?:pp?\.\s*)?\d+(?:\s*[\-–]\s*\d+)?\."
+            r"|\((?:[^()]+:\s+)?[^()]+,\s*(?:18|19|20)\d{2}[a-z]?\)\."
             r"|(?:URL\s+)?https?://\S+"
             r"|\bdoi:\s*10\.\d{4,9}/\S+"
             r"|\b10\.\d{4,9}/\S+"
@@ -990,7 +1035,10 @@ class ReferenceListParser:
                 continue
 
             has_year = bool(re.search(r"\b(?:18|19|20)\d{2}[a-z]?\b", curr))
-            if has_year and end_re.search(curr) and re.match(r"^[A-ZÀ-ÝĂÂĐÊÔƠƯ]", nxt):
+            if has_year and end_re.search(curr) and re.match(
+                r"^(?:[A-ZÀ-ÝĂÂĐÊÔƠƯ]|[\u2014\u2013\u2012―—–_-]{2,}\.?|-\s*,\s*[A-ZÀ-Ý]\.|\.\s+[\"\u201c\u2018'A-ZÀ-Ý])",
+                nxt,
+            ):
                 if len(curr.strip()) > 20:
                     entries.append(curr.strip())
                 curr = ""
@@ -1041,7 +1089,9 @@ class ReferenceListParser:
                     1
                     for ln in raw_nonempty
                     if re.search(
-                        r"(?:,\s*|\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|Spring|Summer|Fall|Autumn|Winter)\.?\s+)(?:18|19|20)\d{2}[a-z]?\.(?:\s*(?:URL\s+\S+|https?://\S+|doi:\s*\S+))?\s*$",
+                        r"(?:(?:,\s*|\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|Spring|Summer|Fall|Autumn|Winter)\.?\s+)(?:18|19|20)\d{2}[a-z]?\."
+                        r"|(?:,\s*|\(\s*)(?:18|19|20)\d{2}[a-z]?\)?(?:,\s*|\s*:\s*)(?:pp?\.\s*)?\d+(?:\s*[\-–]\s*\d+)?\."
+                        r"|\((?:[^()]+:\s+)?[^()]+,\s*(?:18|19|20)\d{2}[a-z]?\)\.)(?:\s*(?:URL\s+\S+|https?://\S+|doi:\s*\S+))?\s*$",
                         ln,
                         re.IGNORECASE,
                     )
@@ -1050,7 +1100,7 @@ class ReferenceListParser:
                     acl_split = self._split_acl_year_first_lines(raw_nonempty)
                     if len(acl_split) >= 2:
                         return acl_split
-                elif comma_end_yr_count >= 2 and comma_end_yr_count > apa_yr_count:
+                elif comma_end_yr_count >= 2 and comma_end_yr_count >= apa_yr_count:
                     plainnat_split = self._split_plainnat_year_end_lines(raw_nonempty)
                     if len(plainnat_split) >= 2:
                         return plainnat_split
@@ -1188,7 +1238,8 @@ class ReferenceListParser:
             re.IGNORECASE,
         )
         post_bib_stop_re = re.compile(
-            r"^\s*(?:Ngày\s+nhận\s+bài|ABSTRACT|SUMMARY|TÓM\s+TẮT|Thông\s+tin\s+tác\s+giả|Author\s+information)\s*(?::|$)",
+            r"^\s*(?:Ngày\s+nhận\s+bài|ABSTRACT|SUMMARY|TÓM\s+TẮT|Thông\s+tin\s+tác\s+giả|Author\s+information"
+            r"|Литература|Список\s+литературы|Об\s+авторах)\s*(?::|$)",
             re.IGNORECASE,
         )
 
@@ -1198,9 +1249,14 @@ class ReferenceListParser:
             if not stripped:
                 cleaned.append("")
                 continue
-            # Stop if post-bibliography metadata / English abstract block begins
+            # Stop if post-bibliography metadata / English abstract / duplicate Russian bibliography block begins
             if post_bib_stop_re.match(stripped) and len(cleaned) >= 2:
                 break
+            # Drop HTML hyperlink return anchors ("return to" / "text") and Australian TEXT journal footers
+            if re.fullmatch(r"(?:return\s+to(?:\s+text)?|TEXT\s+Vol\s+\d+\s+No\s+\d+.*)", stripped, re.IGNORECASE):
+                continue
+            if stripped.lower() == "text" and idx_ln > 0 and lines[idx_ln - 1].strip().lower() == "return to":
+                continue
             # In a bracket-numbered bibliography ([1]..[N]), a bare 2-digit number line
             # near the bottom of the page (e.g. "31" followed by footnote text) marks bottom footnotes,
             # ONLY if no further [N] bibliography entries appear after it (otherwise it is a page number).
@@ -1236,16 +1292,17 @@ class ReferenceListParser:
                 or conf_running_header_re.match(stripped)
             ):
                 continue
-            # Skip short repeated lines without year/URL (typical running headers)
+            # Skip short repeated lines without year/URL (typical running headers, never numbered ref starts or DOI/page lines)
             if (
                 counts[stripped] >= 2
                 and len(stripped) < 100  # Increased from 80 to catch more headers
-                and not re.search(r"(?:19|20)\d{2}", stripped)
+                and not re.search(r"(?:19|20)\d{2}|\bdoi\s*:|\b10\.\d{4,9}/|\bpp?\.\s*\d+|\bProceedings\s+of\b", stripped, re.IGNORECASE)
                 and "http" not in stripped.lower()
+                and not re.match(r"^\s*(?:\[\d{1,3}\]|\d{1,3}\s*[\.\)])\s+[A-ZÀ-Ý]", stripped)
             ):
                 continue
             # Strip HTML-to-PDF hyperlink anchor artifact "return to text" and LaTeX pagebackref page numbers
-            line = re.sub(r"\s+\breturn\s+to\s+text\b\s*$", ".", line, flags=re.IGNORECASE)
+            line = re.sub(r"\s+\breturn\s+to(?:\s+text)?\b\s*$", ".", line, flags=re.IGNORECASE)
             line = re.sub(
                 r"((?:(?:18|19|20)\d{2}[a-z]?|https?://\S+|10\.\d{4,9}/\S+)\.)\s+\d{1,3}(?:,\s*\d{1,3})*\s*$",
                 r"\1",
@@ -1350,6 +1407,8 @@ class ReferenceListParser:
         entry = entry.replace("\n", " ").replace("\xad", "").replace("  ", " ")
         entry = entry.replace("\u2018\u2018", "\u201c").replace("\u2019\u2019", "\u201d")
         entry = re.sub(r"\s*\[trans\s*:[^\]]*\]?\s*$", "", entry, flags=re.IGNORECASE).strip()
+        # Strip meta-analysis leading asterisk (e.g. "*Adil, A., & Kamal, A. (2016)")
+        entry = re.sub(r"^\s*\*\s*(?=[A-ZÀ-Ý])", "", entry)
         # Strip Slavic/European Harvard key prefix (e.g. "Ewing 2002 – Ewing E.T. (2002) ...")
         entry = re.sub(
             r"^\s*[A-ZÀ-Ý][A-Za-zÀ-ỹ'\u2019\-]+(?:\s+[A-ZÀ-Ý][A-Za-zÀ-ỹ'\u2019\-]+)?\s+(?:18|19|20)\d{2}[a-z]?\s*[–—-]\s+(?=[A-ZÀ-Ý])",

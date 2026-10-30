@@ -70,6 +70,7 @@ class SectionType(str, Enum):
 _BIBLIOGRAPHY_HEADERS = re.compile(
     r"^\s*(?:(?:\d+(?:\.\d+)*|I{1,3}|IV|V|VI{0,3}|IX|X|[A-Z])[\.\)]?\s+)?(?:"
     r"references?|reference\s+list|bibliography|works?\s+cited|literature(?:\s+cited)?|"
+    r"notes(?:\s+and\s+references)?|endnotes?|"
     r"bibliografia(?:/bibliografía/bibliographie/works?\s+cited)?|bibliografía|bibliographie|"
     r"referências(?:\s+bibliográficas)?|referencias(?:\s+bibliográficas)?|daftar\s+pustaka|"
     r"(?:[^/\n]{2,50}/\s*)?list\s+of\s+references|"
@@ -94,7 +95,7 @@ _POST_BIB_APPENDIX_SINGLE_LINE_RE = re.compile(
     r"^(?:"
     r"A(?:\.1)?\s+(?:Additional|Supplementary|Implementation|Experimental|Training|Model|Dataset|Evaluation|Proof|Proofs|Further|Extended|Detailed|Prompt|Prompts|Hyperparameter|Ablation|Human|Case|Error|More|Ethical|Broader|Limitation|Societal)\b[A-Za-z0-9\s,\-:–—()]{2,70}"
     r"|Attention\s+Visualizations"
-    r"|Acknowledgements?"
+    r"|Acknowledge?ments?"
     r"|Extended\s+Data(?:\s+Figures?|\s+Tables?)?"
     r")$"
 )
@@ -205,6 +206,9 @@ class SectionSegmenter:
             sections.append(self._build_section(
                 SectionType.BODY, 1, doc.num_pages, doc
             ))
+            fn_bib = self._extract_footnote_bibliography_section(doc)
+            if fn_bib is not None:
+                sections.append(fn_bib)
 
         # APPENDIX
         if app_start:
@@ -251,12 +255,22 @@ class SectionSegmenter:
         ]
         if bib_candidates:
             # Ignore early TOC / table column header false hits when multiple candidates exist
-            if len(bib_candidates) > 1:
+            if len(bib_candidates) >= 4 and bib_candidates[1] == bib_candidates[0] + 1:
+                biblio_start = bib_candidates[0]
+            elif len(bib_candidates) > 1:
                 later = [p for p in bib_candidates if p > doc.num_pages * 0.35]
                 if len(later) > 1:
                     first_pg = next((pg for pg in doc.pages if pg.page_num == later[0]), None)
+                    last_pg = next((pg for pg in doc.pages if pg.page_num == later[-1]), None)
                     first_yr_hits = len(re.findall(r"\b(?:18|19|20)\d{2}\b", first_pg.text or "")) if first_pg else 0
-                    if later[1] == later[0] + 1 or first_yr_hits >= 4:
+                    last_yr_hits = len(re.findall(r"\b(?:18|19|20)\d{2}\b", last_pg.text or "")) if last_pg else 0
+                    if (
+                        later[-1] - later[0] >= 3
+                        and later[0] < doc.num_pages * 0.78
+                        and last_yr_hits >= 4
+                    ):
+                        biblio_start = later[-1]
+                    elif later[1] == later[0] + 1 or first_yr_hits >= 4:
                         biblio_start = later[0]
                     else:
                         biblio_start = later[-1]
@@ -265,6 +279,13 @@ class SectionSegmenter:
             else:
                 biblio_start = bib_candidates[0]
             logger.debug("Bibliography starts at page %d (header)", biblio_start)
+
+        # ── Pass 2: implicit bibliography (no header found) ────────────────────
+        if biblio_start == 0 and doc.num_pages >= 2:
+            implicit = self._find_implicit_bibliography(doc)
+            if implicit > 0:
+                biblio_start = implicit
+                logger.debug("Bibliography starts at page %d (implicit)", biblio_start)
 
         if biblio_start > 0:
             for page in doc.pages:
@@ -285,13 +306,6 @@ class SectionSegmenter:
                     )
                     break
 
-        # ── Pass 2: implicit bibliography (no header found) ────────────────────
-        if biblio_start == 0 and doc.num_pages >= 2:
-            implicit = self._find_implicit_bibliography(doc)
-            if implicit > 0:
-                biblio_start = implicit
-                logger.debug("Bibliography starts at page %d (implicit)", biblio_start)
-
         return {
             "biblio_start": biblio_start,
             "appendix_start": appendix_start or None,
@@ -302,13 +316,14 @@ class SectionSegmenter:
         r"""Tìm trang bắt đầu bibliography ẩn (không có header).
 
         Heuristic: sau page đầu tiên, tìm trang có ≥3 dòng khớp `^\s*\[\d+\]`
-        với IEEE ratio ≥ 0.30. Continue until we hit a page with no [N] markers
-        and substantial prose → bibliography ends; return the first such page.
+        hoặc `^\s*\d{1,3}\.` tuần tự với IEEE ratio ≥ 0.30.
         """
         # Only scan the second half of the document (avoids abstract pages)
         start_scan_at = max(1, doc.num_pages // 2)
 
-        ieee_line_re = re.compile(r"^\s*(?:\[\d+\](?:\s+\S|\s*$)|\d{1,3}\.\s*$)")
+        ieee_line_re = re.compile(r"^\s*(?:\[\d+\](?:\s+\S|\s*$)|\d{1,3}\.(?:\s+[A-ZÀ-Ý]|\s*$))")
+        bracket_line_re = re.compile(r"^\s*\[\d+\](?:\s+\S|\s*$)")
+        dot_num_re = re.compile(r"^\s*(\d{1,3})\.(?:\s+[A-ZÀ-Ý]|\s*$)")
         prose_end_re = re.compile(r"\.\s+$")   # ends with sentence period
 
         candidate_start = 0
@@ -321,8 +336,21 @@ class SectionSegmenter:
             if not lines:
                 continue
 
-            # Count IEEE reference lines
+            # Count IEEE / numbered reference lines
             ieee_count = sum(1 for ln in lines if ieee_line_re.match(ln.strip()))
+            bracket_count = sum(1 for ln in lines if bracket_line_re.match(ln.strip()))
+            if bracket_count < 3 and ieee_count >= 3:
+                # For dot-numbered lines without brackets, verify sequential numbers (1, 2, 3...) and years
+                dot_nums = [
+                    int(m.group(1))
+                    for ln in lines
+                    if (m := dot_num_re.match(ln.strip()))
+                ]
+                yr_hits = len(re.findall(r"\b(?:18|19|20)\d{2}\b", page.text or ""))
+                has_seq = any(b == a + 1 for a, b in zip(dot_nums, dot_nums[1:]))
+                if not (has_seq and yr_hits >= 3 and len(dot_nums) >= 4):
+                    ieee_count = bracket_count
+
             # Count prose lines (ends with period, not a reference marker)
             prose_count = sum(
                 1 for ln in lines
@@ -362,7 +390,7 @@ class SectionSegmenter:
         Stop when a page has no `[N]` reference markers and has substantial prose.
         Return start_page if no end is found (treat entire tail as bibliography).
         """
-        ieee_line_re = re.compile(r"^\s*(?:\[\d+\](?:\s+\S|\s*$)|\d{1,3}\.\s*$)")
+        ieee_line_re = re.compile(r"^\s*(?:\[\d+\](?:\s+\S|\s*$)|\d{1,3}\.(?:\s+[A-ZÀ-Ý]|\s*$))")
         prose_end_re = re.compile(r"\.\s+$")
 
         for page in doc.pages:
@@ -394,34 +422,61 @@ class SectionSegmenter:
     def _find_bibliography_header_line_idx(page: Page) -> int | None:
         """Return 0-indexed line number of bibliography header on `page`, or None."""
         lines = page.text.splitlines()
+        table_col_re = re.compile(
+            r"(?:Entities(?:,\s*n)?|Entity|Attribute|Recall|Precision|F1(?:\s*Score)?|Accuracy|Score|Metric|Support|"
+            r"Strengths?|Weaknesses|Limitations?|Advantages|Disadvantages|Sensor\s+Type|Aspect|Comparison|Criterion|Criteria|Carbon\s+source)"
+            r"(?:\s+(?:Recall|Precision|F1(?:\s*Score)?))*",
+            re.IGNORECASE,
+        )
         for idx, line in enumerate(lines):
             stripped = line.strip()
             if not stripped or stripped.islower():
                 continue
             if _BIBLIOGRAPHY_HEADERS.match(stripped):
-                # Ignore singular "Reference" or plural "References" used as a table column header
-                next_8_lines = [ln.strip() for ln in lines[idx + 1 : idx + 10] if ln.strip()]
-                metric_headers = sum(
-                    1
-                    for ln in next_8_lines
-                    if re.fullmatch(
-                        r"(?:Entities(?:,\s*n)?|Entity|Attribute|Recall|Precision|F1(?:\s*Score)?|Accuracy|Score|Metric|Support)(?:\s+(?:Recall|Precision|F1(?:\s*Score)?))*",
-                        ln,
-                        re.IGNORECASE,
-                    )
-                )
+                # Ignore "Reference(s)" / "Literature" used as a table column header
+                nearby_lines = [
+                    ln.strip()
+                    for ln in (lines[max(0, idx - 6) : idx] + lines[idx + 1 : idx + 10])
+                    if ln.strip()
+                ]
+                metric_headers = sum(1 for ln in nearby_lines if table_col_re.fullmatch(ln))
                 if metric_headers >= 2:
                     continue
-                if re.fullmatch(r"reference\s*[:.]?", stripped, re.IGNORECASE):
-                    prev_window = "\n".join(lines[max(0, idx - 12) : idx])
+                prev_window = "\n".join(lines[max(0, idx - 12) : idx])
+                next_nonempty = [ln.strip() for ln in lines[idx + 1 : idx + 14] if ln.strip()]
+                if re.fullmatch(r"references?\s*[:.]?", stripped, re.IGNORECASE):
+                    if re.search(r"\b(?:table|bảng)\s+\d+", prev_window, re.IGNORECASE):
+                        prev_nonempty = [ln.strip() for ln in lines[max(0, idx - 4) : idx] if ln.strip()]
+                        if not prev_nonempty or not prev_nonempty[-1].endswith("."):
+                            continue
+                    if re.fullmatch(r"reference\s*[:.]?", stripped, re.IGNORECASE):
+                        next_window = "\n".join(lines[idx + 1 : idx + 16])
+                        if len(lines) - idx > 5 and not re.search(
+                            r"\b(?:18|19|20)\d{2}\b|\[\d+\]|https?://|doi:",
+                            next_window,
+                            re.IGNORECASE,
+                        ):
+                            continue
+                if re.fullmatch(r"literature\s*[:.]?", stripped, re.IGNORECASE):
                     if re.search(r"\b(?:table|bảng)\s+\d+", prev_window, re.IGNORECASE):
                         continue
-                    next_window = "\n".join(lines[idx + 1 : idx + 16])
-                    if len(lines) - idx > 5 and not re.search(
-                        r"\b(?:18|19|20)\d{2}\b|\[\d+\]|https?://|doi:",
-                        next_window,
-                        re.IGNORECASE,
-                    ):
+                    prev_nonempty = [ln.strip() for ln in lines[max(0, idx - 3) : idx] if ln.strip()]
+                    if prev_nonempty and not prev_nonempty[-1].endswith(".") and len(prev_nonempty[-1].split()) <= 4:
+                        continue
+                if re.fullmatch(
+                    r"(?:(?:\d+(?:\.\d+)*\.?|[IVXLC]+\.)\s+)?(?:notes(?:\s+and\s+references)?|endnotes?)\s*[:.]?",
+                    stripped,
+                    re.IGNORECASE,
+                ):
+                    next_window = "\n".join(next_nonempty[:10])
+                    has_numbered_note = any(
+                        re.match(r"^(?:\[\d+\]|\d{1,2}(?:[\.\)]|\s+[A-ZÀ-Ý“\"‘']))", ln)
+                        for ln in next_nonempty[:6]
+                    )
+                    has_bib_cue = bool(
+                        re.search(r"\b(?:18|19|20)\d{2}\b|https?://|doi:", next_window, re.IGNORECASE)
+                    )
+                    if not (has_numbered_note and has_bib_cue):
                         continue
                 return idx
         return None
@@ -443,6 +498,26 @@ class SectionSegmenter:
                 return idx
             # Two-line LaTeX \appendix \section{...}: standalone "A" / "A." followed by section title line
             if stripped in ("A", "A.", "Appendix A") and idx + 1 < len(lines):
+                if stripped in ("A", "A."):
+                    prev_nonempty = ""
+                    for j in range(idx - 1, max(-1, idx - 5), -1):
+                        if lines[j].strip():
+                            prev_nonempty = lines[j].strip()
+                            break
+                    # Reject wrapped article "A" or author initial "A." inside bibliography entries
+                    if prev_nonempty and (
+                        not prev_nonempty.endswith(".")
+                        or re.fullmatch(r"\d+\.", prev_nonempty)
+                        or len(prev_nonempty.split()) == 1
+                    ):
+                        continue
+                    following_ref_markers = sum(
+                        1
+                        for ln in lines[idx + 1 : min(len(lines), idx + 25)]
+                        if re.match(r"^\s*(?:\[\d{1,3}\]|\d{1,3}\.)(?:\s|$)", ln.strip())
+                    )
+                    if following_ref_markers >= 2:
+                        continue
                 nxt = ""
                 for j in range(idx + 1, min(idx + 4, len(lines))):
                     if lines[j].strip():
@@ -451,6 +526,7 @@ class SectionSegmenter:
                 if (
                     nxt
                     and 3 <= len(nxt) <= 80
+                    and (len(nxt.split()) >= 2 or stripped == "Appendix A")
                     and nxt[0].isupper()
                     and not re.search(r"\b(?:19|20)\d{2}\b|https?://", nxt)
                     and not nxt.endswith(".")
@@ -494,6 +570,23 @@ class SectionSegmenter:
                             metadata["pre_header_body_text"] = pre_text
                             metadata["pre_header_page_num"] = p.page_num
                         slice_start = hdr_idx
+                    elif hdr_idx is None:
+                        first_ref_idx = None
+                        for idx_ln, ln_str in enumerate(lines):
+                            if re.match(r"^\s*(?:\[1\]|1\.)(?:\s+[A-ZÀ-Ý]|\s*$)", ln_str.strip()):
+                                # Verify 2. or [2] follows later on this page
+                                if any(
+                                    re.match(r"^\s*(?:\[2\]|2\.)(?:\s+[A-ZÀ-Ý]|\s*$)", later_ln.strip())
+                                    for later_ln in lines[idx_ln + 1 :]
+                                ):
+                                    first_ref_idx = idx_ln
+                                    break
+                        if first_ref_idx is not None and first_ref_idx > 0:
+                            pre_text = "\n".join(lines[:first_ref_idx]).strip()
+                            if len(pre_text) >= 60:
+                                metadata["pre_header_body_text"] = pre_text
+                                metadata["pre_header_page_num"] = p.page_num
+                            slice_start = first_ref_idx
                 if appendix_page == p.page_num and appendix_line_idx is not None:
                     slice_end = max(slice_start, appendix_line_idx)
                 parts.append("\n".join(lines[slice_start:slice_end]))
@@ -517,6 +610,93 @@ class SectionSegmenter:
             text=text,
             page_break_used=(end_page > start_page),
             metadata=metadata,
+        )
+
+    @staticmethod
+    def _extract_footnote_bibliography_section(
+        doc: Document,
+    ) -> DocumentSection | None:
+        """Synthesize a BIBLIOGRAPHY section from sequential bottom-of-page footnotes.
+
+        Used only when a multi-page document (≥5 pages) has no explicit or implicit
+        bibliography section at the end, but contains ≥8 sequential numbered footnotes
+        (1, 2, 3, ...) with publication years across its pages (pure Chicago notes style).
+        """
+        if doc.num_pages < 5:
+            return None
+
+        footer_noise_re = re.compile(
+            r"^(?:\d{1,3}|Page\s+\d+\s+of\s+\d+|URL:\s*https?://\S+.*|History\s+of\s+Education)$",
+            re.IGNORECASE,
+        )
+        fn_start_re = re.compile(r"^\s*(\d{1,3})\.?\s+([A-ZÀ-Ý“\"‘'].*)")
+        lead_prefix_re = re.compile(
+            r"^(?:For\s+example\s*:\s*|See\s+also\s+|See\s+|Including\s+|"
+            r"For\s+an\s+overview\s+of\s+[^,]{1,40},\s*see\s+|Cf\.\s+)",
+            re.IGNORECASE,
+        )
+
+        prev_num = 0
+        footnotes: list[tuple[int, str, int]] = []
+
+        for page in doc.pages:
+            if not page.text:
+                continue
+            raw_lines = [
+                ln.strip()
+                for ln in page.text.splitlines()
+                if ln.strip() and not footer_noise_re.match(ln.strip())
+            ]
+            if not raw_lines:
+                continue
+
+            page_starts: list[tuple[int, int, str]] = []
+            temp_prev = prev_num
+            for idx, ln in enumerate(raw_lines):
+                m = fn_start_re.match(ln)
+                if not m:
+                    continue
+                fn_num = int(m.group(1))
+                rest = m.group(2).strip()
+                if temp_prev < fn_num <= temp_prev + 12:
+                    window = " ".join(raw_lines[idx : min(len(raw_lines), idx + 6)])
+                    has_cue = bool(
+                        re.search(
+                            r"\b(?:18|19|20)\d{2}\b|\b(?:Ibid|op\.\s*cit|ed\.|eds\.|pp?\.|Vol\.)\b|[“\"‘']|:.*,",
+                            window,
+                            re.IGNORECASE,
+                        )
+                    )
+                    if has_cue or (page_starts and fn_num == temp_prev + 1):
+                        page_starts.append((idx, fn_num, rest))
+                        temp_prev = fn_num
+
+            if not page_starts:
+                continue
+
+            prev_num = temp_prev
+            for k, (start_idx, fn_num, first_rest) in enumerate(page_starts):
+                end_idx = page_starts[k + 1][0] if k + 1 < len(page_starts) else len(raw_lines)
+                cont_lines = [first_rest] + raw_lines[start_idx + 1 : end_idx]
+                full_fn = " ".join(cont_lines).strip()
+                full_fn = lead_prefix_re.sub("", full_fn).strip()
+                footnotes.append((fn_num, full_fn, page.page_num))
+
+        if len(footnotes) < 8:
+            return None
+
+        combined_text = "\n".join(f"{num}. {txt}" for num, txt, _ in footnotes)
+        year_hits = len(re.findall(r"\b(?:18|19|20)\d{2}\b", combined_text))
+        if year_hits < 5:
+            return None
+
+        return DocumentSection(
+            section_type=SectionType.BIBLIOGRAPHY,
+            start_page=footnotes[0][2],
+            end_page=footnotes[-1][2],
+            text="Notes\n" + combined_text,
+            page_break_used=True,
+            metadata={"synthetic_footnote_bibliography": True},
         )
 
     @staticmethod

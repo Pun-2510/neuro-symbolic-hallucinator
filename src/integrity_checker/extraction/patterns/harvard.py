@@ -43,15 +43,15 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # --- In-text Harvard patterns ---
 
-# Parenthetical with comma: (Author, 2020), (Author et al., 2020)
+# Parenthetical with comma: (Author, 2020), (Author et al., 2020), (Author, 2020: 25)
 _HARVARD_PARENTHETICAL_COMMA = CompiledPattern.create(
     name="harvard_parenthetical_comma",
-    pattern=r"\(([^)]+),\s*(\d{4}[a-z]?)(?:,\s*(?:p\.?\s*)?(\d+(?:[-–]\d+)?))?\)",
+    pattern=r"\(([^)]+),\s*(\d{4}[a-z]?)(?:\s*[:,]\s*(?:pp?\.?\s*)?(\d+(?:[-–]\d+)?|[ivxlcdm]+|n\.?\s*p\.?)(?:\s*[;,]\s*[^)]*)?)?\)",
     pattern_type=PatternType.IN_TEXT,
     description="Harvard parenthetical with comma: (Author, 2020) | (Author, 2020, p. 25)",
 )
 
-# Parenthetical without comma: (Author 2020), (Author et al. 2020)
+# Parenthetical without comma: (Author 2020), (Author et al. 2020), (Author 2020: 25)
 _HARVARD_PARENTHETICAL = CompiledPattern.create(
     name="harvard_parenthetical",
     pattern=(
@@ -60,31 +60,32 @@ _HARVARD_PARENTHETICAL = CompiledPattern.create(
         r"Spring|Summer|Fall|Autumn|Winter|In|From|Since|Until|Before|After|During|"
         r"Between|Around|Circa|See|Table|Figure|Fig|Section|Chapter|Part|Page|Vol|No)\b)"
         r"([A-ZÀ-Ý][A-Za-zÀ-ÿ'-]+(?:\s+(?:and|&|và)\s+[A-ZÀ-Ý][A-Za-zÀ-ÿ'-]+|\s+et\s+al\.?)?)\s+"
-        r"((?:19|20)\d{2}[a-z]?)(?:,\s*(?:pp?\.?\s*)?(\d+(?:[-–]\d+)?))?\)"
+        r"((?:18|19|20)\d{2}[a-z]?)(?:\s*[:,]\s*(?:pp?\.?\s*)?(\d+(?:[-–]\d+)?|[ivxlcdm]+|n\.?\s*p\.?)(?:\s*[;,]\s*[^)]*)?)?\)"
     ),
     pattern_type=PatternType.IN_TEXT,
     description="Harvard parenthetical: (Author 2020) | (Author 2020, p. 25)",
 )
 
-# Narrative: Author (2020) or Author (2020, p. 25)
+# Narrative: Author (2020) or Author (2020, p. 25) or Author (2020: 25)
 _HARVARD_NARRATIVE = CompiledPattern.create(
     name="harvard_narrative",
-    pattern=r"([A-Z][a-zA-ZÀ-žÀ-ž]+(?:\s+(?:and|&)\s+[A-Z][a-zA-ZÀ-žÀ-ž]+)?(?:\s+et\s+al\.?)?)\s+\((\d{4}[a-z]?)(?:,\s*(?:p\.?\s*)?(\d+(?:[-–]\d+)?))?\)",
+    pattern=r"([A-Z][a-zA-ZÀ-žÀ-ž]+(?:\s+(?:and|&)\s+[A-Z][a-zA-ZÀ-žÀ-ž]+)?(?:\s+et\s+al\.?)?)\s+\((\d{4}[a-z]?)(?:\s*[:,]\s*(?:pp?\.?\s*)?(\d+(?:[-–]\d+)?|[ivxlcdm]+|n\.?\s*p\.?)(?:\s*[;,]\s*[^)]*)?)?\)",
     pattern_type=PatternType.IN_TEXT,
     description="Harvard narrative: Author (2020) | Author (2020, p. 25)",
 )
 
 # --- Reference list Harvard patterns ---
 
-# Harvard article with single/double quoted title (UK Harvard standard):
+# Harvard article with single/double quoted title (UK/AU Harvard standard):
 # Smith, J. A. and Doe, B. (2020) 'Deep learning in medicine', Nature Medicine, 26(3), pp. 123-135.
 # or Smith, J., 2020. 'Deep learning in medicine', Nature Medicine, 26(3), pp. 123-135.
+# or Acker, A 2015, 'How cells paved the way...', Information & Culture...
 _HARVARD_ARTICLE_QUOTED = CompiledPattern.create(
     name="harvard_article_quoted",
     pattern=(
         r"^(?:\[\s*(?P<index>\d+)\s*\]\s*)?"
-        r"(?P<authors>.+?)(?:\s+\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)\.?\s*|,\s*(?P<year2>(?:19|20)\d{2}[a-z]?)\.\s*)"
-        r"['\u2018\u2019\"\u201c](?P<title>.+?)['\u2018\u2019\"\u201d],?\s+"
+        r"(?P<authors>.+?)(?:\s+\(\s*(?P<year>(?:18|19|20)\d{2}[a-z]?)\s*\)\.?\s*|(?:,\s*|\s+)(?P<year2>(?:18|19|20)\d{2}[a-z]?)[.,:]?\s*)"
+        r"['\u2018\u2019\"\u201c](?P<title>.+?)['\u2018\u2019\"\u201d][.,]?\s+"
         r"(?P<venue>.+)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -98,8 +99,8 @@ _HARVARD_BOOK = CompiledPattern.create(
     name="harvard_book",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)(?:\s+\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)\.?\s+|,\s*(?P<year2>(?:19|20)\d{2}[a-z]?)\.\s+)"
-        r"(?P<title>[^.]+?)\.\s+"
+        r"(?P<authors>.+?)(?:\s+\(\s*(?P<year>(?:18|19|20)\d{2}[a-z]?)\s*\)\.?\s+|(?:,\s*|\s+)(?P<year2>(?:18|19|20)\d{2}[a-z]?)[.,:]?\s+)"
+        r"(?P<title>[^.]+?)[.,]\s+"
         r"(?:(?:\d+(?:st|nd|rd|th)\s+edn?\.?|[A-Za-z]+\s+edn?\.?)\s+)?"
         r"(?P<place_pub>[^.:]+:\s*[^.]+)\.?$"
     ),
@@ -114,8 +115,8 @@ _HARVARD_ARTICLE = CompiledPattern.create(
     name="harvard_article",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)(?:\s+\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)\.?\s+|,\s*(?P<year2>(?:19|20)\d{2}[a-z]?)\.\s+)"
-        r"(?P<title>[^.]+?)\.\s+"
+        r"(?P<authors>.+?)(?:\s+\(\s*(?P<year>(?:18|19|20)\d{2}[a-z]?)\s*\)\.?\s+|(?:,\s*|\s+)(?P<year2>(?:18|19|20)\d{2}[a-z]?)[.,:]?\s+)"
+        r"(?P<title>[^.]+?)[.,]\s+"
         r"(?P<venue>.+)$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -144,9 +145,9 @@ _HARVARD_BOOK_CHAPTER = CompiledPattern.create(
     name="harvard_book_chapter",
     pattern=(
         r"^"
-        r"(?P<authors>.+?)(?:\s+\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)\.?\s+|,\s*(?P<year2>(?:19|20)\d{2}[a-z]?)\.\s+)"
+        r"(?P<authors>.+?)(?:\s+\(\s*(?P<year>(?:18|19|20)\d{2}[a-z]?)\s*\)\.?\s+|(?:,\s*|\s+)(?P<year2>(?:18|19|20)\d{2}[a-z]?)[.,:]?\s+)"
         r"['\u2018\u2019\"\u201c]?(?P<chapter_title>[^.'\u2019\"\u201d]+?)['\u2018\u2019\"\u201d]?[.,]?\s+"
-        r"In:?\s+"
+        r"[Ii]n:?\s+"
         r"(?P<editor>.+?)"
         r"(?:\s*\(eds?\.?\)|\(ed\.?\)),?\s*"
         r"(?P<book_title>[^,]+?)"
@@ -332,10 +333,26 @@ class HarvardFormat:
 
     @staticmethod
     def _is_invalid_year2_match(authors_str: str, title_str: str) -> bool:
-        """Reject 'Author, Year.' matches when authors_str crossed a sentence boundary (e.g. plainnat 'Authors. Title. Venue, Year. URL ...')."""
+        """Reject 'Author, Year.' matches when authors_str crossed a sentence boundary or belongs to Chicago AD / MLA."""
+        auth_s = (authors_str or "").strip()
+        if not auth_s:
+            return True
+        # Reject if authors_str contains quotes or MLA/book markers ("Title." Handbook of AI, edited by...)
+        if re.search(
+            r'["\u201c\u201d\u2018\u2019]|\bedited\s+by\b|\btranslated\s+by\b|\bvol\.\b|\bpp?\.\b',
+            auth_s,
+            re.IGNORECASE,
+        ):
+            return True
+        # Reject if authors_str has a full given name (e.g. "Smith, John A. 2020." or "... and Jane Doe. 2020.")
+        # which is Chicago Author-Date, not Harvard ("Smith, J. A., 2020." or "Smith, JA 2020")
+        if re.search(r"(?:,\s+|\band\s+)[A-ZÀ-Ý][a-zà-ÿ]{2,}\b", auth_s):
+            return True
+        if auth_s.endswith(".") and "," not in auth_s:
+            return True
         if re.search(
             r"(?<!\b[A-ZÀ-Ý])(?<!\bet\sal)(?<!\bJr)(?<!\bSr)\.\s+[A-ZÀ-Ý0-9][a-zA-ZÀ-ÿ0-9]{1,}",
-            authors_str or "",
+            auth_s,
         ):
             return True
         if re.match(r"^(?:URL\s+|https?://|doi:|arXiv:)", (title_str or "").strip(), re.IGNORECASE):

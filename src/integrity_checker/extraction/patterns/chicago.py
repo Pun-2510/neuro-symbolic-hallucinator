@@ -48,26 +48,26 @@ from integrity_checker.models.citation import Citation, CitationStyle, CitationT
 
 # --- In-text Chicago Author-Date patterns ---
 
-# Parenthetical: (Author, 2020), (Author, 2020, p. 25)
+# Parenthetical: (Author, 2020), (Author, 2020, p. 25), (Author, 2020: 25)
 _CHICAGO_AD_PARENTHETICAL = CompiledPattern.create(
     name="chicago_ad_parenthetical",
-    pattern=r"\(([^)]+),\s*(\d{4}[a-z]?)(?:,\s*(?:p\.?\s*)?(\d+(?:[-–]\d+)?))?\)",
+    pattern=r"\(([^)]+),\s*(\d{4}[a-z]?)(?:\s*[:,]\s*(?:pp?\.?\s*)?(\d+(?:[-–]\d+)?|[ivxlcdm]+|n\.?\s*p\.?)(?:\s*[;,]\s*[^)]*)?)?\)",
     pattern_type=PatternType.IN_TEXT,
     description="Chicago Author-Date parenthetical: (Author, 2020) | (Author, 2020, p. 25)",
 )
 
-# Parenthetical without comma: (Author 2020), (Author 2020, 25)
+# Parenthetical without comma: (Author 2020), (Author 2020, 25), (Author 2020: 25)
 _CHICAGO_AD_PARENTHETICAL_NOCOMMA = CompiledPattern.create(
     name="chicago_ad_parenthetical_nocomma",
-    pattern=r"\((?!(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december|spring|summer|fall|autumn|winter|in|since|from|until|before|after|circa|ca|table|figure|fig|section|chapter|part|version|ver|vol|no|issue)\b)([A-ZÀ-Ý][a-zA-ZÀ-ÿ'.\-]+(?:\s+(?:and|&|và)\s+[A-ZÀ-Ý][a-zA-ZÀ-ÿ'.\-]+|\s+et\s+al\.?)?)\s+((?:19|20)\d{2}[a-z]?)(?:,\s*(?:pp?\.?\s*)?(\d+(?:[-–]\d+)?))?\)",
+    pattern=r"\((?!(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december|spring|summer|fall|autumn|winter|in|since|from|until|before|after|circa|ca|table|figure|fig|section|chapter|part|version|ver|vol|no|issue)\b)([A-ZÀ-Ý][a-zA-ZÀ-ÿ'.\-]+(?:\s+(?:and|&|và)\s+[A-ZÀ-Ý][a-zA-ZÀ-ÿ'.\-]+|\s+et\s+al\.?)?)\s+((?:18|19|20)\d{2}[a-z]?)(?:\s*[:,]\s*(?:pp?\.?\s*)?(\d+(?:[-–]\d+)?|[ivxlcdm]+|n\.?\s*p\.?)(?:\s*[;,]\s*[^)]*)?)?\)",
     pattern_type=PatternType.IN_TEXT,
     description="Chicago Author-Date: (Author 2020) | (Author 2020, 25)",
 )
 
-# Narrative: Author (2020) or Author (2020, p. 25)
+# Narrative: Author (2020) or Author (2020, p. 25) or Author (2020: 25)
 _CHICAGO_AD_NARRATIVE = CompiledPattern.create(
     name="chicago_ad_narrative",
-    pattern=r"([A-Z][a-zA-ZÀ-žÀ-ž]+(?:\s+(?:and|&)\s+[A-Z][a-zA-ZÀ-žÀ-ž]+)?(?:\s+et\s+al\.?)?)\s+\((\d{4}[a-z]?)(?:,\s*(?:p\.?\s*)?(\d+(?:[-–]\d+)?))?\)",
+    pattern=r"([A-Z][a-zA-ZÀ-žÀ-ž]+(?:\s+(?:and|&)\s+[A-Z][a-zA-ZÀ-žÀ-ž]+)?(?:\s+et\s+al\.?)?)\s+\((\d{4}[a-z]?)(?:\s*[:,]\s*(?:pp?\.?\s*)?(\d+(?:[-–]\d+)?|[ivxlcdm]+|n\.?\s*p\.?)(?:\s*[;,]\s*[^)]*)?)?\)",
     pattern_type=PatternType.IN_TEXT,
     description="Chicago Author-Date narrative: Author (2020) | Author (2020, p. 25)",
 )
@@ -143,14 +143,15 @@ _CHICAGO_AD_NUMBERED = CompiledPattern.create(
 
 # Chicago Notes-Bibliography book:
 # Author Last, First. Title. Place: Publisher, Year.
+# or footnote style: 1. First Last, Title (Place: Publisher, Year), Page.
 _CHICAGO_NB_BOOK = CompiledPattern.create(
     name="chicago_nb_book",
     pattern=(
         r"^(?:(?:\[\s*(?P<index>\d+)\s*\]|(?P<num>\d+)\.)\s*)?"
         r"(?P<authors>[A-ZÀ-Ý][^\"“\n]+?)\.\s+(?!(?:[A-ZÀ-Ý]\.|and\b|&|et\s+al\.))"  # Authors.
-        r"(?P<title>[^\"“\n]+?)\.\s+"  # Title (unquoted)
-        r"(?P<place_pub>[^.:]+:\s*[^,]+),\s*"  # Place: Publisher,
-        r"(?P<year>(?:19|20)\d{2}[a-z]?)\.?"  # Year
+        r"(?P<title>[^\"“(\n]+?)(?:\.\s+|\s+\(\s*)"  # Title. or Title (
+        r"(?P<place_pub>[^.:()]+:\s*[^,()]+),\s*"  # Place: Publisher,
+        r"(?P<year>(?:18|19|20)\d{2}[a-z]?)\)?\.?"  # Year
         r"(?:\s*(?P<rest>.*))?"
         r"$"
     ),
@@ -166,8 +167,8 @@ _CHICAGO_NB_ARTICLE = CompiledPattern.create(
     pattern=(
         r"^(?:(?:\[\s*(?P<index>\d+)\s*\]|(?P<num>\d+)\.)\s*)?"
         r"(?P<authors>[A-ZÀ-Ý].+?)[.,]\s+"  # Authors. or Authors,
-        r'["\u201c](?P<title>.+?)["\u201d][.,]?\s*'  # "Title." or "Title,"
-        r"(?P<venue>.*\(\s*(?:19|20)\d{2}[a-z]?\s*\).*)"  # Venue with (Year)
+        r'["\u201c\u2018\'](?P<title>.+?)["\u201d\u2019\'][.,]?\s*'  # "Title." or 'Title,'
+        r"(?P<venue>.*\(\s*(?:18|19|20)\d{2}[a-z]?\s*\).*)"  # Venue with (Year)
         r"$"
     ),
     pattern_type=PatternType.REFERENCE_ENTRY,
@@ -571,8 +572,9 @@ class ChicagoFormat:
     def _parse_chicago_fallback(self, text: str) -> Optional[Citation]:
         """Fallback parser: only match when Chicago-specific cues exist."""
         if not (
-            re.search(r",\s*no\.\s*\d+\s*\((?:19|20)\d{2}\)", text)
-            or re.search(r"[^.:]+:\s*[^,]+,\s*(?:19|20)\d{2}\b", text)
+            re.search(r",\s*no\.\s*\d+\s*\((?:18|19|20)\d{2}\)", text)
+            or re.search(r"[^.:]+:\s*[^,]+,\s*(?:18|19|20)\d{2}\b", text)
+            or re.search(r'["\u201c\u2018\'][^"\u201d\u2019\']+["\u201d\u2019\'].*\b(?:18|19|20)\d{2}\b', text)
         ):
             return None
 
@@ -594,12 +596,29 @@ class ChicagoFormat:
             citation.year = yr
             citation.year_suffix = yr_suf
 
-        # Try to extract title (text between quotes or after year)
-        quote_m = re.search(r'["\u201c]([^"\u201d]+)["\u201d]', text)
+        # Try to extract title (text between quotes or before Place: Publisher)
+        quote_m = re.search(r'["\u201c\u2018\']([^"\u201d\u2019\']{4,})["\u201d\u2019\']', text)
         if quote_m:
             title = quote_m.group(1).strip().rstrip('.,')
             citation.title = title
             citation.title_normalized = self._normalize_title(title)
+            pre_quote = re.sub(r'^(?:\[\s*\d+\s*\]|\d+\.)\s*', '', text[:quote_m.start()]).strip().rstrip('.,:')
+            if pre_quote:
+                citation.authors = self._parse_authors(pre_quote)
+        else:
+            body_no_idx = re.sub(r'^(?:\[\s*\d+\s*\]|\d+\.)\s*', '', text).strip()
+            pub_m = re.search(r'(?:\(\s*|\.\s+)([^.:()]+:\s*[^,()]+,\s*(?:18|19|20)\d{2})', body_no_idx)
+            if pub_m:
+                before_pub = body_no_idx[:pub_m.start()].strip().rstrip('.,')
+                sep_m = re.search(r'(?<!\b[A-ZÀ-Ý])[.,]\s+', before_pub)
+                if sep_m:
+                    auth_part = before_pub[:sep_m.start()].strip()
+                    title_part = before_pub[sep_m.end():].strip().rstrip('.,')
+                    if auth_part:
+                        citation.authors = self._parse_authors(auth_part)
+                    if title_part:
+                        citation.title = title_part
+                        citation.title_normalized = self._normalize_title(title_part)
 
         # Extract DOI
         doi_m = re.search(r'10\.\d{4,9}/[^\s\]\)\,;]+', text)
@@ -628,12 +647,12 @@ class ChicagoFormat:
         venue_text = venue_text.strip()
 
         # Extract volume, issue, optional (year), and pages:
-        # "Journal 10 (2): 1-15" or "Journal 10, no. 2 (2020): 1-15"
+        # "Journal 10 (2): 1-15" or "Journal 10, no. 2 (2020): 1-15" or "Journal 10, no. 2, 2020, 1-15"
         vol_match = re.search(
             r'(?P<journal>.+?)\s+(?P<vol>\d+)'
             r'(?:,\s*no\.\s*(?P<issue2>[\d–-]+)|\s*\((?P<issue>[\d–-]+)\))?'
-            r'(?:\s*\((?P<year>(?:19|20)\d{2}[a-z]?)\))?'
-            r'(?::\s*(?P<pages>[\d–-]+))?',
+            r'(?:\s*\((?P<year>(?:18|19|20)\d{2}[a-z]?)\)|,\s*(?P<year2>(?:18|19|20)\d{2}[a-z]?)\b)?'
+            r'(?:(?::\s*|,\s*(?:pp?\.\s*)?)(?P<pages>[\d–-]+))?',
             venue_text
         )
         if vol_match:
@@ -642,17 +661,17 @@ class ChicagoFormat:
             issue = vol_match.group('issue') or vol_match.group('issue2')
             if issue:
                 citation.issue = issue
-            year = vol_match.group('year')
+            year = vol_match.group('year') or vol_match.groupdict().get('year2')
             if year and not citation.year:
                 citation.year = year
             pages = vol_match.group('pages')
             if pages:
                 citation.pages = pages
         else:
-            # Check for (Year) even without volume
-            year_m = re.search(r'\(\s*((?:19|20)\d{2}[a-z]?)\s*\)', venue_text)
+            # Check for (Year) or , Year even without volume
+            year_m = re.search(r'(?:\(\s*((?:18|19|20)\d{2}[a-z]?)\s*\)|,\s*((?:18|19|20)\d{2}[a-z]?)\b)', venue_text)
             if year_m and not citation.year:
-                citation.year = year_m.group(1)
+                citation.year = year_m.group(1) or year_m.group(2)
             citation.venue = venue_text
 
         # Clean up venue
