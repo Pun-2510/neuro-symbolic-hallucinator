@@ -7,6 +7,27 @@ export interface ScholarlyLogoProps {
 }
 
 /**
+ * Resolves a scholarly index or bibliographic tool name to its official homepage / project URL.
+ */
+export function getScholarlySourceUrl(name: string): string | undefined {
+  const key = name.toLowerCase();
+  if (key.includes('crossref')) return 'https://www.crossref.org';
+  if (key.includes('openalex')) return 'https://openalex.org';
+  if (key.includes('semantic')) return 'https://www.semanticscholar.org';
+  if (key.includes('pubmed') || key.includes('ncbi')) return 'https://pubmed.ncbi.nlm.nih.gov';
+  if (key.includes('arxiv')) return 'https://arxiv.org';
+  if (key.includes('europe') || key.includes('pmc')) return 'https://europepmc.org';
+  if (key.includes('dblp')) return 'https://dblp.org';
+  if (key.includes('doaj')) return 'https://doaj.org';
+  if (key.includes('orcid')) return 'https://orcid.org';
+  if (key.includes('unpaywall') || key.includes('open access')) return 'https://unpaywall.org';
+  if (key.includes('datacite')) return 'https://datacite.org';
+  if (key.includes('grobid') || key.includes('tei')) return 'https://grobid.readthedocs.io';
+  if (key.includes('sqlite') || key.includes('fts5')) return 'https://www.sqlite.org/fts5.html';
+  return undefined;
+}
+
+/**
  * Official scholarly index & bibliographic organization logos,
  * adapted into warm editorial monochrome/duotone (`currentColor`) vectors
  * to seamlessly match CITRA's Solva design system in both Light and Dark modes.

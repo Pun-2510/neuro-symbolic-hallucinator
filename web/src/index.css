@@ -1186,7 +1186,9 @@
   animation: solvaMarquee 34s linear infinite;
 }
 
-.animate-solva-marquee:hover {
+.animate-solva-marquee:hover,
+.animate-solva-marquee:focus-within,
+.animate-solva-marquee:active {
   animation-play-state: paused;
 }
 

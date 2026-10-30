@@ -390,6 +390,68 @@ test.describe('Responsive Layout — Public & Auth Pages', () => {
 
     await assertNoHorizontalOverflow(page, '/ (Solva Desktop 1440x900)');
   });
+
+  test('Scholarly source logos in Hero Ticker, Mockup Widgets, and Citation Debugger link to official project homepages across Mobile, Tablet, and Desktop', async ({
+    page,
+  }) => {
+    clearAuthState(page);
+
+    const expectedTickerLinks: Array<{ slug: string; href: string }> = [
+      { slug: 'crossref', href: 'https://www.crossref.org' },
+      { slug: 'openalex', href: 'https://openalex.org' },
+      { slug: 'semantic-scholar', href: 'https://www.semanticscholar.org' },
+      { slug: 'pubmed-ncbi', href: 'https://pubmed.ncbi.nlm.nih.gov' },
+      { slug: 'arxiv', href: 'https://arxiv.org' },
+      { slug: 'europe-pmc', href: 'https://europepmc.org' },
+      { slug: 'dblp', href: 'https://dblp.org' },
+      { slug: 'doaj', href: 'https://doaj.org' },
+      { slug: 'orcid', href: 'https://orcid.org' },
+      { slug: 'unpaywall', href: 'https://unpaywall.org' },
+      { slug: 'datacite', href: 'https://datacite.org' },
+      { slug: 'grobid-tei', href: 'https://grobid.readthedocs.io' },
+    ];
+
+    for (const vp of [
+      { name: 'Mobile (375x812)', width: 375, height: 812 },
+      { name: 'Tablet Portrait (768x1024)', width: 768, height: 1024 },
+      { name: 'Tablet Landscape (1024x768)', width: 1024, height: 768 },
+      { name: 'Desktop (1440x900)', width: 1440, height: 900 },
+    ]) {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto('/');
+      await page.waitForLoadState('domcontentloaded');
+
+      const ticker = page.getByTestId('hero-scholarly-ticker');
+      await ticker.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(250);
+      await expect(ticker).toBeVisible();
+
+      for (let i = 0; i < expectedTickerLinks.length; i++) {
+        const { slug, href } = expectedTickerLinks[i];
+        const link = page.getByTestId(`hero-ticker-logo-${slug}-${i}`);
+        await expect(link).toHaveAttribute('href', href);
+        await expect(link).toHaveAttribute('target', '_blank');
+        await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      }
+
+      // Verify comfortable touch/click target height (>= 34px) and clickability on every viewport
+      const firstLogoBox = await page
+        .getByTestId('hero-ticker-logo-crossref-0')
+        .boundingBox();
+      expect(firstLogoBox).not.toBeNull();
+      expect(firstLogoBox!.height).toBeGreaterThanOrEqual(34);
+
+      // Verify focus-within pauses marquee animation so mobile/tablet/keyboard users can tap/activate cleanly
+      const openAlexLink = page.getByTestId('hero-ticker-logo-openalex-1');
+      await openAlexLink.focus();
+      const playState = await ticker
+        .locator('.animate-solva-marquee')
+        .evaluate((el) => window.getComputedStyle(el).animationPlayState);
+      expect(playState).toBe('paused');
+
+      await assertNoHorizontalOverflow(page, `/ (Hero Ticker) @ ${vp.name}`);
+    }
+  });
 });
 
 test.describe('Responsive Layout — Authenticated Workspaces (Student, Teacher, Admin)', () => {

@@ -55,7 +55,10 @@ import {
   SolvaLiveNumber,
   useFloralCardAnimation,
 } from '@/components/landing/SolvaMockupWidgets';
-import { ScholarlySourceLogo } from '@/components/landing/ScholarlySourceLogos';
+import {
+  ScholarlySourceLogo,
+  getScholarlySourceUrl,
+} from '@/components/landing/ScholarlySourceLogos';
 
 /* ============================================================
    CITRA (SourceLogic) — Warm Editorial AI SaaS Landing Page
@@ -1034,25 +1037,38 @@ function SolvaHeroSection({
         </div>
 
         {/* Bottom Infinite Edge-Masked Scholarly API Ticker (`1200x112px`) */}
-        <SolvaScrollReveal delayMs={320} yOffset={20} blurPx={2.5}>
-          <div className="w-full py-[10px] sm:py-[16px] lg:py-[32px] overflow-hidden solva-ticker-mask">
-            <div className="animate-solva-marquee flex items-center gap-[56px] sm:gap-[72px]">
-              {[...scholarlyApis, ...scholarlyApis].map((apiName, idx) => (
-                <div
-                  key={`${apiName}-${idx}`}
-                  style={{ color: 'var(--solva-ink)' }}
-                  className="inline-flex items-center gap-2.5 shrink-0 select-none opacity-80 hover:opacity-100 transition-opacity duration-200"
-                >
-                  <ScholarlySourceLogo
-                    name={apiName}
-                    size={20}
-                    className="opacity-90"
-                  />
-                  <span className="font-solva-sans text-[17px] sm:text-[18px] font-medium tracking-[-0.03em] whitespace-nowrap">
-                    {apiName}
-                  </span>
-                </div>
-              ))}
+        <SolvaScrollReveal delayMs={320} yOffset={20} blurPx={2.5} triggerRatio={0.99}>
+          <div
+            data-testid="hero-scholarly-ticker"
+            className="w-full py-[10px] sm:py-[16px] lg:py-[32px] overflow-hidden solva-ticker-mask"
+          >
+            <div className="animate-solva-marquee flex items-center gap-[44px] sm:gap-[64px] lg:gap-[72px]">
+              {[...scholarlyApis, ...scholarlyApis].map((apiName, idx) => {
+                const href = getScholarlySourceUrl(apiName) ?? '#';
+                const slug = apiName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                return (
+                  <a
+                    key={`${apiName}-${idx}`}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${apiName} official website`}
+                    title={`${apiName} (${href.replace(/^https?:\/\//, '')})`}
+                    data-testid={`hero-ticker-logo-${slug}-${idx}`}
+                    style={{ color: 'var(--solva-ink)' }}
+                    className="group inline-flex items-center gap-2.5 px-2.5 py-2 -mx-2.5 -my-1.5 rounded-[8px] shrink-0 select-none cursor-pointer opacity-80 hover:opacity-100 active:opacity-100 focus-visible:opacity-100 hover:-translate-y-[1px] active:scale-[0.98] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1C1A15]/30 dark:focus-visible:ring-[#FBFAF6]/30"
+                  >
+                    <ScholarlySourceLogo
+                      name={apiName}
+                      size={20}
+                      className="opacity-90 group-hover:opacity-100 transition-opacity"
+                    />
+                    <span className="font-solva-sans text-[17px] sm:text-[18px] font-medium tracking-[-0.03em] whitespace-nowrap group-hover:underline underline-offset-4 decoration-[#1C1A15]/35 dark:decoration-[#FBFAF6]/35">
+                      {apiName}
+                    </span>
+                  </a>
+                );
+              })}
             </div>
           </div>
         </SolvaScrollReveal>
@@ -2754,49 +2770,77 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
                     {/* TAB 3: Source Retrieval */}
                     <TabsContent value="sources" className="mt-4 animate-debugger-switch">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        {activeCitation.sources.map((src) => (
-                          <div
-                            key={src.name}
-                            style={{
-                              backgroundColor: 'var(--solva-surface)',
-                              borderColor: 'var(--solva-border)',
-                            }}
-                            className="p-3.5 rounded-[10px] border flex items-center justify-between gap-2"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span
-                                style={{
-                                  backgroundColor: 'var(--solva-bg)',
-                                  borderColor: 'var(--solva-border)',
-                                  color: 'var(--solva-ink)',
-                                }}
-                                className="w-8 h-8 rounded-[8px] border flex items-center justify-center shrink-0"
-                              >
-                                <ScholarlySourceLogo name={src.name} size={16} />
-                              </span>
-                              <div className="min-w-0">
-                                <div
-                                  style={{ color: 'var(--solva-ink)' }}
-                                  className="text-sm font-medium truncate"
+                        {activeCitation.sources.map((src) => {
+                          const srcUrl = getScholarlySourceUrl(src.name);
+                          const cardContent = (
+                            <>
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <span
+                                  style={{
+                                    backgroundColor: 'var(--solva-bg)',
+                                    borderColor: 'var(--solva-border)',
+                                    color: 'var(--solva-ink)',
+                                  }}
+                                  className="w-8 h-8 rounded-[8px] border flex items-center justify-center shrink-0"
                                 >
-                                  {src.name}
-                                </div>
-                                <div
-                                  style={{ color: 'var(--solva-muted)' }}
-                                  className="text-xs font-mono"
-                                >
-                                  Latency: {src.latency}
+                                  <ScholarlySourceLogo name={src.name} size={16} />
+                                </span>
+                                <div className="min-w-0">
+                                  <div
+                                    style={{ color: 'var(--solva-ink)' }}
+                                    className="text-sm font-medium truncate group-hover:underline underline-offset-2"
+                                  >
+                                    {src.name}
+                                  </div>
+                                  <div
+                                    style={{ color: 'var(--solva-muted)' }}
+                                    className="text-xs font-mono"
+                                  >
+                                    Latency: {src.latency}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <span
-                              style={{ color: 'var(--solva-ink)' }}
-                              className="font-mono text-xs font-semibold px-2.5 py-1 rounded bg-[#FBFAF6] dark:bg-[#141310]"
+                              <span
+                                style={{ color: 'var(--solva-ink)' }}
+                                className="font-mono text-xs font-semibold px-2.5 py-1 rounded bg-[#FBFAF6] dark:bg-[#141310]"
+                              >
+                                {src.score}
+                              </span>
+                            </>
+                          );
+
+                          if (srcUrl) {
+                            return (
+                              <a
+                                key={src.name}
+                                href={srcUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`${src.name} official website`}
+                                style={{
+                                  backgroundColor: 'var(--solva-surface)',
+                                  borderColor: 'var(--solva-border)',
+                                }}
+                                className="group p-3.5 rounded-[10px] border flex items-center justify-between gap-2 transition-all duration-200 hover:border-[#1C1A15]/40 dark:hover:border-[#FBFAF6]/35"
+                              >
+                                {cardContent}
+                              </a>
+                            );
+                          }
+
+                          return (
+                            <div
+                              key={src.name}
+                              style={{
+                                backgroundColor: 'var(--solva-surface)',
+                                borderColor: 'var(--solva-border)',
+                              }}
+                              className="p-3.5 rounded-[10px] border flex items-center justify-between gap-2"
                             >
-                              {src.score}
-                            </span>
-                          </div>
-                        ))}
+                              {cardContent}
+                            </div>
+                          );
+                        })}
                       </div>
                     </TabsContent>
                   </Tabs>

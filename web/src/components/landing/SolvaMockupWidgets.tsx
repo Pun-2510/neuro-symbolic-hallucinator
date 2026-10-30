@@ -12,7 +12,7 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { type Lang } from './SolvaPrimitives';
-import { ScholarlySourceLogo } from './ScholarlySourceLogos';
+import { ScholarlySourceLogo, getScholarlySourceUrl } from './ScholarlySourceLogos';
 
 /* ============================================================
    SOLVA FLOATING UI MOCKUP CARDS (WITH 8PX FROSTED GLASS RING)
@@ -495,9 +495,14 @@ export function HeroVerificationMockup({
             <div className="grid grid-cols-3 gap-1.5 text-[10px] font-mono">
               {apiSources.map((s, idx) => {
                 const isPulsing = idx === activeApiPulse;
+                const href = getScholarlySourceUrl(s.name) ?? '#';
                 return (
-                  <div
+                  <a
                     key={s.name}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${s.name} official website`}
                     style={{
                       backgroundColor: isPulsing
                         ? 'var(--solva-surface)'
@@ -506,11 +511,11 @@ export function HeroVerificationMockup({
                         ? 'var(--solva-ink)'
                         : 'var(--solva-border)',
                     }}
-                    className="px-2 py-1.5 rounded-[6px] border flex items-center justify-between gap-1 transition-all duration-300"
+                    className="group px-2 py-1.5 rounded-[6px] border flex items-center justify-between gap-1 transition-all duration-300 hover:border-[#1C1A15]/60 dark:hover:border-[#FBFAF6]/50 cursor-pointer"
                   >
                     <span
                       style={{ color: 'var(--solva-ink)' }}
-                      className="inline-flex items-center gap-1 truncate"
+                      className="inline-flex items-center gap-1 truncate group-hover:underline underline-offset-2"
                     >
                       <ScholarlySourceLogo name={s.name} size={11} />
                       <span className="truncate">{s.name}</span>
@@ -523,7 +528,7 @@ export function HeroVerificationMockup({
                         durationMs={1050 + idx * 140}
                       />
                     </span>
-                  </div>
+                  </a>
                 );
               })}
             </div>
@@ -709,21 +714,26 @@ export function FeatureCardWidget({
           {apis.map((api, idx) => {
             const isWaveActive = idx === cycleStep;
             const liveMs = isWaveActive ? api.baseMs + api.delta : api.baseMs;
+            const href = getScholarlySourceUrl(api.name) ?? '#';
             return (
-              <div
+              <a
                 key={api.name}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${api.name} official website`}
                 style={{
                   ...getStaggerStyle(80 + idx * 45),
                   backgroundColor: 'var(--solva-surface)',
                   borderColor: isWaveActive ? 'var(--solva-ink)' : 'transparent',
                 }}
-                className="px-2.5 py-1.5 rounded-[8px] border flex items-center justify-between text-[11px] transition-all duration-300"
+                className="group px-2.5 py-1.5 rounded-[8px] border flex items-center justify-between text-[11px] transition-all duration-300 hover:border-[#1C1A15]/50 dark:hover:border-[#FBFAF6]/40 cursor-pointer"
               >
                 <span
                   style={{ color: 'var(--solva-ink)' }}
-                  className="font-medium truncate inline-flex items-center gap-1.5"
+                  className="font-medium truncate inline-flex items-center gap-1.5 group-hover:underline underline-offset-2"
                 >
-                  <ScholarlySourceLogo name={api.name} size={13} className="opacity-85" />
+                  <ScholarlySourceLogo name={api.name} size={13} className="opacity-85 group-hover:opacity-100" />
                   <span className="truncate">{api.name}</span>
                 </span>
                 <span className="font-mono text-[10px] text-emerald-700 dark:text-emerald-300 shrink-0 ml-2">
@@ -748,7 +758,7 @@ export function FeatureCardWidget({
                     durationMs={1050 + idx * 110}
                   />
                 </span>
-              </div>
+              </a>
             );
           })}
         </div>
