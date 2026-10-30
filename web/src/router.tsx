@@ -135,7 +135,7 @@ export function RouteErrorBoundary() {
   );
 }
 
-// Hybrid route: renders inside AppLayout when authenticated, or standalone when visited publicly
+// Hybrid route: renders inside AppLayout when authenticated, or standalone Solva editorial page when visited publicly
 function HybridPricingRoute() {
   const { user, isLoading } = useAuth();
   if (isLoading) {
@@ -151,11 +151,9 @@ function HybridPricingRoute() {
     );
   }
   return (
-    <div className="min-h-screen bg-slate-50/80 dark:bg-slate-950 px-4 sm:px-6 lg:px-10 py-6">
-      <Suspense fallback={<PageSkeleton />}>
-        <PricingPage />
-      </Suspense>
-    </div>
+    <Suspense fallback={<PageSkeleton />}>
+      <PricingPage />
+    </Suspense>
   );
 }
 

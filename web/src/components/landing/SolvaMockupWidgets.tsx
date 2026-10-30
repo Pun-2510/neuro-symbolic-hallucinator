@@ -142,6 +142,11 @@ export function SolvaLiveNumber({
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      currentValRef.current = value;
+      return;
+    }
+
     const seedChanged = replaySeed !== prevSeedRef.current;
     const targetChanged = value !== prevTargetRef.current;
     prevSeedRef.current = replaySeed;
