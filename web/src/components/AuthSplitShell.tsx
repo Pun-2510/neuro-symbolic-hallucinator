@@ -21,7 +21,7 @@ export function SourceLogicBrandMark({ size = 28 }: { size?: number }) {
       alt="CITRA Logo"
       width={size}
       height={size}
-      className="object-contain select-none"
+      className="object-contain select-none dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)]"
     />
   );
 }
@@ -102,7 +102,7 @@ export function AuthSplitShell({
             to="/"
             className="flex items-center gap-3.5 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
-            <div className="w-11 h-11 rounded-xl bg-white dark:bg-white/95 p-1.5 flex items-center justify-center shadow-sm ring-1 ring-slate-200/90 dark:ring-white/20 group-hover:scale-[1.03] transition-transform">
+            <div className="w-11 h-11 rounded-xl bg-white dark:bg-[#1E1C17] p-1.5 flex items-center justify-center shadow-sm ring-1 ring-slate-200/90 dark:ring-[#332F26] group-hover:scale-[1.03] transition-transform">
               <SourceLogicBrandMark size={30} />
             </div>
             <div className="flex flex-col">
@@ -263,7 +263,7 @@ export function AuthSplitShell({
               to="/"
               className="lg:hidden flex items-center gap-2.5 group rounded-xl shrink-0"
             >
-              <div className="w-9 h-9 bg-white dark:bg-white/95 p-1.5 rounded-xl flex items-center justify-center shadow-sm ring-1 ring-slate-200/90 dark:ring-white/20">
+              <div className="w-9 h-9 bg-white dark:bg-[#1E1C17] p-1.5 rounded-xl flex items-center justify-center shadow-sm ring-1 ring-slate-200/90 dark:ring-[#332F26]">
                 <SourceLogicBrandMark size={24} />
               </div>
               <div>

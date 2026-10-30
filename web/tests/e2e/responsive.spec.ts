@@ -312,6 +312,56 @@ test.describe('Responsive Layout — Public & Auth Pages', () => {
     await retrievalTab.click();
     await assertNoHorizontalOverflow(page, '/ (Source Retrieval tab) @ 375x812');
   });
+
+  test('Solva Editorial LandingPage 12-section interactive states, pipeline tabs, taxonomy switch, and FAQ accordion work cleanly', async ({
+    page,
+  }) => {
+    clearAuthState(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Verify all local painterly assets load with naturalWidth > 0
+    const brokenImages = await page.evaluate(() => {
+      const imgs = Array.from(document.querySelectorAll('img'));
+      return imgs
+        .filter((img) => !img.complete || img.naturalWidth === 0)
+        .map((img) => img.getAttribute('src'));
+    });
+    expect(brokenImages).toEqual([]);
+
+    // 1. Test Platform dropdown open & close
+    const platformBtn = page.getByRole('button', { name: /platform|nền tảng/i });
+    await expect(platformBtn).toBeVisible();
+    await platformBtn.click();
+    await expect(page.getByText(/orthogonal mapping & verification|tách biệt mapping/i)).toBeVisible();
+
+    // 2. Test Use Cases / Pipeline 4-tab switcher
+    const stage3Btn = page.getByRole('button', { name: /neuro-symbolic rules|3\. luật neuro-symbolic/i });
+    await stage3Btn.click();
+    await expect(page.getByText(/STAGE 03/i)).toBeVisible();
+
+    // 3. Test Pricing Plans & Benefits squircle billing switch (Monthly $20 -> Yearly -20% $16)
+    const billingSwitch = page.getByRole('switch', { name: /toggle billing cycle/i });
+    await expect(billingSwitch).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByText('$20', { exact: true })).toBeVisible();
+    await billingSwitch.click();
+    await expect(billingSwitch).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByText('$16', { exact: true })).toBeVisible();
+
+    // 4. Verify macOS red, yellow, green window controls exist in Hero & Debugger
+    await expect(page.getByLabel('macOS window controls')).toHaveCount(2);
+
+    // 4. Test FAQ 2-column independent accordion
+    const faqItem2 = page.getByRole('button', {
+      name: /how does the two-layer orthogonal output model work|mô hình 2 tầng trực giao/i,
+    });
+    await expect(faqItem2).toHaveAttribute('aria-expanded', 'false');
+    await faqItem2.click();
+    await expect(faqItem2).toHaveAttribute('aria-expanded', 'true');
+
+    await assertNoHorizontalOverflow(page, '/ (Solva Desktop 1440x900)');
+  });
 });
 
 test.describe('Responsive Layout — Authenticated Workspaces (Student, Teacher, Admin)', () => {
