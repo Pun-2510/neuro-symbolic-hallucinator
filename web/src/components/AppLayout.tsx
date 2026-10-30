@@ -182,14 +182,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             aria-label="Go to dashboard"
             className="group flex items-center gap-2 min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
-            <div className="w-7 h-7 rounded-lg bg-white dark:bg-white/95 p-1 flex items-center justify-center shadow-2xs ring-1 ring-slate-200/90 dark:ring-white/20 shrink-0 group-hover:scale-[1.03] transition-transform">
+            <div className="w-7 h-7 rounded-lg bg-white dark:bg-[#1E1C17] p-1 flex items-center justify-center shadow-2xs ring-1 ring-slate-200/90 dark:ring-[#332F26] shrink-0 group-hover:scale-[1.03] transition-transform">
               <img
                 src="/citra-logo.png"
                 alt="CITRA"
                 width={20}
                 height={20}
                 decoding="async"
-                className="w-full h-full object-contain select-none"
+                className="w-full h-full object-contain select-none dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)]"
               />
             </div>
             <span className="font-display text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
@@ -244,7 +244,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <div className="flex items-center gap-3.5">
                 {/* CITRA Brand Mark */}
-                <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/95 p-1.5 flex items-center justify-center shadow-sm ring-1 ring-slate-200/90 dark:ring-white/20 shrink-0 group-hover:scale-[1.03] transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#1E1C17] p-1.5 flex items-center justify-center shadow-sm ring-1 ring-slate-200/90 dark:ring-[#332F26] shrink-0 group-hover:scale-[1.03] transition-transform">
                   <img
                     src="/citra-logo.png"
                     alt="CITRA Logo"
@@ -252,7 +252,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     height={28}
                     loading="eager"
                     decoding="async"
-                    className="w-full h-full object-contain select-none"
+                    className="w-full h-full object-contain select-none dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)]"
                   />
                 </div>
                 <div className="min-w-0">
@@ -500,7 +500,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <img
                 src="/citra-logo.png"
                 alt="CITRA"
-                className="h-4 w-4 object-contain dark:bg-white/95 dark:rounded-xs dark:p-0.5 select-none shrink-0"
+                className="h-4 w-4 object-contain dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)] select-none shrink-0"
               />
               <span className="truncate">{t('nav.footerBrand')}</span>
             </p>

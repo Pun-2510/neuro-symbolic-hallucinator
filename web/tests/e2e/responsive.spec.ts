@@ -341,12 +341,16 @@ test.describe('Responsive Layout — Public & Auth Pages', () => {
     await stage3Btn.click();
     await expect(page.getByText(/STAGE 03/i)).toBeVisible();
 
-    // 3. Test Taxonomy strict mode squircle switch
-    const strictSwitch = page.getByRole('switch', { name: /toggle verification strictness mode/i });
-    await expect(strictSwitch).toHaveAttribute('aria-checked', 'false');
-    await strictSwitch.click();
-    await expect(strictSwitch).toHaveAttribute('aria-checked', 'true');
-    await expect(page.getByText('≥ 92%')).toBeVisible();
+    // 3. Test Pricing Plans & Benefits squircle billing switch (Monthly $20 -> Yearly -20% $16)
+    const billingSwitch = page.getByRole('switch', { name: /toggle billing cycle/i });
+    await expect(billingSwitch).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByText('$20', { exact: true })).toBeVisible();
+    await billingSwitch.click();
+    await expect(billingSwitch).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByText('$16', { exact: true })).toBeVisible();
+
+    // 4. Verify macOS red, yellow, green window controls exist in Hero & Debugger
+    await expect(page.getByLabel('macOS window controls')).toHaveCount(2);
 
     // 4. Test FAQ 2-column independent accordion
     const faqItem2 = page.getByRole('button', {

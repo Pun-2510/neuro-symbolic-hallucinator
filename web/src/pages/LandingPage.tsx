@@ -36,6 +36,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import {
   type Lang,
+  SolvaScrollReveal,
   SolvaEyebrow,
   SolvaTwoToneHeading,
   SolvaButton,
@@ -359,7 +360,7 @@ function SourceLogicLogo({ size = 24 }: { size?: number }) {
       height={size}
       loading="eager"
       decoding="async"
-      className="object-contain select-none"
+      className="object-contain select-none dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)]"
     />
   );
 }
@@ -488,10 +489,7 @@ function SolvaHeader({
             to="/"
             className="inline-flex items-center gap-[8px] rounded-[6px] focus:outline-none"
           >
-            <span
-              style={{ backgroundColor: 'var(--solva-ink)' }}
-              className="w-[26px] h-[26px] rounded-[4px] flex items-center justify-center p-1 shrink-0"
-            >
+            <span className="w-[28px] h-[28px] rounded-[7px] bg-white dark:bg-[#1E1C17] border border-[#E7E3D9] dark:border-[#332F26] shadow-2xs flex items-center justify-center p-1 shrink-0 transition-colors">
               <SourceLogicLogo size={18} />
             </span>
             <span
@@ -787,32 +785,34 @@ function SolvaHeroSection({
           <div className="w-full lg:w-[516px] xl:w-[540px] flex flex-col items-start gap-[32px] lg:pb-[24px]">
             <div className="flex flex-col items-start gap-[24px]">
               {/* Announcement Badge (`NEW | Neuro-Symbolic v2.3 is live ->`) */}
-              <a
-                href="#interactive-demo"
-                className="group inline-flex items-center gap-[8px] font-solva-sans"
-              >
-                <span
-                  style={{
-                    backgroundColor: 'var(--solva-surface)',
-                    color: 'var(--solva-muted)',
-                  }}
-                  className="px-[6px] pt-[5px] pb-[4px] rounded-[4px] text-[12px] font-medium leading-[12px]"
+              <SolvaScrollReveal yOffset={18} blurPx={2.5}>
+                <a
+                  href="#interactive-demo"
+                  className="group inline-flex items-center gap-[8px] font-solva-sans"
                 >
-                  NEW
-                </span>
-                <span
-                  style={{ color: 'var(--solva-muted)' }}
-                  className="text-[15px] sm:text-[16px] font-normal leading-[21px] group-hover:underline"
-                >
-                  {lang === 'vi'
-                    ? 'Kiểm chứng Neuro-Symbolic 2 tầng & 15+ API đã sẵn sàng'
-                    : 'Two-layer Neuro-Symbolic & 15+ API engine is live'}
-                </span>
-                <ArrowRight
-                  style={{ color: 'var(--solva-muted)' }}
-                  className="w-[14px] h-[14px] transition-transform duration-200 group-hover:translate-x-0.5 shrink-0"
-                />
-              </a>
+                  <span
+                    style={{
+                      backgroundColor: 'var(--solva-surface)',
+                      color: 'var(--solva-muted)',
+                    }}
+                    className="px-[6px] pt-[5px] pb-[4px] rounded-[4px] text-[12px] font-medium leading-[12px]"
+                  >
+                    NEW
+                  </span>
+                  <span
+                    style={{ color: 'var(--solva-muted)' }}
+                    className="text-[15px] sm:text-[16px] font-normal leading-[21px] group-hover:underline"
+                  >
+                    {lang === 'vi'
+                      ? 'Kiểm chứng Neuro-Symbolic 2 tầng & 15+ API đã sẵn sàng'
+                      : 'Two-layer Neuro-Symbolic & 15+ API engine is live'}
+                  </span>
+                  <ArrowRight
+                    style={{ color: 'var(--solva-muted)' }}
+                    className="w-[14px] h-[14px] transition-transform duration-200 group-hover:translate-x-0.5 shrink-0"
+                  />
+                </a>
+              </SolvaScrollReveal>
 
               {/* H1 Two-Tone Editorial Split */}
               <SolvaTwoToneHeading
@@ -831,38 +831,42 @@ function SolvaHeroSection({
               />
 
               {/* Subtitle (400px–430px max-width, Onest 18px Regular) */}
-              <p
-                style={{ color: 'var(--solva-muted)' }}
-                className="font-solva-sans text-[17px] sm:text-[18px] font-normal leading-[25.2px] max-w-[430px]"
-              >
-                {lang === 'vi'
-                  ? 'CITRA bóc tách mọi trích dẫn từ bản thảo PDF, đối chiếu siêu dữ liệu trên 15+ cơ sở dữ liệu học thuật và giải thích tường minh từng luật suy diễn.'
-                  : 'CITRA parses every citation in your PDF manuscript, cross-verifies metadata across 15+ scholarly indexes, and explains every rule trace.'}
-              </p>
+              <SolvaScrollReveal delayMs={100} yOffset={22}>
+                <p
+                  style={{ color: 'var(--solva-muted)' }}
+                  className="font-solva-sans text-[17px] sm:text-[18px] font-normal leading-[25.2px] max-w-[430px]"
+                >
+                  {lang === 'vi'
+                    ? 'CITRA bóc tách mọi trích dẫn từ bản thảo PDF, đối chiếu siêu dữ liệu trên 15+ cơ sở dữ liệu học thuật và giải thích tường minh từng luật suy diễn.'
+                    : 'CITRA parses every citation in your PDF manuscript, cross-verifies metadata across 15+ scholarly indexes, and explains every rule trace.'}
+                </p>
+              </SolvaScrollReveal>
             </div>
 
             {/* CTA Buttons */}
-            <div className="flex flex-wrap items-center gap-3">
-              <SolvaButton
-                to={isAuthenticated ? '/upload' : '/login'}
-                variant="primary"
-              >
-                {isAuthenticated
-                  ? lang === 'vi'
-                    ? 'Tải lên Bản thảo PDF'
-                    : 'Verify Manuscript PDF'
-                  : lang === 'vi'
-                    ? 'Dùng thử CITRA Miễn phí'
-                    : 'Try CITRA Free'}
-              </SolvaButton>
-              <SolvaButton href="#interactive-demo" variant="outline">
-                {lang === 'vi' ? 'Xem Trình gỡ lỗi' : 'Live Citation Debugger'}
-              </SolvaButton>
-            </div>
+            <SolvaScrollReveal delayMs={170} yOffset={24}>
+              <div className="flex flex-wrap items-center gap-3">
+                <SolvaButton
+                  to={isAuthenticated ? '/upload' : '/login'}
+                  variant="primary"
+                >
+                  {isAuthenticated
+                    ? lang === 'vi'
+                      ? 'Tải lên Bản thảo PDF'
+                      : 'Verify Manuscript PDF'
+                    : lang === 'vi'
+                      ? 'Dùng thử CITRA Miễn phí'
+                      : 'Try CITRA Free'}
+                </SolvaButton>
+                <SolvaButton href="#interactive-demo" variant="outline">
+                  {lang === 'vi' ? 'Xem Trình gỡ lỗi' : 'Live Citation Debugger'}
+                </SolvaButton>
+              </div>
+            </SolvaScrollReveal>
           </div>
 
           {/* Right Column: Painterly Mockup Frame (`660x521px` on Desktop) */}
-          <div className="w-full lg:w-[660px] shrink-0">
+          <SolvaScrollReveal delayMs={120} yOffset={36} className="w-full lg:w-[660px] shrink-0">
             <SolvaPainterlyFrame
               paintingSrc="/solva/hero-bg.png"
               alt="Impressionist wildflower meadow oil painting backdrop"
@@ -872,26 +876,28 @@ function SolvaHeroSection({
                 <HeroVerificationMockup lang={lang} activeStep={activeStep} />
               </div>
             </SolvaPainterlyFrame>
-          </div>
+          </SolvaScrollReveal>
         </div>
 
         {/* Bottom Infinite Edge-Masked Scholarly API Ticker (`1200x112px`) */}
-        <div className="w-full py-[24px] sm:py-[32px] overflow-hidden solva-ticker-mask">
-          <div className="animate-solva-marquee flex items-center gap-[56px] sm:gap-[72px]">
-            {[...scholarlyApis, ...scholarlyApis].map((apiName, idx) => (
-              <div
-                key={`${apiName}-${idx}`}
-                style={{ color: 'var(--solva-ink)' }}
-                className="inline-flex items-center gap-2.5 shrink-0 select-none opacity-85 hover:opacity-100 transition-opacity"
-              >
-                <Database className="w-[18px] h-[18px] opacity-75" />
-                <span className="font-sans text-[17px] sm:text-[18px] font-medium tracking-[-0.03em] whitespace-nowrap">
-                  {apiName}
-                </span>
-              </div>
-            ))}
+        <SolvaScrollReveal delayMs={80} yOffset={20}>
+          <div className="w-full py-[24px] sm:py-[32px] overflow-hidden solva-ticker-mask">
+            <div className="animate-solva-marquee flex items-center gap-[56px] sm:gap-[72px]">
+              {[...scholarlyApis, ...scholarlyApis].map((apiName, idx) => (
+                <div
+                  key={`${apiName}-${idx}`}
+                  style={{ color: 'var(--solva-ink)' }}
+                  className="inline-flex items-center gap-2.5 shrink-0 select-none opacity-85 hover:opacity-100 transition-opacity"
+                >
+                  <Database className="w-[18px] h-[18px] opacity-75" />
+                  <span className="font-sans text-[17px] sm:text-[18px] font-medium tracking-[-0.03em] whitespace-nowrap">
+                    {apiName}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </SolvaScrollReveal>
       </div>
     </section>
   );
@@ -941,7 +947,7 @@ function SolvaFeaturesSection({ lang }: { lang: Lang }) {
   return (
     <section
       id="architecture"
-      className="scroll-mt-[84px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[108px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
       <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
         {/* Section Headline */}
@@ -966,8 +972,10 @@ function SolvaFeaturesSection({ lang }: { lang: Lang }) {
         {/* 3-Column Feature Cards (`gap: 24px`) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-[24px]">
           {features.map((feat, idx) => (
-            <div
+            <SolvaScrollReveal
               key={feat.title}
+              delayMs={idx * 95}
+              yOffset={36}
               className="flex flex-col gap-[16px] min-w-0"
             >
               {/* Top 336px Painterly Visual Box */}
@@ -996,7 +1004,7 @@ function SolvaFeaturesSection({ lang }: { lang: Lang }) {
                   {feat.desc}
                 </p>
               </div>
-            </div>
+            </SolvaScrollReveal>
           ))}
         </div>
       </div>
@@ -1197,7 +1205,7 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
   return (
     <section
       id="interactive-demo"
-      className="scroll-mt-[84px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[108px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
       <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
         {/* Section Headline */}
@@ -1221,42 +1229,45 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
               }
             />
           </div>
-          <p
-            style={{ color: 'var(--solva-muted)' }}
-            className="font-solva-sans text-[16px] leading-[23.2px] max-w-[400px]"
-          >
-            {lang === 'vi'
-              ? 'Nhấp vào bất kỳ trích dẫn mẫu nào bên dưới để xem cách CITRA đối chiếu metadata song song và kích hoạt luật suy diễn R01–R16.'
-              : 'Select any sample citation below to inspect live side-by-side metadata diffs, multi-source latency, and formal symbolic rule triggers.'}
-          </p>
+          <SolvaScrollReveal delayMs={80} yOffset={24}>
+            <p
+              style={{ color: 'var(--solva-muted)' }}
+              className="font-solva-sans text-[16px] leading-[23.2px] max-w-[400px]"
+            >
+              {lang === 'vi'
+                ? 'Nhấp vào bất kỳ trích dẫn mẫu nào bên dưới để xem cách CITRA đối chiếu metadata song song và kích hoạt luật suy diễn R01–R16.'
+                : 'Select any sample citation below to inspect live side-by-side metadata diffs, multi-source latency, and formal symbolic rule triggers.'}
+            </p>
+          </SolvaScrollReveal>
         </div>
 
         {/* Solva Outer Bezel (`#F4F2EC`, `border-radius: 16px`, `padding: 12px`) */}
-        <div
-          style={{ backgroundColor: 'var(--solva-surface)' }}
-          className="rounded-[16px] p-[8px] sm:p-[12px]"
-        >
+        <SolvaScrollReveal delayMs={110} yOffset={36}>
           <div
-            style={{
-              backgroundColor: 'var(--solva-bg)',
-              borderColor: 'var(--solva-border)',
-            }}
-            className="rounded-[12px] border overflow-hidden"
+            style={{ backgroundColor: 'var(--solva-surface)' }}
+            className="rounded-[16px] p-[8px] sm:p-[12px]"
           >
-            {/* Top Window Bar */}
             <div
               style={{
-                backgroundColor: 'var(--solva-card-elevated)',
+                backgroundColor: 'var(--solva-bg)',
                 borderColor: 'var(--solva-border)',
               }}
-              className="px-4 sm:px-6 py-3.5 border-b flex flex-wrap items-center justify-between gap-4"
+              className="rounded-[12px] border overflow-hidden"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#1C1A15]/25 dark:bg-white/25" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#1C1A15]/25 dark:bg-white/25" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#1C1A15]/25 dark:bg-white/25" />
-                </div>
+              {/* Top Window Bar */}
+              <div
+                style={{
+                  backgroundColor: 'var(--solva-card-elevated)',
+                  borderColor: 'var(--solva-border)',
+                }}
+                className="px-4 sm:px-6 py-3.5 border-b flex flex-wrap items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-1.5 shrink-0" aria-label="macOS window controls">
+                    <span className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]/60 shadow-2xs" />
+                    <span className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]/60 shadow-2xs" />
+                    <span className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]/60 shadow-2xs" />
+                  </div>
                 <div
                   style={{ color: 'var(--solva-ink)' }}
                   className="flex items-center gap-2 font-mono text-xs min-w-0"
@@ -1713,7 +1724,8 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        </SolvaScrollReveal>
       </div>
     </section>
   );
@@ -1904,7 +1916,7 @@ function SolvaUseCasesSection({
   return (
     <section
       id="how-it-works"
-      className="scroll-mt-[84px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[108px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
       <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
         {/* Headline */}
@@ -1923,100 +1935,102 @@ function SolvaUseCasesSection({
         </div>
 
         {/* Outer Interactive Container (`#F4F2EC`, `rounded-[16px]`) */}
-        <div
-          style={{ backgroundColor: 'var(--solva-surface)' }}
-          className="w-full rounded-[16px] flex flex-col"
-        >
-          {/* Top 4-Tab Bar (`padding: 16px 40px`, `gap: 24px`) */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-[16px] lg:gap-[24px] p-3 sm:px-[24px] lg:px-[40px] sm:py-[16px]">
-            {tabs.map((tab, idx) => {
-              const Icon = tab.icon;
-              const isActive = idx === activeTab;
-              return (
-                <button
-                  key={tab.label}
-                  type="button"
-                  onClick={() => setActiveTab(idx)}
-                  style={{
-                    backgroundColor: isActive ? 'var(--solva-bg)' : 'transparent',
-                    color: isActive ? 'var(--solva-ink)' : 'var(--solva-muted)',
-                  }}
-                  className="h-[44px] px-3 rounded-[10px] font-solva-sans text-[13px] sm:text-[14px] font-medium flex items-center justify-center gap-[8px] transition-all duration-200 cursor-pointer"
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Bottom Content Well (`#FBFAF6` inset with `12px` bezel) */}
-          <div className="px-[8px] pb-[8px] sm:px-[12px] sm:pb-[12px]">
-            <div
-              style={{ backgroundColor: 'var(--solva-bg)' }}
-              className="rounded-[14px] p-3 sm:p-[12px] grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch"
-            >
-              {/* Left Column (`412px` equivalent on Desktop, `padding: 28px`) */}
-              <div className="lg:col-span-5 p-4 sm:p-[28px] flex flex-col justify-between gap-[32px]">
-                <div className="space-y-[28px]">
-                  <h4
-                    style={{ color: 'var(--solva-ink)' }}
-                    className="font-solva-serif font-light text-[26px] sm:text-[30px] leading-[1.25] tracking-[-0.05em]"
+        <SolvaScrollReveal delayMs={90} yOffset={36}>
+          <div
+            style={{ backgroundColor: 'var(--solva-surface)' }}
+            className="w-full rounded-[16px] flex flex-col"
+          >
+            {/* Top 4-Tab Bar (`padding: 16px 40px`, `gap: 24px`) */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-[16px] lg:gap-[24px] p-3 sm:px-[24px] lg:px-[40px] sm:py-[16px]">
+              {tabs.map((tab, idx) => {
+                const Icon = tab.icon;
+                const isActive = idx === activeTab;
+                return (
+                  <button
+                    key={tab.label}
+                    type="button"
+                    onClick={() => setActiveTab(idx)}
+                    style={{
+                      backgroundColor: isActive ? 'var(--solva-bg)' : 'transparent',
+                      color: isActive ? 'var(--solva-ink)' : 'var(--solva-muted)',
+                    }}
+                    className="h-[44px] px-3 rounded-[10px] font-solva-sans text-[13px] sm:text-[14px] font-medium flex items-center justify-center gap-[8px] transition-all duration-200 cursor-pointer"
                   >
-                    {current.headline}
-                  </h4>
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-                  <div className="space-y-[24px]">
-                    {current.subFeatures.map((sf) => (
-                      <div key={sf.title} className="flex items-start gap-3">
-                        <CheckCircle2
-                          style={{ color: 'var(--solva-ink)' }}
-                          className="w-[18px] h-[18px] mt-1 shrink-0"
-                        />
-                        <div className="space-y-[4px]">
-                          <h6
+            {/* Bottom Content Well (`#FBFAF6` inset with `12px` bezel) */}
+            <div className="px-[8px] pb-[8px] sm:px-[12px] sm:pb-[12px]">
+              <div
+                style={{ backgroundColor: 'var(--solva-bg)' }}
+                className="rounded-[14px] p-3 sm:p-[12px] grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch"
+              >
+                {/* Left Column (`412px` equivalent on Desktop, `padding: 28px`) */}
+                <div className="lg:col-span-5 p-4 sm:p-[28px] flex flex-col justify-between gap-[32px]">
+                  <div className="space-y-[28px]">
+                    <h4
+                      style={{ color: 'var(--solva-ink)' }}
+                      className="font-solva-serif font-light text-[26px] sm:text-[30px] leading-[1.25] tracking-[-0.05em]"
+                    >
+                      {current.headline}
+                    </h4>
+
+                    <div className="space-y-[24px]">
+                      {current.subFeatures.map((sf) => (
+                        <div key={sf.title} className="flex items-start gap-3">
+                          <CheckCircle2
                             style={{ color: 'var(--solva-ink)' }}
-                            className="font-solva-sans text-[17px] sm:text-[18px] font-normal leading-[25.2px]"
-                          >
-                            {sf.title}
-                          </h6>
-                          <p
-                            style={{ color: 'var(--solva-muted)' }}
-                            className="font-solva-sans text-[14px] font-normal leading-[21px]"
-                          >
-                            {sf.desc}
-                          </p>
+                            className="w-[18px] h-[18px] mt-1 shrink-0"
+                          />
+                          <div className="space-y-[4px]">
+                            <h6
+                              style={{ color: 'var(--solva-ink)' }}
+                              className="font-solva-sans text-[17px] sm:text-[18px] font-normal leading-[25.2px]"
+                            >
+                              {sf.title}
+                            </h6>
+                            <p
+                              style={{ color: 'var(--solva-muted)' }}
+                              className="font-solva-sans text-[14px] font-normal leading-[21px]"
+                            >
+                              {sf.desc}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
+
+                  <SolvaButton
+                    to={isAuthenticated ? '/upload' : '/login'}
+                    variant="primary"
+                    fullWidth
+                  >
+                    {lang === 'vi' ? 'Trải nghiệm quy trình này' : 'Try CITRA Free'}
+                  </SolvaButton>
                 </div>
 
-                <SolvaButton
-                  to={isAuthenticated ? '/upload' : '/login'}
-                  variant="primary"
-                  fullWidth
-                >
-                  {lang === 'vi' ? 'Trải nghiệm quy trình này' : 'Try CITRA Free'}
-                </SolvaButton>
-              </div>
-
-              {/* Right Column (`764x501px` equivalent, Painterly Frame + Stage Card) */}
-              <div className="lg:col-span-7">
-                <SolvaPainterlyFrame
-                  paintingSrc={current.painting}
-                  alt={current.headline}
-                  radiusClass="rounded-[10px]"
-                  className="w-full h-full min-h-[380px] sm:min-h-[460px] p-5 sm:p-[40px] flex items-center justify-center"
-                >
-                  <div className="w-full h-full flex items-center justify-center">
-                    <PipelineStageVisual tabIndex={activeTab} lang={lang} />
-                  </div>
-                </SolvaPainterlyFrame>
+                {/* Right Column (`764x501px` equivalent, Painterly Frame + Stage Card) */}
+                <div className="lg:col-span-7">
+                  <SolvaPainterlyFrame
+                    paintingSrc={current.painting}
+                    alt={current.headline}
+                    radiusClass="rounded-[10px]"
+                    className="w-full h-full min-h-[380px] sm:min-h-[460px] p-5 sm:p-[40px] flex items-center justify-center"
+                  >
+                    <div className="w-full h-full flex items-center justify-center">
+                      <PipelineStageVisual tabIndex={activeTab} lang={lang} />
+                    </div>
+                  </SolvaPainterlyFrame>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </SolvaScrollReveal>
       </div>
     </section>
   );
@@ -2098,45 +2112,52 @@ function SolvaSecuritySection({ lang }: { lang: Lang }) {
                 : 'built in by default.'
             }
           />
-          <p
-            style={{ color: 'var(--solva-muted)' }}
-            className="font-solva-sans text-[16px] font-normal leading-[23.2px] max-w-[380px] pt-1"
-          >
-            {lang === 'vi'
-              ? 'Bản thảo nghiên cứu của bạn luôn thuộc về bạn. Hệ thống hỗ trợ rà soát minh bạch, không thay thế hội đồng.'
-              : 'Your research manuscripts stay yours. Designed to assist scholarly review, never replace it.'}
-          </p>
+          <SolvaScrollReveal delayMs={90} yOffset={20}>
+            <p
+              style={{ color: 'var(--solva-muted)' }}
+              className="font-solva-sans text-[16px] font-normal leading-[23.2px] max-w-[380px] pt-1"
+            >
+              {lang === 'vi'
+                ? 'Bản thảo nghiên cứu của bạn luôn thuộc về bạn. Hệ thống hỗ trợ rà soát minh bạch, không thay thế hội đồng.'
+                : 'Your research manuscripts stay yours. Designed to assist scholarly review, never replace it.'}
+            </p>
+          </SolvaScrollReveal>
         </div>
 
         {/* 4 Cards (`288x192px` equivalent on Desktop, `#FBFAF6` background) */}
         <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[16px]">
-          {cards.map((card) => {
+          {cards.map((card, idx) => {
             const Icon = card.icon;
             return (
-              <div
+              <SolvaScrollReveal
                 key={card.title}
-                style={{ backgroundColor: 'var(--solva-bg)' }}
-                className="rounded-[12px] p-[24px] min-h-[192px] flex flex-col justify-between gap-[40px]"
+                delayMs={idx * 85}
+                yOffset={30}
               >
-                <Icon
-                  style={{ color: 'var(--solva-ink)' }}
-                  className="w-[18px] h-[18px]"
-                />
-                <div className="space-y-[6px]">
-                  <h3
+                <div
+                  style={{ backgroundColor: 'var(--solva-bg)' }}
+                  className="rounded-[12px] p-[24px] min-h-[192px] h-full flex flex-col justify-between gap-[40px]"
+                >
+                  <Icon
                     style={{ color: 'var(--solva-ink)' }}
-                    className="font-solva-sans text-[18px] font-normal leading-[25.2px]"
-                  >
-                    {card.title}
-                  </h3>
-                  <p
-                    style={{ color: 'var(--solva-muted)' }}
-                    className="font-solva-sans text-[14px] font-normal leading-[21px]"
-                  >
-                    {card.desc}
-                  </p>
+                    className="w-[18px] h-[18px]"
+                  />
+                  <div className="space-y-[6px]">
+                    <h3
+                      style={{ color: 'var(--solva-ink)' }}
+                      className="font-solva-sans text-[18px] font-normal leading-[25.2px]"
+                    >
+                      {card.title}
+                    </h3>
+                    <p
+                      style={{ color: 'var(--solva-muted)' }}
+                      className="font-solva-sans text-[14px] font-normal leading-[21px]"
+                    >
+                      {card.desc}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              </SolvaScrollReveal>
             );
           })}
         </div>
@@ -2146,8 +2167,9 @@ function SolvaSecuritySection({ lang }: { lang: Lang }) {
 }
 
 /* ============================================================
-   SECTION 7: VERIFICATION TAXONOMY & WORKSPACE PLANS (`#taxonomy`)
-   3 Cards + Squircle Toggle + Radial-Masked Watercolor Floral Card
+   SECTION 7: PRICING PLANS & ACADEMIC BENEFITS (`#taxonomy`)
+   3 Cards (`Basic`, `Pro Popular`, `Ultra`) + Squircle Billing Toggle
+   + Radial-Masked Watercolor Floral Card (`/solva/pricing-floral.png`)
    ============================================================ */
 function SolvaTaxonomyPricingSection({
   lang,
@@ -2156,94 +2178,117 @@ function SolvaTaxonomyPricingSection({
   lang: Lang;
   isAuthenticated: boolean;
 }) {
-  const [strictMode, setStrictMode] = useState(false);
+  const [annualBilling, setAnnualBilling] = useState(false);
 
   const tiers = [
     {
-      name: lang === 'vi' ? 'Nhóm Xác thực (Verified)' : 'Verified & Likely Verified',
+      name: lang === 'vi' ? 'Basic (Cơ bản)' : 'Basic',
       badge: null,
-      metric: strictMode ? '≥ 92%' : '≥ 85%',
-      unit: lang === 'vi' ? 'độ tin cậy' : 'confidence',
+      metric: '$0',
+      unit: lang === 'vi' ? 'tháng · Miễn phí' : 'month',
       desc:
         lang === 'vi'
-          ? 'Tài liệu tồn tại thực tế trên các CSDL học thuật và khớp đồng nhất các trường siêu dữ liệu chính.'
-          : 'Canonical work exists in external scholarly indexes with full or near-exact metadata alignment.',
-      includesLabel: lang === 'vi' ? 'Bao gồm các nhãn:' : 'Includes verdicts:',
+          ? 'Kiểm chứng trích dẫn 2 tầng thiết yếu dành cho sinh viên làm tiểu luận môn học và rà soát danh mục tham khảo nhanh.'
+          : 'Essential two-layer citation verification for course essays, literature reviews, and quick bibliography checks.',
+      includesLabel: lang === 'vi' ? 'Quyền lợi bao gồm:' : 'Includes:',
       items:
         lang === 'vi'
           ? [
-              'VERIFIED: Khớp chính xác DOI/PMID và tiêu đề',
-              'LIKELY_VERIFIED: Khớp tiêu đề & tác giả (≥85%)',
-              'MATCHED (Lớp 1): Ánh xạ 1-1 chuẩn xác trong bài',
-              'SUPPORTS (NLI): Tóm tắt bài gốc ủng hộ câu trích dẫn',
-              'Xuất chứng nhận kiểm chứng PDF / JSON',
+              '3 tài liệu / tháng (tối đa 15 trang, 5 MB / file)',
+              'Kiểm chứng tối đa 30 trích dẫn mỗi bản thảo',
+              'Bóc tách GROBID TEI-XML & Đa chuẩn (IEEE, APA 7th)',
+              '127K FTS5 cục bộ + Crossref, OpenAlex & Pháp luật VN',
+              'Đầy đủ 15 nhãn kiểm chứng 2 tầng (L1 × L2)',
             ]
           : [
-              'VERIFIED: Exact DOI/PMID and title resolution',
-              'LIKELY_VERIFIED: High fuzzy title & author match',
-              'MATCHED (Layer 1): Clean in-text to bibliography link',
-              'SUPPORTS (NLI): Abstract entails manuscript claim',
-              'Full canonical BibTeX / APA / IEEE export',
+              '3 manuscripts / month (up to 15 pages, 5 MB)',
+              'Up to 30 citations verified per manuscript',
+              'GROBID TEI-XML & Multi-Style Cross-Validator',
+              '127K Local FTS5 + Crossref, OpenAlex & VN Legal',
+              'Full 15-verdict Two-Layer Orthogonal Taxonomy',
             ],
-      cta: lang === 'vi' ? 'Kiểm tra ngay' : 'Start verification',
+      cta: lang === 'vi' ? 'Bắt đầu miễn phí' : 'Get started free',
+      to: isAuthenticated ? '/upload' : '/register',
       featured: false,
     },
     {
-      name: lang === 'vi' ? 'Sai lệch Metadata (Drift)' : 'Metadata Error & Mismatch',
-      badge: lang === 'vi' ? 'Trọng tâm' : 'Popular',
-      metric: strictMode ? '50–91%' : '45–84%',
-      unit: lang === 'vi' ? 'độ tương đồng' : 'similarity',
+      name: lang === 'vi' ? 'Pro (Nghiên cứu & Luận văn)' : 'Pro',
+      badge: lang === 'vi' ? 'Phổ biến' : 'Popular',
+      metric: annualBilling ? '$16' : '$20',
+      unit:
+        lang === 'vi'
+          ? annualBilling
+            ? 'tháng (thanh toán năm)'
+            : 'tháng'
+          : annualBilling
+            ? 'month (billed yearly)'
+            : 'month',
       desc:
         lang === 'vi'
-          ? 'Bài báo có thật nhưng bản thảo ghi nhầm năm xuất bản, thiếu đồng tác giả, sai tên hội nghị hoặc trích dẫn lệch ngữ cảnh.'
-          : 'Work exists, but the manuscript has year drift, author omissions, venue errors, or claim-abstract divergence.',
-      includesLabel: lang === 'vi' ? 'Phát hiện chính xác:' : 'Detects & explains:',
+          ? 'Truy hồi toàn diện 15+ CSDL học thuật, so khớp ngữ nghĩa Sentence-BERT và tự động chuẩn hóa danh mục cho khóa luận & bài báo.'
+          : 'Full 15+ scholarly API federation, Sentence-BERT semantic matching, and 1-Click Auto-Fix for graduation theses.',
+      includesLabel:
+        lang === 'vi'
+          ? 'Toàn bộ quyền lợi Basic, cộng thêm:'
+          : 'Everything in Basic, plus:',
       items:
         lang === 'vi'
           ? [
-              'METADATA_ERROR: Sai lệch năm (arXiv vs. Chính thức)',
-              'SOURCE_MISMATCH: Đúng DOI nhưng sai tiêu đề/tác giả',
-              'IN_TEXT_MISMATCH (Lớp 1): Lệch năm/tên giữa bài & danh mục',
-              'STYLE_WARNING: Trộn lẫn chuẩn IEEE và APA trong cùng bài',
-              'Gợi ý tự động sửa lại theo bản ghi gốc chuẩn xác',
+              '50 tài liệu / tháng (tối đa 100 trang, 25 MB / file)',
+              'Tối đa 200 trích dẫn / bài + Tải lên hàng loạt (10 file)',
+              'Toàn bộ 15+ API học thuật (PubMed, arXiv, DBLP, DOAJ...)',
+              'Sentence-BERT ngữ nghĩa sâu & Thái độ trích dẫn DeBERTa NLI',
+              '1-Click Auto-Fix (APA, IEEE, BibTeX) & Xuất báo cáo PDF',
             ]
           : [
-              'METADATA_ERROR: Year drift (preprint vs. proceedings)',
-              'SOURCE_MISMATCH: Valid DOI attached to wrong paper',
-              'IN_TEXT_MISMATCH (L1): Body marker disagrees with ref',
-              'STYLE_WARNING: Mixed IEEE and APA formatting',
-              'One-click canonical metadata correction diff',
+              '50 manuscripts / month (up to 100 pages, 25 MB)',
+              'Up to 200 citations / doc + Batch Upload (10 files)',
+              'All 15+ Scholarly APIs (PubMed, arXiv, DBLP, DOAJ...)',
+              'Sentence-BERT Deep Neural & DeBERTa-v3 NLI Stance',
+              '1-Click Bibliography Auto-Fix (APA, IEEE, BibTeX) & PDF Export',
             ],
-      cta: lang === 'vi' ? 'Khám xét bản thảo' : 'Audit metadata free',
+      cta: lang === 'vi' ? 'Nâng cấp gói Pro' : 'Start Pro trial',
+      to: '/pricing',
       featured: true,
     },
     {
-      name: lang === 'vi' ? 'Ảo giác & Chưa phân giải' : 'Hallucinated & Unresolved',
+      name: lang === 'vi' ? 'Ultra (Hội đồng & Khoa Viện)' : 'Ultra',
       badge: null,
-      metric: strictMode ? '< 50%' : '< 45%',
-      unit: lang === 'vi' ? 'ngưỡng cảnh báo' : 'risk threshold',
+      metric: annualBilling ? '$160' : '$200',
+      unit:
+        lang === 'vi'
+          ? annualBilling
+            ? 'tháng (thanh toán năm)'
+            : 'tháng'
+          : annualBilling
+            ? 'month (billed yearly)'
+            : 'month',
       desc:
         lang === 'vi'
-          ? 'Cảnh báo các tài liệu có dấu hiệu bịa đặt bởi AI (Ghost DOI), thiếu mục tham khảo cuối bài hoặc nguồn ngoại tuyến.'
-          : 'Flags synthetic AI-fabricated references (Ghost DOIs), missing bibliography entries, or offline grey literature.',
-      includesLabel: lang === 'vi' ? 'Bảo vệ hội đồng khỏi:' : 'Protects against:',
+          ? 'Kiểm chứng quy mô hội đồng và khoa viện với Google Scholar dự phòng, quản lý lớp học và lưu vết ghi đè nhãn bất biến.'
+          : 'Unlimited institutional verification, Google Scholar fallback, classroom cohort management, and instructor override logs.',
+      includesLabel:
+        lang === 'vi'
+          ? 'Toàn bộ quyền lợi Pro, cộng thêm:'
+          : 'Everything in Pro, plus:',
       items:
         lang === 'vi'
           ? [
-              'SUSPECTED_HALLUCINATION: Mã DOI giả mạo (HTTP 404)',
-              'MISSING_REFERENCE (Lớp 1): Có trích dẫn nhưng thiếu nguồn',
-              'UNCITED_REFERENCE (Lớp 1): Nguồn thừa không dùng trong bài',
-              'UNVERIFIABLE: Tài liệu nội bộ/sách in cần duyệt tay',
-              'Công cụ Giảng viên ghi đè (Instructor Override)',
+              'Không giới hạn tài liệu (1.000/tháng, 500 trang, 100 MB)',
+              'Không giới hạn số trích dẫn / bài + Batch Upload (50 file)',
+              'Tích hợp SerpAPI Google Scholar dự phòng nguồn hiếm',
+              'Bảng điều khiển Lớp học Giảng viên & Ghi đè nhãn (Override)',
+              'Hàng đợi ưu tiên, Quản trị hệ thống & Nhật ký Audit bất biến',
             ]
           : [
-              'SUSPECTED_HALLUCINATION: Ghost DOI & zero API hits',
-              'MISSING_REFERENCE (L1): Cited in text, absent in bib',
-              'UNCITED_REFERENCE (L1): Padded bibliography entry',
-              'UNVERIFIABLE: Offline archival work for human review',
-              'Instructor override workflow with audit trail',
+              'Unlimited manuscripts (1,000/mo, up to 500 pages, 100 MB)',
+              'Unlimited citations per paper + Batch Upload (50 files)',
+              'SerpAPI Google Scholar Fallback for obscure monographs',
+              'Teacher Classroom Cohort Dashboard & Instructor Override',
+              'Admin Control Plane, Priority Queue & Immutable Audit Logs',
             ],
-      cta: lang === 'vi' ? 'Xem bảng giá & Gói' : 'View workspace plans',
+      cta: lang === 'vi' ? 'Xem gói Ultra & So sánh' : 'Explore Ultra plan',
+      to: '/pricing',
       featured: false,
     },
   ];
@@ -2251,21 +2296,21 @@ function SolvaTaxonomyPricingSection({
   return (
     <section
       id="taxonomy"
-      className="scroll-mt-[84px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[108px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
       <div className="max-w-[1200px] mx-auto flex flex-col items-center gap-[48px] lg:gap-[64px]">
         {/* Centered Headline */}
         <div className="flex flex-col items-center text-center gap-[16px] max-w-[580px]">
           <SolvaEyebrow centered>
-            {lang === 'vi' ? 'Hệ thống 15 nhãn kiểm chứng' : 'Verification taxonomy'}
+            {lang === 'vi' ? 'Gói cước & Quyền lợi' : 'Pricing & Plans'}
           </SolvaEyebrow>
           <SolvaTwoToneHeading
             centered
             primary={
-              lang === 'vi' ? 'Phân loại tường minh.' : 'Transparent verdicts.'
+              lang === 'vi' ? 'Bảng giá minh bạch.' : 'Simple pricing.'
             }
             secondary={
-              lang === 'vi' ? 'Không phán xét mơ hồ.' : 'No surprises.'
+              lang === 'vi' ? 'Tối ưu cho mọi quy mô học thuật.' : 'No surprises.'
             }
           />
         </div>
@@ -2273,166 +2318,168 @@ function SolvaTaxonomyPricingSection({
         {/* Toggle + 3 Cards Wrapper */}
         <div className="w-full flex flex-col items-center gap-[32px]">
           {/* Solva Squircle Switch (`48x28px`, `border-radius: 8px`, `bg: #ECE9E0`) */}
-          <div className="inline-flex items-center gap-[10px]">
-            <span
-              style={{ color: 'var(--solva-ink)' }}
-              className="font-solva-sans text-[15px] sm:text-[16px]"
-            >
-              {lang === 'vi' ? 'Chế độ Chuẩn (L1 + L2)' : 'Standard Audit'}
-            </span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={strictMode}
-              aria-label="Toggle verification strictness mode"
-              onClick={() => setStrictMode((prev) => !prev)}
-              style={{ backgroundColor: 'var(--solva-surface-alt)' }}
-              className="w-[48px] h-[28px] rounded-[8px] p-[4px] flex items-center transition-colors cursor-pointer"
-            >
+          <SolvaScrollReveal yOffset={20}>
+            <div className="inline-flex items-center gap-[10px]">
               <span
-                style={{
-                  backgroundColor: strictMode
-                    ? 'var(--solva-ink)'
-                    : 'var(--solva-subtle)',
-                  transform: strictMode ? 'translateX(20px)' : 'translateX(0px)',
-                }}
-                className="w-[20px] h-[20px] rounded-[5px] transition-transform duration-200 ease-out"
-              />
-            </button>
-            <span
-              style={{ color: 'var(--solva-ink)' }}
-              className="font-solva-sans text-[15px] sm:text-[16px]"
-            >
-              {lang === 'vi'
-                ? 'Chế độ Nghiêm ngặt (+NLI Stance)'
-                : 'Strict NLI Mode +15%'}
-            </span>
-          </div>
-
-          {/* 3 Taxonomy / Plan Cards (`389x483px` equivalent, `bg: #F4F2EC`, `rounded-[16px]`, `p-[32px]`) */}
-          <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-[16px]">
-            {tiers.map((tier) => (
-              <div
-                key={tier.name}
-                style={{ backgroundColor: 'var(--solva-surface)' }}
-                className="relative rounded-[16px] p-[28px] sm:p-[32px] flex flex-col justify-between gap-[24px] overflow-hidden min-h-[483px]"
+                style={{ color: 'var(--solva-ink)' }}
+                className="font-solva-sans text-[15px] sm:text-[16px]"
               >
-                {/* Radial-Masked Watercolor Floral Background on Middle Popular Card */}
-                {tier.featured && (
-                  <div
-                    className="solva-pricing-floral-mask absolute inset-0 pointer-events-none select-none z-0"
-                    aria-hidden="true"
-                  >
-                    <img
-                      src="/solva/pricing-floral.png"
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
+                {lang === 'vi' ? 'Thanh toán tháng' : 'Monthly'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={annualBilling}
+                aria-label="Toggle billing cycle"
+                onClick={() => setAnnualBilling((prev) => !prev)}
+                style={{ backgroundColor: 'var(--solva-surface-alt)' }}
+                className="w-[48px] h-[28px] rounded-[8px] p-[4px] flex items-center transition-colors cursor-pointer"
+              >
+                <span
+                  style={{
+                    backgroundColor: annualBilling
+                      ? 'var(--solva-ink)'
+                      : 'var(--solva-subtle)',
+                    transform: annualBilling ? 'translateX(20px)' : 'translateX(0px)',
+                  }}
+                  className="w-[20px] h-[20px] rounded-[5px] transition-transform duration-200 ease-out"
+                />
+              </button>
+              <span
+                style={{ color: 'var(--solva-ink)' }}
+                className="font-solva-sans text-[15px] sm:text-[16px]"
+              >
+                {lang === 'vi' ? 'Thanh toán năm -20%' : 'Yearly -20%'}
+              </span>
+            </div>
+          </SolvaScrollReveal>
 
-                <div className="relative z-10 space-y-[20px]">
-                  {/* Top Tier Name + Popular Badge */}
-                  <div className="flex items-center justify-between gap-2">
-                    <h3
-                      style={{ color: 'var(--solva-ink)' }}
-                      className="font-solva-sans text-[20px] font-normal leading-[27px] tracking-[-0.02em]"
-                    >
-                      {tier.name}
-                    </h3>
-                    {tier.badge && (
-                      <span
-                        style={{
-                          backgroundColor: 'var(--solva-btn-bg)',
-                          color: 'var(--solva-btn-fg)',
-                        }}
-                        className="px-[8px] py-[4px] rounded-[6px] font-solva-sans text-[12px] font-medium leading-[12px]"
-                      >
-                        {tier.badge}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Metric Display (`Sentient` 40px Light) */}
-                  <div className="flex items-baseline gap-1.5">
-                    <span
-                      style={{ color: 'var(--solva-ink)' }}
-                      className="font-solva-serif font-light text-[36px] sm:text-[40px] leading-[46px] tracking-[-0.05em]"
-                    >
-                      {tier.metric}
-                    </span>
-                    <span
-                      style={{ color: 'var(--solva-muted)' }}
-                      className="font-solva-sans text-[14px]"
-                    >
-                      / {tier.unit}
-                    </span>
-                  </div>
-
-                  {/* Description */}
-                  <p
-                    style={{ color: 'var(--solva-muted)' }}
-                    className="font-solva-sans text-[15px] sm:text-[16px] leading-[23.2px]"
-                  >
-                    {tier.desc}
-                  </p>
-
-                  {/* Checklist */}
-                  <div className="space-y-[10px] pt-1">
+          {/* 3 Plan Cards (`389x483px` equivalent, `bg: #F4F2EC`, `rounded-[16px]`, `p-[32px]`) */}
+          <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-[16px]">
+            {tiers.map((tier, idx) => (
+              <SolvaScrollReveal
+                key={tier.name}
+                delayMs={idx * 95}
+                yOffset={36}
+                className="h-full"
+              >
+                <div
+                  style={{ backgroundColor: 'var(--solva-surface)' }}
+                  className="relative rounded-[16px] p-[28px] sm:p-[32px] flex flex-col justify-between gap-[24px] overflow-hidden min-h-[483px] h-full"
+                >
+                  {/* Radial-Masked Watercolor Floral Background on Middle Popular Card */}
+                  {tier.featured && (
                     <div
-                      style={{ color: 'var(--solva-muted)' }}
-                      className="font-solva-sans text-[14px]"
+                      className="solva-pricing-floral-mask absolute inset-0 pointer-events-none select-none z-0"
+                      aria-hidden="true"
                     >
-                      {tier.includesLabel}
+                      <img
+                        src="/solva/pricing-floral.png"
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                    <ul className="space-y-[8px]">
-                      {tier.items.map((item) => (
-                        <li
-                          key={item}
-                          className="flex items-start gap-[8px] font-solva-sans text-[14px] leading-[21px]"
+                  )}
+
+                  <div className="relative z-10 space-y-[20px]">
+                    {/* Top Tier Name + Popular Badge */}
+                    <div className="flex items-center justify-between gap-2">
+                      <h3
+                        style={{ color: 'var(--solva-ink)' }}
+                        className="font-solva-sans text-[20px] font-normal leading-[27px] tracking-[-0.02em]"
+                      >
+                        {tier.name}
+                      </h3>
+                      {tier.badge && (
+                        <span
+                          style={{
+                            backgroundColor: 'var(--solva-btn-bg)',
+                            color: 'var(--solva-btn-fg)',
+                          }}
+                          className="px-[8px] py-[4px] rounded-[6px] font-solva-sans text-[12px] font-medium leading-[12px]"
                         >
-                          <CheckCircle2
-                            style={{ color: 'var(--solva-muted)' }}
-                            className="w-[17px] h-[17px] mt-[2px] shrink-0"
-                          />
-                          <span style={{ color: 'var(--solva-muted)' }}>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
+                          {tier.badge}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Price Display (`Sentient` 40px Light) */}
+                    <div className="flex items-baseline gap-1.5">
+                      <span
+                        style={{ color: 'var(--solva-ink)' }}
+                        className="font-solva-serif font-light text-[36px] sm:text-[40px] leading-[46px] tracking-[-0.05em]"
+                      >
+                        {tier.metric}
+                      </span>
+                      <span
+                        style={{ color: 'var(--solva-muted)' }}
+                        className="font-solva-sans text-[14px]"
+                      >
+                        / {tier.unit}
+                      </span>
+                    </div>
+
+                    {/* Description */}
+                    <p
+                      style={{ color: 'var(--solva-muted)' }}
+                      className="font-solva-sans text-[15px] sm:text-[16px] leading-[23.2px]"
+                    >
+                      {tier.desc}
+                    </p>
+
+                    {/* Benefits Checklist */}
+                    <div className="space-y-[10px] pt-1">
+                      <div
+                        style={{ color: 'var(--solva-muted)' }}
+                        className="font-solva-sans text-[14px]"
+                      >
+                        {tier.includesLabel}
+                      </div>
+                      <ul className="space-y-[8px]">
+                        {tier.items.map((item) => (
+                          <li
+                            key={item}
+                            className="flex items-start gap-[8px] font-solva-sans text-[14px] leading-[21px]"
+                          >
+                            <CheckCircle2
+                              style={{ color: 'var(--solva-muted)' }}
+                              className="w-[17px] h-[17px] mt-[2px] shrink-0"
+                            />
+                            <span style={{ color: 'var(--solva-muted)' }}>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Bottom CTA Button */}
+                  <div className="relative z-10 pt-2">
+                    <SolvaButton
+                      to={tier.to}
+                      variant={tier.featured ? 'primary' : 'outline'}
+                      fullWidth
+                    >
+                      {tier.cta}
+                    </SolvaButton>
                   </div>
                 </div>
-
-                {/* Bottom CTA Button */}
-                <div className="relative z-10 pt-2">
-                  <SolvaButton
-                    to={
-                      tier.featured
-                        ? isAuthenticated
-                          ? '/upload'
-                          : '/login'
-                        : '/pricing'
-                    }
-                    variant={tier.featured ? 'primary' : 'outline'}
-                    fullWidth
-                  >
-                    {tier.cta}
-                  </SolvaButton>
-                </div>
-              </div>
+              </SolvaScrollReveal>
             ))}
           </div>
 
           {/* Bottom Trust Strip */}
-          <div className="flex flex-col items-center gap-[16px] pt-4 text-center">
-            <p
-              style={{ color: 'var(--solva-muted)' }}
-              className="font-solva-sans text-[14px]"
-            >
-              {lang === 'vi'
-                ? 'Đối chiếu trực tiếp hơn 200 triệu công trình khoa học từ 15+ cơ sở dữ liệu uy tín'
-                : 'Cross-referencing 200M+ canonical works across 15+ global scholarly indexes'}
-            </p>
-          </div>
+          <SolvaScrollReveal delayMs={120} yOffset={18}>
+            <div className="flex flex-col items-center gap-[16px] pt-4 text-center">
+              <p
+                style={{ color: 'var(--solva-muted)' }}
+                className="font-solva-sans text-[14px]"
+              >
+                {lang === 'vi'
+                  ? 'Thanh toán bảo mật qua Stripe · Đối chiếu trực tiếp hơn 200 triệu công trình khoa học từ 15+ cơ sở dữ liệu uy tín'
+                  : 'Secured by Stripe · Cross-referencing 200M+ canonical works across 15+ global scholarly indexes'}
+              </p>
+            </div>
+          </SolvaScrollReveal>
         </div>
       </div>
     </section>
@@ -2462,117 +2509,119 @@ function SolvaClientResultsSection({ lang }: { lang: Lang }) {
         </div>
 
         {/* Main Split Card (`1200x500px` equivalent, `bg: #F4F2EC`, `rounded-[16px]`, `p-[12px]`) */}
-        <div
-          style={{ backgroundColor: 'var(--solva-surface)' }}
-          className="w-full rounded-[16px] p-[12px] grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch"
-        >
-          {/* Left Portrait Image Wrapper (`442x476px` equivalent) */}
-          <div className="lg:col-span-5">
-            <div className="relative w-full h-[320px] sm:h-[400px] lg:h-[476px] rounded-[10px] overflow-hidden">
-              <img
-                src="/solva/client-portrait.png"
-                alt="Academic research supervisor portrait"
-                loading="eager"
-                decoding="async"
-                className="w-full h-full object-cover"
-              />
-              <div className="solva-noise-overlay" aria-hidden="true" />
-              <a
-                href="#interactive-demo"
-                aria-label="Inspect live verification case study"
-                style={{
-                  backgroundColor: 'var(--solva-btn-bg)',
-                  color: 'var(--solva-btn-fg)',
-                }}
-                className="absolute inset-0 m-auto w-[44px] h-[44px] rounded-[8px] flex items-center justify-center shadow-md hover:scale-105 transition-transform"
-              >
-                <Play className="w-[18px] h-[18px] fill-current ml-0.5" />
-              </a>
-            </div>
-          </div>
-
-          {/* Right Quote + Metrics (`734x476px` equivalent, `padding: 28px 32px 28px 40px`) */}
-          <div className="lg:col-span-7 p-4 sm:p-[28px] lg:pl-[40px] flex flex-col justify-between gap-[32px]">
-            {/* Top Two-Tone Quote + Attribution */}
-            <div className="space-y-[24px]">
-              <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                <blockquote className="font-solva-serif font-light text-[24px] sm:text-[30px] leading-[1.25] tracking-[-0.05em] max-w-[520px]">
-                  <span style={{ color: 'var(--solva-ink)' }}>
-                    {lang === 'vi'
-                      ? '“Chúng tôi đưa CITRA vào rà soát 120 khóa luận tốt nghiệp đầu tuần. Chỉ trong một buổi sáng, hệ thống đã chỉ ra toàn bộ các mã DOI ảo giác '
-                      : '“We ran CITRA across 120 graduation theses on Monday morning. Within an hour, it pinpointed every hallucinated DOI and year drift '}
-                  </span>
-                  <span style={{ color: 'var(--solva-muted)' }}>
-                    {lang === 'vi'
-                      ? 'mà trước đây hội đồng phải mất hàng tuần tra cứu thủ công.”'
-                      : 'that used to take our review committee weeks to check by hand.”'}
-                  </span>
-                </blockquote>
-
-                <div
-                  style={{ color: 'var(--solva-ink)' }}
-                  className="font-solva-sans text-[16px] font-medium tracking-tight shrink-0 flex items-center gap-1.5"
+        <SolvaScrollReveal delayMs={80} yOffset={36}>
+          <div
+            style={{ backgroundColor: 'var(--solva-surface)' }}
+            className="w-full rounded-[16px] p-[12px] grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch"
+          >
+            {/* Left Portrait Image Wrapper (`442x476px` equivalent) */}
+            <div className="lg:col-span-5">
+              <div className="relative w-full h-[320px] sm:h-[400px] lg:h-[476px] rounded-[10px] overflow-hidden">
+                <img
+                  src="/solva/client-portrait.png"
+                  alt="Academic research supervisor portrait"
+                  loading="eager"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
+                <div className="solva-noise-overlay" aria-hidden="true" />
+                <a
+                  href="#interactive-demo"
+                  aria-label="Inspect live verification case study"
+                  style={{
+                    backgroundColor: 'var(--solva-btn-bg)',
+                    color: 'var(--solva-btn-fg)',
+                  }}
+                  className="absolute inset-0 m-auto w-[44px] h-[44px] rounded-[8px] flex items-center justify-center shadow-md hover:scale-105 transition-transform"
                 >
-                  <GraduationCap className="w-5 h-5" />
-                  <span>CITRA Lab</span>
-                </div>
-              </div>
-
-              <div className="space-y-[2px]">
-                <div
-                  style={{ color: 'var(--solva-ink)' }}
-                  className="font-solva-sans text-[14px] font-medium leading-[21px]"
-                >
-                  {lang === 'vi'
-                    ? 'Hội đồng Rà soát Học thuật & Luận văn'
-                    : 'Dr. Elena Rostova'}
-                </div>
-                <div
-                  style={{ color: 'var(--solva-muted)' }}
-                  className="font-solva-sans text-[14px] leading-[21px]"
-                >
-                  {lang === 'vi'
-                    ? 'Khoa Khoa học Máy tính & Trí tuệ Nhân tạo'
-                    : 'Chair of Graduate Thesis Review Committee'}
-                </div>
+                  <Play className="w-[18px] h-[18px] fill-current ml-0.5" />
+                </a>
               </div>
             </div>
 
-            {/* Bottom 3 Count-Up Metrics (`Sentient` 40px Light) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-[40px] pt-4 border-t border-[#E7E3D9] dark:border-[#332F26]">
-              <SolvaAnimatedMetric
-                targetValue={15}
-                suffix="+"
-                decimals={0}
-                label={
-                  lang === 'vi'
-                    ? 'CSDL học thuật truy vấn song song'
-                    : 'Scholarly APIs queried in parallel'
-                }
-              />
-              <SolvaAnimatedMetric
-                targetValue={96.4}
-                suffix="%"
-                decimals={1}
-                label={
-                  lang === 'vi'
-                    ? 'Độ chính xác khớp DOI & Tiêu đề'
-                    : 'DOI & canonical title precision'
-                }
-              />
-              <SolvaAnimatedMetric
-                targetValue={4.9}
-                suffix="/5"
-                decimals={1}
-                label={
-                  lang === 'vi'
-                    ? 'Đánh giá từ Giảng viên hướng dẫn'
-                    : 'Instructor review satisfaction'
-                }
-              />
+            {/* Right Quote + Metrics (`734x476px` equivalent, `padding: 28px 32px 28px 40px`) */}
+            <div className="lg:col-span-7 p-4 sm:p-[28px] lg:pl-[40px] flex flex-col justify-between gap-[32px]">
+              {/* Top Two-Tone Quote + Attribution */}
+              <div className="space-y-[24px]">
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                  <blockquote className="font-solva-serif font-light text-[24px] sm:text-[30px] leading-[1.25] tracking-[-0.05em] max-w-[520px]">
+                    <span style={{ color: 'var(--solva-ink)' }}>
+                      {lang === 'vi'
+                        ? '“Chúng tôi đưa CITRA vào rà soát 120 khóa luận tốt nghiệp đầu tuần. Chỉ trong một buổi sáng, hệ thống đã chỉ ra toàn bộ các mã DOI ảo giác '
+                        : '“We ran CITRA across 120 graduation theses on Monday morning. Within an hour, it pinpointed every hallucinated DOI and year drift '}
+                    </span>
+                    <span style={{ color: 'var(--solva-muted)' }}>
+                      {lang === 'vi'
+                        ? 'mà trước đây hội đồng phải mất hàng tuần tra cứu thủ công.”'
+                        : 'that used to take our review committee weeks to check by hand.”'}
+                    </span>
+                  </blockquote>
+
+                  <div
+                    style={{ color: 'var(--solva-ink)' }}
+                    className="font-solva-sans text-[16px] font-medium tracking-tight shrink-0 flex items-center gap-1.5"
+                  >
+                    <GraduationCap className="w-5 h-5" />
+                    <span>CITRA Lab</span>
+                  </div>
+                </div>
+
+                <div className="space-y-[2px]">
+                  <div
+                    style={{ color: 'var(--solva-ink)' }}
+                    className="font-solva-sans text-[14px] font-medium leading-[21px]"
+                  >
+                    {lang === 'vi'
+                      ? 'Hội đồng Rà soát Học thuật & Luận văn'
+                      : 'Dr. Elena Rostova'}
+                  </div>
+                  <div
+                    style={{ color: 'var(--solva-muted)' }}
+                    className="font-solva-sans text-[14px] leading-[21px]"
+                  >
+                    {lang === 'vi'
+                      ? 'Khoa Khoa học Máy tính & Trí tuệ Nhân tạo'
+                      : 'Chair of Graduate Thesis Review Committee'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom 3 Count-Up Metrics (`Sentient` 40px Light) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-[40px] pt-4 border-t border-[#E7E3D9] dark:border-[#332F26]">
+                <SolvaAnimatedMetric
+                  targetValue={15}
+                  suffix="+"
+                  decimals={0}
+                  label={
+                    lang === 'vi'
+                      ? 'CSDL học thuật truy vấn song song'
+                      : 'Scholarly APIs queried in parallel'
+                  }
+                />
+                <SolvaAnimatedMetric
+                  targetValue={96.4}
+                  suffix="%"
+                  decimals={1}
+                  label={
+                    lang === 'vi'
+                      ? 'Độ chính xác khớp DOI & Tiêu đề'
+                      : 'DOI & canonical title precision'
+                  }
+                />
+                <SolvaAnimatedMetric
+                  targetValue={4.9}
+                  suffix="/5"
+                  decimals={1}
+                  label={
+                    lang === 'vi'
+                      ? 'Đánh giá từ Giảng viên hướng dẫn'
+                      : 'Instructor review satisfaction'
+                  }
+                />
+              </div>
             </div>
           </div>
-        </div>
+        </SolvaScrollReveal>
       </div>
     </section>
   );
@@ -2706,7 +2755,7 @@ function SolvaRoleTestimonialsSection({ lang }: { lang: Lang }) {
   return (
     <section
       id="workspaces"
-      className="scroll-mt-[84px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[108px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
       <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
         {/* Headline */}
@@ -2737,47 +2786,52 @@ function SolvaRoleTestimonialsSection({ lang }: { lang: Lang }) {
                 colIdx === 1 ? 'lg:pt-[48px]' : ''
               }`}
             >
-              {col.map((card) => (
-                <div
+              {col.map((card, cardIdx) => (
+                <SolvaScrollReveal
                   key={card.author}
-                  style={{ backgroundColor: 'var(--solva-surface)' }}
-                  className="rounded-[12px] p-[24px] min-h-[260px] lg:h-[280px] flex flex-col justify-between gap-[24px]"
+                  delayMs={colIdx * 75 + cardIdx * 55}
+                  yOffset={30}
                 >
-                  <div className="space-y-[20px]">
-                    <div className="flex items-center justify-between">
-                      <span
-                        style={{
-                          backgroundColor: 'var(--solva-bg)',
-                          color: 'var(--solva-muted)',
-                        }}
-                        className="px-2.5 py-1 rounded-[6px] font-mono text-[11px] font-medium"
+                  <div
+                    style={{ backgroundColor: 'var(--solva-surface)' }}
+                    className="rounded-[12px] p-[24px] min-h-[260px] lg:h-[280px] flex flex-col justify-between gap-[24px]"
+                  >
+                    <div className="space-y-[20px]">
+                      <div className="flex items-center justify-between">
+                        <span
+                          style={{
+                            backgroundColor: 'var(--solva-bg)',
+                            color: 'var(--solva-muted)',
+                          }}
+                          className="px-2.5 py-1 rounded-[6px] font-mono text-[11px] font-medium"
+                        >
+                          {card.roleBadge}
+                        </span>
+                      </div>
+                      <p
+                        style={{ color: 'var(--solva-ink)' }}
+                        className="font-solva-sans text-[17px] sm:text-[18px] font-normal leading-[25.2px]"
                       >
-                        {card.roleBadge}
-                      </span>
+                        {card.quote}
+                      </p>
                     </div>
-                    <p
-                      style={{ color: 'var(--solva-ink)' }}
-                      className="font-solva-sans text-[17px] sm:text-[18px] font-normal leading-[25.2px]"
-                    >
-                      {card.quote}
-                    </p>
-                  </div>
 
-                  <div className="space-y-[2px]">
-                    <div
-                      style={{ color: 'var(--solva-ink)' }}
-                      className="font-solva-sans text-[14px] font-medium leading-[21px]"
-                    >
-                      {card.author}
-                    </div>
-                    <div
-                      style={{ color: 'var(--solva-muted)' }}
-                      className="font-solva-sans text-[14px] leading-[21px]"
-                    >
-                      {card.role}
+                    <div className="space-y-[2px]">
+                      <div
+                        style={{ color: 'var(--solva-ink)' }}
+                        className="font-solva-sans text-[14px] font-medium leading-[21px]"
+                      >
+                        {card.author}
+                      </div>
+                      <div
+                        style={{ color: 'var(--solva-muted)' }}
+                        className="font-solva-sans text-[14px] leading-[21px]"
+                      >
+                        {card.role}
+                      </div>
                     </div>
                   </div>
-                </div>
+                </SolvaScrollReveal>
               ))}
             </div>
           ))}
@@ -2872,50 +2926,55 @@ function SolvaFAQSection({ lang }: { lang: Lang }) {
     },
   ];
 
-  const renderColumn = (items: typeof leftFaqs) => (
+  const renderColumn = (items: typeof leftFaqs, colOffset: number) => (
     <div className="flex-1 flex flex-col gap-[16px] w-full">
-      {items.map((item) => {
+      {items.map((item, idx) => {
         const isOpen = Boolean(openIds[item.id]);
         return (
-          <div
+          <SolvaScrollReveal
             key={item.id}
-            style={{ backgroundColor: 'var(--solva-surface)' }}
-            className="w-full rounded-[12px] px-[24px] transition-all duration-200"
+            delayMs={colOffset + idx * 65}
+            yOffset={24}
           >
-            <button
-              type="button"
-              onClick={() => toggleFaq(item.id)}
-              aria-expanded={isOpen}
-              className="w-full min-h-[73px] py-[20px] flex items-center justify-between gap-4 text-left cursor-pointer"
+            <div
+              style={{ backgroundColor: 'var(--solva-surface)' }}
+              className="w-full rounded-[12px] px-[24px] transition-all duration-200"
             >
-              <span
-                style={{ color: 'var(--solva-ink)' }}
-                className="font-solva-sans text-[17px] sm:text-[18px] font-normal leading-[25.2px]"
+              <button
+                type="button"
+                onClick={() => toggleFaq(item.id)}
+                aria-expanded={isOpen}
+                className="w-full min-h-[73px] py-[20px] flex items-center justify-between gap-4 text-left cursor-pointer"
               >
-                {item.q}
-              </span>
-              <span
-                style={{ color: 'var(--solva-ink)' }}
-                className="w-[20px] h-[25px] flex items-center justify-center shrink-0"
-              >
-                {isOpen ? (
-                  <Minus className="w-4 h-4" />
-                ) : (
-                  <Plus className="w-4 h-4" />
-                )}
-              </span>
-            </button>
-            {isOpen && (
-              <div className="pb-[24px] pr-[24px]">
-                <p
-                  style={{ color: 'var(--solva-muted)' }}
-                  className="font-solva-sans text-[16px] font-normal leading-[23.2px]"
+                <span
+                  style={{ color: 'var(--solva-ink)' }}
+                  className="font-solva-sans text-[17px] sm:text-[18px] font-normal leading-[25.2px]"
                 >
-                  {item.a}
-                </p>
-              </div>
-            )}
-          </div>
+                  {item.q}
+                </span>
+                <span
+                  style={{ color: 'var(--solva-ink)' }}
+                  className="w-[20px] h-[25px] flex items-center justify-center shrink-0"
+                >
+                  {isOpen ? (
+                    <Minus className="w-4 h-4" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                </span>
+              </button>
+              {isOpen && (
+                <div className="pb-[24px] pr-[24px]">
+                  <p
+                    style={{ color: 'var(--solva-muted)' }}
+                    className="font-solva-sans text-[16px] font-normal leading-[23.2px]"
+                  >
+                    {item.a}
+                  </p>
+                </div>
+              )}
+            </div>
+          </SolvaScrollReveal>
         );
       })}
     </div>
@@ -2924,7 +2983,7 @@ function SolvaFAQSection({ lang }: { lang: Lang }) {
   return (
     <section
       id="faq"
-      className="scroll-mt-[84px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[108px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
       <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
         {/* Headline */}
@@ -2942,8 +3001,8 @@ function SolvaFAQSection({ lang }: { lang: Lang }) {
 
         {/* 2 Independent Accordion Columns (`592px` each on Desktop, `gap: 16px`) */}
         <div className="flex flex-col lg:flex-row items-start gap-[16px]">
-          {renderColumn(leftFaqs)}
-          {renderColumn(rightFaqs)}
+          {renderColumn(leftFaqs, 0)}
+          {renderColumn(rightFaqs, 75)}
         </div>
       </div>
     </section>
@@ -2963,68 +3022,70 @@ function SolvaBottomCTASection({
   return (
     <section className="py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]">
       <div className="max-w-[1200px] mx-auto">
-        <div
-          style={{ backgroundColor: 'var(--solva-surface)' }}
-          className="w-full rounded-[16px] p-[12px] grid grid-cols-1 lg:grid-cols-12 items-center gap-6"
-        >
-          {/* Left Editorial Content (`588x275px` equivalent, `padding: 24px 36px`) */}
-          <div className="lg:col-span-6 p-5 sm:p-[32px] flex flex-col items-start gap-[24px]">
-            <div className="space-y-[16px]">
-              <SolvaTwoToneHeading
-                primary={
-                  lang === 'vi'
-                    ? 'Trao lại sự an tâm'
-                    : 'Give your research'
-                }
-                secondary={
-                  lang === 'vi'
-                    ? 'cho mỗi bản thảo học thuật.'
-                    : 'verifiable integrity.'
-                }
-              />
-              <p
-                style={{ color: 'var(--solva-muted)' }}
-                className="font-solva-sans text-[16px] font-normal leading-[23.2px] max-w-[420px]"
-              >
-                {lang === 'vi'
-                  ? 'Tải lên bản thảo PDF hoặc dán danh mục trích dẫn vào Live Sandbox. Nhận báo cáo kiểm chứng 2 tầng kèm đồ thị suy diễn Neuro-Symbolic ngay hôm nay.'
-                  : 'Upload your PDF manuscript or paste references into the Live Sandbox. Get a complete two-layer verification report in seconds.'}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <SolvaButton
-                to={isAuthenticated ? '/upload' : '/login'}
-                variant="primary"
-              >
-                {isAuthenticated
-                  ? lang === 'vi'
-                    ? 'Vào Workspace Kiểm chứng'
-                    : 'Go to Verification Workspace'
-                  : lang === 'vi'
-                    ? 'Bắt đầu miễn phí'
-                    : 'Get started free'}
-              </SolvaButton>
-              <SolvaButton to="/pricing" variant="outline">
-                {lang === 'vi' ? 'Xem các gói cước' : 'Compare plans'}
-              </SolvaButton>
-            </div>
-          </div>
-
-          {/* Right Painterly Frame (`588x376px` equivalent) */}
-          <div className="lg:col-span-6">
-            <SolvaPainterlyFrame
-              paintingSrc="/solva/hero-bg.png"
-              alt="Impressionist floral painting backdrop"
-              radiusClass="rounded-[12px]"
-              className="w-full min-h-[320px] sm:h-[376px] p-6 sm:p-8 flex items-center justify-center"
-            >
-              <div className="w-full max-w-[480px]">
-                <BottomCTAMockup lang={lang} />
+        <SolvaScrollReveal yOffset={36}>
+          <div
+            style={{ backgroundColor: 'var(--solva-surface)' }}
+            className="w-full rounded-[16px] p-[12px] grid grid-cols-1 lg:grid-cols-12 items-center gap-6"
+          >
+            {/* Left Editorial Content (`588x275px` equivalent, `padding: 24px 36px`) */}
+            <div className="lg:col-span-6 p-5 sm:p-[32px] flex flex-col items-start gap-[24px]">
+              <div className="space-y-[16px]">
+                <SolvaTwoToneHeading
+                  primary={
+                    lang === 'vi'
+                      ? 'Trao lại sự an tâm'
+                      : 'Give your research'
+                  }
+                  secondary={
+                    lang === 'vi'
+                      ? 'cho mỗi bản thảo học thuật.'
+                      : 'verifiable integrity.'
+                  }
+                />
+                <p
+                  style={{ color: 'var(--solva-muted)' }}
+                  className="font-solva-sans text-[16px] font-normal leading-[23.2px] max-w-[420px]"
+                >
+                  {lang === 'vi'
+                    ? 'Tải lên bản thảo PDF hoặc dán danh mục trích dẫn vào Live Sandbox. Nhận báo cáo kiểm chứng 2 tầng kèm đồ thị suy diễn Neuro-Symbolic ngay hôm nay.'
+                    : 'Upload your PDF manuscript or paste references into the Live Sandbox. Get a complete two-layer verification report in seconds.'}
+                </p>
               </div>
-            </SolvaPainterlyFrame>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <SolvaButton
+                  to={isAuthenticated ? '/upload' : '/login'}
+                  variant="primary"
+                >
+                  {isAuthenticated
+                    ? lang === 'vi'
+                      ? 'Vào Workspace Kiểm chứng'
+                      : 'Go to Verification Workspace'
+                    : lang === 'vi'
+                      ? 'Bắt đầu miễn phí'
+                      : 'Get started free'}
+                </SolvaButton>
+                <SolvaButton to="/pricing" variant="outline">
+                  {lang === 'vi' ? 'Xem các gói cước' : 'Compare plans'}
+                </SolvaButton>
+              </div>
+            </div>
+
+            {/* Right Painterly Frame (`588x376px` equivalent) */}
+            <div className="lg:col-span-6">
+              <SolvaPainterlyFrame
+                paintingSrc="/solva/hero-bg.png"
+                alt="Impressionist floral painting backdrop"
+                radiusClass="rounded-[12px]"
+                className="w-full min-h-[320px] sm:h-[376px] p-6 sm:p-8 flex items-center justify-center"
+              >
+                <div className="w-full max-w-[480px]">
+                  <BottomCTAMockup lang={lang} />
+                </div>
+              </SolvaPainterlyFrame>
+            </div>
           </div>
-        </div>
+        </SolvaScrollReveal>
       </div>
     </section>
   );
@@ -3041,7 +3102,7 @@ function SolvaFooter({ lang }: { lang: Lang }) {
         { label: lang === 'vi' ? 'Trình gỡ lỗi trích dẫn' : 'Citation Debugger', href: '#interactive-demo' },
         { label: lang === 'vi' ? 'Kiến trúc 2 tầng' : '2-Layer Architecture', href: '#architecture' },
         { label: lang === 'vi' ? 'Quy trình 4 giai đoạn' : 'Verification Pipeline', href: '#how-it-works' },
-        { label: lang === 'vi' ? 'Hệ thống nhãn' : 'Verdict Taxonomy', href: '#taxonomy' },
+        { label: lang === 'vi' ? 'Gói cước & Quyền lợi' : 'Pricing & Benefits', href: '#taxonomy' },
       ],
     },
     {
@@ -3083,10 +3144,7 @@ function SolvaFooter({ lang }: { lang: Lang }) {
           {/* Left Brand Info */}
           <div className="w-full lg:w-[389px] flex flex-col items-start gap-[16px]">
             <Link to="/" className="inline-flex items-center gap-[10px]">
-              <span
-                style={{ backgroundColor: 'var(--solva-ink)' }}
-                className="w-[29px] h-[28px] rounded-[4px] flex items-center justify-center p-1"
-              >
+              <span className="w-[32px] h-[32px] rounded-[8px] bg-white dark:bg-[#1E1C17] border border-[#E7E3D9] dark:border-[#332F26] shadow-2xs flex items-center justify-center p-1 shrink-0 transition-colors">
                 <SourceLogicLogo size={20} />
               </span>
               <span

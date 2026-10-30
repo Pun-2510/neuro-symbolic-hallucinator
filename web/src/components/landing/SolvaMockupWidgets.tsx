@@ -78,10 +78,10 @@ export function HeroVerificationMockup({
         className="px-3 sm:px-4 py-2.5 sm:py-3 border-b flex items-center justify-between gap-2 bg-[#FBFAF6]/90 dark:bg-[#1E1C17] min-w-0"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#1C1A15]/20 dark:bg-white/20" />
-            <span className="w-2.5 h-2.5 rounded-full bg-[#1C1A15]/20 dark:bg-white/20" />
-            <span className="w-2.5 h-2.5 rounded-full bg-[#1C1A15]/20 dark:bg-white/20" />
+          <div className="flex items-center gap-1.5 shrink-0" aria-label="macOS window controls">
+            <span className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]/60 shadow-2xs" />
+            <span className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]/60 shadow-2xs" />
+            <span className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]/60 shadow-2xs" />
           </div>
           <span
             style={{ color: 'var(--solva-ink)' }}

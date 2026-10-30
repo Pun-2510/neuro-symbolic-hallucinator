@@ -138,11 +138,11 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
         {/* Full-Width Executive Header */}
         <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/90 shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-white dark:bg-white/95 p-1.5 border border-slate-200/90 dark:border-white/20 flex items-center justify-center shadow-2xs shrink-0">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-white dark:bg-[#1E1C17] p-1.5 border border-slate-200/90 dark:border-[#332F26] flex items-center justify-center shadow-2xs shrink-0">
               <img
                 src="/citra-logo.png"
                 alt="CITRA Logo"
-                className="w-full h-full object-contain select-none"
+                className="w-full h-full object-contain select-none dark:brightness-150 dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.45)]"
               />
             </div>
             <div className="min-w-0">
