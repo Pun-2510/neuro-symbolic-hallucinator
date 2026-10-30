@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=sentient@300,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Onest:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,500;8..60,600;8..60,700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -1045,4 +1046,124 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ============================================================
+   SOLVA EDITORIAL LANDING SYSTEM — Scoped Tokens & Effects
+   Exact 1:1 implementation of solva-template.framer.website
+   ============================================================ */
+
+.solva-editorial-root {
+  --solva-bg: #FBFAF6;
+  --solva-surface: #F4F2EC;
+  --solva-surface-alt: #ECE9E0;
+  --solva-border: #E7E3D9;
+  --solva-border-subtle: rgba(28, 26, 21, 0.06);
+  --solva-ink: #1C1A15;
+  --solva-muted: #56524A;
+  --solva-subtle: #8C887E;
+  --solva-card-elevated: #FFFFFF;
+  --solva-btn-bg: #1C1A15;
+  --solva-btn-fg: #FBFAF6;
+  background-color: var(--solva-bg);
+  color: var(--solva-ink);
+  font-family: 'Onest', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.dark .solva-editorial-root {
+  --solva-bg: #141310;
+  --solva-surface: #1E1C17;
+  --solva-surface-alt: #29261F;
+  --solva-border: #332F26;
+  --solva-border-subtle: rgba(251, 250, 246, 0.08);
+  --solva-ink: #FBFAF6;
+  --solva-muted: #A8A296;
+  --solva-subtle: #7A756B;
+  --solva-card-elevated: #1A1814;
+  --solva-btn-bg: #FBFAF6;
+  --solva-btn-fg: #1C1A15;
+}
+
+.font-solva-serif {
+  font-family: 'Sentient', 'Source Serif 4', Georgia, serif;
+  font-weight: 300;
+  letter-spacing: -0.05em;
+}
+
+.font-solva-sans {
+  font-family: 'Onest', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.solva-noise-overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  pointer-events: none;
+  background-image: url('/solva/noise.png');
+  background-repeat: repeat;
+  background-size: 160px auto;
+  background-position: left top;
+}
+
+.solva-glass-ring {
+  box-shadow:
+    rgba(0, 0, 0, 0.03) 0px 1px 3px 0px,
+    rgba(0, 0, 0, 0.04) 0px 4px 16px 0px,
+    rgba(255, 255, 255, 0.5) 0px 0px 0px 8px;
+}
+
+.dark .solva-glass-ring {
+  box-shadow:
+    rgba(0, 0, 0, 0.25) 0px 2px 6px 0px,
+    rgba(0, 0, 0, 0.35) 0px 8px 24px 0px,
+    rgba(255, 255, 255, 0.28) 0px 0px 0px 8px;
+}
+
+.solva-ticker-mask {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0) 0%,
+    rgb(0, 0, 0) 12.5%,
+    rgb(0, 0, 0) 87.5%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0) 0%,
+    rgb(0, 0, 0) 12.5%,
+    rgb(0, 0, 0) 87.5%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+.solva-pricing-floral-mask {
+  -webkit-mask-image: radial-gradient(
+    50% 100% at 100% 100%,
+    rgb(0, 0, 0) 22%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  mask-image: radial-gradient(
+    50% 100% at 100% 100%,
+    rgb(0, 0, 0) 22%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+@keyframes solvaMarquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-solva-marquee {
+  display: flex;
+  width: max-content;
+  animation: solvaMarquee 34s linear infinite;
+}
+
+.animate-solva-marquee:hover {
+  animation-play-state: paused;
 }
