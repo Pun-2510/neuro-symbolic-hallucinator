@@ -633,7 +633,8 @@ class CitationLinker:
                     continue
                 bib_first = self._fold_author_key(self._normalize_last_name(bib.authors[0]))
                 short_first = bib_first.split()[-1] if " " in bib_first else bib_first
-                if author_folded in (bib_first, short_first) and abs(int(bib.year) - yr_int) <= 9:
+                max_yr_diff = 15 if (len(author_folded.split()) >= 3 and len(bib.authors) >= 2) else 9
+                if author_folded in (bib_first, short_first) and abs(int(bib.year) - yr_int) <= max_yr_diff:
                     return CitationLink(
                         occurrence_id=occ_id,
                         reference_id=bib.reference_id or f"ref-{bib_idx:04d}",
@@ -875,7 +876,7 @@ class CitationLinker:
             bib_yr = bib.year or "n.d."
             years_to_index = [bib_yr]
             if bib.year is None or bib.matched_pattern == "vn_legal_document":
-                for yr_m in re.findall(r"\b((?:19|20)\d{2})\b", bib.raw_text or ""):
+                for yr_m in re.findall(r"\b((?:18|19|20)\d{2})\b", bib.raw_text or ""):
                     if yr_m not in years_to_index:
                         years_to_index.append(yr_m)
             for yr in years_to_index:
@@ -890,6 +891,16 @@ class CitationLinker:
                         candidate_names = [last_name]
                         if raw_auth and "," not in raw_auth and raw_auth.lower() != (last_name or "").lower():
                             candidate_names.append(raw_auth)
+                        # Extract explicit parenthesized/bracketed acronym in corporate author name (e.g. "World Health Organization (WHO)")
+                        for acr_m in re.findall(r"[\(\[]([A-ZĐ]{2,12})[\)\]]", raw_auth):
+                            candidate_names.append(acr_m)
+                        if _INSTITUTIONAL_AUTHOR_RE.search(raw_auth):
+                            org_words = [
+                                w for w in re.split(r"\W+", raw_auth)
+                                if len(w) >= 2 and w.lower() not in {"of", "for", "the", "and", "in", "on", "to", "va", "và", "của", "về", "các"}
+                            ]
+                            if 3 <= len(org_words) <= 8:
+                                candidate_names.append("".join(w[0] for w in org_words))
                         for cname in candidate_names:
                             if not cname:
                                 continue
@@ -907,7 +918,7 @@ class CitationLinker:
                                         out[short_key].append(bib)
                 # Also index raw institutional author head before (Year)/(n.d.) if present
                 raw_head_m = re.match(
-                    r"^([^\(]+?)\s*\(\s*(?:(?:19|20)\d{2}|n\.?\s*d\.?)",
+                    r"^([^\(]+?)\s*\(\s*(?:(?:18|19|20)\d{2}|n\.?\s*d\.?)",
                     bib.raw_text or "",
                     re.IGNORECASE,
                 )
@@ -918,6 +929,16 @@ class CitationLinker:
                             inst_key = (h_var, yr)
                             if bib not in out.setdefault(inst_key, []):
                                 out[inst_key].append(bib)
+                # Also index main work title (before colon/parenthesis) for title-date citations like "Capitalism and Slavery (1944)"
+                if bib.title and len(bib.title.strip()) >= 4:
+                    main_title = re.split(r"[:(\[]", bib.title.strip())[0].strip().rstrip(".,")
+                    for t_cand in {main_title, re.sub(r"^(?:the|a|an)\s+", "", main_title, flags=re.I).strip()}:
+                        if 4 <= len(t_cand) <= 65:
+                            for t_var in {t_cand.lower(), self._fold_author_key(t_cand)}:
+                                if t_var:
+                                    t_key = (t_var, yr)
+                                    if bib not in out.setdefault(t_key, []):
+                                        out[t_key].append(bib)
         return out
 
     def _index_by_author_year_suffix(

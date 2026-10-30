@@ -168,14 +168,14 @@ _PERSONAL_AUTHOR_HEAD_R = (
 _VN_FULLNAME_AUTHOR_HEAD_R = (
     rf"(?:\d{{1,2}}\s*[\.\)]\s*)?{_UPPER_VN_R}[a-zà-ỹ]+(?:\s+{_UPPER_VN_R}[a-zà-ỹ]+){{1,4}}"
     rf"(?:(?:\s*,\s*|\s+(?:&|và|and)\s+){_UPPER_VN_R}[a-zà-ỹ]+(?:\s+{_UPPER_VN_R}[a-zà-ỹ]+){{1,4}})*"
-    r"(?:\s*\(chủ\s+biên\))?\s*,?\s*\(\s*(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?:19|20)\d{2}[a-z]?\s*\)[.,:]"
+    r"(?:\s*\(chủ\s+biên\))?\s*,?\s*\(\s*(?:\d{1,2}\s*[/-]\s*\d{1,2}\s*[/-]\s*)?(?:18|19|20)\d{2}[a-z]?\s*\)[.,:]"
 )
 _DATED_WEB_AUTHOR_HEAD_R = (
     rf"{_UPPER_VN_R}[A-Za-zÀ-ỹ0-9.'\u2019\-]+(?:\s+{_UPPER_VN_R}?[A-Za-zÀ-ỹ0-9.'\u2019\-]+){{0,3}}\.?\s*"
     r"\(\s*(?:19|20)\d{2}[a-z]?,\s*[A-Za-z]+\.?(?:\s+\d{1,2})?\s*\)\."
 )
 _CORP_AUTHOR_HEAD_R = (
-    r"(?:(?:\d{1,2}\s*[\.\)]\s*)?(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Chính\s+phủ|Quốc\s+hội|Thủ\s+tướng|Ban\s+Chấp\s+hành|Đảng\s+Cộng\s+sản|Tòa\s+án|Toà\s+án|Viện\s+kiểm\s+sát|Thanh\s+tra|Kiểm\s+toán|Văn\s+phòng\s+Quốc\s+hội|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội|Trường\s+Đại\s+học"
+    r"(?:(?:\d{1,2}\s*[\.\)]\s*)?(?:Bộ|Tổng\s+cục|Ủy\s+ban|Uỷ\s+ban|Chính\s+phủ|Quốc\s+hội|Thủ\s+tướng|Ban\s+Chấp\s+hành|Đảng\s+Cộng\s+sản|Tòa\s+án|Toà\s+án|Viện\s+kiểm\s+sát|Thanh\s+tra|Kiểm\s+toán|Văn\s+phòng\s+Quốc\s+hội|Ngân\s+hàng|Tổ\s+chức|Hiệp\s+hội|Trường\s+Đại\s+học|Công\s+ước"
     r"|Department|Ministry|Reserve\s+Bank|World\s+Health|United\s+Nations|World\s+Bank|International\s+Labour|National\s+Assembly)"
     r"(?:[^().\n]|\b(?:TP|Tp)\.){0,75}?\.?\s*\(\s*(?:18|19|20)\d{2}(?:\s*[-–]\s*(?:18|19|20)\d{2})?[a-z]?\s*\)[.,:])"
 )
@@ -1415,6 +1415,8 @@ class ReferenceListParser:
             "",
             entry,
         )
+        # Normalize "[1]. Author" -> "[1] Author" so period after bracket doesn't corrupt author parsing
+        entry = re.sub(r"^\s*\[\s*(\d+)\s*\]\s*[.,]\s*", r"[\1] ", entry)
         entry = re.sub(r"\b(https?)\s*:\s*//\s*", r"\1://", entry, flags=re.IGNORECASE)
         entry = re.sub(r"\.(p)\s+(df)\b", r".\1\2", entry, flags=re.IGNORECASE)
         for _ in range(3):
@@ -1535,6 +1537,12 @@ class ReferenceListParser:
         )
 
         for allow_fallback in (False, True):
+            if allow_fallback:
+                vn_trad_fallback = self._parse_vn_traditional_entry(
+                    entry, order_index, page_num, numeric_index, allow_fallback=True
+                )
+                if vn_trad_fallback is not None:
+                    return vn_trad_fallback
             for fmt in all_formats:
                 if not allow_fallback:
                     if is_ama_specific and fmt.name in ("Vancouver", "CSE", "ACS"):
@@ -1761,6 +1769,29 @@ class ReferenceListParser:
 
         # Subcase D: Numbered Vietnamese report/document item without year or with year in title
         if allow_fallback and numeric_index is not None and len(cleaned) >= 20:
+            raw_auth = ""
+            title = cleaned.rstrip(".,;")
+            authors_list: list[str] = []
+            if "," in cleaned:
+                first_seg, rest_seg = cleaned.split(",", 1)
+                first_seg_s = first_seg.strip()
+                if re.match(
+                    r"^(?:Sở|Bộ|Ủy\s+ban|Uỷ\s+ban|Tòa\s+án|Toà\s+án|Viện|Tổng\s+cục|Cục|Ban|Hội|Trường|Ngân\s+hàng|Chính\s+phủ|Quốc\s+hội|Văn\s+phòng)\b",
+                    first_seg_s,
+                    re.IGNORECASE,
+                ):
+                    authors_list = [first_seg_s]
+                    title = rest_seg.strip().rstrip(".,;")
+                elif (
+                    2 <= len(first_seg_s.split()) <= 6
+                    and not re.search(
+                        r"\b(?:pháp\s+luật|giáo\s+dục|nghiên\s+cứu|thông\s+báo|báo\s+cáo|quy\s+định|thực\s+trạng|vấn\s+đề|một\s+số|những|bàn\s+về)\b",
+                        first_seg_s,
+                        re.IGNORECASE,
+                    )
+                ):
+                    authors_list = parse_authors(first_seg_s)
+                    title = rest_seg.strip().rstrip(".,;")
             return Citation(
                 raw_text=entry.strip(),
                 citation_type=CitationType.REFERENCE_LIST,
@@ -1769,8 +1800,9 @@ class ReferenceListParser:
                 order_index=order_index,
                 numeric_index=numeric_index,
                 matched_pattern="vn_traditional_entry",
-                title=cleaned.rstrip(".,;"),
-                title_normalized=_normalize_title(cleaned),
+                authors=authors_list,
+                title=title,
+                title_normalized=_normalize_title(title),
                 year=year,
                 doi=doi,
                 url=url,
