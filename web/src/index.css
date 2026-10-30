@@ -1088,6 +1088,7 @@
   background-color: var(--solva-bg);
   color: var(--solva-ink);
   font-family: 'Onest', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow-x: clip;
 }
 
 .dark .solva-editorial-root {

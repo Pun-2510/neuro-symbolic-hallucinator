@@ -390,7 +390,7 @@ export function LandingPage() {
   };
 
   return (
-    <div className="solva-editorial-root min-h-screen overflow-x-hidden selection:bg-[#1C1A15] selection:text-[#FBFAF6]">
+    <div className="solva-editorial-root min-h-screen overflow-x-clip selection:bg-[#1C1A15] selection:text-[#FBFAF6]">
       <SolvaHeader
         lang={lang}
         onToggleLanguage={toggleLanguage}
@@ -2156,7 +2156,10 @@ function SolvaStickySection({
         </div>
 
         {/* Sticky Stacking Cards Container */}
-        <div className="flex flex-col gap-[20px] sm:gap-[28px] lg:gap-[96px]">
+        <div
+          data-testid="solva-sticky-cards-deck"
+          className="relative flex flex-col gap-[32px] sm:gap-[44px] lg:gap-[72px]"
+        >
           {stickyBlocks.map((block, idx) => (
             <SolvaStickyStackCard
               key={block.title}
@@ -2205,6 +2208,10 @@ function SolvaStickySection({
               </div>
             </SolvaStickyStackCard>
           ))}
+          <div
+            aria-hidden="true"
+            className="h-[24px] sm:h-[40px] lg:h-[88px] pointer-events-none shrink-0"
+          />
         </div>
       </div>
     </section>

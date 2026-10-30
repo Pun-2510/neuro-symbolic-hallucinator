@@ -27,6 +27,7 @@ interface ScrollEntry {
   task: ScrollTask;
   isNear: boolean;
   needsSync: boolean;
+  alwaysActive: boolean;
 }
 
 const scrollEntries = new Set<ScrollEntry>();
@@ -57,7 +58,7 @@ function flushScrollSubscribers() {
 
   // PHASE 1: Batch all DOM geometry reads (getBoundingClientRect) while layout tree is clean
   scrollEntries.forEach((entry) => {
-    if (!runAll && !entry.isNear && !entry.needsSync) return;
+    if (!runAll && !entry.alwaysActive && !entry.isNear && !entry.needsSync) return;
     entry.needsSync = false;
     entry.task(vh, vw, scheduleWrite);
   });
@@ -119,12 +120,17 @@ function getSharedObserver(): IntersectionObserver | null {
   return sharedObserver;
 }
 
-function subscribeToScroll(el: Element | null, task: ScrollTask): () => void {
+function subscribeToScroll(
+  el: Element | null,
+  task: ScrollTask,
+  alwaysActive = false
+): () => void {
   const entry: ScrollEntry = {
     el,
     task,
     isNear: true,
     needsSync: true,
+    alwaysActive,
   };
   scrollEntries.add(entry);
 
@@ -591,9 +597,13 @@ export function SolvaPainterlyFrame({
 }
 
 /**
- * 5. Scroll-Triggered Sticky Stacking Card (`scale(1)` -> `scale(0.92)`)
- * Replicates Solva's Section 3 Sticky Container 1..3 stacking effect + reversible entrance.
- * Uses 2-phase Read/Write RAF updates + direct GPU `scale3d` for locked 120fps scrolling.
+ * 5. Scroll-Linked Playing-Card Shuffle / Climb Stack (`SolvaStickyStackCard`)
+ * Exclusive to Section 3 ("Why CITRA"):
+ * - No fade-in animation (`opacity: 1`, `filter: none`).
+ * - Each card pins via `position: sticky` while subsequent cards climb up on top of it
+ *   with a tactile 3D playing-card shuffle/deal arc (`rotateZ`, `rotateX`, `translate3d`,
+ *   mid-climb lift, and dynamic deck shadow), pushing underlying cards back into a fanned stack.
+ * - Outer `stickyWrapperRef` stays untransformed so `getBoundingClientRect()` has zero feedback loop.
  */
 export function SolvaStickyStackCard({
   index,
@@ -604,90 +614,192 @@ export function SolvaStickyStackCard({
   total: number;
   children: ReactNode;
 }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const scaleRef = useRef(1);
-  const inViewRef = useRef(false);
-  const [inView, setInView] = useState(false);
-  const [entranceSettled, setEntranceSettled] = useState(false);
+  const stickyWrapperRef = useRef<HTMLDivElement>(null);
+  const cardInnerRef = useRef<HTMLDivElement>(null);
+  const lastTransformRef = useRef<string>('');
+  const lastFilterRef = useRef<string>('');
+  const lastShadowRef = useRef<string>('');
+  const lastLayoutKeyRef = useRef<string>('');
 
   useEffect(() => {
-    if (!inView) {
-      setEntranceSettled(false);
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      setEntranceSettled(true);
-    }, 580);
-    return () => window.clearTimeout(timer);
-  }, [inView]);
+    const wrapperEl = stickyWrapperRef.current;
+    if (!wrapperEl) return;
 
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-    return subscribeToScroll(el, (viewportH, viewportW, schedule) => {
-      const rect = el.getBoundingClientRect();
-
-      // Reversible entrance when scrolling down/up
-      const nextInView = rect.top <= viewportH * 0.92;
-      const inViewChanged = nextInView !== inViewRef.current;
-
-      // Only apply sticky scale-down on desktop (lg: 1024px+) where cards are sticky
-      let nextScale = 1;
-      if (viewportW >= 1024 && index < total - 1 && rect.bottom > -100 && rect.top < viewportH + 100) {
-        const parent = el.parentElement;
-        const nextSibling = parent?.children[index + 1] as HTMLElement | undefined;
-        if (nextSibling) {
-          const nextRect = nextSibling.getBoundingClientRect();
-          const startY = viewportH * 0.88;
-          const endY = 140;
-          if (nextRect.top < startY) {
-            const progress = Math.max(
-              0,
-              Math.min(1, (startY - nextRect.top) / Math.max(1, startY - endY))
-            );
-            nextScale = 1 - progress * 0.085; // Smoothly scales from 1.0 down to 0.915
+    return subscribeToScroll(
+      wrapperEl,
+      (viewportH, viewportW, schedule) => {
+        const parent = wrapperEl.parentElement;
+        if (parent) {
+          const parentRect = parent.getBoundingClientRect();
+          if (parentRect.bottom < -240 || parentRect.top > viewportH + 240) {
+            return;
           }
         }
-      }
 
-      const scaleChanged = Math.abs(nextScale - scaleRef.current) >= 0.0005;
-      if (inViewChanged || scaleChanged) {
-        inViewRef.current = nextInView;
-        scaleRef.current = nextScale;
-        const effectiveScale = (nextInView ? nextScale : nextScale * 0.97).toFixed(4);
-        const yPx = nextInView ? 0 : 32;
-        schedule(() => {
-          if (inViewChanged) {
-            setInView(nextInView);
+        const isDesktop = viewportW >= 1024;
+        const baseTop = isDesktop ? 92 : 76;
+        const stepOffset = isDesktop ? 28 : 18;
+        const myStickyTop = baseTop + index * stepOffset;
+        const myMarginBottom = (total - 1 - index) * stepOffset;
+        const layoutKey = `${myStickyTop}:${myMarginBottom}`;
+
+        const myRect = wrapperEl.getBoundingClientRect();
+
+        // Phase A: Playing-card shuffle climb as Card `index` (index > 0) rises onto Card `index - 1`
+        let climbX = 0;
+        let climbY = 0;
+        let climbScale = 1;
+        let climbRotateX = 0;
+        let climbRotateZ = 0;
+        let climbLiftShadow = 0;
+
+        if (index > 0) {
+          const climbStartY = viewportH * 0.94;
+          const climbSpan = Math.max(1, climbStartY - myStickyTop);
+          const rawClimb = Math.max(
+            0,
+            Math.min(1, (climbStartY - myRect.top) / climbSpan)
+          );
+          const rem = Math.pow(1 - rawClimb, 2);
+          const midArc = Math.sin(Math.PI * rawClimb) * (1 - rawClimb);
+          const shuffleDir = index % 2 === 1 ? -1 : 1;
+          const xScale = isDesktop ? 1 : 0.55;
+
+          climbX = shuffleDir * (rem * 40 + midArc * 26) * xScale;
+          climbY = (rem * 24 - midArc * 18) * xScale;
+          climbScale = 1 - rem * 0.045 + midArc * 0.032;
+          climbRotateX = rem * 7.5 + midArc * 5;
+          climbRotateZ = shuffleDir * (rem * 4.5 + midArc * 2.6) * (isDesktop ? 1 : 0.7);
+          climbLiftShadow = Math.max(rem * 0.7, midArc * 1.35);
+        }
+
+        // Phase B: Deck compression & fan-out as lower cards (index + 1, index + 2) climb on top of this card
+        let p1 = 0;
+        let p2 = 0;
+        const coverStartY = viewportH * 0.9;
+
+        if (parent && index < total - 1) {
+          const nextEl = parent.children[index + 1] as HTMLElement | undefined;
+          if (nextEl) {
+            const nextRect = nextEl.getBoundingClientRect();
+            const nextStickyTop = baseTop + (index + 1) * stepOffset;
+            p1 = Math.max(
+              0,
+              Math.min(1, (coverStartY - nextRect.top) / Math.max(1, coverStartY - nextStickyTop))
+            );
           }
-          el.style.transform = `translate3d(0, ${yPx}px, 0) scale3d(${effectiveScale}, ${effectiveScale}, 1)`;
-        });
-      }
-    });
+
+          if (index === 0 && total > 2) {
+            const thirdEl = parent.children[2] as HTMLElement | undefined;
+            if (thirdEl) {
+              const thirdRect = thirdEl.getBoundingClientRect();
+              const thirdStickyTop = baseTop + 2 * stepOffset;
+              p2 = Math.max(
+                0,
+                Math.min(
+                  1,
+                  (coverStartY - thirdRect.top) / Math.max(1, coverStartY - thirdStickyTop)
+                )
+              );
+            }
+          }
+        }
+
+        const recoil = Math.sin(Math.PI * p1);
+        const deckFanDir = index === 0 ? -1 : 1;
+        const underScale = 1 - p1 * 0.068 - p2 * 0.052;
+        const underY = -p1 * 16 - p2 * 14 + recoil * 6;
+        const underX = deckFanDir * (p1 * 12 + p2 * 8 + recoil * 10) * (isDesktop ? 1 : 0.55);
+        const underRotateZ =
+          deckFanDir * (p1 * 1.9 + p2 * 0.9 + recoil * 1.1) * (isDesktop ? 1 : 0.65);
+        const underRotateX = -p1 * 4.5 - p2 * 3.0;
+        const brightness = 1 - p1 * 0.08 - p2 * 0.07;
+
+        const totalX = climbX + underX;
+        const totalY = climbY + underY;
+        const totalScale = climbScale * underScale;
+        const totalRotateX = climbRotateX + underRotateX;
+        const totalRotateZ = climbRotateZ + underRotateZ;
+
+        const nextTransform = `translate3d(${totalX.toFixed(2)}px, ${totalY.toFixed(2)}px, 0px) scale3d(${totalScale.toFixed(4)}, ${totalScale.toFixed(4)}, 1) rotateX(${totalRotateX.toFixed(2)}deg) rotateZ(${totalRotateZ.toFixed(2)}deg)`;
+        const nextFilter =
+          brightness < 0.998 ? `brightness(${brightness.toFixed(3)})` : 'none';
+
+        const shadowStrength =
+          index > 0 ? Math.max(0.5, climbLiftShadow) : p1 > 0.01 ? 0.38 : 0.2;
+        const contactAlpha = index > 0 ? (0.06 + 0.05 * shadowStrength).toFixed(3) : '0.020';
+        const upAlpha = (0.16 * shadowStrength + (index > 0 ? 0.07 : 0)).toFixed(3);
+        const downAlpha = (0.2 * shadowStrength + (index > 0 ? 0.07 : 0.04)).toFixed(3);
+        const nextShadow = `0 -3px 10px 0 rgba(28, 26, 21, ${contactAlpha}), 0 -22px 46px -8px rgba(28, 26, 21, ${upAlpha}), 0 26px 54px -12px rgba(28, 26, 21, ${downAlpha}), inset 0 1px 0 rgba(255, 255, 255, 0.65)`;
+
+        const needsUpdate =
+          nextTransform !== lastTransformRef.current ||
+          nextFilter !== lastFilterRef.current ||
+          nextShadow !== lastShadowRef.current ||
+          layoutKey !== lastLayoutKeyRef.current;
+
+        if (needsUpdate) {
+          lastTransformRef.current = nextTransform;
+          lastFilterRef.current = nextFilter;
+          lastShadowRef.current = nextShadow;
+          const layoutChanged = layoutKey !== lastLayoutKeyRef.current;
+          lastLayoutKeyRef.current = layoutKey;
+
+          schedule(() => {
+            if (layoutChanged) {
+              wrapperEl.style.top = `${myStickyTop}px`;
+              wrapperEl.style.marginBottom = `${myMarginBottom}px`;
+            }
+            const innerEl = cardInnerRef.current;
+            if (innerEl) {
+              innerEl.style.transform = nextTransform;
+              innerEl.style.filter = nextFilter;
+              innerEl.style.boxShadow = nextShadow;
+            }
+          });
+        }
+      },
+      true
+    );
   }, [index, total]);
 
-  const currentScale = scaleRef.current;
-  const initScale = (inView ? currentScale : currentScale * 0.97).toFixed(4);
+  const initialTop = 92 + index * 28;
+  const initialMarginBottom = (total - 1 - index) * 28;
 
   return (
     <div
-      ref={cardRef}
+      ref={stickyWrapperRef}
+      data-testid={`solva-sticky-card-${index}`}
       style={{
-        zIndex: index + 1,
-        opacity: inView ? 1 : 0.001,
-        filter: inView ? 'none' : 'blur(3.5px)',
-        transform: `translate3d(0, ${inView ? 0 : 32}px, 0) scale3d(${initScale}, ${initScale}, 1)`,
-        transformOrigin: 'top center',
-        backgroundColor: 'var(--solva-surface)',
-        willChange: 'transform',
-        backfaceVisibility: 'hidden',
-        transition: entranceSettled
-          ? 'opacity 560ms cubic-bezier(0.22, 1, 0.36, 1), filter 500ms cubic-bezier(0.22, 1, 0.36, 1)'
-          : 'opacity 560ms cubic-bezier(0.22, 1, 0.36, 1), filter 500ms cubic-bezier(0.22, 1, 0.36, 1), transform 520ms cubic-bezier(0.22, 1, 0.36, 1)',
+        position: 'sticky',
+        top: `${initialTop}px`,
+        marginBottom: `${initialMarginBottom}px`,
+        zIndex: (index + 1) * 10,
+        perspective: '1400px',
       }}
-      className="lg:sticky lg:top-[116px] w-full rounded-[16px] p-[12px]"
+      className="w-full"
     >
-      {children}
+      <div
+        ref={cardInnerRef}
+        data-testid={`solva-sticky-card-inner-${index}`}
+        style={{
+          opacity: 1,
+          transform: 'translate3d(0px, 0px, 0px) scale3d(1, 1, 1) rotateX(0deg) rotateZ(0deg)',
+          transformOrigin: 'top center',
+          transformStyle: 'preserve-3d',
+          backgroundColor: 'var(--solva-surface)',
+          borderColor: 'var(--solva-border)',
+          boxShadow:
+            index > 0
+              ? '0 -18px 42px -10px rgba(28, 26, 21, 0.14), 0 24px 52px -12px rgba(28, 26, 21, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.55)'
+              : '0 14px 36px -12px rgba(28, 26, 21, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.55)',
+          willChange: 'transform, filter',
+          backfaceVisibility: 'hidden',
+        }}
+        className="w-full rounded-[16px] p-[12px] border"
+      >
+        {children}
+      </div>
     </div>
   );
 }

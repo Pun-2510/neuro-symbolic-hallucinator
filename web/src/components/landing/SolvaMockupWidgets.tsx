@@ -964,7 +964,7 @@ export function StickyCardWidget({
   index: 0 | 1 | 2;
   lang: Lang;
 }) {
-  const { containerRef, isVisible, replaySeed, getStaggerStyle } = useFloralCardAnimation(4800);
+  const { containerRef, isVisible, replaySeed } = useFloralCardAnimation(4800);
   const [activePhase, setActivePhase] = useState(0);
 
   useEffect(() => {
@@ -987,11 +987,10 @@ export function StickyCardWidget({
         ref={containerRef}
         style={{
           backgroundColor: 'var(--solva-card-elevated)',
-          ...getStaggerStyle(0),
         }}
         className="solva-glass-ring w-full max-w-[340px] rounded-[12px] p-5 space-y-3.5 text-left border border-[#E7E3D9]/80 dark:border-[#332F26]"
       >
-        <div style={getStaggerStyle(40)} className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-[#1C1A15] dark:text-[#FBFAF6]" />
             <span
@@ -1009,7 +1008,6 @@ export function StickyCardWidget({
 
         <div
           style={{
-            ...getStaggerStyle(110),
             backgroundColor: 'var(--solva-surface)',
           }}
           className="p-3 rounded-[8px] font-mono text-[11px] space-y-1.5"
@@ -1111,7 +1109,6 @@ export function StickyCardWidget({
               <div
                 key={item.key}
                 style={{
-                  ...getStaggerStyle(170 + idx * 55),
                   backgroundColor: isStyleActive
                     ? 'var(--solva-surface)'
                     : 'var(--solva-bg)',
@@ -1148,11 +1145,10 @@ export function StickyCardWidget({
         ref={containerRef}
         style={{
           backgroundColor: 'var(--solva-card-elevated)',
-          ...getStaggerStyle(0),
         }}
         className="solva-glass-ring w-full max-w-[340px] rounded-[12px] p-5 space-y-3.5 text-left border border-[#E7E3D9]/80 dark:border-[#332F26]"
       >
-        <div style={getStaggerStyle(40)} className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <GitBranch className="w-4 h-4 text-[#1C1A15] dark:text-[#FBFAF6]" />
             <span
@@ -1170,7 +1166,6 @@ export function StickyCardWidget({
           {/* Rule 1: R01_DOI_EXACT */}
           <div
             style={{
-              ...getStaggerStyle(110),
               backgroundColor: 'var(--solva-surface)',
               borderColor: activePhase === 0 ? 'var(--solva-ink)' : 'transparent',
               transform: activePhase === 0 ? 'translateY(-1px)' : 'translateY(0px)',
@@ -1200,7 +1195,6 @@ export function StickyCardWidget({
           {/* Rule 2: R05_YEAR_DRIFT */}
           <div
             style={{
-              ...getStaggerStyle(180),
               backgroundColor: 'var(--solva-surface)',
               borderColor: activePhase === 1 ? 'var(--solva-ink)' : 'transparent',
               transform: activePhase === 1 ? 'translateY(-1px)' : 'translateY(0px)',
@@ -1246,7 +1240,6 @@ export function StickyCardWidget({
           {/* Rule 3: NLI_CLAIM_STANCE */}
           <div
             style={{
-              ...getStaggerStyle(250),
               backgroundColor: 'var(--solva-surface)',
               borderColor: activePhase === 2 ? 'var(--solva-ink)' : 'transparent',
               transform: activePhase === 2 ? 'translateY(-1px)' : 'translateY(0px)',
@@ -1292,11 +1285,10 @@ export function StickyCardWidget({
       ref={containerRef}
       style={{
         backgroundColor: 'var(--solva-card-elevated)',
-        ...getStaggerStyle(0),
       }}
       className="solva-glass-ring w-full max-w-[340px] rounded-[12px] p-5 space-y-3.5 text-left border border-[#E7E3D9]/80 dark:border-[#332F26]"
     >
-      <div style={getStaggerStyle(40)} className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <span
           style={{ color: 'var(--solva-ink)' }}
           className="text-[13px] font-medium flex items-center gap-1.5 min-w-0"
@@ -1322,7 +1314,6 @@ export function StickyCardWidget({
 
       <div
         style={{
-          ...getStaggerStyle(120),
           backgroundColor: 'var(--solva-surface)',
         }}
         className="p-3.5 rounded-[10px] flex items-center justify-between"
@@ -1369,7 +1360,7 @@ export function StickyCardWidget({
         </div>
       </div>
 
-      <div style={getStaggerStyle(200)} className="space-y-1.5 text-[11px]">
+      <div className="space-y-1.5 text-[11px]">
         <div className="flex items-center justify-between">
           <span style={{ color: 'var(--solva-muted)' }}>
             Hallucinated / Ghost DOIs resolved
