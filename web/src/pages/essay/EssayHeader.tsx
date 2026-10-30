@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, FileText, Quote, Clock, Download, ShieldCheck, Lock, Sparkles } from 'lucide-react';
+import { ArrowLeft, Quote, Clock, Download, ShieldCheck, Lock, Sparkles } from 'lucide-react';
 import { api } from '@/api/client';
 import { useRole } from '@/hooks/useRole';
 import { UpgradeModal } from '@/components/UpgradeModal';
+import { FileFormatIcon } from '@/components/FileFormatIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -78,16 +79,19 @@ export function EssayHeader({
             )}
           </div>
 
-          <h1
-            className="font-display text-lg sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere] tracking-tight max-w-full"
-            title={filename}
-          >
-            {filename}
-          </h1>
+          <div className="flex items-center gap-3 min-w-0">
+            <FileFormatIcon filename={filename} size="lg" />
+            <h1
+              className="font-display text-lg sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere] tracking-tight max-w-full min-w-0 flex-1"
+              title={filename}
+            >
+              {filename}
+            </h1>
+          </div>
 
           <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300 mt-2.5 flex-wrap">
             <span className="inline-flex items-center gap-1.5 font-mono text-xs px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-              <FileText className="h-3.5 w-3.5 text-indigo-500" />
+              <FileFormatIcon filename={filename} size="xs" />
               {numPages} {t('history.pages')}
             </span>
             <span className="inline-flex items-center gap-1.5 font-mono text-xs px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
@@ -150,7 +154,11 @@ export function EssayHeader({
                 data-testid="export-pdf-btn"
                 aria-label={`Download ${filename} as PDF`}
               >
-                {isBasic ? <Lock className="h-3.5 w-3.5 text-amber-300" /> : <Download className="h-3.5 w-3.5" />}
+                {isBasic ? (
+                  <Lock className="h-3.5 w-3.5 text-amber-300" />
+                ) : (
+                  <FileFormatIcon format="pdf" size="xs" />
+                )}
                 PDF
                 {isBasic && (
                   <span className="ml-1 px-1 py-0.2 rounded bg-amber-400/20 text-amber-200 text-[9px] font-bold">
@@ -167,7 +175,11 @@ export function EssayHeader({
                 data-testid="export-docx-btn"
                 aria-label={`Download ${filename} as DOCX`}
               >
-                {isBasic ? <Lock className="h-3.5 w-3.5 text-amber-500" /> : <Download className="h-3.5 w-3.5" />}
+                {isBasic ? (
+                  <Lock className="h-3.5 w-3.5 text-amber-500" />
+                ) : (
+                  <FileFormatIcon format="docx" size="xs" />
+                )}
                 DOCX
                 {isBasic && (
                   <span className="ml-1 px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[9px] font-bold">
@@ -184,6 +196,7 @@ export function EssayHeader({
               className="h-8 font-mono text-xs rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto"
             >
               {isBasic ? <Lock className="h-3.5 w-3.5 text-amber-300" /> : <Sparkles className="h-3.5 w-3.5" />}
+              <FileFormatIcon format="docx" size="xs" />
               {lang === 'vi' ? 'Auto-Healed .DOCX' : 'Auto-Healed .DOCX'}
               {isBasic && (
                 <span className="ml-1 px-1 py-0.2 rounded bg-amber-400/20 text-amber-200 text-[9px] font-bold">

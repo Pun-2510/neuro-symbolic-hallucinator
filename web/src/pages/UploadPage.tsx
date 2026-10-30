@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Upload,
-  FileText,
   X,
   Loader2,
   AlertCircle,
@@ -23,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import { useToast } from '@/contexts/ToastContext';
 import { UpgradeModal } from '@/components/UpgradeModal';
+import { FileFormatIcon } from '@/components/FileFormatIcon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -488,9 +488,7 @@ export function UploadPage() {
               /* File selected state */
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 max-w-xl w-full mx-auto bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/80 shadow-xs overflow-hidden">
                 <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto sm:flex-1">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center shrink-0">
-                    <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400" />
-                  </div>
+                  <FileFormatIcon filename={file.name} size="lg" />
                   <div className="text-left min-w-0 flex-1">
                     <div className="flex items-center gap-2 min-w-0">
                       <p
@@ -527,8 +525,12 @@ export function UploadPage() {
             ) : (
               /* Dropzone default state */
               <div className="max-w-md mx-auto">
-                <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 flex items-center justify-center mx-auto mb-4 shadow-xs">
-                  <Upload className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <FileFormatIcon format="pdf" size="md" />
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70 flex items-center justify-center shadow-xs">
+                    <Upload className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <FileFormatIcon format="docx" size="md" />
                 </div>
                 <p className="font-display text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-1.5">
                   {t('upload.dropDocument')}

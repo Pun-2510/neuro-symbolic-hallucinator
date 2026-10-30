@@ -11,6 +11,7 @@ import {
 } from '@/api/client';
 import { EssayHeader } from './essay/EssayHeader';
 import { EssayActionBar } from './essay/EssayActionBar';
+import { FileFormatIcon } from '@/components/FileFormatIcon';
 import { OverrideControls } from '@/components/OverrideControls';
 import { CitationGraphView, EvidenceGraph } from '@/components/CitationGraph';
 import { UpgradeModal } from '@/components/UpgradeModal';
@@ -1998,7 +1999,7 @@ export function EssayPage() {
               </div>
               <Separator orientation="vertical" className="h-4 shrink-0" />
               <div className="flex items-center gap-2 font-mono text-xs text-slate-700 dark:text-slate-300 min-w-0 flex-1">
-                <FileText className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <FileFormatIcon filename={report.filename} size="xs" />
                 <span className="font-semibold truncate" title={report.filename}>
                   {report.filename}
                 </span>

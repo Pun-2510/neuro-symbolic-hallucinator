@@ -22,6 +22,10 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
+import {
+  FileFormatIcon,
+  getDocumentFormat,
+} from '@/components/FileFormatIcon';
 import { useRole } from '@/hooks/useRole';
 import {
   useEssays,
@@ -375,9 +379,7 @@ export function DashboardPage() {
                 >
                   <TableCell className="py-0 sm:py-3.5 px-0 sm:px-5 min-w-0 w-full sm:w-auto">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:border-indigo-600 transition-colors">
-                        <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-colors" />
-                      </div>
+                      <FileFormatIcon filename={essay.filename} size="md" />
                       <div className="min-w-0 flex-1">
                         <Link
                           to={`/verification/report/${essay.id}`}
@@ -392,9 +394,15 @@ export function DashboardPage() {
                               ID #{essay.id}
                             </span>
                             <span className="text-slate-300 dark:text-slate-700">·</span>
-                            <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
-                              GROBID TEI
-                            </span>
+                            {getDocumentFormat(essay.filename) === 'docx' ? (
+                              <span className="text-[11px] font-mono font-medium text-[#2563EB] dark:text-[#60A5FA]">
+                                WORD DOCX · OPENXML
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+                                GROBID TEI
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>

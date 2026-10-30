@@ -31,6 +31,7 @@ import {
 import { useToast } from '@/contexts/ToastContext';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
 import { AddStudentDialog } from '@/components/AddStudentDialog';
+import { FileFormatIcon } from '@/components/FileFormatIcon';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -589,6 +590,7 @@ export function ClassDetailPage() {
                   <span className="text-xs font-mono text-slate-400 dark:text-slate-500">
                     #{String(idx + 1).padStart(2, '0')}
                   </span>
+                  <FileFormatIcon filename={e.filename} size="sm" />
                   <div className="min-w-0">
                     <p className="font-medium text-sm text-slate-900 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                       {e.filename}

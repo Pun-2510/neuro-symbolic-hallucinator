@@ -11,6 +11,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { api, type PendingVerdict, type Class } from '@/api/client';
+import { FileFormatIcon } from '@/components/FileFormatIcon';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -257,9 +258,12 @@ export function PendingReviewsPage() {
                           {r.student_username ?? '—'}
                         </span>
                       </div>
-                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                        {r.filename}
-                      </p>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileFormatIcon filename={r.filename} size="xs" />
+                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {r.filename}
+                        </p>
+                      </div>
                       {r.reasoning && (
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
                           {r.reasoning}

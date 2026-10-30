@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
   Upload,
-  FileText,
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -19,6 +18,7 @@ import {
 import { api } from '../api/client';
 import { useRole } from '@/hooks/useRole';
 import type { Class } from '@/api/client';
+import { FileFormatIcon } from '@/components/FileFormatIcon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -580,8 +580,12 @@ export function BatchUploadPage() {
               className="hidden"
             />
 
-            <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950 border border-indigo-200/70 dark:border-indigo-800/70 flex items-center justify-center mx-auto mb-3.5 shadow-2xs">
-              <Upload className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
+            <div className="flex items-center justify-center gap-3 mb-3.5">
+              <FileFormatIcon format="pdf" size="md" />
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950 border border-indigo-200/70 dark:border-indigo-800/70 flex items-center justify-center shadow-2xs">
+                <Upload className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <FileFormatIcon format="docx" size="md" />
             </div>
             <p className="font-display text-lg font-bold text-slate-900 dark:text-white mb-1">
               {t('batchUpload.dropPdfs')}
@@ -619,9 +623,7 @@ export function BatchUploadPage() {
                       #{idx + 1}
                     </span>
 
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center shrink-0">
-                      <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                    </div>
+                    <FileFormatIcon filename={fileItem.file.name} size="sm" />
 
                     <div className="flex-1 min-w-0">
                       <p

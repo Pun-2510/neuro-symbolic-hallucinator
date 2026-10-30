@@ -18,6 +18,10 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
+import {
+  FileFormatIcon,
+  getDocumentFormat,
+} from '@/components/FileFormatIcon';
 import { useRole } from '@/hooks/useRole';
 import { useEssays, useDeleteEssay } from '@/hooks/useEssays';
 import { Card } from '@/components/ui/card';
@@ -256,9 +260,7 @@ export function HistoryPage() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 min-w-0">
                   <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 w-full">
-                    <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/90 border border-indigo-200/70 dark:border-indigo-800/70 group-hover:bg-indigo-600 group-hover:border-indigo-600 transition-colors shrink-0">
-                      <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-colors" />
-                    </div>
+                    <FileFormatIcon filename={essay.filename} size="lg" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
@@ -272,8 +274,8 @@ export function HistoryPage() {
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-mono text-slate-500 dark:text-slate-400 mt-1.5">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300">
-                          <FileText className="h-3 w-3 text-indigo-500" />
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300">
+                          <FileFormatIcon filename={essay.filename} size="xs" />
                           {essay.num_pages} {t('history.pages')}
                         </span>
                         <span className="inline-flex items-center gap-1">
@@ -288,6 +290,16 @@ export function HistoryPage() {
                           )}
                         </span>
                         <span>ID #{essay.id}</span>
+                        <span className="text-slate-300 dark:text-slate-700">·</span>
+                        {getDocumentFormat(essay.filename) === 'docx' ? (
+                          <span className="text-[#2563EB] dark:text-[#60A5FA] font-medium">
+                            WORD DOCX · OPENXML
+                          </span>
+                        ) : (
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            GROBID TEI
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
