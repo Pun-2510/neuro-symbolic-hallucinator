@@ -70,12 +70,12 @@ export function HeroVerificationMockup({
   return (
     <div
       style={{ backgroundColor: 'var(--solva-card-elevated)' }}
-      className="solva-glass-ring rounded-[10px] w-full lg:w-[640px] border border-[#E7E3D9]/80 dark:border-[#332F26] overflow-hidden text-left select-none"
+      className="solva-glass-ring rounded-[10px] w-full max-w-full lg:w-[640px] border border-[#E7E3D9]/80 dark:border-[#332F26] overflow-hidden text-left select-none"
     >
       {/* Top Window Chrome */}
       <div
         style={{ borderColor: 'var(--solva-border)' }}
-        className="px-4 py-3 border-b flex items-center justify-between gap-2 bg-[#FBFAF6]/90 dark:bg-[#1E1C17]"
+        className="px-3 sm:px-4 py-2.5 sm:py-3 border-b flex items-center justify-between gap-2 bg-[#FBFAF6]/90 dark:bg-[#1E1C17] min-w-0"
       >
         <div className="flex items-center gap-2 min-w-0">
           <div className="flex items-center gap-1.5 shrink-0">
@@ -85,13 +85,13 @@ export function HeroVerificationMockup({
           </div>
           <span
             style={{ color: 'var(--solva-ink)' }}
-            className="text-[12px] font-medium truncate ml-1.5"
+            className="text-[11px] sm:text-[12px] font-medium truncate ml-1"
           >
             thesis_citation_audit_2026.pdf
           </span>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="px-2 py-0.5 rounded-[5px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-medium">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="hidden sm:inline-block px-2 py-0.5 rounded-[5px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-medium">
             GROBID TEI · 15 APIs
           </span>
           <span
@@ -107,17 +107,17 @@ export function HeroVerificationMockup({
       </div>
 
       {/* Two-Column Workspace Preview */}
-      <div className="grid sm:grid-cols-12">
+      <div className="grid sm:grid-cols-12 min-w-0">
         {/* Left Queue */}
         <div
           style={{ borderColor: 'var(--solva-border)' }}
-          className="sm:col-span-5 p-3.5 border-b sm:border-b-0 sm:border-r space-y-2"
+          className="sm:col-span-5 min-w-0 p-3 sm:p-3.5 border-b sm:border-b-0 sm:border-r space-y-2"
         >
-          <div className="flex items-center justify-between text-[11px] font-mono">
-            <span style={{ color: 'var(--solva-muted)' }}>
+          <div className="flex items-center justify-between gap-2 text-[10px] sm:text-[11px] font-mono">
+            <span style={{ color: 'var(--solva-muted)' }} className="truncate">
               {lang === 'vi' ? 'TRÍCH DẪN BÓC TÁCH' : 'EXTRACTED QUEUE'}
             </span>
-            <span style={{ color: 'var(--solva-ink)' }} className="font-semibold">
+            <span style={{ color: 'var(--solva-ink)' }} className="font-semibold shrink-0">
               24 refs
             </span>
           </div>

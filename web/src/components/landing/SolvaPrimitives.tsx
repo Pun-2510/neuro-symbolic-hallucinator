@@ -207,7 +207,7 @@ export function SolvaPainterlyFrame({
       <img
         src={paintingSrc}
         alt={alt}
-        loading="lazy"
+        loading="eager"
         decoding="async"
         className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
       />

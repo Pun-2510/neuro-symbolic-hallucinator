@@ -415,6 +415,12 @@ function SolvaHeader({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  useEffect(() => {
+    const closeOnScroll = () => setDropdownOpen(false);
+    window.addEventListener('scroll', closeOnScroll, { passive: true });
+    return () => window.removeEventListener('scroll', closeOnScroll);
+  }, []);
+
   const dropdownItems =
     lang === 'vi'
       ? [
@@ -505,7 +511,6 @@ function SolvaHeader({
           {/* Dropdown Trigger (`Platform v` / `Kiến trúc v`) */}
           <div
             className="relative"
-            onMouseEnter={() => setDropdownOpen(true)}
             onMouseLeave={() => setDropdownOpen(false)}
           >
             <button
@@ -936,7 +941,7 @@ function SolvaFeaturesSection({ lang }: { lang: Lang }) {
   return (
     <section
       id="architecture"
-      className="py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[84px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
       <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
         {/* Section Headline */}
@@ -1192,7 +1197,7 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
   return (
     <section
       id="interactive-demo"
-      className="py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[84px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
       <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
         {/* Section Headline */}
@@ -1899,7 +1904,7 @@ function SolvaUseCasesSection({
   return (
     <section
       id="how-it-works"
-      className="py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[84px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
       <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
         {/* Headline */}
@@ -2246,7 +2251,7 @@ function SolvaTaxonomyPricingSection({
   return (
     <section
       id="taxonomy"
-      className="py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[84px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
       <div className="max-w-[1200px] mx-auto flex flex-col items-center gap-[48px] lg:gap-[64px]">
         {/* Centered Headline */}
@@ -2467,7 +2472,7 @@ function SolvaClientResultsSection({ lang }: { lang: Lang }) {
               <img
                 src="/solva/client-portrait.png"
                 alt="Academic research supervisor portrait"
-                loading="lazy"
+                loading="eager"
                 decoding="async"
                 className="w-full h-full object-cover"
               />
@@ -2701,7 +2706,7 @@ function SolvaRoleTestimonialsSection({ lang }: { lang: Lang }) {
   return (
     <section
       id="workspaces"
-      className="py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[84px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
       <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
         {/* Headline */}
@@ -2919,7 +2924,7 @@ function SolvaFAQSection({ lang }: { lang: Lang }) {
   return (
     <section
       id="faq"
-      className="py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[84px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
       <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
         {/* Headline */}
