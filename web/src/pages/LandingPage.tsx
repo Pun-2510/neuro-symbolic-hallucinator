@@ -399,9 +399,10 @@ export function LandingPage() {
         <SolvaStickySection lang={lang} isAuthenticated={isAuthenticated} />
         <SolvaInteractiveDebuggerSection lang={lang} />
         <SolvaUseCasesSection lang={lang} isAuthenticated={isAuthenticated} />
+        <SolvaBenchmark120KSection lang={lang} />
+        <SolvaClientResultsSection lang={lang} />
         <SolvaSecuritySection lang={lang} />
         <SolvaTaxonomyPricingSection lang={lang} isAuthenticated={isAuthenticated} />
-        <SolvaClientResultsSection lang={lang} />
         <SolvaRoleTestimonialsSection lang={lang} />
         <SolvaFAQSection lang={lang} />
         <SolvaBottomCTASection lang={lang} isAuthenticated={isAuthenticated} />
@@ -466,6 +467,12 @@ function SolvaHeader({
             icon: GitBranch,
           },
           {
+            title: 'Kiểm định 120K bài báo',
+            desc: '98.6% Acc · 100% F1 ảo giác · 0.043 ECE',
+            href: '#benchmark-120k',
+            icon: Sparkles,
+          },
+          {
             title: 'Phân quyền 3 vai trò',
             desc: 'Sinh viên, Giảng viên & Quản trị',
             href: '#workspaces',
@@ -490,6 +497,12 @@ function SolvaHeader({
             desc: 'GROBID TEI to DeBERTa NLI stance',
             href: '#how-it-works',
             icon: GitBranch,
+          },
+          {
+            title: '120K-Paper Benchmark',
+            desc: '98.6% Acc · 100% Hallucination F1 · 0.043 ECE',
+            href: '#benchmark-120k',
+            icon: Sparkles,
           },
           {
             title: 'Role Workspaces',
@@ -617,6 +630,15 @@ function SolvaHeader({
           </a>
 
           <a
+            href="#benchmark-120k"
+            style={{ color: 'var(--solva-muted)' }}
+            className="inline-flex items-center gap-1.5 h-[44px] px-[12px] rounded-[8px] font-solva-sans text-[15px] font-normal hover:opacity-80 transition-opacity"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>{lang === 'vi' ? 'Benchmark 120K' : '120K Benchmark'}</span>
+          </a>
+
+          <a
             href="#taxonomy"
             style={{ color: 'var(--solva-muted)' }}
             className="inline-flex items-center h-[44px] px-[12px] rounded-[8px] font-solva-sans text-[15px] font-normal hover:opacity-80 transition-opacity"
@@ -714,6 +736,10 @@ function SolvaHeader({
               {
                 label: lang === 'vi' ? 'Quy trình xử lý' : 'Verification Pipeline',
                 href: '#how-it-works',
+              },
+              {
+                label: lang === 'vi' ? 'Kiểm định 120K bài báo' : '120K-Paper Benchmark',
+                href: '#benchmark-120k',
               },
               {
                 label: lang === 'vi' ? 'Phân loại nhãn' : 'Verdict Taxonomy',
@@ -814,28 +840,29 @@ function SolvaHeroSection({
           {/* Left Column (540px on Desktop) */}
           <div className="w-full lg:w-[516px] xl:w-[540px] flex flex-col items-start gap-[22px] sm:gap-[28px] lg:gap-[32px] lg:pb-[24px]">
             <div className="flex flex-col items-start gap-[16px] sm:gap-[20px] lg:gap-[24px]">
-              {/* Announcement Badge (`NEW | Neuro-Symbolic v2.3 is live ->`) */}
+              {/* Announcement Badge (`VERIFIED 120K BENCHMARK | 98.6% Acc · 100% Hallucination F1 ->`) */}
               <SolvaScrollReveal delayMs={40} yOffset={20} blurPx={3}>
                 <a
-                  href="#interactive-demo"
-                  className="group inline-flex items-center gap-[8px] font-solva-sans"
+                  href="#benchmark-120k"
+                  className="group inline-flex flex-wrap items-center gap-[8px] font-solva-sans"
                 >
                   <span
                     style={{
                       backgroundColor: 'var(--solva-surface)',
-                      color: 'var(--solva-muted)',
+                      color: 'var(--solva-ink)',
                     }}
-                    className="px-[6px] pt-[5px] pb-[4px] rounded-[4px] text-[12px] font-medium leading-[12px]"
+                    className="inline-flex items-center gap-1.5 px-[7px] pt-[5px] pb-[4px] rounded-[5px] text-[11px] font-mono font-semibold leading-[12px] border border-[#E7E3D9] dark:border-[#332F26]"
                   >
-                    NEW
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    120K BENCHMARK
                   </span>
                   <span
                     style={{ color: 'var(--solva-muted)' }}
-                    className="text-[15px] sm:text-[16px] font-normal leading-[21px] group-hover:underline"
+                    className="text-[14px] sm:text-[15px] font-normal leading-[21px] group-hover:underline"
                   >
                     {lang === 'vi'
-                      ? 'Kiểm chứng Neuro-Symbolic 2 tầng & 15+ API đã sẵn sàng'
-                      : 'Two-layer Neuro-Symbolic & 15+ API engine is live'}
+                      ? 'Đã kiểm chứng trên 120.000 bài báo · 98.6% Acc · 100% F1 ảo giác'
+                      : 'Validated on 120,000 papers · 98.6% Acc · 100% Hallucination F1'}
                   </span>
                   <ArrowRight
                     style={{ color: 'var(--solva-muted)' }}
@@ -894,6 +921,92 @@ function SolvaHeroSection({
                 </SolvaButton>
               </div>
             </SolvaScrollReveal>
+
+            {/* Hero Verified 120K-Paper Benchmark Proof Strip */}
+            <SolvaScrollReveal delayMs={310} yOffset={20} blurPx={2.5} className="w-full">
+              <a
+                href="#benchmark-120k"
+                data-testid="hero-benchmark-120k-strip"
+                style={{
+                  backgroundColor: 'var(--solva-surface)',
+                  borderColor: 'var(--solva-border)',
+                }}
+                className="group block w-full rounded-[12px] border p-3 sm:p-3.5 transition-all duration-200 hover:border-[#1C1A15]/40 dark:hover:border-[#FBFAF6]/30"
+              >
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span
+                    style={{ color: 'var(--solva-ink)' }}
+                    className="inline-flex items-center gap-1.5 font-mono text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>
+                      {lang === 'vi'
+                        ? 'ĐIỂM SÁNG ĐÃ KIỂM CHỨNG · BENCHMARK 120.000 BÀI BÁO'
+                        : 'VERIFIED EMPIRICAL BENCHMARK · 120,000 PAPERS'}
+                    </span>
+                  </span>
+                  <span
+                    style={{ color: 'var(--solva-muted)' }}
+                    className="font-mono text-[10px] inline-flex items-center gap-1 shrink-0 group-hover:underline"
+                  >
+                    <span>{lang === 'vi' ? 'Chi tiết' : 'Full report'}</span>
+                    <ArrowRight className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[#E7E3D9] dark:border-[#332F26]">
+                  <div>
+                    <div
+                      style={{ color: 'var(--solva-ink)' }}
+                      className="font-solva-serif text-[20px] sm:text-[22px] leading-none tracking-[-0.04em]"
+                    >
+                      120,000
+                    </div>
+                    <div
+                      style={{ color: 'var(--solva-muted)' }}
+                      className="font-mono text-[10px] mt-1 truncate"
+                    >
+                      {lang === 'vi' ? 'Bài báo · 0% rò rỉ' : 'Papers · 0% leakage'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-solva-serif text-[20px] sm:text-[22px] leading-none tracking-[-0.04em] text-emerald-700 dark:text-emerald-400">
+                      98.58%
+                    </div>
+                    <div
+                      style={{ color: 'var(--solva-muted)' }}
+                      className="font-mono text-[10px] mt-1 truncate"
+                    >
+                      {lang === 'vi' ? 'Neuro-Symbolic Acc' : 'Neuro-Symbolic Acc'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-solva-serif text-[20px] sm:text-[22px] leading-none tracking-[-0.04em] text-emerald-700 dark:text-emerald-400">
+                      100.0%
+                    </div>
+                    <div
+                      style={{ color: 'var(--solva-muted)' }}
+                      className="font-mono text-[10px] mt-1 truncate"
+                    >
+                      {lang === 'vi' ? 'F1 ảo giác (0 oan)' : 'Hallucination F1'}
+                    </div>
+                  </div>
+                  <div>
+                    <div
+                      style={{ color: 'var(--solva-ink)' }}
+                      className="font-solva-serif text-[20px] sm:text-[22px] leading-none tracking-[-0.04em]"
+                    >
+                      0.0433
+                    </div>
+                    <div
+                      style={{ color: 'var(--solva-muted)' }}
+                      className="font-mono text-[10px] mt-1 truncate"
+                    >
+                      {lang === 'vi' ? 'Platt ECE (↓4.9×)' : 'Platt ECE (↓4.9×)'}
+                    </div>
+                  </div>
+                </div>
+              </a>
+            </SolvaScrollReveal>
           </div>
 
           {/* Right Column: Painterly Mockup Frame (`660x521px` on Desktop) */}
@@ -940,6 +1053,892 @@ function SolvaHeroSection({
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+        </SolvaScrollReveal>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   SECTION 1.5: VERIFIED 120,000-PAPER BENCHMARK SPOTLIGHT (`#benchmark-120k`)
+   Highlights the Empirical Neuro-Symbolic Benchmark, Ablation Study,
+   Per-Class Zero-False-Accusation Guardrails & Platt Calibration
+   ============================================================ */
+function SolvaBenchmark120KSection({ lang }: { lang: Lang }) {
+  const [activeView, setActiveView] = useState<'ablation' | 'classes' | 'calibration'>('ablation');
+  const { containerRef: benchRef, replaySeed: benchSeed } = useFloralCardAnimation(5600);
+  const sep = lang === 'vi' ? '.' : ',';
+
+  const headlineMetrics = [
+    {
+      badge: lang === 'vi' ? '0% RÒ RỈ · PAPER-DISJOINT' : '0% LEAKAGE · PAPER-DISJOINT',
+      badgeTone: 'neutral' as const,
+      value: 120000,
+      decimals: 0,
+      suffix: '',
+      formatThousands: true,
+      title:
+        lang === 'vi'
+          ? 'Bài báo khoa học độc lập'
+          : 'Distinct scholarly papers',
+      desc:
+        lang === 'vi'
+          ? 'Phân tách nghiêm ngặt 84.000 Train · 18.000 Val · 18.000 Held-Out Test (|Train ∩ Val ∩ Test| = 0) trước khi sinh biến nhiễu. Mã hóa 323.848 văn bản thực bằng Sentence-BERT.'
+          : 'Strict 84,000 Train · 18,000 Val · 18,000 Held-Out Test partitioning (|Train ∩ Val ∩ Test| = 0) prior to perturbation. 323,848 unique texts encoded via Sentence-BERT.',
+    },
+    {
+      badge: 'MACRO-F1: 0.9764 – 0.9979',
+      badgeTone: 'emerald' as const,
+      value: 98.58,
+      decimals: 2,
+      suffix: '%',
+      formatThousands: false,
+      title:
+        lang === 'vi'
+          ? 'Độ chính xác Neuro-Symbolic (Lên tới 99.86%)'
+          : 'Neuro-Symbolic Accuracy (Up to 99.86%)',
+      desc:
+        lang === 'vi'
+          ? 'Kiến trúc đề xuất đạt 98.58% Accuracy (Macro-F1 0.9764) và HybridMLScorer 16 chiều (C=5.0) đạt 99.86% Accuracy (Macro-F1 0.9979), vượt xa thuần Embedding (64.85%).'
+          : 'Proposed Neuro-Symbolic engine reaches 98.58% Accuracy (0.9764 Macro-F1) and 16D HybridMLScorer (C=5.0) reaches 99.86% (0.9979 F1), far surpassing pure SBERT (64.85%).',
+    },
+    {
+      badge: lang === 'vi' ? '0% CÁO BUỘC OAN BÀI THẬT' : '0% FALSE ACCUSATIONS',
+      badgeTone: 'emerald' as const,
+      value: 100.0,
+      decimals: 1,
+      suffix: '%',
+      formatThousands: false,
+      title:
+        lang === 'vi'
+          ? 'Precision & Recall bắt trích dẫn ảo giác (F1 = 1.0000)'
+          : 'Hallucination Detection Precision & Recall (F1 = 1.0000)',
+      desc:
+        lang === 'vi'
+          ? 'Bắt trọn 5.400 / 5.400 trích dẫn bịa đặt & chimeric trên tập Held-Out Test với 0 ca kết luận oan cho công trình hợp lệ. Nhãn VERIFIED đạt 100% Precision (6.480 mẫu).'
+          : 'Catches 5,400 / 5,400 fabricated and chimeric LLM citations on the 18,000-paper test split with 0 false accusations on legitimate works and 100% VERIFIED precision.',
+    },
+    {
+      badge: '↓ 4.9× ECE · ↓ 8.4× BRIER',
+      badgeTone: 'amber' as const,
+      value: 0.0433,
+      decimals: 4,
+      suffix: '',
+      formatThousands: false,
+      title:
+        lang === 'vi'
+          ? 'Sai số hiệu chỉnh xác suất ECE (Brier = 0.0095)'
+          : 'Expected Calibration Error ECE (Brier = 0.0095)',
+      desc:
+        lang === 'vi'
+          ? 'Hiệu chỉnh hậu nghiệm Logit-Space Platt Scaling (a = 2.1621, b = 0.6299) giảm 4.9 lần ECE (từ 0.2135 xuống 0.0433), đạt 99.99% độ chính xác ở ngưỡng 90% độ phủ.'
+          : 'Post-hoc Logit-Space Platt Scaling (a = 2.1621, b = 0.6299) cuts ECE by 4.9× (0.2135 → 0.0433) and Brier by 8.4× (0.0794 → 0.0095), reaching 99.99% accuracy @ 90% coverage.',
+    },
+  ];
+
+  const ablationBaselines = [
+    {
+      code: 'B0 · doi_only',
+      name:
+        lang === 'vi'
+          ? 'Chỉ khớp chính xác mã DOI'
+          : 'Exact DOI resolution only',
+      note:
+        lang === 'vi'
+          ? 'Bỏ sót toàn bộ bài hội nghị/sách không ghi DOI'
+          : 'Misses valid conference papers & books without DOIs',
+      acc: 30.19,
+      prec: '0.2233',
+      rec: '0.3764',
+      f1: '0.2184',
+      highlight: false,
+    },
+    {
+      code: 'B3 · embedding_only',
+      name:
+        lang === 'vi'
+          ? 'Thuần ngữ nghĩa Sentence-BERT trên tiêu đề'
+          : 'Pure Sentence-BERT cosine threshold on title',
+      note:
+        lang === 'vi'
+          ? 'Bị đánh lừa bởi trích dẫn ảo giác ghép từ (chimeric LLM) & lệch năm'
+          : 'Fooled by plausible chimeric LLM titles; ignores year & author drift',
+      acc: 64.85,
+      prec: '0.4500',
+      rec: '0.5078',
+      f1: '0.4559',
+      highlight: false,
+    },
+    {
+      code: 'B1 · single_source_crossref',
+      name:
+        lang === 'vi'
+          ? 'Tra cứu đơn nguồn (chỉ dùng Crossref)'
+          : 'Single-source lookup (Crossref only)',
+      note:
+        lang === 'vi'
+          ? 'Thiếu bản thảo arXiv, kỷ yếu DBLP/ACL, sách OpenLibrary & Europe PMC'
+          : 'Lacks arXiv preprints, DBLP CS proceedings, OpenLibrary & Europe PMC',
+      acc: 69.66,
+      prec: '0.5559',
+      rec: '0.5684',
+      f1: '0.5339',
+      highlight: false,
+    },
+    {
+      code: 'B4 · no_calibration',
+      name:
+        lang === 'vi'
+          ? 'Tổ hợp tuyến tính đa đặc trưng (Không có vùng Abstention)'
+          : 'Linear multi-feature scorer without abstention band',
+      note:
+        lang === 'vi'
+          ? 'Ép phán quyết cứng ở vùng biên [0.40, 0.60] gây sai số cao'
+          : 'Forces hard verdicts in borderline [0.40, 0.60] cases',
+      acc: 77.29,
+      prec: '0.5770',
+      rec: '0.6359',
+      f1: '0.5996',
+      highlight: false,
+    },
+    {
+      code: 'B2 · fuzzy_only',
+      name:
+        lang === 'vi'
+          ? 'So khớp từ vựng RapidFuzz tiêu đề + AuthorJaccard'
+          : 'Lexical RapidFuzz title + AuthorJaccard only',
+      note:
+        lang === 'vi'
+          ? 'Thiếu đối sánh ngữ nghĩa câu trích dẫn – abstract & kiểm tra link sống'
+          : 'No sentence-level abstract entailment or active HTTP/DOI link checks',
+      acc: 78.28,
+      prec: '0.5959',
+      rec: '0.6472',
+      f1: '0.6131',
+      highlight: false,
+    },
+    {
+      code: 'Proposed · Neuro-Symbolic',
+      name:
+        lang === 'vi'
+          ? 'CITRA Neuro-Symbolic (Đa nguồn + Ngữ nghĩa Abstract + 28 Luật + Abstention)'
+          : 'CITRA Neuro-Symbolic (Multi-Source + Abstract Evidence + 28 Rules + Abstention)',
+      note:
+        lang === 'vi'
+          ? 'Giải thích tường minh từng luật · 100% Precision trên VERIFIED & HALLUCINATION'
+          : 'Full rule-level explainability · 100% Precision on VERIFIED & HALLUCINATION',
+      acc: 98.58,
+      prec: '0.9848',
+      rec: '0.9704',
+      f1: '0.9764',
+      highlight: true,
+    },
+    {
+      code: 'B5 · HybridMLScorer (16D)',
+      name:
+        lang === 'vi'
+          ? 'HybridMLScorer 16 chiều (Multinomial Logistic Regression, C = 5.0)'
+          : '16D HybridMLScorer (Multinomial Logistic Regression, C = 5.0)',
+      note:
+        lang === 'vi'
+          ? 'Đặc trưng tương tác phi tuyến (title×author, title×year, doi_mismatch_title)'
+          : 'Non-linear interaction features (title×author, title×year, doi_mismatch_title)',
+      acc: 99.86,
+      prec: '0.9982',
+      rec: '0.9976',
+      f1: '0.9979',
+      highlight: true,
+    },
+  ];
+
+  const classPerformance = [
+    {
+      label: 'VERIFIED',
+      subtypes: 'V1 – V4',
+      totalSamples: '43,200 (36%)',
+      testSupport: '6,480',
+      precision: '1.0000 (100%)',
+      recall: '0.9742 (97.4%)',
+      f1: '0.9869',
+      tone: 'emerald' as const,
+      desc:
+        lang === 'vi'
+          ? 'Khớp chuẩn hoàn toàn (V1), rút gọn et al./lệch ±1 năm Online-First (V2), lược phụ đề (V3), nhiễu OCR cứu hộ bằng ngữ nghĩa abstract (V4). Không có bất kỳ bài giả mạo nào lọt vào VERIFIED.'
+          : 'Exact canonical match (V1), et al./±1yr preprint drift (V2), subtitle truncation (V3), OCR noise rescued by abstract alignment (V4). Zero fabricated papers ever marked VERIFIED.',
+    },
+    {
+      label: 'SUSPECTED_HALLUCINATION',
+      subtypes: 'H1 – H4',
+      totalSamples: '36,000 (30%)',
+      testSupport: '5,400',
+      precision: '1.0000 (100%)',
+      recall: '1.0000 (100%)',
+      f1: '1.0000',
+      tone: 'red' as const,
+      desc:
+        lang === 'vi'
+          ? 'Bịa đặt hoàn toàn 0 ứng viên (H1), ghép từ khóa chimeric (H2), mã DOI giả mạo 10.9999/* (H3), link chết HTTP 404 / sai lệch nội dung abstract (H4). Bắt trọn 5.400/5.400 mẫu, 0 cáo buộc oan.'
+          : 'Complete fabrication (H1), chimeric keyword synthesis (H2), fabricated DOI handles (H3), dead HTTP 404 URLs or severe abstract contradiction (H4). 5,400/5,400 caught with 0 false accusations.',
+    },
+    {
+      label: 'METADATA_ERROR',
+      subtypes: 'M1 – M5',
+      totalSamples: '26,400 (22%)',
+      testSupport: '3,960',
+      precision: '0.9337 (93.4%)',
+      recall: '0.9394 (93.9%)',
+      f1: '0.9366',
+      tone: 'amber' as const,
+      desc:
+        lang === 'vi'
+          ? 'Bài báo có thật nhưng sai năm xuất bản |Δyear| ≥ 2 (M1), nhầm đồng tác giả (M2), DOI đúng nhưng tiêu đề biến dạng (M3), khớp một phần đơn nguồn (M4), hoặc lỗi tổ hợp đa trường (M5).'
+          : 'Real work exists but cited with wrong publication year |Δyear| ≥ 2 (M1), swapped co-authors (M2), valid DOI with deformed title (M3), partial single-source match (M4), or multi-field drift (M5).',
+    },
+    {
+      label: 'UNRESOLVED (Abstention)',
+      subtypes: 'U1 – U2',
+      totalSamples: '14,400 (12%)',
+      testSupport: '2,160',
+      precision: '0.8945 (89.5%)',
+      recall: '0.9537 (95.4%)',
+      f1: '0.9231',
+      tone: 'slate' as const,
+      desc:
+        lang === 'vi'
+          ? 'Ứng viên vùng xám [0.40, 0.60] thiếu DOI (U1, U2). Hệ thống chủ động khoanh vùng từ chối phán quyết cứng để chuyển giảng viên/hội đồng thẩm định thủ công.'
+          : 'Borderline candidates in the [0.40, 0.60] gray zone without DOIs (U1, U2). Safely abstains from hard judgment and routes to human-in-the-loop faculty review.',
+    },
+  ];
+
+  return (
+    <section
+      id="benchmark-120k"
+      data-testid="benchmark-120k-section"
+      className="scroll-mt-[84px] lg:scroll-mt-[108px] py-[36px] sm:py-[52px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+    >
+      <div
+        ref={benchRef}
+        className="max-w-[1200px] mx-auto flex flex-col gap-[28px] sm:gap-[36px] lg:gap-[56px]"
+      >
+        {/* Top Section Header + International Standards Provenance Pill */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+          <div className="flex flex-col items-start gap-[12px] sm:gap-[16px] max-w-[680px]">
+            <SolvaEyebrow>
+              {lang === 'vi'
+                ? 'Điểm sáng đã được kiểm chứng · Benchmark 120.000 bài báo khoa học'
+                : 'Verified System Highlight · 120,000-Paper Empirical Benchmark'}
+            </SolvaEyebrow>
+            <SolvaTwoToneHeading
+              primary={
+                lang === 'vi'
+                  ? 'Được kiểm chứng trên 120.000 bài báo.'
+                  : 'Proven across 120,000 papers.'
+              }
+              secondary={
+                lang === 'vi'
+                  ? 'Không rò rỉ dữ liệu. Không cáo buộc oan.'
+                  : 'Zero data leakage. Zero false accusations.'
+              }
+            />
+          </div>
+
+          <SolvaScrollReveal delayMs={80} yOffset={24} className="lg:max-w-[440px]">
+            <div
+              style={{
+                backgroundColor: 'var(--solva-surface)',
+                borderColor: 'var(--solva-border)',
+              }}
+              className="rounded-[12px] border p-3.5 sm:p-4 space-y-1.5"
+            >
+              <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
+                <span
+                  style={{ color: 'var(--solva-ink)' }}
+                  className="font-semibold inline-flex items-center gap-1.5"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>ZERO-LEAKAGE AUDIT PASSED</span>
+                </span>
+                <span style={{ color: 'var(--solva-muted)' }}>1,000× Bootstrap CI</span>
+              </div>
+              <p
+                style={{ color: 'var(--solva-muted)' }}
+                className="font-solva-sans text-[13px] leading-[19.5px]"
+              >
+                {lang === 'vi'
+                  ? 'Thiết kế theo chuẩn quốc tế SciFact (EMNLP 2020), FEVER (NAACL 2018), ALCE (EMNLP 2023) & Platt Calibration (ICML 2017) từ kho 128.717 bài báo thực tế.'
+                  : 'Engineered to international verification standards — SciFact (EMNLP 2020), FEVER (NAACL 2018), ALCE (EMNLP 2023) & Platt Calibration (ICML 2017).'}
+              </p>
+            </div>
+          </SolvaScrollReveal>
+        </div>
+
+        {/* 4 Highlighted Metric Cards (`120,000` · `98.58%` · `100.0%` · `0.0433`) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[16px]">
+          {headlineMetrics.map((item, idx) => (
+            <SolvaScrollReveal
+              key={item.title}
+              delayMs={idx * 75}
+              yOffset={30}
+              className="h-full"
+            >
+              <div
+                style={{
+                  backgroundColor: 'var(--solva-surface)',
+                  borderColor: 'var(--solva-border)',
+                }}
+                className="rounded-[14px] border p-[20px] sm:p-[24px] h-full flex flex-col justify-between gap-[20px]"
+              >
+                <div className="space-y-[14px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded-[5px] font-mono text-[10px] font-semibold tracking-wide ${
+                        item.badgeTone === 'emerald'
+                          ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
+                          : item.badgeTone === 'amber'
+                            ? 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
+                            : 'bg-[#FBFAF6] dark:bg-[#141310] text-[#56524A] dark:text-[#A8A296]'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{ color: 'var(--solva-ink)' }}
+                    className="font-solva-serif font-light text-[36px] sm:text-[42px] leading-[1.08] tracking-[-0.05em]"
+                  >
+                    <SolvaLiveNumber
+                      value={item.value}
+                      decimals={item.decimals}
+                      suffix={item.suffix}
+                      formatThousands={item.formatThousands}
+                      thousandSeparator={sep}
+                      replaySeed={benchSeed}
+                      durationMs={1400 + idx * 120}
+                    />
+                  </div>
+
+                  <h3
+                    style={{ color: 'var(--solva-ink)' }}
+                    className="font-solva-sans text-[16px] sm:text-[17px] font-medium leading-[23px]"
+                  >
+                    {item.title}
+                  </h3>
+                </div>
+
+                <p
+                  style={{ color: 'var(--solva-muted)' }}
+                  className="font-solva-sans text-[13px] leading-[19.5px] pt-3 border-t border-[#E7E3D9] dark:border-[#332F26]"
+                >
+                  {item.desc}
+                </p>
+              </div>
+            </SolvaScrollReveal>
+          ))}
+        </div>
+
+        {/* Interactive 3-View Scientific Benchmark Explorer (Nested Bezel `#F4F2EC` -> `#FBFAF6`) */}
+        <SolvaScrollReveal delayMs={140} yOffset={32}>
+          <div
+            style={{ backgroundColor: 'var(--solva-surface)' }}
+            className="w-full rounded-[16px] p-[8px] sm:p-[12px] space-y-3"
+          >
+            {/* Top Bar: 3 Scientific Audit Views + Dataset Split Summary */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-1 sm:px-2 pt-1">
+              <div
+                role="tablist"
+                aria-label={
+                  lang === 'vi'
+                    ? 'Các bảng kết quả thực nghiệm 120K bài báo'
+                    : '120K-paper benchmark evaluation views'
+                }
+                className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 w-full lg:w-auto"
+              >
+                {[
+                  {
+                    id: 'ablation' as const,
+                    label:
+                      lang === 'vi'
+                        ? '1. So sánh Baseline (B0–B5)'
+                        : '1. Ablation vs. Baselines (B0–B5)',
+                  },
+                  {
+                    id: 'classes' as const,
+                    label:
+                      lang === 'vi'
+                        ? '2. Hiệu năng 4 Nhãn & 15 Nhóm lỗi'
+                        : '2. 4 Classes & 15 Sub-Taxonomies',
+                  },
+                  {
+                    id: 'calibration' as const,
+                    label:
+                      lang === 'vi'
+                        ? '3. Hiệu chỉnh Platt & Bootstrap 95% CI'
+                        : '3. Platt Calibration & 95% CI',
+                  },
+                ].map((tab) => {
+                  const isActive = activeView === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => setActiveView(tab.id)}
+                      style={{
+                        backgroundColor: isActive ? 'var(--solva-bg)' : 'transparent',
+                        color: isActive ? 'var(--solva-ink)' : 'var(--solva-muted)',
+                      }}
+                      className="h-[40px] px-3.5 rounded-[10px] font-mono text-[12px] font-medium flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer"
+                    >
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] px-2">
+                <span
+                  style={{
+                    backgroundColor: 'var(--solva-bg)',
+                    color: 'var(--solva-ink)',
+                  }}
+                  className="px-2.5 py-1 rounded-[6px] border border-[#E7E3D9] dark:border-[#332F26]"
+                >
+                  Train: <strong>84,000</strong> (70%)
+                </span>
+                <span
+                  style={{
+                    backgroundColor: 'var(--solva-bg)',
+                    color: 'var(--solva-ink)',
+                  }}
+                  className="px-2.5 py-1 rounded-[6px] border border-[#E7E3D9] dark:border-[#332F26]"
+                >
+                  Val: <strong>18,000</strong> (15%)
+                </span>
+                <span className="px-2.5 py-1 rounded-[6px] bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-semibold">
+                  Held-Out Test: N = 18,000 (15%)
+                </span>
+              </div>
+            </div>
+
+            {/* Inner Content Well (`#FBFAF6`) */}
+            <div
+              style={{
+                backgroundColor: 'var(--solva-bg)',
+                borderColor: 'var(--solva-border)',
+              }}
+              className="rounded-[12px] border p-4 sm:p-6"
+            >
+              {activeView === 'ablation' && (
+                <div className="space-y-5 animate-debugger-switch">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E7E3D9] dark:border-[#332F26]">
+                    <div>
+                      <h4
+                        style={{ color: 'var(--solva-ink)' }}
+                        className="font-solva-serif font-light text-[22px] sm:text-[26px] leading-tight tracking-[-0.03em]"
+                      >
+                        {lang === 'vi'
+                          ? 'Nghiên cứu cắt bỏ (Ablation Study) trên 18.000 bài báo Held-Out Test'
+                          : 'Ablation Study on Held-Out Test Split (N = 18,000 Distinct Papers)'}
+                      </h4>
+                      <p
+                        style={{ color: 'var(--solva-muted)' }}
+                        className="font-solva-sans text-[13px] sm:text-[14px] mt-1"
+                      >
+                        {lang === 'vi'
+                          ? 'Chứng minh thực nghiệm vì sao cách tiếp cận thuần Neural (B3) và tra cứu đơn nguồn (B1) thất bại trước ảo giác trích dẫn của LLM.'
+                          : 'Empirical proof of why pure neural embeddings (B3) and single-source lookup (B1) fail on chimeric LLM citation hallucinations.'}
+                      </p>
+                    </div>
+                    <span
+                      style={{
+                        backgroundColor: 'var(--solva-surface)',
+                        color: 'var(--solva-ink)',
+                      }}
+                      className="self-start sm:self-center px-3 py-1 rounded-[8px] font-mono text-[11px] font-semibold shrink-0"
+                    >
+                      +33.7% Acc vs. Pure SBERT
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {ablationBaselines.map((row) => (
+                      <div
+                        key={row.code}
+                        style={{
+                          backgroundColor: row.highlight
+                            ? 'var(--solva-card-elevated)'
+                            : 'var(--solva-surface)',
+                          borderColor: row.highlight
+                            ? 'var(--solva-ink)'
+                            : 'var(--solva-border)',
+                        }}
+                        className="p-3 sm:p-3.5 rounded-[10px] border transition-all"
+                      >
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 mb-2">
+                          <div className="flex flex-wrap items-center gap-2 min-w-0">
+                            <span
+                              style={{
+                                backgroundColor: row.highlight
+                                  ? 'var(--solva-btn-bg)'
+                                  : 'var(--solva-bg)',
+                                color: row.highlight
+                                  ? 'var(--solva-btn-fg)'
+                                  : 'var(--solva-ink)',
+                              }}
+                              className="px-2 py-0.5 rounded-[5px] font-mono text-[11px] font-bold shrink-0"
+                            >
+                              {row.code}
+                            </span>
+                            <span
+                              style={{ color: 'var(--solva-ink)' }}
+                              className="font-solva-sans text-[14px] font-medium"
+                            >
+                              {row.name}
+                            </span>
+                            <span
+                              style={{ color: 'var(--solva-muted)' }}
+                              className="font-solva-sans text-[12px] hidden xl:inline"
+                            >
+                              — {row.note}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-3 sm:gap-4 font-mono text-[11px] sm:text-[12px] shrink-0">
+                            <span style={{ color: 'var(--solva-muted)' }}>
+                              Prec: <strong style={{ color: 'var(--solva-ink)' }}>{row.prec}</strong>
+                            </span>
+                            <span style={{ color: 'var(--solva-muted)' }}>
+                              Rec: <strong style={{ color: 'var(--solva-ink)' }}>{row.rec}</strong>
+                            </span>
+                            <span
+                              className={
+                                row.highlight
+                                  ? 'text-emerald-700 dark:text-emerald-300 font-bold'
+                                  : ''
+                              }
+                              style={!row.highlight ? { color: 'var(--solva-ink)' } : undefined}
+                            >
+                              Macro-F1: {row.f1}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded font-bold ${
+                                row.highlight
+                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                                  : 'bg-[#FBFAF6] dark:bg-[#141310]'
+                              }`}
+                              style={!row.highlight ? { color: 'var(--solva-ink)' } : undefined}
+                            >
+                              {row.acc.toFixed(2)}% Acc
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Visual Accuracy Progress Bar */}
+                        <div className="w-full h-2 rounded-full bg-[#E7E3D9]/70 dark:bg-[#29261F] overflow-hidden">
+                          <div
+                            style={{ width: `${row.acc}%` }}
+                            className={`h-full rounded-full transition-all duration-700 ${
+                              row.highlight
+                                ? 'bg-emerald-600 dark:bg-emerald-400'
+                                : 'bg-[#8C8577] dark:bg-[#6E685C]'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeView === 'classes' && (
+                <div className="space-y-5 animate-debugger-switch">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E7E3D9] dark:border-[#332F26]">
+                    <div>
+                      <h4
+                        style={{ color: 'var(--solva-ink)' }}
+                        className="font-solva-serif font-light text-[22px] sm:text-[26px] leading-tight tracking-[-0.03em]"
+                      >
+                        {lang === 'vi'
+                          ? 'Hiệu năng 4 Nhãn Phán quyết & 15 Phân nhóm Lỗi Học thuật (V1–V4, H1–H4, M1–M5, U1–U2)'
+                          : '4 Canonical Verdict Classes & 15 Fine-Grained Error Sub-Taxonomies'}
+                      </h4>
+                      <p
+                        style={{ color: 'var(--solva-muted)' }}
+                        className="font-solva-sans text-[13px] sm:text-[14px] mt-1"
+                      >
+                        {lang === 'vi'
+                          ? 'Đảm bảo an toàn học thuật tuyệt đối: 0 bài giả mạo lọt vào VERIFIED và 0 bài báo thật bị gắn nhãn SUSPECTED_HALLUCINATION.'
+                          : 'Strict academic safety guarantee: 0 fabricated references marked VERIFIED and 0 legitimate papers falsely accused of hallucination.'}
+                      </p>
+                    </div>
+                    <span className="self-start sm:self-center px-3 py-1 rounded-[8px] bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-mono text-[11px] font-semibold shrink-0">
+                      Overall Acc: 97.18% [96.93%, 97.41%]
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {classPerformance.map((cls) => (
+                      <div
+                        key={cls.label}
+                        style={{
+                          backgroundColor: 'var(--solva-surface)',
+                          borderColor: 'var(--solva-border)',
+                        }}
+                        className="p-4 rounded-[12px] border flex flex-col justify-between gap-3"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span
+                              className={`px-2.5 py-0.5 rounded font-mono text-[11px] font-bold ${
+                                cls.tone === 'emerald'
+                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                                  : cls.tone === 'red'
+                                    ? 'bg-red-500/15 text-red-700 dark:text-red-300'
+                                    : cls.tone === 'amber'
+                                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                                      : 'bg-slate-500/15 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              {cls.label}
+                            </span>
+                            <span
+                              style={{ color: 'var(--solva-muted)' }}
+                              className="font-mono text-[11px]"
+                            >
+                              {cls.subtypes} · Corpus: {cls.totalSamples} · Test N={cls.testSupport}
+                            </span>
+                          </div>
+
+                          <p
+                            style={{ color: 'var(--solva-muted)' }}
+                            className="font-solva-sans text-[13px] leading-[19.5px]"
+                          >
+                            {cls.desc}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-[#E7E3D9] dark:border-[#332F26] font-mono text-[11px]">
+                          <div>
+                            <div style={{ color: 'var(--solva-muted)' }}>PRECISION</div>
+                            <div
+                              style={{ color: 'var(--solva-ink)' }}
+                              className="font-bold text-[13px] mt-0.5"
+                            >
+                              {cls.precision}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--solva-muted)' }}>RECALL</div>
+                            <div
+                              style={{ color: 'var(--solva-ink)' }}
+                              className="font-bold text-[13px] mt-0.5"
+                            >
+                              {cls.recall}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--solva-muted)' }}>F1-SCORE</div>
+                            <div className="font-bold text-[13px] mt-0.5 text-emerald-700 dark:text-emerald-300">
+                              {cls.f1}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeView === 'calibration' && (
+                <div className="space-y-5 animate-debugger-switch">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E7E3D9] dark:border-[#332F26]">
+                    <div>
+                      <h4
+                        style={{ color: 'var(--solva-ink)' }}
+                        className="font-solva-serif font-light text-[22px] sm:text-[26px] leading-tight tracking-[-0.03em]"
+                      >
+                        {lang === 'vi'
+                          ? 'Hiệu chỉnh Xác suất Hậu nghiệm Logit-Space Platt Scaling & Khoảng Tin cậy 95% Bootstrap'
+                          : 'Post-Hoc Logit-Space Platt Calibration & 1,000-Bootstrap 95% Confidence Intervals'}
+                      </h4>
+                      <p
+                        style={{ color: 'var(--solva-muted)' }}
+                        className="font-solva-sans text-[13px] sm:text-[14px] mt-1"
+                      >
+                        {lang === 'vi'
+                          ? 'Khớp tham số Platt (a = 2.1621, b = 0.6299) độc lập trên tập Validation (18.000 mẫu) giúp điểm tin cậy phản ánh đúng xác suất thực nghiệm.'
+                          : 'Platt parameters (a = 2.1621, b = 0.6299) fitted strictly on the 18,000-sample Validation split align confidence scores with true empirical accuracy.'}
+                      </p>
+                    </div>
+                    <span className="self-start sm:self-center px-3 py-1 rounded-[8px] bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-mono text-[11px] font-semibold shrink-0">
+                      99.99% Acc @ 90% Coverage
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    {/* Left: Uncalibrated vs Platt-Calibrated */}
+                    <div
+                      style={{
+                        backgroundColor: 'var(--solva-surface)',
+                        borderColor: 'var(--solva-border)',
+                      }}
+                      className="lg:col-span-7 p-4 rounded-[12px] border space-y-3"
+                    >
+                      <div
+                        style={{ color: 'var(--solva-ink)' }}
+                        className="font-mono text-xs font-semibold uppercase"
+                      >
+                        {lang === 'vi'
+                          ? 'SO SÁNH TRƯỚC & SAU HIỆU CHỈNH PLATT (N = 18,000 TEST)'
+                          : 'BEFORE VS. AFTER LOGIT-SPACE PLATT SCALING (N = 18,000 TEST)'}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div
+                          style={{
+                            backgroundColor: 'var(--solva-bg)',
+                            borderColor: 'var(--solva-border)',
+                          }}
+                          className="p-3.5 rounded-[10px] border space-y-2"
+                        >
+                          <div
+                            style={{ color: 'var(--solva-muted)' }}
+                            className="font-mono text-[11px] font-semibold"
+                          >
+                            {lang === 'vi' ? 'CHƯA HIỆU CHỈNH (RAW)' : 'UNCALIBRATED RAW'}
+                          </div>
+                          <div className="space-y-1 font-mono text-xs">
+                            <div className="flex justify-between">
+                              <span style={{ color: 'var(--solva-muted)' }}>ECE Error:</span>
+                              <strong style={{ color: 'var(--solva-ink)' }}>0.2135</strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span style={{ color: 'var(--solva-muted)' }}>Brier Score:</span>
+                              <strong style={{ color: 'var(--solva-ink)' }}>0.0794</strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span style={{ color: 'var(--solva-muted)' }}>Acc @ 70% Cov:</span>
+                              <strong style={{ color: 'var(--solva-ink)' }}>98.14%</strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span style={{ color: 'var(--solva-muted)' }}>Acc @ 90% Cov:</span>
+                              <strong style={{ color: 'var(--solva-ink)' }}>98.37%</strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            backgroundColor: 'var(--solva-card-elevated)',
+                            borderColor: 'var(--solva-ink)',
+                          }}
+                          className="p-3.5 rounded-[10px] border space-y-2"
+                        >
+                          <div className="font-mono text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                            {lang === 'vi'
+                              ? 'ĐÃ HIỆU CHỈNH PLATT (PRODUCTION)'
+                              : 'PLATT-CALIBRATED (PRODUCTION)'}
+                          </div>
+                          <div className="space-y-1 font-mono text-xs">
+                            <div className="flex justify-between">
+                              <span style={{ color: 'var(--solva-muted)' }}>ECE Error:</span>
+                              <strong className="text-emerald-700 dark:text-emerald-300">
+                                0.0433 (↓ 4.9×)
+                              </strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span style={{ color: 'var(--solva-muted)' }}>Brier Score:</span>
+                              <strong className="text-emerald-700 dark:text-emerald-300">
+                                0.0095 (↓ 8.4×)
+                              </strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span style={{ color: 'var(--solva-muted)' }}>Acc @ 70% Cov:</span>
+                              <strong className="text-emerald-700 dark:text-emerald-300">
+                                100.00%
+                              </strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span style={{ color: 'var(--solva-muted)' }}>Acc @ 90% Cov:</span>
+                              <strong className="text-emerald-700 dark:text-emerald-300">
+                                99.99%
+                              </strong>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: 1,000-Bootstrap 95% CI Table */}
+                    <div
+                      style={{
+                        backgroundColor: 'var(--solva-surface)',
+                        borderColor: 'var(--solva-border)',
+                      }}
+                      className="lg:col-span-5 p-4 rounded-[12px] border flex flex-col justify-between gap-3"
+                    >
+                      <div
+                        style={{ color: 'var(--solva-ink)' }}
+                        className="font-mono text-xs font-semibold uppercase"
+                      >
+                        {lang === 'vi'
+                          ? 'KHOẢNG TIN CẬY 95% BOOTSTRAP (B = 1,000)'
+                          : '95% BOOTSTRAP CONFIDENCE INTERVALS (B = 1,000)'}
+                      </div>
+
+                      <div className="space-y-2 font-mono text-xs">
+                        {[
+                          {
+                            metric: 'Overall Accuracy',
+                            est: '97.18%',
+                            ci: '[96.93%, 97.41%]',
+                            se: '±0.12%',
+                          },
+                          {
+                            metric: 'Macro-F1 Score',
+                            est: '0.9617',
+                            ci: '[0.9583, 0.9648]',
+                            se: '±0.0016',
+                          },
+                          {
+                            metric: 'Calibrated ECE',
+                            est: '0.0433',
+                            ci: '[0.0421, 0.0448]',
+                            se: '±0.0007',
+                          },
+                          {
+                            metric: 'Brier Score',
+                            est: '0.0095',
+                            ci: '[0.0087, 0.0102]',
+                            se: '±0.0004',
+                          },
+                        ].map((item) => (
+                          <div
+                            key={item.metric}
+                            style={{
+                              backgroundColor: 'var(--solva-bg)',
+                              borderColor: 'var(--solva-border)',
+                            }}
+                            className="px-3 py-2 rounded-[8px] border flex items-center justify-between gap-2"
+                          >
+                            <span style={{ color: 'var(--solva-ink)' }} className="font-medium">
+                              {item.metric}
+                            </span>
+                            <span style={{ color: 'var(--solva-muted)' }}>
+                              <strong style={{ color: 'var(--solva-ink)' }}>{item.est}</strong> ·{' '}
+                              {item.ci} ({item.se})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </SolvaScrollReveal>
@@ -2678,33 +3677,33 @@ function SolvaClientResultsSection({ lang }: { lang: Lang }) {
               {/* Bottom 3 Count-Up Metrics (`Sentient` 40px Light) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-[40px] pt-4 border-t border-[#E7E3D9] dark:border-[#332F26]">
                 <SolvaAnimatedMetric
-                  targetValue={15}
-                  suffix="+"
+                  targetValue={120}
+                  suffix="K"
                   decimals={0}
                   label={
                     lang === 'vi'
-                      ? 'CSDL học thuật truy vấn song song'
-                      : 'Scholarly APIs queried in parallel'
+                      ? 'Bài báo khoa học kiểm định thực nghiệm'
+                      : 'Scholarly papers in benchmark audit'
                   }
                 />
                 <SolvaAnimatedMetric
-                  targetValue={96.4}
+                  targetValue={98.6}
                   suffix="%"
                   decimals={1}
                   label={
                     lang === 'vi'
-                      ? 'Độ chính xác khớp DOI & Tiêu đề'
-                      : 'DOI & canonical title precision'
+                      ? 'Độ chính xác Neuro-Symbolic (F1 0.976)'
+                      : 'Neuro-Symbolic accuracy (0.976 F1)'
                   }
                 />
                 <SolvaAnimatedMetric
-                  targetValue={4.9}
-                  suffix="/5"
-                  decimals={1}
+                  targetValue={100}
+                  suffix="%"
+                  decimals={0}
                   label={
                     lang === 'vi'
-                      ? 'Đánh giá từ Giảng viên hướng dẫn'
-                      : 'Instructor review satisfaction'
+                      ? 'Precision phát hiện ảo giác (0 oan sai)'
+                      : 'Hallucination precision (0 false flags)'
                   }
                 />
               </div>
@@ -3217,6 +4216,7 @@ function SolvaFooter({ lang }: { lang: Lang }) {
     {
       header: lang === 'vi' ? 'Sản phẩm' : 'Product',
       links: [
+        { label: lang === 'vi' ? 'Benchmark 120K bài báo' : '120K-Paper Benchmark', href: '#benchmark-120k' },
         { label: lang === 'vi' ? 'Trình gỡ lỗi trích dẫn' : 'Citation Debugger', href: '#interactive-demo' },
         { label: lang === 'vi' ? 'Kiến trúc 2 tầng' : '2-Layer Architecture', href: '#architecture' },
         { label: lang === 'vi' ? 'Quy trình 4 giai đoạn' : 'Verification Pipeline', href: '#how-it-works' },

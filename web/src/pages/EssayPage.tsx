@@ -1011,9 +1011,9 @@ function enrichVerdictItem(
   if (!matchedRef) {
     matchedRef = references.find(
       (r) =>
-        r.raw_text.trim() === verdict.citation_raw.trim() ||
+        (r.raw_text ?? '').trim() === (verdict.citation_raw ?? '').trim() ||
         (r.title &&
-          verdict.citation_raw.toLowerCase().includes(r.title.toLowerCase().slice(0, 35)))
+          (verdict.citation_raw ?? '').toLowerCase().includes(r.title.toLowerCase().slice(0, 35)))
     );
   }
 
@@ -1023,9 +1023,9 @@ function enrichVerdictItem(
       (refId &&
         (c.citation_link?.reference_id === refId ||
           c.citation_links?.some((l) => l.reference_id === refId))) ||
-      c.raw_text.trim() === verdict.citation_raw.trim() ||
+      (c.raw_text ?? '').trim() === (verdict.citation_raw ?? '').trim() ||
       (matchedRef?.authors?.[0] &&
-        c.raw_text.toLowerCase().includes(matchedRef.authors[0].split(',')[0].toLowerCase()))
+        (c.raw_text ?? '').toLowerCase().includes(matchedRef.authors[0].split(',')[0].toLowerCase()))
   );
 
   const citedDoi = matchedRef?.doi || parsedFallback.doi || '—';
@@ -2124,10 +2124,10 @@ export function EssayPage() {
             /* Split-Pane Debugger Body */
             <div className="grid lg:grid-cols-12">
               {/* Left Pane: Extracted Citations Queue (5 cols) */}
-              <div className="lg:col-span-5 min-w-0 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/50 p-4 sm:p-5 flex flex-col justify-between">
-                <div className="min-w-0">
+              <div className="lg:col-span-5 min-w-0 lg:relative lg:min-h-[680px] border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/50">
+                <div className="lg:absolute lg:inset-0 p-4 sm:p-5 flex flex-col min-w-0">
                   {/* Search & Verdict Filter Chips */}
-                  <div className="space-y-2 mb-3.5">
+                  <div className="space-y-2 mb-3.5 shrink-0">
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
                         <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -2181,7 +2181,7 @@ export function EssayPage() {
 
                   {/* Clickable Citation Cards List */}
                   <div
-                    className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1"
+                    className="space-y-2.5 min-h-0 max-h-[440px] lg:max-h-none overflow-y-auto pr-1"
                     role="listbox"
                     aria-label="Extracted Citations"
                   >
@@ -2277,44 +2277,44 @@ export function EssayPage() {
                       );
                     })}
                   </div>
-                </div>
 
-                {/* Document Context Snippet Box */}
-                {activeItem && (
-                  <div className="mt-5 p-3.5 rounded-xl border bg-slate-100/80 dark:bg-slate-900 border-slate-200/80 dark:border-slate-800">
-                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400 mb-1.5">
-                      <span
-                        className={
-                          activeItem.verdict.label === 'suspected_hallucination' ||
-                          activeItem.verdict.label === 'metadata_error'
-                            ? 'text-red-600 dark:text-red-400 font-bold'
-                            : undefined
-                        }
-                      >
-                        {isUser
-                          ? lang === 'vi'
-                            ? `NGỮ CẢNH TRONG BÀI (${activeItem.pageLabel})`
-                            : `IN-TEXT CONTEXT (${activeItem.pageLabel})`
-                          : `MANUSCRIPT CONTEXT (${activeItem.pageLabel})`}
-                      </span>
-                      {!isUser && <span>GROBID TEI-XML</span>}
+                  {/* Document Context Snippet Box */}
+                  {activeItem && (
+                    <div className="mt-4 shrink-0 p-3.5 rounded-xl border bg-slate-100/80 dark:bg-slate-900 border-slate-200/80 dark:border-slate-800">
+                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400 mb-1.5">
+                        <span
+                          className={
+                            activeItem.verdict.label === 'suspected_hallucination' ||
+                            activeItem.verdict.label === 'metadata_error'
+                              ? 'text-red-600 dark:text-red-400 font-bold'
+                              : undefined
+                          }
+                        >
+                          {isUser
+                            ? lang === 'vi'
+                              ? `NGỮ CẢNH TRONG BÀI (${activeItem.pageLabel})`
+                              : `IN-TEXT CONTEXT (${activeItem.pageLabel})`
+                            : `MANUSCRIPT CONTEXT (${activeItem.pageLabel})`}
+                        </span>
+                        {!isUser && <span>GROBID TEI-XML</span>}
+                      </div>
+                      <p className="document-content text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-4 break-words [overflow-wrap:anywhere]">
+                        {activeItem.contextBefore}
+                        <mark
+                          className={`bg-transparent font-bold ${
+                            activeItem.verdict.label === 'suspected_hallucination' ||
+                            activeItem.verdict.label === 'metadata_error'
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-indigo-600 dark:text-indigo-400'
+                          }`}
+                        >
+                          {activeItem.contextHighlight}
+                        </mark>
+                        {activeItem.contextAfter}
+                      </p>
                     </div>
-                    <p className="document-content text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-4 break-words [overflow-wrap:anywhere]">
-                      {activeItem.contextBefore}
-                      <mark
-                        className={`bg-transparent font-bold ${
-                          activeItem.verdict.label === 'suspected_hallucination' ||
-                          activeItem.verdict.label === 'metadata_error'
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-indigo-600 dark:text-indigo-400'
-                        }`}
-                      >
-                        {activeItem.contextHighlight}
-                      </mark>
-                      {activeItem.contextAfter}
-                    </p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* Right Pane: Reference Inspector & Symbolic Trace (7 cols) */}
@@ -2322,8 +2322,8 @@ export function EssayPage() {
                 <div className="lg:col-span-7 min-w-0 p-4 sm:p-6 bg-white dark:bg-slate-950 flex flex-col justify-between">
                   <div className="min-w-0">
                     {/* Inspector Header */}
-                    <div className="flex flex-wrap items-start justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-                      <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+                      <div className="min-w-[200px] flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           {selectedCitationId !== null ? (
                             <h4 className="font-mono text-xs text-slate-400">
@@ -2366,7 +2366,7 @@ export function EssayPage() {
                         </h3>
                       </div>
 
-                      <div className="flex items-center gap-2 flex-wrap shrink-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0 max-w-full">
                         <span
                           className={`verdict-badge ${activeItem.verdictBadgeClass} text-xs px-3 py-1 font-mono`}
                         >
@@ -2508,8 +2508,8 @@ export function EssayPage() {
                       {/* TAB 1: Side-by-side Metadata Diff */}
                       <TabsContent value="diff" className="mt-4">
                         <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                          <table className="w-full block sm:table sm:table-fixed text-left border-collapse">
-                            <thead className="hidden sm:table-header-group">
+                          <table className="w-full block sm:table sm:table-fixed lg:block xl:table xl:table-fixed text-left border-collapse">
+                            <thead className="hidden sm:table-header-group lg:hidden xl:table-header-group">
                               <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-[11px] font-mono uppercase text-slate-500 dark:text-slate-400">
                                 <th className="py-2.5 px-3 w-[84px]">Field</th>
                                 <th className="py-2.5 px-3">Cited in Manuscript</th>
@@ -2517,7 +2517,7 @@ export function EssayPage() {
                                 <th className="py-2.5 px-3 w-[124px] text-right">Status</th>
                               </tr>
                             </thead>
-                            <tbody className="block sm:table-row-group divide-y divide-slate-200/70 dark:divide-slate-800 text-xs">
+                            <tbody className="block sm:table-row-group lg:block xl:table-row-group divide-y divide-slate-200/70 dark:divide-slate-800 text-xs">
                               {(
                                 [
                                   ['Title', 'title'],
@@ -2530,16 +2530,16 @@ export function EssayPage() {
                               ).map(([label, key]) => (
                                 <tr
                                   key={key}
-                                  className="flex flex-col sm:table-row p-3 sm:p-0 gap-1.5 sm:gap-0 hover:bg-slate-50/70 dark:hover:bg-slate-900/40"
+                                  className="flex flex-col sm:table-row lg:flex lg:flex-col xl:table-row p-3 sm:p-0 lg:p-3 xl:p-0 gap-1.5 sm:gap-0 lg:gap-1.5 xl:gap-0 hover:bg-slate-50/70 dark:hover:bg-slate-900/40"
                                 >
-                                  <td className="py-0.5 sm:py-2.5 px-0 sm:px-3 font-mono font-semibold sm:font-medium text-slate-500 dark:text-slate-400 align-top flex items-center justify-between sm:table-cell">
+                                  <td className="py-0.5 sm:py-2.5 lg:py-0.5 xl:py-2.5 px-0 sm:px-3 lg:px-0 xl:px-3 font-mono font-semibold sm:font-medium lg:font-semibold xl:font-medium text-slate-500 dark:text-slate-400 align-top flex items-center justify-between sm:table-cell lg:flex xl:table-cell">
                                     <span>{label}</span>
-                                    <span className="sm:hidden">
+                                    <span className="sm:hidden lg:inline-flex xl:hidden">
                                       {renderFieldStatusBadge(activeItem.fieldStatus[key])}
                                     </span>
                                   </td>
-                                  <td className="py-0.5 sm:py-2.5 px-0 sm:px-3 text-slate-800 dark:text-slate-200 font-medium align-top break-words [overflow-wrap:anywhere]">
-                                    <span className="sm:hidden block text-[10px] font-mono uppercase text-slate-400 mb-0.5">
+                                  <td className="py-0.5 sm:py-2.5 lg:py-0.5 xl:py-2.5 px-0 sm:px-3 lg:px-0 xl:px-3 text-slate-800 dark:text-slate-200 font-medium align-top break-words [overflow-wrap:anywhere] sm:table-cell lg:block xl:table-cell">
+                                    <span className="sm:hidden lg:block xl:hidden block text-[10px] font-mono uppercase text-slate-400 mb-0.5">
                                       Cited in Manuscript
                                     </span>
                                     {key === 'url' &&
@@ -2558,8 +2558,8 @@ export function EssayPage() {
                                       activeItem.citedMeta[key]
                                     )}
                                   </td>
-                                  <td className="py-0.5 sm:py-2.5 px-0 sm:px-3 font-mono text-slate-600 dark:text-slate-300 align-top break-words [overflow-wrap:anywhere]">
-                                    <span className="sm:hidden block text-[10px] font-mono uppercase text-slate-400 mb-0.5">
+                                  <td className="py-0.5 sm:py-2.5 lg:py-0.5 xl:py-2.5 px-0 sm:px-3 lg:px-0 xl:px-3 font-mono text-slate-600 dark:text-slate-300 align-top break-words [overflow-wrap:anywhere] sm:table-cell lg:block xl:table-cell">
+                                    <span className="sm:hidden lg:block xl:hidden block text-[10px] font-mono uppercase text-slate-400 mb-0.5">
                                       Canonical Retrieved
                                     </span>
                                     {activeItem.retrievedMeta ? (
@@ -2610,7 +2610,7 @@ export function EssayPage() {
                                       </span>
                                     )}
                                   </td>
-                                  <td className="hidden sm:table-cell py-2.5 px-3 text-right whitespace-nowrap align-top">
+                                  <td className="hidden sm:table-cell lg:hidden xl:table-cell py-2.5 px-3 text-right whitespace-nowrap align-top">
                                     {renderFieldStatusBadge(activeItem.fieldStatus[key])}
                                   </td>
                                 </tr>

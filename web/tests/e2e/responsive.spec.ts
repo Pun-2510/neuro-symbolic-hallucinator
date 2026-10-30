@@ -346,6 +346,24 @@ test.describe('Responsive Layout — Public & Auth Pages', () => {
     await platformBtn.click();
     await expect(page.getByText(/orthogonal mapping & verification|tách biệt mapping/i)).toBeVisible();
 
+    // 1.5. Test 120K-Paper Benchmark section & interactive 3-tab explorer
+    await expect(page.getByTestId('hero-benchmark-120k-strip')).toBeVisible();
+    const benchSection = page.getByTestId('benchmark-120k-section');
+    await expect(benchSection).toBeVisible();
+    await expect(benchSection.getByText(/B5 · HybridMLScorer/i)).toBeVisible();
+
+    const classesTab = benchSection.getByRole('tab', {
+      name: /4 classes & 15 sub-taxonomies|4 nhãn & 15 nhóm lỗi/i,
+    });
+    await classesTab.click();
+    await expect(benchSection.getByText(/SUSPECTED_HALLUCINATION/i)).toBeVisible();
+
+    const calibrationTab = benchSection.getByRole('tab', {
+      name: /platt calibration & 95% ci|hiệu chỉnh platt & bootstrap 95% ci/i,
+    });
+    await calibrationTab.click();
+    await expect(benchSection.getByText(/0\.0433/i).first()).toBeVisible();
+
     // 2. Test Use Cases / Pipeline 4-tab switcher
     const stage3Btn = page.getByRole('button', { name: /neuro-symbolic rules|3\. luật neuro-symbolic/i });
     await stage3Btn.click();
@@ -581,5 +599,104 @@ test.describe('Responsive Layout — Authenticated Workspaces (Student, Teacher,
     const h1Box = await page.locator('h1').first().boundingBox();
     expect(h1Box).not.toBeNull();
     expect(h1Box!.x + h1Box!.width).toBeLessThanOrEqual(375);
+  });
+
+  test('Verification Report Split-Pane IDE has no extra whitespace gap between citation list and manuscript context across responsive viewports', async ({
+    page,
+  }) => {
+    setupAllResponsiveMocks(page);
+
+    const manyVerdicts = Array.from({ length: 24 }, (_, idx) => ({
+      citation_id: `cit_${idx + 1}`,
+      citation_raw: `[${idx + 1}] Nguyen D. Q., Nguyen A. T. (2020). PhoBERT: Pre-trained language models for Vietnamese. Findings of EMNLP 2020, pp 1037-1042. https://doi.org/10.18653/v1/2020.findings-emnlp.92`,
+      label: 'verified',
+      confidence: 0.99,
+      mapping_status: 'matched',
+      url_status: 'alive',
+      url_status_code: 200,
+      matched_sources: [
+        {
+          source: 'local_db',
+          similarity_score: 0.99,
+          matched_fields: ['title', 'authors', 'year', 'doi'],
+        },
+      ],
+      mismatched_fields: [],
+      triggered_rules: ['R-DOI-TITLE-AUTHOR', 'R-LOCAL_DB_VERIFIED'],
+      reasoning: 'Verified exact match in ACL Anthology.',
+      best_candidate: {
+        title: 'PhoBERT: Pre-trained language models for Vietnamese',
+        authors: ['Dat Quoc Nguyen', 'Anh Tuan Nguyen'],
+        year: 2020,
+        venue: 'Findings of the Association for Computational Linguistics: EMNLP 2020',
+        doi: '10.18653/v1/2020.findings-emnlp.92',
+        url: 'https://doi.org/10.18653/v1/2020.findings-emnlp.92',
+      },
+    }));
+
+    await page.route(/\/api\/essays\/35(\/report)?$/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          essay_id: 35,
+          filename: 'demo_29.09.docx',
+          num_pages: 23,
+          num_citations: 24,
+          extracted_citations: manyVerdicts.map((v, idx) => ({
+            id: v.citation_id,
+            raw_text: v.citation_raw,
+            page_num: (idx % 12) + 1,
+            context:
+              'Pretrained transformers such as PhoBERT [4] capture surrounding context to help resolve lexical ambiguity.',
+          })),
+          references: [],
+          verdicts: manyVerdicts,
+          cis: {
+            score: 100.0,
+            verified_count: 24,
+            metadata_error_count: 0,
+            suspected_hallucination_count: 0,
+            unresolved_count: 0,
+            resource_count: 0,
+            total_count: 24,
+          },
+        }),
+      })
+    );
+
+    for (const vp of [
+      { name: 'Mobile (375x812)', width: 375, height: 812 },
+      { name: 'Tablet (768x1024)', width: 768, height: 1024 },
+      { name: 'Laptop (1024x768)', width: 1024, height: 768 },
+      { name: 'Desktop (1440x900)', width: 1440, height: 900 },
+    ]) {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto('/verification/report/35');
+      await page.waitForSelector('[role="listbox"]', { timeout: 5000 });
+      await assertNoHorizontalOverflow(page, `/verification/report/35 @ ${vp.name}`);
+
+      const metrics = await page.evaluate(() => {
+        const listbox = document.querySelector('[role="listbox"]');
+        const contextBox = listbox?.nextElementSibling;
+        if (!listbox || !contextBox) return null;
+        const listRect = listbox.getBoundingClientRect();
+        const ctxRect = contextBox.getBoundingClientRect();
+        return {
+          gap: ctxRect.top - listRect.bottom,
+          listboxHeight: listRect.height,
+        };
+      });
+
+      expect(metrics).not.toBeNull();
+      expect(
+        metrics!.gap,
+        `Expected tight spacing between citation list and manuscript context at ${vp.name}`
+      ).toBeGreaterThanOrEqual(12);
+      expect(
+        metrics!.gap,
+        `Expected no large whitespace gap between citation list and manuscript context at ${vp.name}`
+      ).toBeLessThanOrEqual(24);
+    }
   });
 });

@@ -60,7 +60,7 @@ export function EssayHeader({
 
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-6 shadow-xs overflow-hidden">
-      <div className="flex flex-col sm:flex-row items-start justify-between gap-4 w-full min-w-0">
+      <div className="flex flex-col xl:flex-row items-start justify-between gap-4 w-full min-w-0">
         <div className="w-full min-w-0 flex-1">
           <div className="flex items-center gap-3 flex-wrap mb-2.5">
             <Link
@@ -109,13 +109,13 @@ export function EssayHeader({
         </div>
 
         {/* Export Actions */}
-        <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0 w-full sm:w-auto">
+        <div className="flex flex-col items-start xl:items-end gap-1.5 shrink-0 w-full xl:w-auto">
           {!isUser && (
             <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-slate-500">
               {lang === 'vi' ? 'Xuất Báo Cáo Chuẩn Hóa' : 'Export Audit Artifact'}
             </span>
           )}
-          <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full xl:w-auto">
             {!isUser && (
               <>
                 <Button asChild variant="outline" size="sm" className="h-8 font-mono text-xs rounded-xl w-full sm:w-auto">
