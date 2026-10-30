@@ -516,6 +516,12 @@ class CitationExtractor:
                     ):
                         continue
                     inner_head = raw[1:].split(",")[0].strip().lstrip("\"\u201c\u201d'\u2018\u2019")
+                    inner_head = re.sub(
+                        r"^(?:see\s+also|see|cf\.?|e\.g\.?,?|i\.e\.?,?|for\s+example|adapted\s+from|modified\s+from|data\s+from|source\s*:)\s+",
+                        "",
+                        inner_head,
+                        flags=re.IGNORECASE,
+                    ).strip()
                     has_particle = bool(
                         re.match(
                             r"^(?:da|de|del|della|der|di|do|dos|du|el|la|le|van|von|zu|zur)\s+[A-ZÀ-Ý]",

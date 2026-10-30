@@ -60,7 +60,7 @@ _MLA_INTEXT_PARENTHETICAL_PAGE = CompiledPattern.create(
         r"([A-ZÀ-Ý][a-zA-Zà-ÿ'\u2019]{2,}(?:\s+(?:III|II|IV|Jr\.?|Sr\.?))?"
         r"(?:\s+(?:and|&|và)\s+[A-ZÀ-Ý][a-zA-Zà-ÿ'\u2019]{2,}|\s+et\s+al\.)?)"
         r"(?:\s*,\s*pp?\.\s*|\s+)"
-        r"(?!(?:19|20)\d{2}\b)(\d{1,4}(?:[-–]\d{1,4})?(?:,\s*\d{1,4}(?:[-–]\d{1,4})?)*|[IVXLCDM]{1,7})"
+        r"(?!(?:19|20)\d{2}\b)(\d{1,4}(?:[-–]\d{1,4})?(?:,\s*\d{1,4}(?:[-–]\d{1,4})?)*|(?!(?:LM|ML|DL|CV|ID|IC|VM|VL|IL|LC|DM|LD)\b)[IVXLCDM]{1,7})"
         r"|[A-ZÀ-Ý][a-zA-Zà-ÿ'\u2019]{2,}\s+et\s+al\.(?:\s*;\s*[A-ZÀ-Ý][a-zA-Zà-ÿ'\u2019]{2,}\s+et\s+al\.)*"
         r")\)"
     ),

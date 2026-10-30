@@ -1407,8 +1407,8 @@ class ReferenceListParser:
         entry = entry.replace("\n", " ").replace("\xad", "").replace("  ", " ")
         entry = entry.replace("\u2018\u2018", "\u201c").replace("\u2019\u2019", "\u201d")
         entry = re.sub(r"\s*\[trans\s*:[^\]]*\]?\s*$", "", entry, flags=re.IGNORECASE).strip()
-        # Strip meta-analysis leading asterisk (e.g. "*Adil, A., & Kamal, A. (2016)")
-        entry = re.sub(r"^\s*\*\s*(?=[A-ZÀ-Ý])", "", entry)
+        # Strip meta-analysis leading asterisk (e.g. "*Adil, A., & Kamal, A. (2016)") or template ellipsis ("… Vaswani, A.")
+        entry = re.sub(r"^\s*(?:\*|\u2026|\.{2,})\s*(?=[A-ZÀ-Ý])", "", entry)
         # Strip Slavic/European Harvard key prefix (e.g. "Ewing 2002 – Ewing E.T. (2002) ...")
         entry = re.sub(
             r"^\s*[A-ZÀ-Ý][A-Za-zÀ-ỹ'\u2019\-]+(?:\s+[A-ZÀ-Ý][A-Za-zÀ-ỹ'\u2019\-]+)?\s+(?:18|19|20)\d{2}[a-z]?\s*[–—-]\s+(?=[A-ZÀ-Ý])",

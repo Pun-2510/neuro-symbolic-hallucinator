@@ -833,7 +833,7 @@ class DocumentParser:
             and c.year
             and re.search(r"[A-Za-z]{2,}", c.raw_text or "")
         )
-        min_ad_matches = max(6, len(references) // 2)
+        min_ad_matches = int(len(references) * 0.90) if len(references) >= 12 else 6
         if existing_matched_count >= max(10, min_ad_matches) or (
             existing_matched_count >= min_ad_matches and not has_ibid and has_pub_city < 2
         ):
@@ -920,7 +920,12 @@ class DocumentParser:
         # Pre-mark bibliography profiles already matched by existing in-text citations
         for prof in ref_profiles:
             if prof["sn_fold"] and len(prof["sn_fold"]) >= 3:
-                if any(prof["sn_fold"] in _fold(c.raw_text) for c in existing_body):
+                ref_yr_str = str(prof["ref"].year or "")
+                if any(
+                    prof["sn_fold"] in _fold(c.raw_text)
+                    and (not ref_yr_str or not c.year or str(c.year) == ref_yr_str)
+                    for c in existing_body
+                ):
                     matched_ref_indices.add(prof["idx"])
 
         # Fallback page scan for bibliography entries whose footnote wrapped across pages or lost its leading number
@@ -930,6 +935,7 @@ class DocumentParser:
             sn = prof["sn_fold"]
             tw = prof["t_words"]
             tf = prof["t_fold"]
+            ref_yr_str = str(prof["ref"].year or "")
             for p_num in body_page_nums:
                 p_fold = _fold(by_page[p_num].text)
                 sn_in = bool(sn and len(sn) >= 3 and re.search(rf"\b{re.escape(sn)}\b", p_fold))
@@ -937,10 +943,11 @@ class DocumentParser:
                     last_tok = sn.split()[-1]
                     if len(last_tok) >= 4 and re.search(rf"\b{re.escape(last_tok)}\b", p_fold):
                         sn_in = True
+                yr_in = bool(ref_yr_str and len(ref_yr_str) == 4 and re.search(rf"\b{re.escape(ref_yr_str)}\b", p_fold))
                 tw_hits = sum(1 for w in tw[:5] if re.search(rf"\b{re.escape(w)}\b", p_fold))
                 prefix_tf = tf[:min(len(tf), 35)].strip() if tf else ""
                 if (
-                    (sn_in and (tw_hits >= 1 or (prof["gv_fold"] and len(prof["gv_fold"]) >= 3 and prof["gv_fold"] in p_fold) or (surname_counts.get(sn, 0) == 1 and len(sn) >= 5)))
+                    (sn_in and (yr_in or tw_hits >= 1 or (prof["gv_fold"] and len(prof["gv_fold"]) >= 3 and prof["gv_fold"] in p_fold) or (surname_counts.get(sn, 0) == 1 and len(sn) >= 5)))
                     or (len(prefix_tf) >= 14 and prefix_tf in p_fold)
                     or (len(tw) >= 3 and tw_hits >= 3)
                 ):
