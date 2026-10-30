@@ -51,6 +51,7 @@ import {
   StickyCardWidget,
   PipelineStageVisual,
   BottomCTAMockup,
+  CohortBatchAuditWidget,
 } from '@/components/landing/SolvaMockupWidgets';
 import { ScholarlySourceLogo } from '@/components/landing/ScholarlySourceLogos';
 
@@ -508,7 +509,7 @@ function SolvaHeader({
       }}
       className="fixed top-0 left-0 right-0 z-50 will-change-[transform,opacity,filter]"
     >
-      <div className="max-w-[1280px] mx-auto px-5 sm:px-6 lg:px-[40px] h-[76px] flex items-center justify-between gap-4">
+      <div className="max-w-[1280px] mx-auto px-5 sm:px-6 lg:px-[40px] h-[64px] lg:h-[76px] flex items-center justify-between gap-4">
         {/* Left: Brand Logo */}
         <div className="flex items-center lg:w-[190px] shrink-0">
           <Link
@@ -803,14 +804,14 @@ function SolvaHeroSection({
   return (
     <section
       id="hero"
-      className="pt-[116px] sm:pt-[136px] pb-[64px] px-5 sm:px-6 lg:px-[40px]"
+      className="pt-[76px] sm:pt-[88px] lg:pt-[136px] pb-[24px] sm:pb-[36px] lg:pb-[64px] px-5 sm:px-6 lg:px-[40px]"
     >
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-[56px]">
+      <div className="max-w-[1200px] mx-auto flex flex-col gap-[28px] sm:gap-[36px] lg:gap-[56px]">
         {/* Top 2-Column Content */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-[40px] lg:gap-[24px] pt-[12px]">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-[28px] sm:gap-[32px] lg:gap-[24px] pt-0 lg:pt-[12px]">
           {/* Left Column (540px on Desktop) */}
-          <div className="w-full lg:w-[516px] xl:w-[540px] flex flex-col items-start gap-[32px] lg:pb-[24px]">
-            <div className="flex flex-col items-start gap-[24px]">
+          <div className="w-full lg:w-[516px] xl:w-[540px] flex flex-col items-start gap-[22px] sm:gap-[28px] lg:gap-[32px] lg:pb-[24px]">
+            <div className="flex flex-col items-start gap-[16px] sm:gap-[20px] lg:gap-[24px]">
               {/* Announcement Badge (`NEW | Neuro-Symbolic v2.3 is live ->`) */}
               <SolvaScrollReveal delayMs={40} yOffset={20} blurPx={3}>
                 <a
@@ -919,7 +920,7 @@ function SolvaHeroSection({
 
         {/* Bottom Infinite Edge-Masked Scholarly API Ticker (`1200x112px`) */}
         <SolvaScrollReveal delayMs={320} yOffset={20} blurPx={2.5}>
-          <div className="w-full py-[24px] sm:py-[32px] overflow-hidden solva-ticker-mask">
+          <div className="w-full py-[10px] sm:py-[16px] lg:py-[32px] overflow-hidden solva-ticker-mask">
             <div className="animate-solva-marquee flex items-center gap-[56px] sm:gap-[72px]">
               {[...scholarlyApis, ...scholarlyApis].map((apiName, idx) => (
                 <div
@@ -989,11 +990,11 @@ function SolvaFeaturesSection({ lang }: { lang: Lang }) {
   return (
     <section
       id="architecture"
-      className="scroll-mt-[108px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[84px] lg:scroll-mt-[108px] py-[32px] sm:py-[48px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
+      <div className="max-w-[1200px] mx-auto flex flex-col gap-[28px] sm:gap-[36px] lg:gap-[64px]">
         {/* Section Headline */}
-        <div className="flex flex-col items-start gap-[16px] max-w-[620px]">
+        <div className="flex flex-col items-start gap-[12px] sm:gap-[16px] max-w-[620px]">
           <SolvaEyebrow>
             {lang === 'vi' ? 'Kiến trúc cốt lõi của CITRA' : 'What CITRA does'}
           </SolvaEyebrow>
@@ -1105,8 +1106,8 @@ function SolvaStickySection({
   ];
 
   return (
-    <section className="py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]">
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[60px]">
+    <section className="py-[32px] sm:py-[48px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]">
+      <div className="max-w-[1200px] mx-auto flex flex-col gap-[28px] sm:gap-[36px] lg:gap-[60px]">
         {/* Section Headline */}
         <div className="flex flex-col items-start gap-[12px] max-w-[580px]">
           <SolvaEyebrow>
@@ -1123,7 +1124,7 @@ function SolvaStickySection({
         </div>
 
         {/* Sticky Stacking Cards Container */}
-        <div className="flex flex-col gap-[32px] lg:gap-[96px]">
+        <div className="flex flex-col gap-[20px] sm:gap-[28px] lg:gap-[96px]">
           {stickyBlocks.map((block, idx) => (
             <SolvaStickyStackCard
               key={block.title}
@@ -1247,11 +1248,11 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
   return (
     <section
       id="interactive-demo"
-      className="scroll-mt-[108px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[84px] lg:scroll-mt-[108px] py-[32px] sm:py-[48px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
+      <div className="max-w-[1200px] mx-auto flex flex-col gap-[28px] sm:gap-[36px] lg:gap-[64px]">
         {/* Section Headline */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">
           <div className="flex flex-col items-start gap-[12px]">
             <SolvaEyebrow>
               {lang === 'vi'
@@ -1971,9 +1972,9 @@ function SolvaUseCasesSection({
   return (
     <section
       id="how-it-works"
-      className="scroll-mt-[108px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[84px] lg:scroll-mt-[108px] py-[32px] sm:py-[48px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
+      <div className="max-w-[1200px] mx-auto flex flex-col gap-[28px] sm:gap-[36px] lg:gap-[64px]">
         {/* Headline */}
         <div className="flex flex-col items-start gap-[12px] max-w-[540px]">
           <SolvaEyebrow>
@@ -2147,9 +2148,9 @@ function SolvaSecuritySection({ lang }: { lang: Lang }) {
   return (
     <section
       style={{ backgroundColor: 'var(--solva-surface)' }}
-      className="py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="py-[40px] sm:py-[56px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
-      <div className="max-w-[1200px] mx-auto flex flex-col items-center gap-[48px] lg:gap-[64px]">
+      <div className="max-w-[1200px] mx-auto flex flex-col items-center gap-[28px] sm:gap-[36px] lg:gap-[64px]">
         {/* Centered Headline */}
         <div className="flex flex-col items-center text-center gap-[12px] max-w-[600px]">
           <SolvaEyebrow centered>
@@ -2192,7 +2193,7 @@ function SolvaSecuritySection({ lang }: { lang: Lang }) {
               >
                 <div
                   style={{ backgroundColor: 'var(--solva-bg)' }}
-                  className="rounded-[12px] p-[24px] min-h-[192px] h-full flex flex-col justify-between gap-[40px]"
+                  className="rounded-[12px] p-[20px] sm:p-[24px] min-h-[156px] sm:min-h-[192px] h-full flex flex-col justify-between gap-[24px] sm:gap-[40px]"
                 >
                   <Icon
                     style={{ color: 'var(--solva-ink)' }}
@@ -2352,9 +2353,9 @@ function SolvaTaxonomyPricingSection({
   return (
     <section
       id="taxonomy"
-      className="scroll-mt-[108px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[84px] lg:scroll-mt-[108px] py-[36px] sm:py-[48px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
-      <div className="max-w-[1200px] mx-auto flex flex-col items-center gap-[48px] lg:gap-[64px]">
+      <div className="max-w-[1200px] mx-auto flex flex-col items-center gap-[28px] sm:gap-[36px] lg:gap-[64px]">
         {/* Centered Headline */}
         <div className="flex flex-col items-center text-center gap-[16px] max-w-[580px]">
           <SolvaEyebrow centered>
@@ -2548,8 +2549,8 @@ function SolvaTaxonomyPricingSection({
    ============================================================ */
 function SolvaClientResultsSection({ lang }: { lang: Lang }) {
   return (
-    <section className="py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]">
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
+    <section className="py-[32px] sm:py-[48px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]">
+      <div className="max-w-[1200px] mx-auto flex flex-col gap-[28px] sm:gap-[36px] lg:gap-[64px]">
         {/* Headline */}
         <div className="flex flex-col items-start gap-[12px]">
           <SolvaEyebrow>
@@ -2570,29 +2571,18 @@ function SolvaClientResultsSection({ lang }: { lang: Lang }) {
             style={{ backgroundColor: 'var(--solva-surface)' }}
             className="w-full rounded-[16px] p-[12px] grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch"
           >
-            {/* Left Portrait Image Wrapper (`442x476px` equivalent) */}
+            {/* Left Interactive Cohort Case Study Frame (`442x476px` equivalent) */}
             <div className="lg:col-span-5">
-              <div className="relative w-full h-[320px] sm:h-[400px] lg:h-[476px] rounded-[10px] overflow-hidden">
-                <img
-                  src="/solva/client-portrait.png"
-                  alt="Academic research supervisor portrait"
-                  loading="eager"
-                  decoding="async"
-                  className="w-full h-full object-cover"
-                />
-                <div className="solva-noise-overlay" aria-hidden="true" />
-                <a
-                  href="#interactive-demo"
-                  aria-label="Inspect live verification case study"
-                  style={{
-                    backgroundColor: 'var(--solva-btn-bg)',
-                    color: 'var(--solva-btn-fg)',
-                  }}
-                  className="absolute inset-0 m-auto w-[44px] h-[44px] rounded-[8px] flex items-center justify-center shadow-md hover:scale-105 transition-transform"
-                >
-                  <Play className="w-[18px] h-[18px] fill-current ml-0.5" />
-                </a>
-              </div>
+              <SolvaPainterlyFrame
+                paintingSrc="/solva/usecase-4-bg.png"
+                alt="Impressionist botanical painting backdrop for cohort thesis audit"
+                radiusClass="rounded-[10px]"
+                className="w-full min-h-[380px] sm:min-h-[420px] lg:h-[476px] p-4 sm:p-6 flex items-center justify-center"
+              >
+                <div className="w-full flex items-center justify-center">
+                  <CohortBatchAuditWidget lang={lang} />
+                </div>
+              </SolvaPainterlyFrame>
             </div>
 
             {/* Right Quote + Metrics (`734x476px` equivalent, `padding: 28px 32px 28px 40px`) */}
@@ -2811,9 +2801,9 @@ function SolvaRoleTestimonialsSection({ lang }: { lang: Lang }) {
   return (
     <section
       id="workspaces"
-      className="scroll-mt-[108px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[84px] lg:scroll-mt-[108px] py-[32px] sm:py-[48px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
+      <div className="max-w-[1200px] mx-auto flex flex-col gap-[28px] sm:gap-[36px] lg:gap-[64px]">
         {/* Headline */}
         <div className="flex flex-col items-start gap-[12px] max-w-[540px]">
           <SolvaEyebrow>
@@ -2850,7 +2840,7 @@ function SolvaRoleTestimonialsSection({ lang }: { lang: Lang }) {
                 >
                   <div
                     style={{ backgroundColor: 'var(--solva-surface)' }}
-                    className="rounded-[12px] p-[24px] min-h-[260px] lg:h-[280px] flex flex-col justify-between gap-[24px]"
+                    className="rounded-[12px] p-[20px] sm:p-[24px] min-h-[200px] sm:min-h-[230px] lg:h-[280px] flex flex-col justify-between gap-[20px] sm:gap-[24px]"
                   >
                     <div className="space-y-[20px]">
                       <div className="flex items-center justify-between">
@@ -3068,9 +3058,9 @@ function SolvaFAQSection({ lang }: { lang: Lang }) {
   return (
     <section
       id="faq"
-      className="scroll-mt-[108px] py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
+      className="scroll-mt-[84px] lg:scroll-mt-[108px] py-[32px] sm:py-[48px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]"
     >
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px] lg:gap-[64px]">
+      <div className="max-w-[1200px] mx-auto flex flex-col gap-[28px] sm:gap-[36px] lg:gap-[64px]">
         {/* Headline */}
         <div className="flex flex-col items-start gap-[12px] max-w-[460px]">
           <SolvaEyebrow>FAQ</SolvaEyebrow>
@@ -3105,7 +3095,7 @@ function SolvaBottomCTASection({
   isAuthenticated: boolean;
 }) {
   return (
-    <section className="py-[72px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]">
+    <section className="pt-[28px] pb-[36px] sm:py-[48px] lg:py-[96px] px-5 sm:px-6 lg:px-[40px]">
       <div className="max-w-[1200px] mx-auto">
         <SolvaScrollReveal yOffset={36}>
           <div
@@ -3221,11 +3211,11 @@ function SolvaFooter({ lang }: { lang: Lang }) {
   return (
     <footer
       style={{ backgroundColor: 'var(--solva-surface)' }}
-      className="pt-[72px] lg:pt-[96px] pb-[32px] px-5 sm:px-6 lg:px-[40px]"
+      className="pt-[36px] sm:pt-[48px] lg:pt-[96px] pb-[24px] sm:pb-[32px] px-5 sm:px-6 lg:px-[40px]"
     >
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-[48px]">
+      <div className="max-w-[1200px] mx-auto flex flex-col gap-[28px] sm:gap-[36px] lg:gap-[48px]">
         {/* Top Row: Brand Info (389px) + 4 Columns (779px) */}
-        <div className="flex flex-col lg:flex-row items-start justify-between gap-[40px] lg:gap-[32px]">
+        <div className="flex flex-col lg:flex-row items-start justify-between gap-[28px] sm:gap-[36px] lg:gap-[32px]">
           {/* Left Brand Info */}
           <div className="w-full lg:w-[389px] flex flex-col items-start gap-[16px]">
             <Link to="/" className="inline-flex items-center gap-[10px]">
@@ -3291,7 +3281,7 @@ function SolvaFooter({ lang }: { lang: Lang }) {
         {/* Bottom Copyright Bar (`border-top: 1px solid #E7E3D9`) */}
         <div
           style={{ borderColor: 'var(--solva-border)' }}
-          className="pt-[32px] border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-solva-sans text-[15px] sm:text-[16px]"
+          className="pt-[20px] sm:pt-[32px] border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 font-solva-sans text-[14px] sm:text-[16px]"
         >
           <p style={{ color: 'var(--solva-muted)' }}>
             © 2026 CITRA · SourceLogic Academic Integrity Workspace. All rights reserved.

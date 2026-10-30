@@ -457,7 +457,11 @@ export function SolvaStickyStackCard({
       // Reversible entrance when scrolling down/up
       setInView(rect.top <= viewportH * 0.92);
 
-      if (index >= total - 1) return;
+      // Only apply sticky scale-down on desktop (lg: 1024px+) where cards are sticky
+      if (window.innerWidth < 1024 || index >= total - 1) {
+        setScale(1);
+        return;
+      }
       const parent = el.parentElement;
       if (!parent) return;
       const nextSibling = parent.children[index + 1] as HTMLElement | undefined;

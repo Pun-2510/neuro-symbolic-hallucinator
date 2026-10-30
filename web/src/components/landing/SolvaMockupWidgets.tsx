@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -12,6 +13,8 @@ import {
   Search,
   Layers,
   Sparkles,
+  ArrowRight,
+  GraduationCap,
 } from 'lucide-react';
 import { type Lang } from './SolvaPrimitives';
 import { ScholarlySourceLogo } from './ScholarlySourceLogos';
@@ -930,6 +933,236 @@ export function BottomCTAMockup({ lang }: { lang: Lang }) {
         <span className="font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
           100% Traceable
         </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 6. COHORT BATCH AUDIT CASE STUDY WIDGET (`442x476px` left frame in Client Results Section)
+ * Replaces the generic stock video portrait with an interactive live cohort audit card
+ * directly illustrating the "120 graduation theses on Monday morning" case study.
+ */
+export function CohortBatchAuditWidget({ lang }: { lang: Lang }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % 3);
+    }, 3600);
+    return () => window.clearInterval(timer);
+  }, [activeIndex]);
+
+  const theses = [
+    {
+      id: '#018',
+      file: 'Thesis_018_Neural_RAG.pdf',
+      verdict: 'GHOST DOI',
+      tone: 'red' as const,
+      rule: 'R12_GHOST_DOI · HTTP 404',
+      detail:
+        lang === 'vi'
+          ? 'Phát hiện DOI giả 10.1038/s42256-024-99812-x (Ref [14])'
+          : 'Caught fabricated DOI 10.1038/s42256-024-99812-x (Ref [14])',
+      cis: '74.2',
+    },
+    {
+      id: '#047',
+      file: 'Thesis_047_Legal_NLP.pdf',
+      verdict: 'YEAR DRIFT',
+      tone: 'amber' as const,
+      rule: 'R05_YEAR_DRIFT · Δ=1yr',
+      detail:
+        lang === 'vi'
+          ? 'Lệch năm bản nháp arXiv (2018) so với kỷ yếu NAACL (2019)'
+          : 'arXiv preprint year (2018) vs. canonical NAACL (2019)',
+      cis: '88.5',
+    },
+    {
+      id: '#104',
+      file: 'Thesis_104_BioMed_VLM.pdf',
+      verdict: 'VERIFIED',
+      tone: 'emerald' as const,
+      rule: 'R01_EXACT_DOI ∧ R09_NLI',
+      detail:
+        lang === 'vi'
+          ? '38/38 trích dẫn khớp chuẩn trên Crossref, PubMed & OpenAlex'
+          : '38/38 references verified across Crossref, PubMed & OpenAlex',
+      cis: '98.4',
+    },
+  ];
+
+  const activeThesis = theses[activeIndex] || theses[0];
+
+  return (
+    <div
+      style={{ backgroundColor: 'var(--solva-card-elevated)' }}
+      className="solva-glass-ring w-full max-w-[392px] rounded-[12px] p-4 sm:p-5 space-y-3.5 text-left border border-[#E7E3D9]/80 dark:border-[#332F26] select-none"
+    >
+      {/* Top Header: Cohort Batch Info */}
+      <div
+        style={{ borderColor: 'var(--solva-border)' }}
+        className="flex items-center justify-between gap-2 pb-3 border-b"
+      >
+        <div className="min-w-0">
+          <div
+            style={{ color: 'var(--solva-muted)' }}
+            className="text-[10px] font-mono uppercase tracking-wider flex items-center gap-1.5"
+          >
+            <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">
+              {lang === 'vi'
+                ? 'HỘI ĐỒNG KHOA KHMT · ĐỢT 1'
+                : 'THESIS COMMITTEE · COHORT RUN'}
+            </span>
+          </div>
+          <div
+            style={{ color: 'var(--solva-ink)' }}
+            className="text-[14px] sm:text-[15px] font-medium truncate mt-0.5"
+          >
+            {lang === 'vi'
+              ? '120 Khóa luận Tốt nghiệp (4.380 trích dẫn)'
+              : '120 Graduation Theses (4,380 refs)'}
+          </div>
+        </div>
+        <span className="px-2 py-0.5 rounded-[6px] bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-semibold shrink-0">
+          48m 12s
+        </span>
+      </div>
+
+      {/* Cohort Breakdown Mini-Metrics */}
+      <div className="grid grid-cols-3 gap-2 text-center">
+        {[
+          {
+            label: lang === 'vi' ? 'CHUẨN XÁC' : 'VERIFIED',
+            val: '4,192',
+            color: 'text-emerald-700 dark:text-emerald-300',
+          },
+          {
+            label: lang === 'vi' ? 'LỆCH NĂM' : 'YEAR DRIFT',
+            val: '146',
+            color: 'text-amber-700 dark:text-amber-300',
+          },
+          {
+            label: lang === 'vi' ? 'DOI ẢO GIÁC' : 'GHOST DOIs',
+            val: '42',
+            color: 'text-red-600 dark:text-red-400',
+          },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            style={{ backgroundColor: 'var(--solva-surface)' }}
+            className="p-2 rounded-[8px]"
+          >
+            <div className={`font-solva-serif text-[20px] sm:text-[22px] leading-none ${stat.color}`}>
+              {stat.val}
+            </div>
+            <div
+              style={{ color: 'var(--solva-muted)' }}
+              className="text-[9px] font-mono mt-1 truncate"
+            >
+              {stat.label}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Interactive Thesis Queue (3 selectable rows) */}
+      <div className="space-y-1.5">
+        {theses.map((item, idx) => {
+          const isSelected = idx === activeIndex;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveIndex(idx)}
+              style={{
+                backgroundColor: isSelected
+                  ? 'var(--solva-surface)'
+                  : 'transparent',
+                borderColor: isSelected
+                  ? 'var(--solva-ink)'
+                  : 'var(--solva-border)',
+              }}
+              className="w-full text-left px-3 py-2 rounded-[8px] border transition-all duration-200 cursor-pointer flex items-center justify-between gap-2"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  style={{
+                    backgroundColor: isSelected
+                      ? 'var(--solva-btn-bg)'
+                      : 'var(--solva-surface)',
+                    color: isSelected
+                      ? 'var(--solva-btn-fg)'
+                      : 'var(--solva-ink)',
+                  }}
+                  className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0"
+                >
+                  {item.id}
+                </span>
+                <span
+                  style={{ color: 'var(--solva-ink)' }}
+                  className="text-[12px] font-medium truncate"
+                >
+                  {item.file}
+                </span>
+              </div>
+              <span
+                className={`text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded shrink-0 ${
+                  item.tone === 'emerald'
+                    ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
+                    : item.tone === 'amber'
+                      ? 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
+                      : 'bg-red-500/12 text-red-700 dark:text-red-300'
+                }`}
+              >
+                {item.verdict}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Active Thesis Rule Trace Footer */}
+      <div
+        key={activeThesis.id}
+        style={{
+          backgroundColor: 'var(--solva-surface)',
+          borderColor: 'var(--solva-border)',
+        }}
+        className="p-2.5 rounded-[8px] border space-y-1 animate-debugger-switch"
+      >
+        <div className="flex items-center justify-between text-[10px] font-mono">
+          <span style={{ color: 'var(--solva-ink)' }} className="font-semibold">
+            {activeThesis.rule}
+          </span>
+          <span style={{ color: 'var(--solva-muted)' }}>
+            CIS: <strong style={{ color: 'var(--solva-ink)' }}>{activeThesis.cis}</strong>
+          </span>
+        </div>
+        <p
+          style={{ color: 'var(--solva-muted)' }}
+          className="text-[11px] leading-snug truncate"
+        >
+          {activeThesis.detail}
+        </p>
+      </div>
+
+      {/* Bottom Action Link to Live Debugger */}
+      <div className="pt-0.5 flex items-center justify-between text-[11px]">
+        <span style={{ color: 'var(--solva-muted)' }} className="font-mono text-[10px]">
+          15+ APIs · GROBID TEI
+        </span>
+        <a
+          href="#interactive-demo"
+          style={{ color: 'var(--solva-ink)' }}
+          className="inline-flex items-center gap-1 font-medium hover:underline"
+        >
+          <span>
+            {lang === 'vi' ? 'Soi chiếu trực tiếp' : 'Inspect live trace'}
+          </span>
+          <ArrowRight className="w-3 h-3" />
+        </a>
       </div>
     </div>
   );
