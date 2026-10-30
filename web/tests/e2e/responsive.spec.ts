@@ -322,8 +322,18 @@ test.describe('Responsive Layout — Public & Auth Pages', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify all local painterly assets load with naturalWidth > 0
-    const brokenImages = await page.evaluate(() => {
+    const brokenImages = await page.evaluate(async () => {
       const imgs = Array.from(document.querySelectorAll('img'));
+      await Promise.all(
+        imgs.map((img) =>
+          img.complete
+            ? Promise.resolve()
+            : new Promise<void>((res) => {
+                img.addEventListener('load', () => res(), { once: true });
+                img.addEventListener('error', () => res(), { once: true });
+              })
+        )
+      );
       return imgs
         .filter((img) => !img.complete || img.naturalWidth === 0)
         .map((img) => img.getAttribute('src'));

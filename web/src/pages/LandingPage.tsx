@@ -2938,13 +2938,13 @@ function SolvaFAQSection({ lang }: { lang: Lang }) {
           >
             <div
               style={{ backgroundColor: 'var(--solva-surface)' }}
-              className="w-full rounded-[12px] px-[24px] transition-all duration-200"
+              className="w-full rounded-[12px] px-[24px] transition-colors duration-200"
             >
               <button
                 type="button"
                 onClick={() => toggleFaq(item.id)}
                 aria-expanded={isOpen}
-                className="w-full min-h-[73px] py-[20px] flex items-center justify-between gap-4 text-left cursor-pointer"
+                className="w-full min-h-[73px] py-[20px] flex items-center justify-between gap-4 text-left cursor-pointer group"
               >
                 <span
                   style={{ color: 'var(--solva-ink)' }}
@@ -2954,25 +2954,54 @@ function SolvaFAQSection({ lang }: { lang: Lang }) {
                 </span>
                 <span
                   style={{ color: 'var(--solva-ink)' }}
-                  className="w-[20px] h-[25px] flex items-center justify-center shrink-0"
+                  className="relative w-[20px] h-[25px] flex items-center justify-center shrink-0"
                 >
-                  {isOpen ? (
-                    <Minus className="w-4 h-4" />
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
+                  <Plus
+                    className={`w-4 h-4 absolute transition-all duration-350 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                      isOpen
+                        ? 'rotate-90 opacity-0 scale-75'
+                        : 'rotate-0 opacity-100 scale-100'
+                    }`}
+                  />
+                  <Minus
+                    className={`w-4 h-4 absolute transition-all duration-350 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                      isOpen
+                        ? 'rotate-0 opacity-100 scale-100'
+                        : '-rotate-90 opacity-0 scale-75'
+                    }`}
+                  />
                 </span>
               </button>
-              {isOpen && (
-                <div className="pb-[24px] pr-[24px]">
-                  <p
-                    style={{ color: 'var(--solva-muted)' }}
-                    className="font-solva-sans text-[16px] font-normal leading-[23.2px]"
+              <div
+                style={{
+                  gridTemplateRows: isOpen ? '1fr' : '0fr',
+                  transition: 'grid-template-rows 420ms cubic-bezier(0.22, 1, 0.36, 1)',
+                }}
+                className="grid"
+                aria-hidden={!isOpen}
+              >
+                <div className="overflow-hidden">
+                  <div
+                    style={{
+                      opacity: isOpen ? 1 : 0,
+                      transform: isOpen
+                        ? 'translate3d(0, 0, 0)'
+                        : 'translate3d(0, -10px, 0)',
+                      filter: isOpen ? 'blur(0px)' : 'blur(2.5px)',
+                      transition:
+                        'opacity 360ms cubic-bezier(0.22, 1, 0.36, 1), transform 420ms cubic-bezier(0.22, 1, 0.36, 1), filter 320ms cubic-bezier(0.22, 1, 0.36, 1)',
+                    }}
+                    className="pb-[24px] pr-[24px]"
                   >
-                    {item.a}
-                  </p>
+                    <p
+                      style={{ color: 'var(--solva-muted)' }}
+                      className="font-solva-sans text-[16px] font-normal leading-[23.2px]"
+                    >
+                      {item.a}
+                    </p>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           </SolvaScrollReveal>
         );
