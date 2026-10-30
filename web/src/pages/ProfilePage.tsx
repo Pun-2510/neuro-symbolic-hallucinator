@@ -281,7 +281,7 @@ export function ProfilePage() {
         <div className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-start gap-5 sm:gap-6">
             {/* Avatar upload */}
-            <div className="flex flex-col items-center gap-3 shrink-0 sm:w-44 p-4 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800">
+            <div className="flex flex-col items-center gap-3 shrink-0 sm:w-56 p-4 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800">
               <AvatarUpload
                 currentAvatarUrl={authUser?.avatar_url ?? null}
                 onSuccess={() => {

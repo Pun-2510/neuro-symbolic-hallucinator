@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import time
 from pathlib import Path
 
 from integrity_checker.config import PROJECT_ROOT, is_test_runtime
@@ -82,7 +83,7 @@ class AvatarService:
                     pass
         target = self.base_dir / f"{user_id}.{ext}"
         target.write_bytes(content)
-        return f"{self.public_prefix}/{user_id}.{ext}"
+        return f"{self.public_prefix}/{user_id}.{ext}?v={int(time.time() * 1000)}"
 
     def delete(self, avatar_url: str | None) -> None:
         """Delete the file referenced by a public URL or path. Safe if missing."""
@@ -91,7 +92,8 @@ class AvatarService:
         if avatar_url.startswith(("http://", "https://")):
             return
         # Accept either the public URL or a relative path; resolve to local file safely
-        name = Path(avatar_url.rsplit("/", 1)[-1]).name
+        clean_url = avatar_url.split("?", 1)[0]
+        name = Path(clean_url.rsplit("/", 1)[-1]).name
         if not name:
             return
         target = (self.base_dir / name).resolve()
@@ -110,7 +112,8 @@ class AvatarService:
     def extension_from_url(avatar_url: str | None) -> str:
         if not avatar_url:
             return ""
-        return avatar_url.rsplit(".", 1)[-1].lower() if "." in avatar_url else ""
+        clean_url = avatar_url.split("?", 1)[0]
+        return clean_url.rsplit(".", 1)[-1].lower() if "." in clean_url else ""
 
 
 _singleton: AvatarService | None = None
