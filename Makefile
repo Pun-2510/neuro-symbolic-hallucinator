@@ -5,7 +5,7 @@ help:
 	@echo "Essay Integrity Checker — common commands"
 	@echo ""
 	@echo "  make setup    Tạo venv + install dependencies"
-	@echo "  make sample   Generate sample essays + gold dataset"
+	@echo "  make sample   Generate sample essays"
 	@echo "  make demo     Run CLI demo trên 1 PDF mẫu"
 	@echo "  make api      Run FastAPI backend (uvicorn --reload)"
 	@echo "  make web      Run Vite dev server (frontend)"
@@ -24,7 +24,6 @@ setup:
 # --- Sample data ---
 sample:
 	. .venv/bin/activate && python scripts/gen_sample_essays.py
-	. .venv/bin/activate && python scripts/gen_gold_dataset.py
 
 # --- Demo ---
 demo:

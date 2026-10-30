@@ -145,7 +145,6 @@ class PathsConfig(BaseModel):
     data_dir: Path = Path("./data")
     essays_dir: Path = Path("./data/essays")
     cache_dir: Path = Path("./data/cache")
-    ground_truth: Path = Path("./data/ground_truth/gold_dataset.json")
     grobid_output_dir: Path = Path("./data/cache/grobid")   # MỚI v1.2
 
     @field_validator("*", mode="before")

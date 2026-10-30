@@ -28,7 +28,6 @@ cp .env.example .env
 ```bash
 # Generate sample PDFs
 python scripts/gen_sample_essays.py
-python scripts/gen_gold_dataset.py
 
 # Run CLI demo
 python -m integrity_checker.pipeline.integrity_pipeline \
@@ -100,12 +99,11 @@ Tổng toàn bộ suite hiện tại: **467 passed, 4 skipped**.
 | Tuần | Giai đoạn | Công việc | Module | Mốc |
 |---|---|---|---|---|
 | 1–2 | Khảo sát | Chốt vấn đề, literature matrix, scope, style families, taxonomy và schema chung. | — | **M1**: GVHD chốt phạm vi, style families, 2 lớp taxonomy, dữ liệu, tiêu chí nghiệm thu. |
-| 3–5 | Dữ liệu | Thu thập / ẩn danh; guideline 3 mức (document / span-link / source); pilot; đo agreement. | `data/ground_truth/` | **M2**: Gold pilot 3 mức đủ tốt; guideline khóa. |
+| 3–5 | Dữ liệu | Thu thập tài liệu mẫu & xây dựng CSDL bài báo cục bộ (`data/local_papers.db`) cùng benchmark phân tách độc lập theo bài báo. | `data/`, `scripts/` | **M2**: Kho bài báo cục bộ & benchmark dataset sẵn sàng. |
 | 6–7 | **Full-text audit** ⭐ | Phân vùng PDF (GROBID + PyMuPDF); in-text/reference extraction; **StyleDetector**; **CitationLinker** + DuplicateDetector + 7 trạng thái. | `extraction/`, `linking/` (MỚI) | — |
 | 8–9 | Retrieval | Crossref, OpenAlex, S2, arXiv thật; cache; hợp nhất candidate; tenacity retry. | `retrieval/` | **M3**: PDF → style profile → citation graph → candidate top-K chạy end-to-end trên bộ mẫu. |
 | 10–11 | Matching | Fuzzy/embedding features; author/year/venue normalization; consensus; build B0–B5 baselines. | `matching/`, `evaluation/` | — |
 | 12–13 | Logic | Symbolic rules cho mapping + nguồn; abstention; calibration; **CIS weights 35/25/25/10/5** real (không còn stub). | `logic/` | **M4**: Có mapping statuses + 4 nhãn nguồn + evidence + abstention + validation report. |
-| 14 | IAA | 2 SV cùng annotate; Cohen's kappa / Krippendorff's alpha target ≥ 0.7. | `data/ground_truth/` | — |
 | 14–15 | Ứng dụng | Style profile view + citation graph view + override mapping/labels + export PDF/CSV/JSON; Docker. | `web/`, `Dockerfile`, `docker-compose.yml` | **M5**: Web MVP chạy bằng Docker. |
 | 16–17 | Thực nghiệm | Baseline B0–B5; ablation; calibration; error analysis theo từng mô-đun; usability test. | `evaluation/` | **M6**: Đóng băng kết quả. |
 | 18 | Hoàn thiện | Báo cáo tốt nghiệp, poster, slide, video, rehearsal, đóng gói. | `docs/`, `README.md` | **M7**: Bản nộp + mã nguồn + dữ liệu được phép chia sẻ + video demo. |
@@ -114,7 +112,7 @@ Tổng toàn bộ suite hiện tại: **467 passed, 4 skipped**.
 
 | SV1 — Document & Application | SV2 — Retrieval & Verification | Chung |
 |---|---|---|
-| Full-text/PDF parsing (GROBID + PyMuPDF). Phân vùng body/bibliography. **StyleDetector**. In-text extraction. **CitationLinker** + DuplicateDetector. Bounding box + highlight (nếu có). FastAPI/Streamlit. Đánh giá style / span / link. | Scholarly APIs (4 connector thật). Candidate retrieval. Fuzzy/embedding features. Author/year/venue normalization. Source consensus. Logic checker (rules + abstention + calibration). Đánh giá retrieval/classification. | Literature review. Annotation guideline 3 mức. Gán nhãn + IAA. Thiết kế thực nghiệm (B0–B5 + ablation). Tích hợp + viết báo cáo. Demo + bảo vệ. |
+| Full-text/PDF parsing (GROBID + PyMuPDF). Phân vùng body/bibliography. **StyleDetector**. In-text extraction. **CitationLinker** + DuplicateDetector. Bounding box + highlight (nếu có). FastAPI/Streamlit. Đánh giá style / span / link. | Scholarly APIs (connector thật). Candidate retrieval. Fuzzy/embedding features. Author/year/venue normalization. Source consensus. Logic checker (rules + abstention + calibration). Đánh giá retrieval/classification. | Literature review. Thiết kế thực nghiệm (Benchmark 120K + B0–B5 + ablation). Tích hợp + viết báo cáo. Demo + bảo vệ. |
 
 ## 6. Quy tắc code
 
@@ -135,7 +133,7 @@ Tổng toàn bộ suite hiện tại: **467 passed, 4 skipped**.
 | Đọc PDF chỉ để trích citation | Đọc toàn văn + phân vùng body/bibliography | Tạo `extraction/section_segmenter.py` tuần 6–7 |
 | Style detection ẩn | Document-level style profile + confidence | Tạo `extraction/style_detector.py` tuần 6–7 |
 | Mapping 1 chiều hoặc không có | Bidirectional + 7 trạng thái | Tạo `linking/` package tuần 6–7 |
-| "Dư thừa" mặc định cứng | `UNCITED ∪ DUPLICATE` | Cập nhật annotation guideline tuần 3–5 |
+| "Dư thừa" mặc định cứng | `UNCITED ∪ DUPLICATE` | Phân loại trong `linking/` |
 | CIS weights `45/25/15/10/5` | `35/25/25/10/5` | Đã cập nhật `configs/config.example.yaml` |
 | 2 CIS component là stub | Real (tính từ linker + style) | Triển khai tuần 12–13 |
 | 1 lớp output (nhãn nguồn) | 2 lớp (integrity + source) | Mở rộng `models/validation.py` tuần 6 |
@@ -145,7 +143,7 @@ Tổng toàn bộ suite hiện tại: **467 passed, 4 skipped**.
 - **Đề cương v1.2** (canonical): `../final (1).docx`.
 - **Lit review**: `../docs/NGHIEN_CUU_LITERATURE_REVIEW.md`.
 - **Roadmap tổng**: `../docs/ROADMAP_ZERO_TO_HERO.md` (lập theo v1.1, đã bị thay thế một phần).
-- **Annotation guideline**: `data/ground_truth/annotation_guideline.md` (cần mở rộng thành guideline v2 cho dataset thật).
+- **Benchmark 120K Report**: `docs/BENCHMARK_120K_NEURO_SYMBOLIC_REPORT.md`.
 - **Sample essays**: `data/essays/README.md`.
 - **API docs**:
   - Crossref: https://api.crossref.org

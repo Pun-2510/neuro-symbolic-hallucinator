@@ -21,7 +21,6 @@ paths:
   data_dir: "./data"
   essays_dir: "./data/essays"
   cache_dir: "./data/cache"
-  ground_truth: "./data/ground_truth/gold_dataset.json"
   grobid_output_dir: "./data/cache/grobid"   # MỚI v1.2
 
 # --- PDF parsing (MỚI v1.2) ---
