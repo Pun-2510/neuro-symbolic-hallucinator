@@ -5,8 +5,34 @@ const config: Config = {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
-      /* Verdict Colors — Semantic Status */
+      /* Verdict Colors & Solva Warm Editorial Palette */
       colors: {
+        slate: {
+          50: '#FBFAF6',
+          100: '#F4F2EC',
+          200: '#E7E3D9',
+          300: '#D6D0C4',
+          400: '#8C887E',
+          500: '#6E695F',
+          600: '#56524A',
+          700: '#3D3A33',
+          800: '#26231D',
+          900: '#1C1A15',
+          950: '#141310',
+        },
+        indigo: {
+          50: '#F4F2EC',
+          100: '#ECE9E0',
+          200: '#E7E3D9',
+          300: '#D6D0C4',
+          400: '#B8B1A4',
+          500: '#56524A',
+          600: '#1C1A15',
+          700: '#2E2B23',
+          800: '#3A352C',
+          900: '#24211B',
+          950: '#181612',
+        },
         verdict: {
           verified: 'hsl(var(--verdict-verified))',
           'metadata-error': 'hsl(var(--verdict-metadata-error))',
@@ -84,11 +110,11 @@ const config: Config = {
         xl: 'var(--shadow-xl)',
       },
 
-      /* Font Family */
+      /* Font Family — Unified Solva Editorial System (Onest + Sentient) */
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        serif: ['Source Serif 4', 'Georgia', 'serif'],
-        display: ['Source Serif 4', 'Georgia', 'serif'],
+        sans: ['Onest', 'Inter', 'system-ui', 'sans-serif'],
+        serif: ['Sentient', 'Source Serif 4', 'Georgia', 'serif'],
+        display: ['Sentient', 'Source Serif 4', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
 
