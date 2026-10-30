@@ -59,32 +59,33 @@
 
 Large Language Models (LLMs) frequently hallucinate plausible-sounding references, conflate author lists, or fabricate publication years (`METADATA_ERROR` / `HALLUCINATION`). Meanwhile, traditional similarity checkers (e.g., Turnitin) measure text overlap rather than verifying whether cited references actually exist in canonical scholarly registries or whether in-text citations map cleanly to the bibliography.
 
-### Design Philosophy — *SourceLogic Scholarly (Explainable Precision Minimal)*
-- **Two-Layer Separation of Concerns**: Strictly decouples **Layer 1: In-Text Citation Mapping** (`MATCHED`, `AMBIGUOUS`, `MISSING_IN_BIBLIOGRAPHY`) from **Layer 2: Reference Entry Validation** (`VERIFIED`, `METADATA_ERROR`, `UNVERIFIED_EXTERNAL`, `HALLUCINATION`), eliminating double-counting when a reference is cited multiple times.
-- **No Black-Box Verdicts**: Every reference entry exposes a **5-Stage Neuro-Symbolic Logic Trace** (`Stage 1: Structural Parse` → `Stage 2: Multi-Source Retrieval` → `Stage 3: 8D Feature Vector` → `Stage 4: Symbolic & ML Scorer` → `Stage 5: Calibrated Verdict`), side-by-side canonical vs. cited diffs, and one-click BibTeX/APA fixes.
-- **Three Role-Based Portals**:
-  1. **Researcher / Student Workspace (`/dashboard`, `/verification/report/:id`)**: Upload single or batch PDF/DOCX manuscripts, inspect citation errors in a split-pane IDE, and export corrected bibliographies.
-  2. **Teacher Cohort Classroom (`/teacher/classes`, `/teacher/pending`)**: Manage thesis cohorts via join codes, review flagged submissions, and override contested AI verdicts with human-in-the-loop audit notes.
-  3. **Admin Platform Control (`/admin/system`, `/admin/users`, `/admin/audit-logs`)**: Monitor external API latencies, verdict telemetry distributions, user role assignments, and immutable system audit trails.
+### Design Philosophy — *Solva Warm Editorial & SourceLogic Scholarly*
+- **Warm Editorial Precision**: Engineered around the **Solva Warm Editorial** design system (`#FAF8F3` warm ivory canvas, `#252523` charcoal ink, `#35624D` botanical forest accents, *Sentient* editorial serif display, *Plus Jakarta Sans* UI, and *JetBrains Mono* telemetry) with painterly botanical frames and live count-up metrics.
+- **Two-Layer Separation of Concerns**: Strictly decouples **Layer 1: In-Text Citation Mapping** (`MATCHED`, `AMBIGUOUS`, `MISSING_IN_BIBLIOGRAPHY`, `UNCITED_REFERENCE`) from **Layer 2: Reference Entry Validation** (`VERIFIED`, `METADATA_ERROR`, `RESOURCE`, `SUSPECTED_HALLUCINATION`, `UNRESOLVED`), eliminating double-counting when a reference is cited multiple times.
+- **No Black-Box Verdicts**: Every reference entry exposes a **5-Stage Neuro-Symbolic Logic Trace & Evidence DAG** (`Stage 1: Structural Parse` → `Stage 2: Multi-Source Retrieval` → `Stage 3: 16D Feature Vector` → `Stage 4: 28 Symbolic Rules & ML Scorer` → `Stage 5: Platt-Calibrated Verdict`), side-by-side canonical vs. cited diffs, **1-Click Bibliography Auto-Remediation** (`APA`, `IEEE`, `TDTU`, `.bib`, `.ris`), and **Auto-Healed `.DOCX` manuscript export**.
+- **Three Role-Based Portals + Live Sandbox**:
+  1. **Researcher / Student Workspace (`/dashboard`, `/sandbox`, `/verification/report/:id`)**: Test citations in the **Live Citation Sandbox** (sampling real papers from `128,654` ACL Anthology records or generating synthetic multi-page academic PDFs), upload single or batch PDF/DOCX manuscripts, inspect citation errors in a split-pane IDE, and export auto-repaired bibliographies.
+  2. **Teacher Cohort Classroom (`/teacher/classes`, `/teacher/reviews`)**: Manage thesis cohorts via join codes, detect **Cross-Student Shared AI Hallucinations**, and adjudicate flagged verdicts in the **Pending Reviews** queue with human-in-the-loop audit notes.
+  3. **Admin Platform Control (`/admin/system`, `/admin/users`, `/admin/audit`)**: Monitor external API latencies, verdict telemetry distributions, IAM user role & subscription tier assignments, and immutable system audit trails.
 - **Decision-Support Compliance**: All reports and exports include a mandatory bilingual compliance notice affirming that CITRA is a decision-support tool and final academic evaluation rests with qualified faculty.
 
 ---
 
 ## Visual Demo & UI Walkthrough
 
-> All screenshots below are captured directly from the live running platform (`1440×900 @ 2x Retina`) inspecting real undergraduate and research manuscripts.
+> All 18 screenshots below are captured directly from the live production platform at [**`https://citra.io.vn`**](https://citra.io.vn) (`1440×900 @ 2x Retina`) inspecting real undergraduate theses and research manuscripts.
 
-### 1. Editorial Landing Page — Adaptive Light & Dark Mode
-High-contrast academic typography (*Newsreader* serif display, *Plus Jakarta Sans* UI, and *JetBrains Mono* telemetry) with instant theme switching.
+### 1. Solva Warm Editorial Landing Page — Botanical Hero & 3-Pillar Architecture Bento (`/`)
+Editorial academic typography (*Sentient* serif display, *Plus Jakarta Sans* UI, and *JetBrains Mono* telemetry) paired with botanical painterly frames, live animated verification mockups, and interactive count-up telemetry.
 
-| Light Mode (`SourceLogic Ivory`) | Dark Mode (`SourceLogic Obsidian`) |
+| Editorial Hero & Live Verification Mockup (`/`) | 3-Pillar Floral Architecture Bento (`/#architecture`) |
 | :---: | :---: |
-| ![Landing Light Mode](./docs/screenshots/01-landing-light.png) | ![Landing Dark Mode](./docs/screenshots/02-landing-dark.png) |
+| ![Landing Hero](./docs/screenshots/01-landing-light.png) | ![Architecture Bento](./docs/screenshots/02-landing-dark.png) |
 
 ---
 
-### 2. Verification Workspace & Multi-Manuscript Batch Queue
-Upload individual PDF/DOCX manuscripts with customizable citation styles (Auto-detect, IEEE, APA 7th, Vancouver, Harvard, TDTU) or process entire thesis cohorts in parallel with real-time Server-Sent Events (SSE) progress streaming.
+### 2. Verification Workspace Dashboard & Multi-Manuscript Batch Queue (`/dashboard`, `/batch-upload`)
+Track workspace-wide Citation Integrity Scores (`CIS`), monthly plan quotas, and recent manuscript audits, or upload multiple PDF/DOCX manuscripts for concurrent batch verification with optional classroom assignment.
 
 | Workspace Dashboard (`/dashboard`) | Batch Verification Queue (`/batch-upload`) |
 | :---: | :---: |
@@ -92,8 +93,19 @@ Upload individual PDF/DOCX manuscripts with customizable citation styles (Auto-d
 
 ---
 
-### 3. Citation Debugger IDE — Hallucination Detection & Side-by-Side Metadata Diff
-The split-pane **Reference Inspector** highlights exact discrepancies between the manuscript's bibliography and canonical scholarly records from Crossref, Semantic Scholar, OpenAlex, ArXiv, and ACL Anthology.
+### 3. Live Citation Sandbox & Synthetic Academic PDF Generator (`/sandbox`)
+Sample `10–20` authentic papers directly from the local **`128,654`-paper ACL Anthology FTS5 database**, inject controlled Layer-1/Layer-2 defense error suites (year drift, author swap, fabricated hallucination, orphan in-text, uncited reference), and synthesize a complete academic PDF manuscript on the fly.
+
+<div align="center">
+
+![Live Citation Sandbox & Synthetic PDF Generator](./docs/screenshots/13-live-sandbox.png)
+
+</div>
+
+---
+
+### 4. Citation Debugger IDE — Hallucination Detection & Side-by-Side Metadata Diff (`/verification/report/:id`)
+The split-pane **Reference Inspector** highlights exact discrepancies between the manuscript's bibliography and canonical scholarly records across 15+ databases (Local ACL FTS5, Crossref, OpenAlex, DataCite, DOAJ, OpenAIRE/HAL, NCBI/bioRxiv, DBLP, arXiv, OpenLibrary, Europe PMC, Hugging Face, IETF RFC, Global DOI RA).
 
 | Hallucinated / Fabricated Reference (`HALLUCINATION`) | Venue / Year / Author Mismatch (`METADATA_ERROR`) |
 | :---: | :---: |
@@ -101,26 +113,48 @@ The split-pane **Reference Inspector** highlights exact discrepancies between th
 
 ---
 
-### 4. 5-Stage Neuro-Symbolic Logic Trace & Inline Document Context
-Inspect every intermediate signal in the 5-stage pipeline (`S_title`, `S_author`, `S_year`, `S_venue`, `S_doi`, `HybridMLScorer` probability, and symbolic rule overrides) alongside the exact paragraph context where each citation appears in the manuscript.
+### 5. 1-Click Bibliography Auto-Remediation Studio & Two-Layer Citation Network Explorer
+Automatically repair mismatched years, titles, authors, venues, and DOIs into standardized **APA 7th**, **IEEE Numeric**, **Harvard / TDTU**, **BibTeX (`.bib`)**, **RIS (`.ris`)**, or download an **Auto-Healed `.DOCX` manuscript**, and explore the **Two-Layer Citation & Source Network Graph (DAG)**.
 
-| 5-Stage Neuro-Symbolic Logic Trace (`/trace`) | Split-Pane Document Context Stream (`/document`) |
+| 1-Click Bibliography Auto-Remediation Studio (`Auto-Fix & BibTeX`) | Two-Layer Citation & Source Network Explorer (`Citation Graph`) |
+| :---: | :---: |
+| ![1-Click Auto-Remediation Studio](./docs/screenshots/17-auto-remediation-bibtex.png) | ![Citation & Evidence Network Explorer](./docs/screenshots/18-citation-evidence-graph.png) |
+
+---
+
+### 6. 5-Stage Neuro-Symbolic Logic Trace & Split-Pane Document Context Stream (`/trace`, `/document`)
+Inspect every intermediate signal in the 5-stage pipeline (`Layer 1 GROBID TEI`, `Federated Retrieval`, `Neural Similarity & Link Check`, `28 Symbolic Rules`, and `Platt-Calibrated Verdict`) alongside the exact manuscript paragraph context and citation intent (`methodology`, `result_comparison`, `background`).
+
+| 5-Stage Neuro-Symbolic Logic Trace (`/verification/report/:id/trace`) | Split-Pane Document Context Stream (`/verification/report/:id/document`) |
 | :---: | :---: |
 | ![Neuro-Symbolic Logic Trace](./docs/screenshots/07-logic-trace.png) | ![Document Context Inspector](./docs/screenshots/09-document-inspector.png) |
 
 ---
 
-### 5. Bidirectional Consistency Matrix & Teacher Cohort Classroom
-Detect orphaned bibliography entries (`uncited_references`) and dangling in-text citations (`MISSING_IN_BIBLIOGRAPHY`), or manage entire thesis defense classes from the instructor portal.
+### 7. Diagnostic Issues Triage Hub & Bidirectional Consistency Matrix (`/issues`, `/consistency`)
+Triage all flagged anomalies by severity (`Critical — Suspected Hallucination`, `Warning — Metadata Drift`, `Info`) and verify bipartite graph consistency between in-text markers and bibliography entries (`Correctly Linked`, `Citations Without Reference`, `Uncited References`).
 
-| Citation ↔ Reference Consistency (`/consistency`) | Teacher Cohort Classroom (`/teacher/classes/1`) |
+| Actionable Diagnostic Issues Hub (`/verification/report/:id/issues`) | Bidirectional Consistency Matrix (`/verification/report/:id/consistency`) |
 | :---: | :---: |
-| ![Consistency Check](./docs/screenshots/08-consistency-check.png) | ![Teacher Classroom](./docs/screenshots/10-teacher-classroom.png) |
+| ![Diagnostic Issues Hub](./docs/screenshots/12-diagnostic-issues.png) | ![Consistency Check](./docs/screenshots/08-consistency-check.png) |
 
 ---
 
-### 6. Admin Platform Telemetry & Verdict Distribution
-Real-time health checks across GROBID, SQLite FTS5, and external scholarly APIs alongside system-wide verdict distributions and audit trails.
+### 8. Teacher Cohort Classroom, Shared AI Hallucination Radar & Faculty Adjudication Queue
+Manage entire thesis defense cohorts via join codes (`CITRA-1001`), monitor cohort CIS distributions and 5-year citation recency, detect **Shared AI Hallucinations across multiple student submissions**, and adjudicate contested verdicts in the **Pending Reviews** queue.
+
+| Cohort Analytics & Shared Hallucination Radar (`/teacher/classes/1`) | Faculty Adjudication & Pending Reviews Queue (`/teacher/reviews`) |
+| :---: | :---: |
+| ![Teacher Classroom](./docs/screenshots/10-teacher-classroom.png) | ![Teacher Pending Reviews](./docs/screenshots/14-teacher-pending-reviews.png) |
+
+---
+
+### 9. Academic Subscription Plans, Admin Telemetry & IAM Account Directory (`/pricing`, `/admin/*`)
+Flexible academic plans (**Basic Free**, **Pro Scholar**, **Ultra Lab/Faculty**) powered by Stripe checkout, paired with real-time platform telemetry (`/admin/system`) and Role-Based Access Control (`RBAC`) user administration (`/admin/users`).
+
+| Academic Pricing & Subscription Plans (`/pricing`) | IAM Identity Directory & Role Management (`/admin/users`) |
+| :---: | :---: |
+| ![Pricing & Subscription Plans](./docs/screenshots/15-pricing-subscription.png) | ![Admin Account Management](./docs/screenshots/16-admin-accounts-audit.png) |
 
 <div align="center">
 
@@ -134,15 +168,16 @@ Real-time health checks across GROBID, SQLite FTS5, and external scholarly APIs 
 
 | Domain | Capability | Implementation Details |
 | :--- | :--- | :--- |
-| **Document Parsing** | **Multi-Modal PDF & DOCX Extraction** | **GROBID 0.8.0 TEI-XML** deep structural parsing with automatic **PyMuPDF (`fitz`)** + `python-docx` fallback; supports Vietnamese & English section headers (`Tài liệu tham khảo`, `References`, `Bibliography`). |
-| **Citation Formats** | **11 Citation Styles + Vietnamese Legal Docs** | Auto-detects **IEEE** (`[1]`, `[1]-[3]`), **APA** (`(Smith et al., 2020)`), **Vancouver**, **Harvard**, **MLA**, **Chicago**, **ACM**, **Nature**, **Springer**, **Footnotes**, and **Vietnamese Legal Documents** (`Luật số`, `Nghị định`, `Thông tư` per TDTU standards). |
-| **Smart Retrieval** | **Domain-Aware Federated Search, Retraction Watch & Active Link Validation** | Local **ACL Anthology SQLite FTS5** (`128,626` papers with `81,973` abstracts) + **Crossref**, **OpenAlex**, **DataCite** (Zenodo/Figshare/OSF), **Global DOI RA & CSL-JSON** (JaLC/CNKI/mEDRA/KISTI), **DOAJ**, **OpenAIRE Graph & HAL**, **NCBI Entrez & bioRxiv/medRxiv**, **DBLP**, **arXiv**, **OpenLibrary**, **Europe PMC**, **Hugging Face Hub**, **IETF Datatracker RFC & PyPI**, and **SerpApi Google Scholar** fallback, paired with **Retraction Watch Detection** (`is_retracted`) and active **HTTP + Wayback Machine Link Validation** (`HTTP 200 OK`, `403 Restricted/Paywall`, `Archived Alive`, `404 Dead Link`, `Fake Domain`). |
+| **Document Parsing** | **Multi-Modal PDF & DOCX Extraction** | **GROBID 0.8.0 TEI-XML** deep structural parsing with automatic **PyMuPDF (`fitz`)** + `python-docx` fallback; 2-column reading-order reconstruction; supports Vietnamese & English section headers (`Tài liệu tham khảo`, `References`, `Bibliography`). |
+| **Citation Formats** | **12 Citation Styles + Vietnamese Legal Docs** | Auto-detects **IEEE** (`[1]`, `[1]-[3]`), **APA 7th** (`(Smith et al., 2020)`), **Vancouver**, **Harvard**, **MLA 9th**, **Chicago**, **ACM**, **Nature**, **ACS**, **AMA**, **CSE**, and **Vietnamese Legal Documents** (`Luật số`, `Nghị định`, `Thông tư`, `Bản án` per TDTU standards). |
+| **Smart Retrieval** | **15+ Federated Scholarly Indexes, Retraction Watch & Active Link Validation** | Local **ACL Anthology SQLite FTS5** (`128,654` papers with `81,973` abstracts) + **Crossref**, **OpenAlex**, **DataCite** (Zenodo/Figshare/OSF), **Global DOI RA & CSL-JSON** (JaLC/CNKI/mEDRA/KISTI), **DOAJ**, **OpenAIRE Graph & HAL**, **NCBI Entrez & bioRxiv/medRxiv**, **DBLP**, **arXiv**, **OpenLibrary**, **Europe PMC**, **Hugging Face Hub**, **IETF Datatracker RFC & PyPI**, and **SerpApi Google Scholar** fallback, paired with **Retraction Watch Detection** (`is_retracted`) and active **HTTP + Wayback Machine Link Validation** (`HTTP 200 OK`, `403 Restricted/Paywall`, `Archived Alive`, `404 Dead Link`, `Fake Domain`). |
 | **Deep Neural Layer** | **Sentence-Level Evidence, Intent, Stance & Cross-Lingual Bridge** | **Sentence-BERT (`all-MiniLM-L6-v2`)** focal-sentence vs. abstract sentence-level max-pooling (`best_evidence_sentence`), **Citation Intent Classification** (`background`, `methodology`, `result_comparison`), **Claim Stance & Polarity Verification** (`supported`, `partially_supported`, `contradiction_risk`), **Vietnamese ↔ English Semantic Bridging**, **Multi-Occurrence Aggregation**, and **Implicit Body Passage Discovery** for uncited references. |
 | **Neuro-Symbolic Verification** | **16D Feature Vector + 28 Symbolic Rules + Platt Calibration** | Combines **Sentence-BERT** neural evidence & title alignment, **RapidFuzz**, **AuthorMatcher**, and **VenueNormalizer** with **28 deterministic Symbolic Rules** (`R-RETRACTED-PAPER`, `R-WAYBACK-ARCHIVED`, `R-GLOBAL-DOI-RA-VERIFIED`, `R-HF-VERIFIED`, `R-RFC-VERIFIED`, etc.) and a **Multinomial Logistic Regression + Logit-Space Platt Scaling** scorer trained on **120,000 paper-disjoint samples** (`Macro-F1 = 0.9979` ML / `0.9764` Neuro-Symbolic, `ECE = 0.0433`, `Brier = 0.0095`). |
-| **Scoring Engine** | **5-Component Citation Integrity Score (`CIS`)** | Weighted composite score (`0–100`) combining Reference Validity (`35%`), Citation Mapping (`25%`), Metadata Accuracy (`15%`), Format Compliance (`15%`), and Bibliography Hygiene (`10%`) with critical failure caps. |
-| **Interactive IDE** | **4 Specialized Inspection Views** | **Bibliography Table** (side-by-side diff), **Logic Trace** (5-stage Neuro-Symbolic pipeline + Deep Neural Evidence Panel), **Consistency Matrix** (dangling & orphan detection), and **Document Context** (inline sentence highlights + SBERT evidence match popup). |
-| **Role-Based Portals** | **User, Teacher, and Admin Workflows** | JWT authentication, **Batch SSE Upload**, **Classroom Management** (`join_code`, cohort analytics), **Teacher Verdict Overrides**, and **Admin System Telemetry & Audit Logs**. |
-| **Export & Reporting** | **Multi-Format Compliance Exports** | One-click export of full verification reports to **JSON**, **CSV**, **PDF**, and **DOCX** (`src/integrity_checker/reporting/exporter.py`). |
+| **Live Sandbox** | **Interactive ACL Sandbox & Synthetic PDF Generator** | Sample `10–20` real papers from the local `128,654`-paper ACL Anthology database (`/sandbox`), inject controlled Layer-1/Layer-2 anomalies (`Sửa sai Năm`, `Sửa sai Tác giả`, `Bịa nguồn giả`, `Uncited Ref`, `Orphan In-text`), verify instantaneously, or synthesize a complete multi-page academic PDF manuscript. |
+| **Auto-Remediation** | **1-Click Bibliography Auto-Fix & Auto-Healed `.DOCX`** | Automatically repairs mismatched publication years, titles, author lists, venues, and DOIs using canonical records, outputting standardized **APA 7th**, **IEEE**, **Harvard/TDTU**, **BibTeX (`.bib`)**, **RIS (`.ris`)**, and one-click **Auto-Healed `.DOCX` manuscripts with change logs**. |
+| **Interactive IDE** | **6 Specialized Inspection Views** | **Split-Pane Reference Debugger** (side-by-side diff), **Two-Layer Citation & Source Network Graph (DAG)**, **1-Click Auto-Remediation Studio**, **5-Stage Logic Trace**, **Diagnostic Issues Hub**, **Bipartite Consistency Matrix**, and **Document Context Stream + Inline PDF Page Preview**. |
+| **Role-Based Portals & Billing** | **Student, Teacher, Admin & Stripe Tiers** | JWT + Google OAuth authentication, **Batch Upload**, **Teacher Cohort Analytics & Cross-Student Shared Hallucination Radar**, **Faculty Pending Review Overrides**, **Stripe Subscription Plans (`Basic`, `Pro`, `Ultra`)**, and **Admin System Telemetry & Audit Logs**. |
+| **Export & Reporting** | **Multi-Format Compliance Exports** | One-click export of full verification reports to **JSON**, **CSV**, **PDF**, **DOCX**, and **Auto-Healed `.DOCX`** (`src/integrity_checker/reporting/exporter.py`). |
 
 ---
 
