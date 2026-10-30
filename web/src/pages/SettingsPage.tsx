@@ -31,6 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { APP_BUILD_DATE, APP_VERSION } from '@/version';
 
 // ============================================================
 // Types
@@ -196,7 +197,7 @@ export function SettingsPage(): JSX.Element {
               </span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/70 dark:border-emerald-800/70 text-[11px] font-mono text-emerald-700 dark:text-emerald-300">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                v3.1.18
+                v{APP_VERSION}
               </span>
             </div>
 
@@ -580,10 +581,10 @@ export function SettingsPage(): JSX.Element {
         </div>
 
         <div className="p-6 space-y-3">
-          <InfoRow label={t('settings.version')} value="3.1.18" />
+          <InfoRow label={t('settings.version')} value={APP_VERSION} />
           <InfoRow
             label={t('settings.buildDate')}
-            value="2026-10-30"
+            value={APP_BUILD_DATE}
           />
         </div>
       </div>

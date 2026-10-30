@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# =====================================================================
+# .githooks/post-commit — Automated SemVer 2.0.0 & Build Date Hook
+# Automatically bumps APP_VERSION & APP_BUILD_DATE based on
+# Conventional Commits (feat -> minor, fix/perf/refactor -> patch, ! -> major).
+# =====================================================================
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+if [ -f "$REPO_ROOT/scripts/bump_version.py" ]; then
+  python3 "$REPO_ROOT/scripts/bump_version.py" --post-commit
+fi
