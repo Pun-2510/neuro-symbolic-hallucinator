@@ -166,7 +166,7 @@ _CHICAGO_NB_ARTICLE = CompiledPattern.create(
     name="chicago_nb_article",
     pattern=(
         r"^(?:(?:\[\s*(?P<index>\d+)\s*\]|(?P<num>\d+)\.)\s*)?"
-        r"(?P<authors>[A-ZÀ-Ý].+?)[.,]\s+"  # Authors. or Authors,
+        r"(?P<authors>[A-ZÀ-Ý].+?)[.,]?\s+"  # Authors. or Authors,
         r'["\u201c\u2018\'](?P<title>.+?)["\u201d\u2019\'][.,]?\s*'  # "Title." or 'Title,'
         r"(?P<venue>.*\(\s*(?:18|19|20)\d{2}[a-z]?\s*\).*)"  # Venue with (Year)
         r"$"

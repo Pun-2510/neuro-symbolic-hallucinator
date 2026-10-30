@@ -552,17 +552,25 @@ class HarvardFormat:
             matched_pattern="harvard_fallback",
         )
 
-        # Extract numeric index
-        idx_match = re.search(r'\[\s*(\d+)\s*\]', text)
+        # Extract numeric index ([N] or N.)
+        idx_match = re.match(r'^\s*(?:\[\s*(\d+)\s*\]|(\d+)\.)', text)
         if idx_match:
-            citation.numeric_index = int(idx_match.group(1))
+            citation.numeric_index = int(idx_match.group(1) or idx_match.group(2))
 
         # Try to extract year (often in parentheses)
         year_m = re.search(r'\(((?:19|20)\d{2}[a-z]?)\)', text)
         if year_m:
+            after_year_raw = text[year_m.end():].strip()
+            # Reject if (Year) is at the end of a Chicago/Vancouver journal citation like "(2022): 19-27."
+            if after_year_raw.startswith(":") or len(after_year_raw.rstrip(".")) < 12:
+                return None
             citation.year = year_m.group(1)[:4]
             if len(year_m.group(1)) > 4:
                 citation.year_suffix = year_m.group(1)[4:]
+
+            before_year = re.sub(r'^\s*(?:\[\s*\d+\s*\]|\d+\.)\s*', '', text[:year_m.start()]).strip().rstrip('.,')
+            if before_year and len(before_year) < 180 and '"' not in before_year and '\u201c' not in before_year:
+                citation.authors = self._parse_authors(before_year)
 
         # Try to extract title
         # In Harvard, title often follows (Year)

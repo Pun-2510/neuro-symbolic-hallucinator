@@ -833,12 +833,13 @@ class DocumentParser:
             and c.year
             and re.search(r"[A-Za-z]{2,}", c.raw_text or "")
         )
-        if existing_matched_count >= 10 or (
-            existing_matched_count >= 6 and not has_ibid and has_pub_city < 2
+        min_ad_matches = max(6, len(references) // 2)
+        if existing_matched_count >= max(10, min_ad_matches) or (
+            existing_matched_count >= min_ad_matches and not has_ibid and has_pub_city < 2
         ):
             return existing_body
 
-        if not (has_ibid or has_pub_city >= 2 or len(fn_blocks) >= 5 or (len(references) >= 5 and existing_matched_count <= 6)):
+        if not (has_ibid or has_pub_city >= 2 or len(fn_blocks) >= 5 or (len(references) >= 5 and existing_matched_count < min_ad_matches)):
             return existing_body
 
         def _match_fn_text(fn_txt: str) -> list[dict]:
@@ -916,6 +917,12 @@ class DocumentParser:
                     )
                 )
 
+        # Pre-mark bibliography profiles already matched by existing in-text citations
+        for prof in ref_profiles:
+            if prof["sn_fold"] and len(prof["sn_fold"]) >= 3:
+                if any(prof["sn_fold"] in _fold(c.raw_text) for c in existing_body):
+                    matched_ref_indices.add(prof["idx"])
+
         # Fallback page scan for bibliography entries whose footnote wrapped across pages or lost its leading number
         for prof in ref_profiles:
             if prof["idx"] in matched_ref_indices:
@@ -966,6 +973,9 @@ class DocumentParser:
 
         if not chicago_cits:
             return existing_body
+
+        if existing_matched_count >= 6:
+            return existing_body + chicago_cits
 
         # Keep existing_body citations that are numeric or match a known bibliography author surname
         valid_existing = [
@@ -1066,6 +1076,18 @@ class DocumentParser:
                             if re.search(code_pat, p_flat, re.IGNORECASE):
                                 matched_term = term
                                 break
+                            raw_code_m = re.search(
+                                r"\b(\d+/\d+(?:/[A-ZĐ0-9\-]+)?|\d+/[A-ZĐ0-9\-]{2,}|\d+\s*-[A-ZĐ]{2,}/[A-ZĐ0-9\-]+)\b",
+                                term,
+                                re.I,
+                            )
+                            if raw_code_m:
+                                bare_pat = re.escape(raw_code_m.group(1))
+                                bare_pat = re.sub(r"NQ/(?:TW|TƯ)", r"NQ/(?:TW|TƯ)", bare_pat, flags=re.I)
+                                bare_pat = re.sub(r"QĐ\\-?TTg", r"QĐ-?TTg", bare_pat, flags=re.I)
+                                if re.search(bare_pat, p_flat, re.IGNORECASE):
+                                    matched_term = term
+                                    break
                         elif ref_yr:
                             # Match "Luật X năm 2020" or "Luật X (2020)" or "Luật X 2020"
                             yr_pat = rf"\b{re.escape(term)}\s*(?:năm\s+|\(\s*|,\s*)?{re.escape(ref_yr)}\b"
@@ -1100,14 +1122,14 @@ class DocumentParser:
                             )
                             page_existing.add(raw_cit.lower())
 
-            elif has_vn_trad or len(existing_body) <= 2:
+            elif has_vn_trad or len(existing_body) <= 2 or (has_vn_bib and len(source_doc.pages or []) >= 4):
                 # For Vietnamese footnote-style articles, match bibliography author/title in page text/footnotes
                 first_raw = ""
                 if ref.authors:
                     a0 = ref.authors[0]
                     first_raw = (getattr(a0, "raw", None) or getattr(a0, "last_name", None) or str(a0)).strip()
                 title_snip = (ref.title or "").strip()
-                title_prefix = title_snip[:32].strip().lower() if len(title_snip) >= 16 else ""
+                title_prefix = title_snip[:min(len(title_snip), 32)].strip().lower() if len(title_snip) >= 6 else ""
                 url_snip = (ref.url or "").strip().lower()[:35] if ref.url and len(ref.url) >= 18 else ""
 
                 for p_num, p_text in sorted(body_page_texts.items()):
@@ -1115,14 +1137,37 @@ class DocumentParser:
                     p_low = p_flat.lower()
                     page_existing = existing_raw_by_page.setdefault(p_num, set())
                     auth_hit = False
-                    if first_raw and len(first_raw) >= 4:
+                    if first_raw and len(first_raw) >= 3:
                         auth_cand = first_raw.split(",")[0].strip() if "," in first_raw else first_raw
-                        if len(auth_cand) >= 4 and re.search(rf"\b{re.escape(auth_cand.lower())}\b", p_low):
+                        if len(auth_cand) >= 3 and re.search(rf"\b{re.escape(auth_cand.lower())}\b", p_low):
                             auth_hit = True
-                    title_hit = bool(title_prefix and title_prefix in p_low)
+                    title_hit = bool(
+                        title_prefix
+                        and (
+                            title_prefix in p_low if len(title_prefix) >= 14 else re.search(rf"\b{re.escape(title_prefix)}\b", p_low)
+                        )
+                    )
                     url_hit = bool(url_snip and url_snip in p_low)
 
                     if auth_hit or title_hit or url_hit:
+                        if not first_raw and ref.numeric_index is not None:
+                            raw_cit = f"[{ref.numeric_index}]"
+                            if raw_cit.lower() not in page_existing:
+                                added.append(
+                                    Citation(
+                                        raw_text=raw_cit,
+                                        citation_type=CitationType.NUMERIC,
+                                        style=CitationStyle.IEEE,
+                                        page_num=p_num,
+                                        numeric_index=ref.numeric_index,
+                                        title=ref.title,
+                                        title_normalized=ref.title_normalized,
+                                        matched_pattern="vn_footnote_guided",
+                                        confidence=0.88,
+                                    )
+                                )
+                                page_existing.add(raw_cit.lower())
+                            continue
                         disp_auth = first_raw or (title_snip[:35] if title_snip else "")
                         if not disp_auth:
                             continue
@@ -1209,7 +1254,10 @@ class DocumentParser:
         }
 
         sup_re = re.compile(
-            r"(?<![A-Za-z0-9\-/_])(?P<word>[a-z]{4,})(?P<punct>[.,])?(?P<nums>[1-9]\d{0,2}(?:\s*[,–\-]\s*[1-9]\d{0,2})*)(?=[.,;:\s)\]]|$)"
+            r"(?<![A-Za-z0-9\-/_])(?P<word>[A-Za-z]{4,})(?P<punct>[.,])?(?P<nums>[1-9]\d{0,2}(?:\s*[,–\-]\s*[1-9]\d{0,2})*)(?=[.,;:\s)\]]|$)"
+        )
+        paren_num_re = re.compile(
+            r"(?<![A-Za-z0-9\-/_])(?P<word>[a-z]{4,})\s+\((?P<nums>[1-9]\d{0,2}(?:\s*[,–\-]\s*[1-9]\d{0,2})*)\)(?=\s*[.,;:])"
         )
 
         dominant_style = CitationStyle.NATURE
@@ -1224,52 +1272,59 @@ class DocumentParser:
         has_multi_or_range = False
 
         for p_num, p_text in sorted(body_page_texts.items()):
-            for m in sup_re.finditer(p_text):
-                word = m.group("word").lower()
-                if word in _EXCLUDED_WORDS:
-                    continue
-                nums_raw = re.sub(r"\s+", "", m.group("nums"))
-                # Parse all numbers and ranges in nums_raw
-                tokens = [t for t in nums_raw.split(",") if t]
-                if not tokens:
-                    continue
-                valid_tokens = True
-                prev_val = 0
-                for tok in tokens:
-                    if "–" in tok or "-" in tok:
-                        sep = "–" if "–" in tok else "-"
-                        parts = tok.split(sep)
-                        if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
-                            valid_tokens = False
-                            break
-                        a, b = int(parts[0]), int(parts[1])
-                        if not (1 <= a < b <= max_ref_num and (b - a) <= 25):
-                            valid_tokens = False
-                            break
-                        prev_val = b
-                    else:
-                        if not tok.isdigit():
-                            valid_tokens = False
-                            break
-                        v = int(tok)
-                        if not (1 <= v <= max_ref_num) or (prev_val > 0 and v <= prev_val):
-                            valid_tokens = False
-                            break
-                        prev_val = v
-                if not valid_tokens:
-                    continue
-                if len(tokens) > 1 or "–" in nums_raw or "-" in nums_raw:
-                    has_multi_or_range = True
-                candidates.append(
-                    Citation(
-                        raw_text=f"[{nums_raw}]",
-                        citation_type=CitationType.NUMERIC,
-                        style=dominant_style,
-                        page_num=p_num,
-                        matched_pattern="attached_superscript_numeric",
-                        confidence=0.88,
+            for pat_re in (sup_re, paren_num_re):
+                for m in pat_re.finditer(p_text):
+                    word = m.group("word").lower()
+                    if word in _EXCLUDED_WORDS or word in {
+                        "equation", "equations", "formula", "formulas", "theorem", "lemma",
+                        "corollary", "definition", "proposition", "condition", "hypothesis",
+                        "expression", "inequality", "relation", "constraint", "problem",
+                        "example", "remark", "property", "axiom", "where", "from", "into",
+                        "with", "than", "over", "under", "between", "through",
+                    }:
+                        continue
+                    nums_raw = re.sub(r"\s+", "", m.group("nums"))
+                    # Parse all numbers and ranges in nums_raw
+                    tokens = [t for t in nums_raw.split(",") if t]
+                    if not tokens:
+                        continue
+                    valid_tokens = True
+                    prev_val = 0
+                    for tok in tokens:
+                        if "–" in tok or "-" in tok:
+                            sep = "–" if "–" in tok else "-"
+                            parts = tok.split(sep)
+                            if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
+                                valid_tokens = False
+                                break
+                            a, b = int(parts[0]), int(parts[1])
+                            if not (1 <= a < b <= max_ref_num and (b - a) <= 25):
+                                valid_tokens = False
+                                break
+                            prev_val = b
+                        else:
+                            if not tok.isdigit():
+                                valid_tokens = False
+                                break
+                            v = int(tok)
+                            if not (1 <= v <= max_ref_num) or (prev_val > 0 and v <= prev_val):
+                                valid_tokens = False
+                                break
+                            prev_val = v
+                    if not valid_tokens:
+                        continue
+                    if len(tokens) > 1 or "–" in nums_raw or "-" in nums_raw:
+                        has_multi_or_range = True
+                    candidates.append(
+                        Citation(
+                            raw_text=f"[{nums_raw}]",
+                            citation_type=CitationType.NUMERIC,
+                            style=dominant_style,
+                            page_num=p_num,
+                            matched_pattern="attached_superscript_numeric",
+                            confidence=0.88,
+                        )
                     )
-                )
 
         if len(candidates) >= 3 or (has_multi_or_range and len(candidates) >= 1):
             return existing_body + candidates
