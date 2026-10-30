@@ -72,6 +72,9 @@ class FeatureCalculator:
         if best is None:
             return MatchFeatures(source_consensus=source.consensus_count())
 
+        # Cross-candidate metadata fusion: enrich missing fields on `best` from consensus candidates
+        best = self._fuse_consensus_metadata(best, source)
+
         # Title sim
         c_title = (citation.title or citation.raw_text).lower().strip()
         cand_title = (best.title or "").lower().strip()
@@ -80,7 +83,13 @@ class FeatureCalculator:
         fuzzy_sim = self._compute_title_similarity(
             c_title, cand_title, is_raw_fallback=not bool(citation.title)
         )
-        semantic_sim = self.semantic.similarity(citation.title or citation.raw_text, best.title or "")
+        c_primary, c_alts = self._strip_medium_tags_and_extract_alt_titles(citation.title or citation.raw_text)
+        cand_primary, cand_alts = self._strip_medium_tags_and_extract_alt_titles(best.title or "")
+        semantic_sim = self.semantic.similarity(c_primary, cand_primary)
+        for alt_c in c_alts:
+            semantic_sim = max(semantic_sim, self.semantic.similarity(alt_c, cand_primary))
+        for alt_cand in cand_alts:
+            semantic_sim = max(semantic_sim, self.semantic.similarity(c_primary, alt_cand))
 
         author_sim = author_match_score(
             cited_authors,
@@ -323,6 +332,63 @@ class FeatureCalculator:
         source._selected_best = best  # type: ignore[attr-defined]
         return best
 
+    _MEDIUM_TAG_RE = re.compile(
+        r"\s*\[(?:"
+        r"online|internet|preprint|computer\s+software|software|data\s*set|dataset|"
+        r"audio\s+podcast|podcast|video|film|white\s+paper|working\s+paper|"
+        r"master'?s\s+thesis|doctoral\s+dissertation|dissertation|thesis|"
+        r"tech\.?\s*rep\.?|technical\s+report|monograph|electronic\s+resource|"
+        r"cd-rom|báo\s+cáo|luận\s+văn(?:\s+thạc\s+sĩ)?|luận\s+án(?:\s+tiến\s+sĩ)?|trực\s+tuyến"
+        r")\]",
+        re.IGNORECASE,
+    )
+    _TRANSLATED_BRACKET_RE = re.compile(r"^(?P<main>.+?)\s*\[(?P<alt>[^\]]{10,})\]\s*$")
+
+    @classmethod
+    def _strip_medium_tags_and_extract_alt_titles(cls, title: str) -> tuple[str, list[str]]:
+        """Strip bracketed medium tags (e.g. [Online], [Computer software]) and extract bracketed translated titles."""
+        if not title:
+            return "", []
+        cleaned = cls._MEDIUM_TAG_RE.sub("", title).strip()
+        alts: list[str] = []
+        m = cls._TRANSLATED_BRACKET_RE.match(cleaned)
+        if m:
+            main_part = m.group("main").strip().rstrip(".,;:")
+            alt_part = m.group("alt").strip().rstrip(".,;:")
+            if len(main_part) >= 6 and len(alt_part) >= 10:
+                return main_part, [alt_part]
+        return cleaned, alts
+
+    def _fuse_consensus_metadata(
+        self, best: SourceCandidate, source: SourceResult
+    ) -> SourceCandidate:
+        """Fuse missing metadata fields (authors, year, doi, venue, abstract) from agreeing candidates."""
+        valid_others = [c for c in source.candidates if c.found and c is not best]
+        if not valid_others:
+            return best
+
+        best_title = (best.title or "").lower().strip()
+        for cand in valid_others:
+            same_doi = bool(best.doi and cand.doi and self._doi_matches(best.doi, cand.doi))
+            cand_title = (cand.title or "").lower().strip()
+            t_sim = self._compute_title_similarity(best_title, cand_title) if (best_title and cand_title) else 0.0
+            y_dist = self._year_distance(best.year, cand.year)
+            compatible_year = (best.year is None or cand.year is None or y_dist <= 1)
+            if not (same_doi or (t_sim >= 0.92 and compatible_year)):
+                continue
+
+            if (not best.authors or len(best.authors) < len(cand.authors or [])) and cand.authors and compatible_year:
+                best.authors = list(cand.authors)
+            if not best.year and cand.year and same_doi:
+                best.year = cand.year
+            if not best.doi and cand.doi and compatible_year:
+                best.doi = cand.doi
+            if not best.venue and cand.venue:
+                best.venue = cand.venue
+            if not getattr(best, "abstract", None) and getattr(cand, "abstract", None):
+                best.abstract = cand.abstract
+        return best
+
     def _compute_title_similarity(
         self,
         citation_title: str,
@@ -341,9 +407,38 @@ class FeatureCalculator:
         if not citation_title or not candidate_title:
             return 0.0
 
-        # Normalize whitespace, ampersands, dashes, and trailing punctuation
-        c_clean = re.sub(r"\s+", " ", citation_title.strip().rstrip(".,;:?!"))
-        cand_clean = re.sub(r"\s+", " ", candidate_title.strip().rstrip(".,;:?!"))
+        c_main, c_alts = self._strip_medium_tags_and_extract_alt_titles(citation_title)
+        cand_main, cand_alts = self._strip_medium_tags_and_extract_alt_titles(candidate_title)
+        if c_alts or cand_alts:
+            best_alt_sim = self._compute_single_title_similarity(
+                c_main, cand_main, is_raw_fallback=is_raw_fallback
+            )
+            for ac in [c_main, *c_alts]:
+                for acand in [cand_main, *cand_alts]:
+                    best_alt_sim = max(
+                        best_alt_sim,
+                        self._compute_single_title_similarity(
+                            ac, acand, is_raw_fallback=is_raw_fallback
+                        ),
+                    )
+            return best_alt_sim
+        return self._compute_single_title_similarity(
+            c_main, cand_main, is_raw_fallback=is_raw_fallback
+        )
+
+    def _compute_single_title_similarity(
+        self,
+        citation_title: str,
+        candidate_title: str,
+        *,
+        is_raw_fallback: bool = False,
+    ) -> float:
+        if not citation_title or not candidate_title:
+            return 0.0
+
+        # Normalize case, whitespace, ampersands, dashes, and trailing punctuation
+        c_clean = re.sub(r"\s+", " ", citation_title.lower().strip().rstrip(".,;:?!"))
+        cand_clean = re.sub(r"\s+", " ", candidate_title.lower().strip().rstrip(".,;:?!"))
         c_clean = re.sub(r"\s*&\s*", " and ", c_clean).replace("\u2013", "-").replace("\u2014", "-")
         cand_clean = re.sub(r"\s*&\s*", " and ", cand_clean).replace("\u2013", "-").replace("\u2014", "-")
         if not c_clean or not cand_clean:

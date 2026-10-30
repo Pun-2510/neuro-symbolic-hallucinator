@@ -306,8 +306,10 @@ def _is_swapped_author_match(
         given_inits_1 = init_1 - {prim_1[0]}
         if given_inits_1:
             return any(t[0] in given_inits_1 for t in other_tokens_2)
-        # If the given name happens to start with the same letter as the surname (e.g. "Wang, W."),
-        # check if init_1 had at least 1 initial and full_1 had only 1 full token while raw had 2+ tokens
+        # If the given name starts with the same letter as the surname (e.g. "Wang, W." vs "Wang Wei"),
+        # accept when side 1 had a single full surname token and side 2 has another token with that same initial.
+        if len(full_1) == 1 and any(t[0] == prim_1[0] for t in other_tokens_2):
+            return True
         return False
 
     if _check_one_way(prim_a, full_a, init_a, full_b):
@@ -315,6 +317,63 @@ def _is_swapped_author_match(
     if _check_one_way(prim_b, full_b, init_b, full_a):
         return True
     return False
+
+
+_CORP_KEYWORDS = {
+    "organization", "organisation", "association", "institute", "institution",
+    "institutes", "institutions", "ministry", "ministries", "department", "departments",
+    "commission", "committee", "council", "agency", "agencies", "foundation",
+    "society", "federation", "university", "universities", "college", "academy",
+    "academies", "center", "centers", "centre", "centres", "bureau", "bank",
+    "nations", "group", "consortium", "collaboration", "union", "board", "office",
+    "administration", "authority", "health", "control", "services",
+    "bo", "so", "uy", "chinh", "quoc", "toa", "vien", "truong", "to", "hiep",
+    "ngan", "tong", "cuc",
+}
+_CORP_STOPWORDS = {
+    "the", "of", "for", "and", "in", "on", "to", "at", "by", "with", "from",
+    "va", "cua", "ve", "cac", "tai", "trong",
+}
+
+
+def _extract_corporate_keys(author: Union[Author, str], *, fold_diacritics: bool = True) -> set[str]:
+    """Extract normalized corporate/institutional keys and initialisms (e.g. 'World Health Organization' <-> 'who')."""
+    if isinstance(author, Author) or hasattr(author, "last_name"):
+        raw_str = getattr(author, "raw", "") or getattr(author, "last_name", "") or ""
+    else:
+        raw_str = str(author or "")
+    raw_str = raw_str.strip()
+    if not raw_str:
+        return set()
+
+    keys: set[str] = set()
+    # Explicit parenthesized or bracketed acronym: "World Health Organization (WHO)" -> "who"
+    for acr in re.findall(r"[\(\[]([A-Za-zĐđ]{2,12})[\)\]]", raw_str):
+        keys.add((_fold_diacritics(acr) if fold_diacritics else acr).lower())
+
+    no_parens = re.sub(r"[\(\[][^\)\]]*[\)\]]", " ", raw_str).strip()
+    folded = _fold_diacritics(no_parens) if fold_diacritics else no_parens
+    alpha_only = re.sub(r"[^A-Za-z0-9\s]", " ", folded)
+    words = [w for w in alpha_only.split() if w]
+    if not words:
+        return keys
+
+    # Single all-caps acronym token (e.g. "WHO", "UNESCO", "UNICEF", "IEEE", "OECD", "NIMH")
+    if len(words) == 1 and 2 <= len(words[0]) <= 10 and (words[0].isupper() or raw_str.isupper()):
+        keys.add(words[0].lower())
+        return keys
+
+    lower_words = [w.lower() for w in words]
+    if any(w in _CORP_KEYWORDS for w in lower_words):
+        sig_words = [w for w in lower_words if w not in _CORP_STOPWORDS]
+        if sig_words:
+            keys.add(" ".join(sig_words))
+            if len(sig_words) >= 2:
+                keys.add("".join(w[0] for w in sig_words))
+                # Also add initialism without trailing generic word if 4+ words (e.g. "Centers for Disease Control and Prevention" -> "cdc")
+                if len(sig_words) >= 4:
+                    keys.add("".join(w[0] for w in sig_words[:-1]))
+    return keys
 
 
 def author_match_score(
@@ -346,6 +405,18 @@ def author_match_score(
             if prim_c and prim_c not in cand_set:
                 if any(_is_swapped_author_match(sig_c, sig_b) for sig_b in cand_sigs):
                     cand_set.add(prim_c)
+        # Check corporate / institutional acronym & full-name equivalence (e.g. "WHO" <-> "World Health Organization")
+        for a in cited:
+            prim_c = _author_to_last_name(a, fold_diacritics=fold_diacritics)
+            if not prim_c or prim_c in cand_set:
+                continue
+            c_corp = _extract_corporate_keys(a, fold_diacritics=fold_diacritics)
+            if c_corp:
+                for b in candidate:
+                    b_corp = _extract_corporate_keys(b, fold_diacritics=fold_diacritics)
+                    if c_corp & b_corp:
+                        cand_set.add(prim_c)
+                        break
 
     # FIX v1.11: If all cited authors are present in the candidate's author list
     # (e.g., "Settles, B" or "Pedregosa, Varoquaux, Gramfort, et al." on a 16-author paper),
