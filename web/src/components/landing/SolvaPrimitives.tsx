@@ -520,45 +520,72 @@ export function SolvaAnimatedMetric({
   label: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [displayVal, setDisplayVal] = useState<number>(targetValue);
+  const [displayVal, setDisplayVal] = useState<number>(0);
   const [isVisible, setIsVisible] = useState(false);
   const hasAnimated = useRef(false);
+  const animRafRef = useRef<number | null>(null);
+
+  const runCountAnimation = (fromVal: number, toVal: number, durationMs: number) => {
+    if (animRafRef.current !== null) {
+      cancelAnimationFrame(animRafRef.current);
+    }
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / durationMs);
+      const eased = 1 - Math.pow(1 - progress, 4);
+      const current = fromVal + (toVal - fromVal) * eased;
+      setDisplayVal(current);
+      if (progress < 1 && hasAnimated.current) {
+        animRafRef.current = requestAnimationFrame(tick);
+      } else {
+        setDisplayVal(toVal);
+        animRafRef.current = null;
+      }
+    };
+    animRafRef.current = requestAnimationFrame(tick);
+  };
 
   useEffect(() => {
-    return subscribeToScroll(() => {
+    const unsub = subscribeToScroll(() => {
       const el = ref.current;
       if (!el || typeof window === 'undefined') return;
       const rect = el.getBoundingClientRect();
       const vh = window.innerHeight || 900;
 
-      if (rect.top > vh * 0.92) {
-        setIsVisible(false);
-        hasAnimated.current = false;
-      } else if (rect.bottom >= 40) {
+      if (rect.top > vh * 0.93 || rect.bottom < 32) {
+        if (hasAnimated.current) {
+          setIsVisible(false);
+          hasAnimated.current = false;
+          setDisplayVal(0);
+        }
+      } else {
         setIsVisible(true);
         if (!hasAnimated.current) {
           hasAnimated.current = true;
-          const duration = 950;
-          const startTime = performance.now();
-          const startVal = targetValue * 0.25;
-
-          const tick = (now: number) => {
-            const elapsed = now - startTime;
-            const progress = Math.min(1, elapsed / duration);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            const current = startVal + (targetValue - startVal) * eased;
-            setDisplayVal(current);
-            if (progress < 1 && hasAnimated.current) {
-              requestAnimationFrame(tick);
-            } else {
-              setDisplayVal(targetValue);
-            }
-          };
-          requestAnimationFrame(tick);
+          runCountAnimation(0, targetValue, 1500);
         }
       }
     });
+
+    return () => {
+      unsub();
+      if (animRafRef.current !== null) {
+        cancelAnimationFrame(animRafRef.current);
+      }
+    };
   }, [targetValue]);
+
+  // Continuous gentle live count refresh while visible in viewport
+  useEffect(() => {
+    if (!isVisible) return;
+    const interval = window.setInterval(() => {
+      if (hasAnimated.current) {
+        runCountAnimation(0, targetValue, 1450);
+      }
+    }, 5200);
+    return () => window.clearInterval(interval);
+  }, [isVisible, targetValue]);
 
   return (
     <div
@@ -573,7 +600,7 @@ export function SolvaAnimatedMetric({
       className="flex flex-col gap-[4px] will-change-[transform,opacity,filter]"
     >
       <div
-        className="font-solva-serif font-light text-[32px] sm:text-[40px] leading-[1.2] tracking-[-0.05em]"
+        className="font-solva-serif font-light text-[32px] sm:text-[40px] leading-[1.2] tracking-[-0.05em] tabular-nums"
         style={{ color: 'var(--solva-ink)' }}
       >
         {prefix}

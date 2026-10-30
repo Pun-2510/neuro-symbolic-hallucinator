@@ -1,16 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import {
   CheckCircle2,
-  AlertTriangle,
-  XCircle,
   FileText,
   Database,
-  Shield,
   GitBranch,
   Scale,
-  Cpu,
   Check,
-  Search,
   Layers,
   Sparkles,
   ArrowRight,
@@ -22,7 +17,168 @@ import { ScholarlySourceLogo } from './ScholarlySourceLogos';
 /* ============================================================
    SOLVA FLOATING UI MOCKUP CARDS (WITH 8PX FROSTED GLASS RING)
    Placed over Impressionist Oil Paintings + 5% Film Grain Noise
+   With Smooth Viewport-Aware Count-Up & Autonomous Live Animations
    ============================================================ */
+
+/**
+ * Shared IntersectionObserver + Periodic Replay Hook for Floral Demo Cards.
+ * - Detects when any floral-box demo card enters or leaves the viewport.
+ * - Triggers an immediate count-up from 0 + staggered entrance on scroll-in,
+ *   and periodically replays the smooth number & state animation while in view.
+ */
+export function useFloralCardAnimation(replayIntervalMs = 5200) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [replaySeed, setReplaySeed] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof window === 'undefined') return;
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsVisible(true);
+      setReplaySeed(1);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          setReplaySeed((prev) => prev + 1);
+        } else {
+          setIsVisible(false);
+        }
+      },
+      { threshold: 0.14 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible || replayIntervalMs <= 0) return;
+    const timer = window.setInterval(() => {
+      setReplaySeed((prev) => prev + 1);
+    }, replayIntervalMs);
+    return () => window.clearInterval(timer);
+  }, [isVisible, replayIntervalMs]);
+
+  const getStaggerStyle = (delayMs = 0): CSSProperties => ({
+    opacity: isVisible ? 1 : 0.001,
+    transform: isVisible ? 'translate3d(0, 0, 0)' : 'translate3d(0, 14px, 0)',
+    filter: isVisible ? 'none' : 'blur(2.5px)',
+    transitionProperty: 'opacity, transform, filter, background-color, border-color',
+    transitionDuration: isVisible ? '620ms' : '320ms',
+    transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
+    transitionDelay: isVisible ? `${delayMs}ms` : '0ms',
+  });
+
+  return { containerRef, isVisible, replaySeed, getStaggerStyle };
+}
+
+/**
+ * Smooth Quartic Ease-Out Animated Number (`SolvaLiveNumber`)
+ * Replicates and extends the smooth count-up feel of `SolvaAnimatedMetric` (15+, 96.4%, 4.9/5)
+ * inside every floral demo card.
+ */
+export function SolvaLiveNumber({
+  value,
+  startValue = 0,
+  decimals = 0,
+  padDigits = 0,
+  prefix = '',
+  suffix = '',
+  durationMs = 1450,
+  replaySeed = 0,
+  formatThousands = false,
+  thousandSeparator = ',',
+  className = '',
+}: {
+  value: number;
+  startValue?: number;
+  decimals?: number;
+  padDigits?: number;
+  prefix?: string;
+  suffix?: string;
+  durationMs?: number;
+  replaySeed?: number;
+  formatThousands?: boolean;
+  thousandSeparator?: string;
+  className?: string;
+}) {
+  const [displayVal, setDisplayVal] = useState<number>(startValue);
+  const currentValRef = useRef<number>(startValue);
+  const prevSeedRef = useRef<number>(replaySeed);
+  const prevTargetRef = useRef<number>(value);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const seedChanged = replaySeed !== prevSeedRef.current;
+    const targetChanged = value !== prevTargetRef.current;
+    prevSeedRef.current = replaySeed;
+    prevTargetRef.current = value;
+
+    const fromVal = seedChanged
+      ? startValue
+      : targetChanged
+        ? currentValRef.current
+        : startValue;
+    const activeDuration =
+      seedChanged && !targetChanged ? durationMs : Math.min(durationMs, 1050);
+
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+    }
+
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / Math.max(140, activeDuration));
+      // Quartic ease-out for silky deceleration matching SolvaAnimatedMetric
+      const eased = 1 - Math.pow(1 - progress, 4);
+      const next = fromVal + (value - fromVal) * eased;
+      currentValRef.current = next;
+      setDisplayVal(next);
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        currentValRef.current = value;
+        setDisplayVal(value);
+        rafRef.current = null;
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [value, startValue, durationMs, replaySeed]);
+
+  const formattedNumber = (() => {
+    const fixed = displayVal.toFixed(decimals);
+    if (padDigits > 0 && decimals === 0) {
+      return Math.round(displayVal).toString().padStart(padDigits, '0');
+    }
+    if (!formatThousands) return fixed;
+    const [intPart, decPart] = fixed.split('.');
+    const withSep = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousandSeparator);
+    return decPart !== undefined ? `${withSep}.${decPart}` : withSep;
+  })();
+
+  return (
+    <span className={`tabular-nums ${className}`}>
+      {prefix}
+      {formattedNumber}
+      {suffix}
+    </span>
+  );
+}
 
 /**
  * 1. HERO DASHBOARD MOCKUP
@@ -38,6 +194,16 @@ export function HeroVerificationMockup({
   activeStep: number;
   onSelectStep?: (step: number) => void;
 }) {
+  const { containerRef, replaySeed, getStaggerStyle } = useFloralCardAnimation(5800);
+  const [activeApiPulse, setActiveApiPulse] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveApiPulse((prev) => (prev + 1) % 3);
+    }, 1050);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const citations = [
     {
       marker: '[1]',
@@ -46,8 +212,11 @@ export function HeroVerificationMockup({
       doi: '10.48550/arXiv.1706.03762',
       l1: 'MATCHED',
       l2: 'VERIFIED',
-      conf: '99%',
-      tone: 'emerald',
+      confNum: 99,
+      nliScore: 0.96,
+      cisScore: 92.4,
+      latencies: [38, 52, 61],
+      tone: 'emerald' as const,
     },
     {
       marker: '[2]',
@@ -56,8 +225,11 @@ export function HeroVerificationMockup({
       doi: '10.18653/v1/N19-1423',
       l1: 'MATCHED',
       l2: 'METADATA_ERROR',
-      conf: '84%',
-      tone: 'amber',
+      confNum: 84,
+      nliScore: 0.94,
+      cisScore: 88.6,
+      latencies: [44, 57, 68],
+      tone: 'amber' as const,
     },
     {
       marker: '[3]',
@@ -66,16 +238,28 @@ export function HeroVerificationMockup({
       doi: '10.1038/s41586-024-99999-z',
       l1: 'MATCHED',
       l2: 'SUSPECTED_HALLUCINATION',
-      conf: '11%',
-      tone: 'red',
+      confNum: 11,
+      nliScore: 0.0,
+      cisScore: 92.4,
+      latencies: [51, 63, 79],
+      tone: 'red' as const,
     },
   ];
 
   const selected = citations[activeStep % citations.length];
+  const apiSources = [
+    { name: 'Crossref', ms: selected.latencies[0] },
+    { name: 'OpenAlex', ms: selected.latencies[1] },
+    { name: 'SemanticSch', ms: selected.latencies[2] },
+  ];
 
   return (
     <div
-      style={{ backgroundColor: 'var(--solva-card-elevated)' }}
+      ref={containerRef}
+      style={{
+        backgroundColor: 'var(--solva-card-elevated)',
+        ...getStaggerStyle(0),
+      }}
       className="solva-glass-ring rounded-[10px] w-full max-w-full lg:w-[640px] border border-[#E7E3D9]/80 dark:border-[#332F26] overflow-hidden text-left select-none"
     >
       {/* Top Window Chrome */}
@@ -97,8 +281,12 @@ export function HeroVerificationMockup({
           </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className="hidden sm:inline-block px-2 py-0.5 rounded-[5px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-medium">
-            GROBID TEI · 15 APIs
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[5px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>
+              GROBID TEI ·{' '}
+              <SolvaLiveNumber value={15} replaySeed={replaySeed} durationMs={1250} /> APIs
+            </span>
           </span>
           <span
             style={{
@@ -107,7 +295,13 @@ export function HeroVerificationMockup({
             }}
             className="px-2 py-0.5 rounded-[5px] font-mono text-[10px] font-semibold"
           >
-            CIS: 92.4
+            CIS:{' '}
+            <SolvaLiveNumber
+              value={selected.cisScore}
+              decimals={1}
+              replaySeed={replaySeed}
+              durationMs={1400}
+            />
           </span>
         </div>
       </div>
@@ -124,7 +318,7 @@ export function HeroVerificationMockup({
               {lang === 'vi' ? 'TRÍCH DẪN BÓC TÁCH' : 'EXTRACTED QUEUE'}
             </span>
             <span style={{ color: 'var(--solva-ink)' }} className="font-semibold shrink-0">
-              24 refs
+              <SolvaLiveNumber value={24} replaySeed={replaySeed} durationMs={1350} /> refs
             </span>
           </div>
 
@@ -135,12 +329,9 @@ export function HeroVerificationMockup({
                 key={item.marker}
                 onClick={() => onSelectStep?.(idx)}
                 style={{
-                  backgroundColor: isActive
-                    ? 'var(--solva-surface)'
-                    : 'transparent',
-                  borderColor: isActive
-                    ? 'var(--solva-ink)'
-                    : 'var(--solva-border)',
+                  ...getStaggerStyle(70 + idx * 65),
+                  backgroundColor: isActive ? 'var(--solva-surface)' : 'transparent',
+                  borderColor: isActive ? 'var(--solva-ink)' : 'var(--solva-border)',
                 }}
                 className="p-2.5 rounded-[8px] border transition-all duration-300 cursor-pointer hover:opacity-90"
               >
@@ -151,8 +342,13 @@ export function HeroVerificationMockup({
                   >
                     {item.marker} {item.ref}
                   </span>
-                  <span className="font-mono text-[10px] font-semibold text-[#56524A]">
-                    {item.conf}
+                  <span className="font-mono text-[10px] font-semibold text-[#56524A] dark:text-[#A8A296]">
+                    <SolvaLiveNumber
+                      value={item.confNum}
+                      suffix="%"
+                      replaySeed={replaySeed}
+                      durationMs={1250 + idx * 140}
+                    />
                   </span>
                 </div>
                 <p
@@ -161,7 +357,7 @@ export function HeroVerificationMockup({
                 >
                   {item.title}
                 </p>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center justify-between gap-1.5">
                   <span
                     className={`text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded ${
                       item.tone === 'emerald'
@@ -173,6 +369,9 @@ export function HeroVerificationMockup({
                   >
                     {item.l2}
                   </span>
+                  {isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  )}
                 </div>
               </div>
             );
@@ -236,7 +435,16 @@ export function HeroVerificationMockup({
                     : 'text-emerald-600 dark:text-emerald-400'
                 }`}
               >
-                {selected.tone === 'red' ? '404 Ghost' : '100% Match'}
+                {selected.tone === 'red' ? (
+                  '404 Ghost'
+                ) : (
+                  <SolvaLiveNumber
+                    value={100}
+                    suffix="% Match"
+                    replaySeed={replaySeed}
+                    durationMs={1150}
+                  />
+                )}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -256,9 +464,20 @@ export function HeroVerificationMockup({
                 NLI Stance:
               </span>
               <span className="font-mono text-emerald-700 dark:text-emerald-300 font-medium">
-                {selected.tone === 'red'
-                  ? 'UNVERIFIABLE (No Abstract)'
-                  : 'SUPPORTS (DeBERTa 0.94)'}
+                {selected.tone === 'red' ? (
+                  'UNVERIFIABLE (No Abstract)'
+                ) : (
+                  <>
+                    SUPPORTS (DeBERTa{' '}
+                    <SolvaLiveNumber
+                      value={selected.nliScore}
+                      decimals={2}
+                      replaySeed={replaySeed}
+                      durationMs={1250}
+                    />
+                    )
+                  </>
+                )}
               </span>
             </div>
           </div>
@@ -274,31 +493,39 @@ export function HeroVerificationMockup({
                 : 'FEDERATED SCHOLARLY API WATERFALL'}
             </div>
             <div className="grid grid-cols-3 gap-1.5 text-[10px] font-mono">
-              {[
-                { name: 'Crossref', ms: '38ms' },
-                { name: 'OpenAlex', ms: '52ms' },
-                { name: 'SemanticSch', ms: '61ms' },
-              ].map((s) => (
-                <div
-                  key={s.name}
-                  style={{
-                    backgroundColor: 'var(--solva-bg)',
-                    borderColor: 'var(--solva-border)',
-                  }}
-                  className="px-2 py-1.5 rounded-[6px] border flex items-center justify-between gap-1"
-                >
-                  <span
-                    style={{ color: 'var(--solva-ink)' }}
-                    className="inline-flex items-center gap-1 truncate"
+              {apiSources.map((s, idx) => {
+                const isPulsing = idx === activeApiPulse;
+                return (
+                  <div
+                    key={s.name}
+                    style={{
+                      backgroundColor: isPulsing
+                        ? 'var(--solva-surface)'
+                        : 'var(--solva-bg)',
+                      borderColor: isPulsing
+                        ? 'var(--solva-ink)'
+                        : 'var(--solva-border)',
+                    }}
+                    className="px-2 py-1.5 rounded-[6px] border flex items-center justify-between gap-1 transition-all duration-300"
                   >
-                    <ScholarlySourceLogo name={s.name} size={11} />
-                    <span className="truncate">{s.name}</span>
-                  </span>
-                  <span style={{ color: 'var(--solva-muted)' }} className="shrink-0">
-                    {s.ms}
-                  </span>
-                </div>
-              ))}
+                    <span
+                      style={{ color: 'var(--solva-ink)' }}
+                      className="inline-flex items-center gap-1 truncate"
+                    >
+                      <ScholarlySourceLogo name={s.name} size={11} />
+                      <span className="truncate">{s.name}</span>
+                    </span>
+                    <span style={{ color: 'var(--solva-muted)' }} className="shrink-0">
+                      <SolvaLiveNumber
+                        value={s.ms}
+                        suffix="ms"
+                        replaySeed={replaySeed}
+                        durationMs={1050 + idx * 140}
+                      />
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -317,14 +544,35 @@ export function FeatureCardWidget({
   index: 0 | 1 | 2;
   lang: Lang;
 }) {
+  const { containerRef, replaySeed, getStaggerStyle } = useFloralCardAnimation(5000);
+  const [cycleStep, setCycleStep] = useState(0);
+
+  useEffect(() => {
+    const intervalMs = index === 1 ? 1100 : 2300;
+    const maxSteps = index === 1 ? 5 : 3;
+    const timer = window.setInterval(() => {
+      setCycleStep((prev) => (prev + 1) % maxSteps);
+    }, intervalMs);
+    return () => window.clearInterval(timer);
+  }, [index]);
+
   if (index === 0) {
     // Widget 1: Two-Layer Orthogonal Matrix
+    const refNums = [14, 18, 14];
+    const activeRefNum = refNums[cycleStep % refNums.length];
+    const highlightL1 = cycleStep === 0 || cycleStep === 2;
+    const highlightL2 = cycleStep === 1 || cycleStep === 2;
+
     return (
       <div
-        style={{ backgroundColor: 'var(--solva-card-elevated)' }}
+        ref={containerRef}
+        style={{
+          backgroundColor: 'var(--solva-card-elevated)',
+          ...getStaggerStyle(0),
+        }}
         className="solva-glass-ring w-[272px] sm:w-[288px] h-[272px] sm:h-[288px] rounded-[16px] p-4 flex flex-col justify-between text-left border border-[#E7E3D9]/70 dark:border-[#332F26]"
       >
-        <div className="flex items-center justify-between">
+        <div style={getStaggerStyle(40)} className="flex items-center justify-between">
           <span
             style={{ color: 'var(--solva-ink)' }}
             className="text-[12px] font-medium flex items-center gap-1.5"
@@ -332,30 +580,42 @@ export function FeatureCardWidget({
             <Layers className="w-3.5 h-3.5" />
             {lang === 'vi' ? 'Mô hình 2 Tầng Độc lập' : '2-Layer Orthogonal Output'}
           </span>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#F4F2EC] text-[#56524A]">
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#F4F2EC] dark:bg-[#29261F] text-[#56524A] dark:text-[#A8A296]">
             L1 × L2
           </span>
         </div>
 
         <div className="space-y-2 my-auto">
           <div
-            style={{ backgroundColor: 'var(--solva-surface)' }}
-            className="p-2.5 rounded-[10px] space-y-1"
+            style={{
+              ...getStaggerStyle(110),
+              backgroundColor: 'var(--solva-surface)',
+              borderColor: highlightL1 ? 'var(--solva-ink)' : 'transparent',
+            }}
+            className="p-2.5 rounded-[10px] border space-y-1 transition-all duration-500"
           >
             <div className="flex items-center justify-between text-[10px] font-mono">
               <span style={{ color: 'var(--solva-muted)' }}>LAYER 1 · MAPPING</span>
-              <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
+              <span className="text-emerald-700 dark:text-emerald-400 font-semibold inline-flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 MATCHED
               </span>
             </div>
             <p style={{ color: 'var(--solva-ink)' }} className="text-[12px] font-medium">
-              In-text [14] ↔ Bibliography #14
+              In-text [
+              <SolvaLiveNumber value={activeRefNum} replaySeed={replaySeed} durationMs={1150} />
+              ] ↔ Bibliography #
+              <SolvaLiveNumber value={activeRefNum} replaySeed={replaySeed} durationMs={1150} />
             </p>
           </div>
 
           <div
-            style={{ backgroundColor: 'var(--solva-surface)' }}
-            className="p-2.5 rounded-[10px] space-y-1"
+            style={{
+              ...getStaggerStyle(190),
+              backgroundColor: 'var(--solva-surface)',
+              borderColor: highlightL2 ? 'var(--solva-ink)' : 'transparent',
+            }}
+            className="p-2.5 rounded-[10px] border space-y-1 transition-all duration-500"
           >
             <div className="flex items-center justify-between text-[10px] font-mono">
               <span style={{ color: 'var(--solva-muted)' }}>LAYER 2 · EXISTENCE</span>
@@ -364,23 +624,48 @@ export function FeatureCardWidget({
               </span>
             </div>
             <p style={{ color: 'var(--solva-ink)' }} className="text-[12px] font-medium">
-              DOI valid · Year drift (2020 → 2021)
+              DOI valid · Year drift (
+              <SolvaLiveNumber
+                value={2020}
+                startValue={2000}
+                replaySeed={replaySeed}
+                durationMs={1200}
+              />{' '}
+              →{' '}
+              <SolvaLiveNumber
+                value={2021}
+                startValue={2000}
+                replaySeed={replaySeed}
+                durationMs={1350}
+              />
+              )
             </p>
           </div>
         </div>
 
         <div
-          style={{ borderColor: 'var(--solva-border)' }}
+          style={{
+            ...getStaggerStyle(260),
+            borderColor: 'var(--solva-border)',
+          }}
           className="pt-2.5 border-t flex items-center justify-between text-[11px]"
         >
           <span style={{ color: 'var(--solva-muted)' }}>
-            {lang === 'vi' ? '7 nhãn L1 · 8 nhãn L2' : '7 L1 states · 8 L2 verdicts'}
+            <SolvaLiveNumber value={7} replaySeed={replaySeed} durationMs={1100} />{' '}
+            {lang === 'vi' ? 'nhãn L1 · ' : 'L1 states · '}
+            <SolvaLiveNumber value={8} replaySeed={replaySeed} durationMs={1250} />{' '}
+            {lang === 'vi' ? 'nhãn L2' : 'L2 verdicts'}
           </span>
           <span
             style={{ color: 'var(--solva-ink)' }}
             className="font-mono font-semibold"
           >
-            100% Orthogonal
+            <SolvaLiveNumber
+              value={100}
+              suffix="% Orthogonal"
+              replaySeed={replaySeed}
+              durationMs={1450}
+            />
           </span>
         </div>
       </div>
@@ -390,60 +675,101 @@ export function FeatureCardWidget({
   if (index === 1) {
     // Widget 2: 15+ Scholarly APIs Waterfall
     const apis = [
-      { name: 'Crossref REST API', status: 'DOI Exact', time: '38ms' },
-      { name: 'OpenAlex Works', status: 'Work ID Match', time: '49ms' },
-      { name: 'Semantic Scholar', status: 'Embedding 0.96', time: '62ms' },
-      { name: 'PubMed / EuropePMC', status: 'PMID Verified', time: '54ms' },
-      { name: 'SQLite FTS5 Cache', status: 'Local Hit', time: '3ms' },
+      { name: 'Crossref REST API', status: 'DOI Exact', baseMs: 38, delta: 2 },
+      { name: 'OpenAlex Works', status: 'Work ID Match', baseMs: 49, delta: -2 },
+      { name: 'Semantic Scholar', status: 'Embedding', score: 0.96, baseMs: 62, delta: 3 },
+      { name: 'PubMed / EuropePMC', status: 'PMID Verified', baseMs: 54, delta: -1 },
+      { name: 'SQLite FTS5 Cache', status: 'Local Hit', baseMs: 3, delta: 0 },
     ];
     return (
       <div
-        style={{ backgroundColor: 'var(--solva-card-elevated)' }}
+        ref={containerRef}
+        style={{
+          backgroundColor: 'var(--solva-card-elevated)',
+          ...getStaggerStyle(0),
+        }}
         className="solva-glass-ring w-[272px] sm:w-[288px] h-[272px] sm:h-[288px] rounded-[16px] p-4 flex flex-col justify-between text-left border border-[#E7E3D9]/70 dark:border-[#332F26]"
       >
-        <div className="flex items-center justify-between">
+        <div style={getStaggerStyle(40)} className="flex items-center justify-between">
           <span
             style={{ color: 'var(--solva-ink)' }}
             className="text-[12px] font-medium flex items-center gap-1.5"
           >
             <Database className="w-3.5 h-3.5" />
-            {lang === 'vi' ? '15+ Nguồn Học thuật' : '15+ Scholarly Indexes'}
+            <SolvaLiveNumber value={15} suffix="+" replaySeed={replaySeed} durationMs={1200} />{' '}
+            {lang === 'vi' ? 'Nguồn Học thuật' : 'Scholarly Indexes'}
           </span>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold">
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold inline-flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             PARALLEL
           </span>
         </div>
 
         <div className="space-y-1.5 my-auto">
-          {apis.map((api) => (
-            <div
-              key={api.name}
-              style={{ backgroundColor: 'var(--solva-surface)' }}
-              className="px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-[11px]"
-            >
-              <span
-                style={{ color: 'var(--solva-ink)' }}
-                className="font-medium truncate inline-flex items-center gap-1.5"
+          {apis.map((api, idx) => {
+            const isWaveActive = idx === cycleStep;
+            const liveMs = isWaveActive ? api.baseMs + api.delta : api.baseMs;
+            return (
+              <div
+                key={api.name}
+                style={{
+                  ...getStaggerStyle(80 + idx * 45),
+                  backgroundColor: 'var(--solva-surface)',
+                  borderColor: isWaveActive ? 'var(--solva-ink)' : 'transparent',
+                }}
+                className="px-2.5 py-1.5 rounded-[8px] border flex items-center justify-between text-[11px] transition-all duration-300"
               >
-                <ScholarlySourceLogo name={api.name} size={13} className="opacity-85" />
-                <span className="truncate">{api.name}</span>
-              </span>
-              <span className="font-mono text-[10px] text-emerald-700 dark:text-emerald-300 shrink-0 ml-2">
-                {api.status} · {api.time}
-              </span>
-            </div>
-          ))}
+                <span
+                  style={{ color: 'var(--solva-ink)' }}
+                  className="font-medium truncate inline-flex items-center gap-1.5"
+                >
+                  <ScholarlySourceLogo name={api.name} size={13} className="opacity-85" />
+                  <span className="truncate">{api.name}</span>
+                </span>
+                <span className="font-mono text-[10px] text-emerald-700 dark:text-emerald-300 shrink-0 ml-2">
+                  {api.score !== undefined ? (
+                    <>
+                      {api.status}{' '}
+                      <SolvaLiveNumber
+                        value={api.score}
+                        decimals={2}
+                        replaySeed={replaySeed}
+                        durationMs={1200}
+                      />
+                    </>
+                  ) : (
+                    api.status
+                  )}{' '}
+                  ·{' '}
+                  <SolvaLiveNumber
+                    value={liveMs}
+                    suffix="ms"
+                    replaySeed={replaySeed}
+                    durationMs={1050 + idx * 110}
+                  />
+                </span>
+              </div>
+            );
+          })}
         </div>
 
         <div
-          style={{ borderColor: 'var(--solva-border)' }}
+          style={{
+            ...getStaggerStyle(310),
+            borderColor: 'var(--solva-border)',
+          }}
           className="pt-2 border-t flex items-center justify-between text-[11px]"
         >
           <span style={{ color: 'var(--solva-muted)' }}>
             + arXiv, DBLP, DOAJ, ORCID
           </span>
           <span style={{ color: 'var(--solva-ink)' }} className="font-mono font-semibold">
-            200M+ Works
+            <SolvaLiveNumber
+              value={200}
+              suffix="M+ Works"
+              replaySeed={replaySeed}
+              durationMs={1500}
+            />
           </span>
         </div>
       </div>
@@ -451,12 +777,21 @@ export function FeatureCardWidget({
   }
 
   // Widget 3: Neuro-Symbolic + DeBERTa NLI Stance
+  const simScores = [0.97, 0.98, 0.97];
+  const stancePercents = [94, 96, 94];
+  const currentSim = simScores[cycleStep % simScores.length];
+  const currentStance = stancePercents[cycleStep % stancePercents.length];
+
   return (
     <div
-      style={{ backgroundColor: 'var(--solva-card-elevated)' }}
+      ref={containerRef}
+      style={{
+        backgroundColor: 'var(--solva-card-elevated)',
+        ...getStaggerStyle(0),
+      }}
       className="solva-glass-ring w-[272px] sm:w-[288px] h-[272px] sm:h-[288px] rounded-[16px] p-4 flex flex-col justify-between text-left border border-[#E7E3D9]/70 dark:border-[#332F26]"
     >
-      <div className="flex items-center justify-between">
+      <div style={getStaggerStyle(40)} className="flex items-center justify-between">
         <span
           style={{ color: 'var(--solva-ink)' }}
           className="text-[12px] font-medium flex items-center gap-1.5"
@@ -464,45 +799,77 @@ export function FeatureCardWidget({
           <Scale className="w-3.5 h-3.5" />
           {lang === 'vi' ? 'Neuro-Symbolic & NLI' : 'Neuro-Symbolic & NLI'}
         </span>
-        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1C1A15] text-[#FBFAF6]">
-          R01–R20
+        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1C1A15] text-[#FBFAF6] dark:bg-[#FBFAF6] dark:text-[#1C1A15]">
+          R01–R<SolvaLiveNumber value={20} padDigits={2} replaySeed={replaySeed} durationMs={1200} />
         </span>
       </div>
 
       <div className="space-y-2 my-auto">
         <div
-          style={{ backgroundColor: 'var(--solva-surface)' }}
-          className="p-2.5 rounded-[10px] space-y-1"
+          style={{
+            ...getStaggerStyle(110),
+            backgroundColor: 'var(--solva-surface)',
+            borderColor: cycleStep === 0 ? 'var(--solva-ink)' : 'transparent',
+          }}
+          className="p-2.5 rounded-[10px] border space-y-1 transition-all duration-500"
         >
           <div className="flex items-center justify-between text-[10px] font-mono">
             <span style={{ color: 'var(--solva-muted)' }}>SYMBOLIC RULE GRAPH</span>
-            <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
+            <span className="text-emerald-700 dark:text-emerald-300 font-semibold inline-flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               PASSED
             </span>
           </div>
           <p style={{ color: 'var(--solva-ink)' }} className="text-[11px] font-mono">
-            R01_DOI ∧ R03_TITLE_SIM (0.97)
+            R<SolvaLiveNumber value={1} padDigits={2} replaySeed={replaySeed} durationMs={900} />
+            _DOI ∧ R
+            <SolvaLiveNumber value={3} padDigits={2} replaySeed={replaySeed} durationMs={1050} />
+            _TITLE_SIM (
+            <SolvaLiveNumber
+              value={currentSim}
+              decimals={2}
+              replaySeed={replaySeed}
+              durationMs={1350}
+            />
+            )
           </p>
         </div>
 
         <div
-          style={{ backgroundColor: 'var(--solva-surface)' }}
-          className="p-2.5 rounded-[10px] space-y-1.5"
+          style={{
+            ...getStaggerStyle(190),
+            backgroundColor: 'var(--solva-surface)',
+            borderColor: cycleStep === 1 ? 'var(--solva-ink)' : 'transparent',
+          }}
+          className="p-2.5 rounded-[10px] border space-y-1.5 transition-all duration-500"
         >
           <div className="flex items-center justify-between text-[10px] font-mono">
             <span style={{ color: 'var(--solva-muted)' }}>DeBERTa-v3 CLAIM STANCE</span>
             <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
-              SUPPORTS (94%)
+              SUPPORTS (
+              <SolvaLiveNumber
+                value={currentStance}
+                suffix="%"
+                replaySeed={replaySeed}
+                durationMs={1400}
+              />
+              )
             </span>
           </div>
           <div className="w-full h-1.5 rounded-full bg-[#ECE9E0] dark:bg-[#29261F] overflow-hidden">
-            <div className="h-full w-[94%] rounded-full bg-[#1C1A15] dark:bg-[#FBFAF6]" />
+            <div
+              style={{ width: `${currentStance}%` }}
+              className="h-full rounded-full bg-[#1C1A15] dark:bg-[#FBFAF6] transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            />
           </div>
         </div>
       </div>
 
       <div
-        style={{ borderColor: 'var(--solva-border)' }}
+        style={{
+          ...getStaggerStyle(260),
+          borderColor: 'var(--solva-border)',
+        }}
         className="pt-2 border-t flex items-center justify-between text-[11px]"
       >
         <span style={{ color: 'var(--solva-muted)' }}>MiniLM-L6 + CrossEncoder</span>
@@ -516,6 +883,7 @@ export function FeatureCardWidget({
 
 /**
  * 3. STICKY CARD FLOATING WIDGETS (340x340px inside 667x548px oil painting frame)
+ * Exact 1:1 visual layout of Screenshots 0, 1, 2 with smooth staggered entrance & auto-running numbers.
  */
 export function StickyCardWidget({
   index,
@@ -524,13 +892,33 @@ export function StickyCardWidget({
   index: 0 | 1 | 2;
   lang: Lang;
 }) {
+  const { containerRef, replaySeed, getStaggerStyle } = useFloralCardAnimation(4800);
+  const [activePhase, setActivePhase] = useState(0);
+
+  useEffect(() => {
+    const intervalMs = index === 0 ? 1500 : index === 1 ? 2000 : 2200;
+    const steps = index === 0 ? 4 : 3;
+    const timer = window.setInterval(() => {
+      setActivePhase((prev) => (prev + 1) % steps);
+    }, intervalMs);
+    return () => window.clearInterval(timer);
+  }, [index]);
+
   if (index === 0) {
+    // Card 0: GROBID TEI-XML + Cross-Validator (Screenshot 0)
+    const xmlIds = [12, 15, 18, 12];
+    const currentXmlId = xmlIds[activePhase % xmlIds.length];
+
     return (
       <div
-        style={{ backgroundColor: 'var(--solva-card-elevated)' }}
+        ref={containerRef}
+        style={{
+          backgroundColor: 'var(--solva-card-elevated)',
+          ...getStaggerStyle(0),
+        }}
         className="solva-glass-ring w-full max-w-[340px] rounded-[12px] p-5 space-y-3.5 text-left border border-[#E7E3D9]/80 dark:border-[#332F26]"
       >
-        <div className="flex items-center justify-between">
+        <div style={getStaggerStyle(40)} className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-[#1C1A15] dark:text-[#FBFAF6]" />
             <span
@@ -540,57 +928,158 @@ export function StickyCardWidget({
               GROBID TEI-XML + Cross-Validator
             </span>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-semibold">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-semibold inline-flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             ACTIVE
           </span>
         </div>
 
         <div
-          style={{ backgroundColor: 'var(--solva-surface)' }}
+          style={{
+            ...getStaggerStyle(110),
+            backgroundColor: 'var(--solva-surface)',
+          }}
           className="p-3 rounded-[8px] font-mono text-[11px] space-y-1.5"
         >
-          <div style={{ color: 'var(--solva-muted)' }}>
-            &lt;biblStruct xml:id=&quot;b12&quot;&gt;
+          <div
+            style={{
+              color: activePhase === 0 ? 'var(--solva-ink)' : 'var(--solva-muted)',
+              transform: activePhase === 0 ? 'translateX(2px)' : 'translateX(0px)',
+            }}
+            className="transition-all duration-300"
+          >
+            &lt;biblStruct xml:id=&quot;b
+            <SolvaLiveNumber
+              value={currentXmlId}
+              padDigits={2}
+              replaySeed={replaySeed}
+              durationMs={1250}
+            />
+            &quot;&gt;
           </div>
-          <div style={{ color: 'var(--solva-ink)' }} className="pl-3">
+          <div
+            style={{
+              color: 'var(--solva-ink)',
+              transform: activePhase === 1 ? 'translateX(3px)' : 'translateX(0px)',
+            }}
+            className="pl-3 transition-all duration-300"
+          >
             &lt;title&gt;Deep Residual Learning&lt;/title&gt;
           </div>
-          <div style={{ color: 'var(--solva-ink)' }} className="pl-3">
-            &lt;idno type=&quot;DOI&quot;&gt;10.1109/CVPR.2016.90&lt;/idno&gt;
+          <div
+            style={{
+              color: 'var(--solva-ink)',
+              transform: activePhase === 2 ? 'translateX(3px)' : 'translateX(0px)',
+            }}
+            className="pl-3 transition-all duration-300"
+          >
+            &lt;idno type=&quot;DOI&quot;&gt;10.
+            <SolvaLiveNumber value={1109} replaySeed={replaySeed} durationMs={1300} />
+            /CVPR.
+            <SolvaLiveNumber
+              value={2016}
+              startValue={2000}
+              replaySeed={replaySeed}
+              durationMs={1350}
+            />
+            .
+            <SolvaLiveNumber value={90} replaySeed={replaySeed} durationMs={1400} />
+            &lt;/idno&gt;
           </div>
-          <div style={{ color: 'var(--solva-muted)' }}>&lt;/biblStruct&gt;</div>
+          <div
+            style={{
+              color: activePhase === 3 ? 'var(--solva-ink)' : 'var(--solva-muted)',
+              transform: activePhase === 3 ? 'translateX(2px)' : 'translateX(0px)',
+            }}
+            className="transition-all duration-300"
+          >
+            &lt;/biblStruct&gt;
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-[11px]">
-          {['IEEE [1]–[N]', 'APA 7th (Author, Yr)', 'Vancouver (1)', 'ACM / Harvard'].map(
-            (style) => (
+          {[
+            {
+              key: 'ieee',
+              node: (
+                <>
+                  IEEE [
+                  <SolvaLiveNumber value={1} replaySeed={replaySeed} durationMs={900} />
+                  ]–[N]
+                </>
+              ),
+            },
+            {
+              key: 'apa',
+              node: (
+                <>
+                  APA{' '}
+                  <SolvaLiveNumber value={7} replaySeed={replaySeed} durationMs={1100} />
+                  th (Author, Yr)
+                </>
+              ),
+            },
+            {
+              key: 'vancouver',
+              node: (
+                <>
+                  Vancouver (
+                  <SolvaLiveNumber value={1} replaySeed={replaySeed} durationMs={1000} />)
+                </>
+              ),
+            },
+            {
+              key: 'acm',
+              node: <>ACM / Harvard</>,
+            },
+          ].map((item, idx) => {
+            const isStyleActive = idx === activePhase;
+            return (
               <div
-                key={style}
+                key={item.key}
                 style={{
-                  backgroundColor: 'var(--solva-bg)',
-                  borderColor: 'var(--solva-border)',
+                  ...getStaggerStyle(170 + idx * 55),
+                  backgroundColor: isStyleActive
+                    ? 'var(--solva-surface)'
+                    : 'var(--solva-bg)',
+                  borderColor: isStyleActive
+                    ? 'var(--solva-ink)'
+                    : 'var(--solva-border)',
+                  transform: isStyleActive ? 'translateY(-1px)' : 'translateY(0px)',
                 }}
-                className="px-2.5 py-1.5 rounded-[6px] border flex items-center gap-1.5"
+                className="px-2.5 py-1.5 rounded-[6px] border flex items-center gap-1.5 transition-all duration-300"
               >
-                <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                <Check
+                  className={`w-3 h-3 text-emerald-600 shrink-0 transition-transform duration-300 ${
+                    isStyleActive ? 'scale-125' : 'scale-100'
+                  }`}
+                />
                 <span style={{ color: 'var(--solva-ink)' }} className="truncate">
-                  {style}
+                  {item.node}
                 </span>
               </div>
-            )
-          )}
+            );
+          })}
         </div>
       </div>
     );
   }
 
   if (index === 1) {
+    // Card 1: Symbolic Trace & Instructor Override (Screenshot 1)
+    const stanceValues = [0.93, 0.96, 0.93];
+    const currentStance = stanceValues[activePhase % stanceValues.length];
+
     return (
       <div
-        style={{ backgroundColor: 'var(--solva-card-elevated)' }}
+        ref={containerRef}
+        style={{
+          backgroundColor: 'var(--solva-card-elevated)',
+          ...getStaggerStyle(0),
+        }}
         className="solva-glass-ring w-full max-w-[340px] rounded-[12px] p-5 space-y-3.5 text-left border border-[#E7E3D9]/80 dark:border-[#332F26]"
       >
-        <div className="flex items-center justify-between">
+        <div style={getStaggerStyle(40)} className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <GitBranch className="w-4 h-4 text-[#1C1A15] dark:text-[#FBFAF6]" />
             <span
@@ -605,83 +1094,162 @@ export function StickyCardWidget({
         </div>
 
         <div className="space-y-2">
-          {[
-            {
-              code: 'R01_DOI_EXACT',
-              desc: 'Canonical DOI verified via Crossref',
-              badge: 'PASS',
-              ok: true,
-            },
-            {
-              code: 'R05_YEAR_DRIFT',
-              desc: 'Cited 2018 · Published 2019 (Δ=1yr)',
-              badge: 'WARN',
-              ok: false,
-            },
-            {
-              code: 'NLI_CLAIM_STANCE',
-              desc: 'Manuscript claim supported by abstract',
-              badge: '0.93',
-              ok: true,
-            },
-          ].map((r) => (
-            <div
-              key={r.code}
-              style={{ backgroundColor: 'var(--solva-surface)' }}
-              className="p-2.5 rounded-[8px] flex items-center justify-between gap-2"
-            >
-              <div className="min-w-0">
-                <div
-                  style={{ color: 'var(--solva-ink)' }}
-                  className="text-[11px] font-mono font-semibold"
-                >
-                  {r.code}
-                </div>
-                <div
-                  style={{ color: 'var(--solva-muted)' }}
-                  className="text-[11px] truncate"
-                >
-                  {r.desc}
-                </div>
-              </div>
-              <span
-                className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0 ${
-                  r.ok
-                    ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
-                }`}
+          {/* Rule 1: R01_DOI_EXACT */}
+          <div
+            style={{
+              ...getStaggerStyle(110),
+              backgroundColor: 'var(--solva-surface)',
+              borderColor: activePhase === 0 ? 'var(--solva-ink)' : 'transparent',
+              transform: activePhase === 0 ? 'translateY(-1px)' : 'translateY(0px)',
+            }}
+            className="p-2.5 rounded-[8px] border flex items-center justify-between gap-2 transition-all duration-300"
+          >
+            <div className="min-w-0">
+              <div
+                style={{ color: 'var(--solva-ink)' }}
+                className="text-[11px] font-mono font-semibold"
               >
-                {r.badge}
-              </span>
+                R<SolvaLiveNumber value={1} padDigits={2} replaySeed={replaySeed} durationMs={1000} />
+                _DOI_EXACT
+              </div>
+              <div
+                style={{ color: 'var(--solva-muted)' }}
+                className="text-[11px] truncate"
+              >
+                Canonical DOI verified via Crossref
+              </div>
             </div>
-          ))}
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300">
+              PASS
+            </span>
+          </div>
+
+          {/* Rule 2: R05_YEAR_DRIFT */}
+          <div
+            style={{
+              ...getStaggerStyle(180),
+              backgroundColor: 'var(--solva-surface)',
+              borderColor: activePhase === 1 ? 'var(--solva-ink)' : 'transparent',
+              transform: activePhase === 1 ? 'translateY(-1px)' : 'translateY(0px)',
+            }}
+            className="p-2.5 rounded-[8px] border flex items-center justify-between gap-2 transition-all duration-300"
+          >
+            <div className="min-w-0">
+              <div
+                style={{ color: 'var(--solva-ink)' }}
+                className="text-[11px] font-mono font-semibold"
+              >
+                R<SolvaLiveNumber value={5} padDigits={2} replaySeed={replaySeed} durationMs={1150} />
+                _YEAR_DRIFT
+              </div>
+              <div
+                style={{ color: 'var(--solva-muted)' }}
+                className="text-[11px] truncate"
+              >
+                Cited{' '}
+                <SolvaLiveNumber
+                  value={2018}
+                  startValue={2000}
+                  replaySeed={replaySeed}
+                  durationMs={1250}
+                />{' '}
+                · Published{' '}
+                <SolvaLiveNumber
+                  value={2019}
+                  startValue={2000}
+                  replaySeed={replaySeed}
+                  durationMs={1350}
+                />{' '}
+                (Δ=
+                <SolvaLiveNumber value={1} replaySeed={replaySeed} durationMs={1050} />
+                yr)
+              </div>
+            </div>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0 bg-amber-500/12 text-amber-700 dark:text-amber-300">
+              WARN
+            </span>
+          </div>
+
+          {/* Rule 3: NLI_CLAIM_STANCE */}
+          <div
+            style={{
+              ...getStaggerStyle(250),
+              backgroundColor: 'var(--solva-surface)',
+              borderColor: activePhase === 2 ? 'var(--solva-ink)' : 'transparent',
+              transform: activePhase === 2 ? 'translateY(-1px)' : 'translateY(0px)',
+            }}
+            className="p-2.5 rounded-[8px] border flex items-center justify-between gap-2 transition-all duration-300"
+          >
+            <div className="min-w-0">
+              <div
+                style={{ color: 'var(--solva-ink)' }}
+                className="text-[11px] font-mono font-semibold"
+              >
+                NLI_CLAIM_STANCE
+              </div>
+              <div
+                style={{ color: 'var(--solva-muted)' }}
+                className="text-[11px] truncate"
+              >
+                Manuscript claim supported by abstract
+              </div>
+            </div>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300">
+              <SolvaLiveNumber
+                value={currentStance}
+                decimals={2}
+                replaySeed={replaySeed}
+                durationMs={1450}
+              />
+            </span>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Card 2: Revision Progress & Integrity Score (Screenshot 2)
+  const draftV2Targets = [94.5, 95.6, 94.5];
+  const cisDeltaTargets = [26.5, 27.6, 26.5];
+  const currentV2 = draftV2Targets[activePhase % draftV2Targets.length];
+  const currentCisDelta = cisDeltaTargets[activePhase % cisDeltaTargets.length];
+
   return (
     <div
-      style={{ backgroundColor: 'var(--solva-card-elevated)' }}
+      ref={containerRef}
+      style={{
+        backgroundColor: 'var(--solva-card-elevated)',
+        ...getStaggerStyle(0),
+      }}
       className="solva-glass-ring w-full max-w-[340px] rounded-[12px] p-5 space-y-3.5 text-left border border-[#E7E3D9]/80 dark:border-[#332F26]"
     >
-      <div className="flex items-center justify-between">
+      <div style={getStaggerStyle(40)} className="flex items-center justify-between">
         <span
           style={{ color: 'var(--solva-ink)' }}
           className="text-[13px] font-medium flex items-center gap-1.5"
         >
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className="w-4 h-4 shrink-0" />
           {lang === 'vi'
             ? 'Theo dõi Tiến độ Chỉnh sửa Bản thảo'
             : 'Revision Progress & Integrity Score'}
         </span>
-        <span className="text-[11px] font-mono font-bold text-emerald-700 dark:text-emerald-300">
-          +26.5 CIS
+        <span className="text-[11px] font-mono font-bold text-emerald-700 dark:text-emerald-300 shrink-0 ml-2">
+          <SolvaLiveNumber
+            value={currentCisDelta}
+            prefix="+"
+            suffix=" CIS"
+            decimals={1}
+            replaySeed={replaySeed}
+            durationMs={1500}
+          />
         </span>
       </div>
 
       <div
-        style={{ backgroundColor: 'var(--solva-surface)' }}
+        style={{
+          ...getStaggerStyle(120),
+          backgroundColor: 'var(--solva-surface)',
+        }}
         className="p-3.5 rounded-[10px] flex items-center justify-between"
       >
         <div>
@@ -692,10 +1260,22 @@ export function StickyCardWidget({
             style={{ color: 'var(--solva-ink)' }}
             className="font-solva-serif text-[26px] leading-tight"
           >
-            68.0%
+            <SolvaLiveNumber
+              value={68.0}
+              decimals={1}
+              suffix="%"
+              replaySeed={replaySeed}
+              durationMs={1350}
+            />
           </div>
         </div>
-        <div style={{ color: 'var(--solva-muted)' }} className="font-mono text-sm">
+        <div
+          style={{
+            color: 'var(--solva-muted)',
+            transform: activePhase === 1 ? 'translateX(3px)' : 'translateX(0px)',
+          }}
+          className="font-mono text-sm transition-transform duration-500"
+        >
           →
         </div>
         <div className="text-right">
@@ -703,18 +1283,30 @@ export function StickyCardWidget({
             Draft v2 (Verified)
           </div>
           <div className="font-solva-serif text-[26px] leading-tight text-emerald-700 dark:text-emerald-300">
-            94.5%
+            <SolvaLiveNumber
+              value={currentV2}
+              decimals={1}
+              suffix="%"
+              replaySeed={replaySeed}
+              durationMs={1550}
+            />
           </div>
         </div>
       </div>
 
-      <div className="space-y-1.5 text-[11px]">
+      <div style={getStaggerStyle(200)} className="space-y-1.5 text-[11px]">
         <div className="flex items-center justify-between">
           <span style={{ color: 'var(--solva-muted)' }}>
             Hallucinated / Ghost DOIs resolved
           </span>
           <span style={{ color: 'var(--solva-ink)' }} className="font-mono font-semibold">
-            3 → 0
+            <SolvaLiveNumber value={3} replaySeed={replaySeed} durationMs={1050} /> →{' '}
+            <SolvaLiveNumber
+              value={0}
+              startValue={3}
+              replaySeed={replaySeed}
+              durationMs={1400}
+            />
           </span>
         </div>
         <div className="flex items-center justify-between">
@@ -722,7 +1314,13 @@ export function StickyCardWidget({
             Missing bibliography entries fixed
           </span>
           <span style={{ color: 'var(--solva-ink)' }} className="font-mono font-semibold">
-            4 → 0
+            <SolvaLiveNumber value={4} replaySeed={replaySeed} durationMs={1100} /> →{' '}
+            <SolvaLiveNumber
+              value={0}
+              startValue={4}
+              replaySeed={replaySeed}
+              durationMs={1500}
+            />
           </span>
         </div>
       </div>
@@ -740,6 +1338,16 @@ export function PipelineStageVisual({
   tabIndex: number;
   lang: Lang;
 }) {
+  const { containerRef, replaySeed, getStaggerStyle } = useFloralCardAnimation(5200);
+  const [activeRow, setActiveRow] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveRow((prev) => (prev + 1) % 3);
+    }, 1600);
+    return () => window.clearInterval(timer);
+  }, [tabIndex]);
+
   const stages = [
     {
       badge: 'STAGE 01 · GROBID TEI-XML & CROSS-VALIDATOR',
@@ -752,8 +1360,6 @@ export function PipelineStageVisual({
         { k: 'Supported Styles', v: 'IEEE, APA 7th, Vancouver, Harvard, ACM' },
         { k: 'Section Filtering', v: 'Body vs. Bibliography Boundary Lock' },
       ],
-      sample:
-        'Extracted 28 in-text markers ([1]–[28]) and mapped 27 canonical bibliography entries in 340ms.',
     },
     {
       badge: 'STAGE 02 · 15+ FEDERATED SCHOLARLY INDEXES',
@@ -766,8 +1372,6 @@ export function PipelineStageVisual({
         { k: 'Specialized Tier', v: 'arXiv, DBLP, Europe PMC, DOAJ, ORCID' },
         { k: 'Cache Hit Latency', v: '3.2 ms (BM25 + Trigram FTS5)' },
       ],
-      sample:
-        'Queried 15 APIs concurrently · Deduplicated 64 candidate records · Ranked top canonical work.',
     },
     {
       badge: 'STAGE 03 · NEURO-SYMBOLIC RULE GRAPH (R01–R20)',
@@ -780,8 +1384,6 @@ export function PipelineStageVisual({
         { k: 'Author & Year Check', v: 'Surname Fuzzy Match · ΔYear Tolerance ±1' },
         { k: 'Ghost DOI Detection', v: 'HTTP/Handle Resolution + Metadata Cross-Check' },
       ],
-      sample:
-        'Triggered R01_EXACT_DOI & R04_AUTHOR_OVERLAP → Verdict: VERIFIED (Confidence: 98.4%).',
     },
     {
       badge: 'STAGE 04 · SENTENCE-BERT & DeBERTa-v3 NLI STANCE',
@@ -794,17 +1396,20 @@ export function PipelineStageVisual({
         { k: 'Cross-Encoder', v: 'ms-marco-MiniLM-L-6-v2 Precision Re-ranker' },
         { k: 'Stance Classifier', v: 'DeBERTa-v3 NLI (SUPPORTS / REFUTES / NEUTRAL)' },
       ],
-      sample:
-        'In-text claim entails retrieved abstract (SUPPORTS: 0.94 · REFUTES: 0.01 · NEUTRAL: 0.05).',
     },
   ];
 
   const active = stages[tabIndex] || stages[0];
+  const combinedSeed = replaySeed + tabIndex * 100;
 
   return (
     <div
+      ref={containerRef}
       key={tabIndex}
-      style={{ backgroundColor: 'var(--solva-card-elevated)' }}
+      style={{
+        backgroundColor: 'var(--solva-card-elevated)',
+        ...getStaggerStyle(0),
+      }}
       className="solva-glass-ring w-full rounded-[8px] p-5 sm:p-6 space-y-4 text-left border border-[#E7E3D9]/80 dark:border-[#332F26] animate-debugger-switch"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#E7E3D9] dark:border-[#332F26]">
@@ -814,7 +1419,8 @@ export function PipelineStageVisual({
         >
           {active.badge}
         </span>
-        <span className="px-2 py-0.5 rounded bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-semibold">
+        <span className="px-2 py-0.5 rounded bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-semibold inline-flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           LIVE PIPELINE
         </span>
       </div>
@@ -827,34 +1433,131 @@ export function PipelineStageVisual({
       </h5>
 
       <div className="space-y-2">
-        {active.metrics.map((m) => (
-          <div
-            key={m.k}
-            style={{ backgroundColor: 'var(--solva-surface)' }}
-            className="px-3.5 py-2.5 rounded-[8px] flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[12px]"
-          >
-            <span style={{ color: 'var(--solva-muted)' }} className="font-mono">
-              {m.k}
-            </span>
-            <span
-              style={{ color: 'var(--solva-ink)' }}
-              className="font-medium sm:text-right"
+        {active.metrics.map((m, idx) => {
+          const isRowActive = idx === activeRow;
+          return (
+            <div
+              key={m.k}
+              style={{
+                ...getStaggerStyle(70 + idx * 60),
+                backgroundColor: 'var(--solva-surface)',
+                borderColor: isRowActive ? 'var(--solva-ink)' : 'transparent',
+              }}
+              className="px-3.5 py-2.5 rounded-[8px] border flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[12px] transition-all duration-300"
             >
-              {m.v}
-            </span>
-          </div>
-        ))}
+              <span style={{ color: 'var(--solva-muted)' }} className="font-mono">
+                {m.k}
+              </span>
+              <span
+                style={{ color: 'var(--solva-ink)' }}
+                className="font-medium sm:text-right"
+              >
+                {m.k === 'Cache Hit Latency' ? (
+                  <>
+                    <SolvaLiveNumber
+                      value={3.2}
+                      decimals={1}
+                      suffix=" ms"
+                      replaySeed={combinedSeed}
+                      durationMs={1250}
+                    />{' '}
+                    (BM25 + Trigram FTS5)
+                  </>
+                ) : m.k === 'Title Similarity' ? (
+                  <>
+                    Token Jaccard + Levenshtein + MiniLM (
+                    <SolvaLiveNumber
+                      value={0.98}
+                      decimals={2}
+                      replaySeed={combinedSeed}
+                      durationMs={1350}
+                    />
+                    )
+                  </>
+                ) : (
+                  m.v
+                )}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       <div
         style={{
+          ...getStaggerStyle(240),
           backgroundColor: 'var(--solva-bg)',
           borderColor: 'var(--solva-border)',
         }}
         className="p-3 rounded-[8px] border font-mono text-[11px] flex items-center gap-2"
       >
         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-        <span style={{ color: 'var(--solva-ink)' }}>{active.sample}</span>
+        <span style={{ color: 'var(--solva-ink)' }}>
+          {tabIndex === 0 && (
+            <>
+              Extracted{' '}
+              <SolvaLiveNumber value={28} replaySeed={combinedSeed} durationMs={1200} /> in-text
+              markers ([1]–[
+              <SolvaLiveNumber value={28} replaySeed={combinedSeed} durationMs={1200} />
+              ]) and mapped{' '}
+              <SolvaLiveNumber value={27} replaySeed={combinedSeed} durationMs={1300} /> canonical
+              bibliography entries in{' '}
+              <SolvaLiveNumber
+                value={340}
+                suffix="ms."
+                replaySeed={combinedSeed}
+                durationMs={1450}
+              />
+            </>
+          )}
+          {tabIndex === 1 && (
+            <>
+              Queried{' '}
+              <SolvaLiveNumber value={15} replaySeed={combinedSeed} durationMs={1150} /> APIs
+              concurrently · Deduplicated{' '}
+              <SolvaLiveNumber value={64} replaySeed={combinedSeed} durationMs={1350} /> candidate
+              records · Ranked top canonical work.
+            </>
+          )}
+          {tabIndex === 2 && (
+            <>
+              Triggered R01_EXACT_DOI &amp; R04_AUTHOR_OVERLAP → Verdict: VERIFIED (Confidence:{' '}
+              <SolvaLiveNumber
+                value={98.4}
+                decimals={1}
+                suffix="%)."
+                replaySeed={combinedSeed}
+                durationMs={1450}
+              />
+            </>
+          )}
+          {tabIndex === 3 && (
+            <>
+              In-text claim entails retrieved abstract (SUPPORTS:{' '}
+              <SolvaLiveNumber
+                value={0.94}
+                decimals={2}
+                replaySeed={combinedSeed}
+                durationMs={1350}
+              />{' '}
+              · REFUTES:{' '}
+              <SolvaLiveNumber
+                value={0.01}
+                decimals={2}
+                replaySeed={combinedSeed}
+                durationMs={1150}
+              />{' '}
+              · NEUTRAL:{' '}
+              <SolvaLiveNumber
+                value={0.05}
+                decimals={2}
+                replaySeed={combinedSeed}
+                durationMs={1200}
+              />
+              ).
+            </>
+          )}
+        </span>
       </div>
     </div>
   );
@@ -864,12 +1567,50 @@ export function PipelineStageVisual({
  * 5. BOTTOM CTA MOCKUP CARD (`800x533px` cropped style inside 588x376px painterly frame)
  */
 export function BottomCTAMockup({ lang }: { lang: Lang }) {
+  const { containerRef, replaySeed, getStaggerStyle } = useFloralCardAnimation(5200);
+  const [activeBox, setActiveBox] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveBox((prev) => (prev + 1) % 3);
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const stats = [
+    {
+      label: 'VERIFIED',
+      val: 34,
+      startVal: 0,
+      color: 'text-emerald-700 dark:text-emerald-300',
+    },
+    {
+      label: 'METADATA DRIFT',
+      val: 2,
+      startVal: 0,
+      color: 'text-amber-700 dark:text-amber-300',
+    },
+    {
+      label: 'HALLUCINATED',
+      val: 0,
+      startVal: 3,
+      color: 'text-[#1C1A15] dark:text-[#FBFAF6]',
+    },
+  ];
+
   return (
     <div
-      style={{ backgroundColor: 'var(--solva-card-elevated)' }}
+      ref={containerRef}
+      style={{
+        backgroundColor: 'var(--solva-card-elevated)',
+        ...getStaggerStyle(0),
+      }}
       className="solva-glass-ring rounded-[8px] p-5 space-y-3.5 text-left border border-[#E7E3D9]/80 dark:border-[#332F26]"
     >
-      <div className="flex items-center justify-between border-b border-[#E7E3D9] dark:border-[#332F26] pb-3">
+      <div
+        style={getStaggerStyle(40)}
+        className="flex items-center justify-between border-b border-[#E7E3D9] dark:border-[#332F26] pb-3"
+      >
         <div>
           <div
             style={{ color: 'var(--solva-muted)' }}
@@ -893,36 +1634,55 @@ export function BottomCTAMockup({ lang }: { lang: Lang }) {
           }}
           className="px-2.5 py-1 rounded-[6px] font-mono text-[11px] font-semibold"
         >
-          CIS 96.2 / 100
+          CIS{' '}
+          <SolvaLiveNumber
+            value={96.2}
+            decimals={1}
+            replaySeed={replaySeed}
+            durationMs={1450}
+          />{' '}
+          / 100
         </span>
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center">
-        {[
-          { label: 'VERIFIED', val: '34', color: 'text-emerald-700 dark:text-emerald-300' },
-          { label: 'METADATA DRIFT', val: '2', color: 'text-amber-700 dark:text-amber-300' },
-          { label: 'HALLUCINATED', val: '0', color: 'text-[#1C1A15] dark:text-[#FBFAF6]' },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            style={{ backgroundColor: 'var(--solva-surface)' }}
-            className="p-2.5 rounded-[8px]"
-          >
-            <div className={`font-solva-serif text-[24px] leading-none ${stat.color}`}>
-              {stat.val}
-            </div>
+        {stats.map((stat, idx) => {
+          const isHighlighted = idx === activeBox;
+          return (
             <div
-              style={{ color: 'var(--solva-muted)' }}
-              className="text-[9px] font-mono mt-1"
+              key={stat.label}
+              style={{
+                ...getStaggerStyle(110 + idx * 65),
+                backgroundColor: 'var(--solva-surface)',
+                borderColor: isHighlighted ? 'var(--solva-ink)' : 'transparent',
+                transform: isHighlighted ? 'translateY(-1px)' : 'translateY(0px)',
+              }}
+              className="p-2.5 rounded-[8px] border transition-all duration-300"
             >
-              {stat.label}
+              <div className={`font-solva-serif text-[24px] leading-none ${stat.color}`}>
+                <SolvaLiveNumber
+                  value={stat.val}
+                  startValue={stat.startVal}
+                  replaySeed={replaySeed}
+                  durationMs={1350 + idx * 120}
+                />
+              </div>
+              <div
+                style={{ color: 'var(--solva-muted)' }}
+                className="text-[9px] font-mono mt-1"
+              >
+                {stat.label}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div
-        style={{ backgroundColor: 'var(--solva-surface)' }}
+        style={{
+          ...getStaggerStyle(260),
+          backgroundColor: 'var(--solva-surface)',
+        }}
         className="p-3 rounded-[8px] flex items-center justify-between text-[11px]"
       >
         <span style={{ color: 'var(--solva-ink)' }} className="font-medium">
@@ -930,8 +1690,13 @@ export function BottomCTAMockup({ lang }: { lang: Lang }) {
             ? 'Sẵn sàng xuất báo cáo PDF / JSON & lưu vết Audit'
             : 'Ready for PDF / JSON export & instructor sign-off'}
         </span>
-        <span className="font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
-          100% Traceable
+        <span className="font-mono text-emerald-700 dark:text-emerald-300 font-semibold shrink-0 ml-2">
+          <SolvaLiveNumber
+            value={100}
+            suffix="% Traceable"
+            replaySeed={replaySeed}
+            durationMs={1450}
+          />
         </span>
       </div>
     </div>
@@ -944,18 +1709,20 @@ export function BottomCTAMockup({ lang }: { lang: Lang }) {
  * directly illustrating the "120 graduation theses on Monday morning" case study.
  */
 export function CohortBatchAuditWidget({ lang }: { lang: Lang }) {
+  const { containerRef, replaySeed, getStaggerStyle } = useFloralCardAnimation(5200);
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % 3);
-    }, 3600);
+    }, 3400);
     return () => window.clearInterval(timer);
   }, [activeIndex]);
 
   const theses = [
     {
       id: '#018',
+      idNum: 18,
       file: 'Thesis_018_Neural_RAG.pdf',
       verdict: 'GHOST DOI',
       tone: 'red' as const,
@@ -964,10 +1731,11 @@ export function CohortBatchAuditWidget({ lang }: { lang: Lang }) {
         lang === 'vi'
           ? 'Phát hiện DOI giả 10.1038/s42256-024-99812-x (Ref [14])'
           : 'Caught fabricated DOI 10.1038/s42256-024-99812-x (Ref [14])',
-      cis: '74.2',
+      cisNum: 74.2,
     },
     {
       id: '#047',
+      idNum: 47,
       file: 'Thesis_047_Legal_NLP.pdf',
       verdict: 'YEAR DRIFT',
       tone: 'amber' as const,
@@ -976,10 +1744,11 @@ export function CohortBatchAuditWidget({ lang }: { lang: Lang }) {
         lang === 'vi'
           ? 'Lệch năm bản nháp arXiv (2018) so với kỷ yếu NAACL (2019)'
           : 'arXiv preprint year (2018) vs. canonical NAACL (2019)',
-      cis: '88.5',
+      cisNum: 88.5,
     },
     {
       id: '#104',
+      idNum: 104,
       file: 'Thesis_104_BioMed_VLM.pdf',
       verdict: 'VERIFIED',
       tone: 'emerald' as const,
@@ -988,20 +1757,28 @@ export function CohortBatchAuditWidget({ lang }: { lang: Lang }) {
         lang === 'vi'
           ? '38/38 trích dẫn khớp chuẩn trên Crossref, PubMed & OpenAlex'
           : '38/38 references verified across Crossref, PubMed & OpenAlex',
-      cis: '98.4',
+      cisNum: 98.4,
     },
   ];
 
   const activeThesis = theses[activeIndex] || theses[0];
+  const sep = lang === 'vi' ? '.' : ',';
 
   return (
     <div
-      style={{ backgroundColor: 'var(--solva-card-elevated)' }}
+      ref={containerRef}
+      style={{
+        backgroundColor: 'var(--solva-card-elevated)',
+        ...getStaggerStyle(0),
+      }}
       className="solva-glass-ring w-full max-w-[392px] rounded-[12px] p-4 sm:p-5 space-y-3.5 text-left border border-[#E7E3D9]/80 dark:border-[#332F26] select-none"
     >
       {/* Top Header: Cohort Batch Info */}
       <div
-        style={{ borderColor: 'var(--solva-border)' }}
+        style={{
+          ...getStaggerStyle(40),
+          borderColor: 'var(--solva-border)',
+        }}
         className="flex items-center justify-between gap-2 pb-3 border-b"
       >
         <div className="min-w-0">
@@ -1020,42 +1797,59 @@ export function CohortBatchAuditWidget({ lang }: { lang: Lang }) {
             style={{ color: 'var(--solva-ink)' }}
             className="text-[14px] sm:text-[15px] font-medium truncate mt-0.5"
           >
-            {lang === 'vi'
-              ? '120 Khóa luận Tốt nghiệp (4.380 trích dẫn)'
-              : '120 Graduation Theses (4,380 refs)'}
+            <SolvaLiveNumber value={120} replaySeed={replaySeed} durationMs={1300} />{' '}
+            {lang === 'vi' ? 'Khóa luận Tốt nghiệp (' : 'Graduation Theses ('}
+            <SolvaLiveNumber
+              value={4380}
+              formatThousands
+              thousandSeparator={sep}
+              replaySeed={replaySeed}
+              durationMs={1500}
+            />{' '}
+            {lang === 'vi' ? 'trích dẫn)' : 'refs)'}
           </div>
         </div>
         <span className="px-2 py-0.5 rounded-[6px] bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-semibold shrink-0">
-          48m 12s
+          <SolvaLiveNumber value={48} replaySeed={replaySeed} durationMs={1200} />m{' '}
+          <SolvaLiveNumber value={12} replaySeed={replaySeed} durationMs={1350} />s
         </span>
       </div>
 
       {/* Cohort Breakdown Mini-Metrics */}
-      <div className="grid grid-cols-3 gap-2 text-center">
+      <div style={getStaggerStyle(110)} className="grid grid-cols-3 gap-2 text-center">
         {[
           {
             label: lang === 'vi' ? 'CHUẨN XÁC' : 'VERIFIED',
-            val: '4,192',
+            val: 4192,
+            format: true,
             color: 'text-emerald-700 dark:text-emerald-300',
           },
           {
             label: lang === 'vi' ? 'LỆCH NĂM' : 'YEAR DRIFT',
-            val: '146',
+            val: 146,
+            format: false,
             color: 'text-amber-700 dark:text-amber-300',
           },
           {
             label: lang === 'vi' ? 'DOI ẢO GIÁC' : 'GHOST DOIs',
-            val: '42',
+            val: 42,
+            format: false,
             color: 'text-red-600 dark:text-red-400',
           },
-        ].map((stat) => (
+        ].map((stat, idx) => (
           <div
             key={stat.label}
             style={{ backgroundColor: 'var(--solva-surface)' }}
             className="p-2 rounded-[8px]"
           >
             <div className={`font-solva-serif text-[20px] sm:text-[22px] leading-none ${stat.color}`}>
-              {stat.val}
+              <SolvaLiveNumber
+                value={stat.val}
+                formatThousands={stat.format}
+                thousandSeparator={sep}
+                replaySeed={replaySeed}
+                durationMs={1400 + idx * 120}
+              />
             </div>
             <div
               style={{ color: 'var(--solva-muted)' }}
@@ -1068,7 +1862,7 @@ export function CohortBatchAuditWidget({ lang }: { lang: Lang }) {
       </div>
 
       {/* Interactive Thesis Queue (3 selectable rows) */}
-      <div className="space-y-1.5">
+      <div style={getStaggerStyle(180)} className="space-y-1.5">
         {theses.map((item, idx) => {
           const isSelected = idx === activeIndex;
           return (
@@ -1098,7 +1892,12 @@ export function CohortBatchAuditWidget({ lang }: { lang: Lang }) {
                   }}
                   className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0"
                 >
-                  {item.id}
+                  #<SolvaLiveNumber
+                    value={item.idNum}
+                    padDigits={3}
+                    replaySeed={replaySeed}
+                    durationMs={1150 + idx * 120}
+                  />
                 </span>
                 <span
                   style={{ color: 'var(--solva-ink)' }}
@@ -1137,7 +1936,15 @@ export function CohortBatchAuditWidget({ lang }: { lang: Lang }) {
             {activeThesis.rule}
           </span>
           <span style={{ color: 'var(--solva-muted)' }}>
-            CIS: <strong style={{ color: 'var(--solva-ink)' }}>{activeThesis.cis}</strong>
+            CIS:{' '}
+            <strong style={{ color: 'var(--solva-ink)' }}>
+              <SolvaLiveNumber
+                value={activeThesis.cisNum}
+                decimals={1}
+                replaySeed={replaySeed}
+                durationMs={1150}
+              />
+            </strong>
           </span>
         </div>
         <p
@@ -1149,9 +1956,10 @@ export function CohortBatchAuditWidget({ lang }: { lang: Lang }) {
       </div>
 
       {/* Bottom Action Link to Live Debugger */}
-      <div className="pt-0.5 flex items-center justify-between text-[11px]">
+      <div style={getStaggerStyle(250)} className="pt-0.5 flex items-center justify-between text-[11px]">
         <span style={{ color: 'var(--solva-muted)' }} className="font-mono text-[10px]">
-          15+ APIs · GROBID TEI
+          <SolvaLiveNumber value={15} suffix="+ APIs" replaySeed={replaySeed} durationMs={1200} />{' '}
+          · GROBID TEI
         </span>
         <a
           href="#interactive-demo"

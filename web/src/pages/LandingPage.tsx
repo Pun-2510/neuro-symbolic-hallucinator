@@ -52,6 +52,8 @@ import {
   PipelineStageVisual,
   BottomCTAMockup,
   CohortBatchAuditWidget,
+  SolvaLiveNumber,
+  useFloralCardAnimation,
 } from '@/components/landing/SolvaMockupWidgets';
 import { ScholarlySourceLogo } from '@/components/landing/ScholarlySourceLogos';
 
@@ -1187,6 +1189,7 @@ function SolvaStickySection({
 function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
   const [selectedId, setSelectedId] = useState<string>(DEMO_CITATIONS[1].id);
   const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(true);
+  const { containerRef: debuggerRef, replaySeed: debuggerSeed } = useFloralCardAnimation(5600);
 
   const activeCitation =
     DEMO_CITATIONS.find((c) => c.id === selectedId) || DEMO_CITATIONS[0];
@@ -1287,6 +1290,7 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
         {/* Solva Outer Bezel (`#F4F2EC`, `border-radius: 16px`, `padding: 12px`) */}
         <SolvaScrollReveal delayMs={110} yOffset={36}>
           <div
+            ref={debuggerRef}
             style={{ backgroundColor: 'var(--solva-surface)' }}
             className="rounded-[16px] p-[8px] sm:p-[12px]"
           >
@@ -1323,7 +1327,8 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
                     style={{ color: 'var(--solva-muted)' }}
                     className="hidden sm:inline"
                   >
-                    (18 pages · 24 citations)
+                    (<SolvaLiveNumber value={18} replaySeed={debuggerSeed} durationMs={1150} /> pages ·{' '}
+                    <SolvaLiveNumber value={24} replaySeed={debuggerSeed} durationMs={1300} /> citations)
                   </span>
                 </div>
               </div>
@@ -1358,7 +1363,14 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
                   }}
                   className="px-2.5 py-1 rounded-[8px] text-[11px] font-mono font-semibold"
                 >
-                  CIS: 84.5 / 100
+                  CIS:{' '}
+                  <SolvaLiveNumber
+                    value={84.5}
+                    decimals={1}
+                    replaySeed={debuggerSeed}
+                    durationMs={1400}
+                  />{' '}
+                  / 100
                 </div>
               </div>
             </div>
@@ -1464,7 +1476,12 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
                             >
                               Conf:{' '}
                               <strong style={{ color: 'var(--solva-ink)' }}>
-                                {cit.confidence}%
+                                <SolvaLiveNumber
+                                  value={cit.confidence}
+                                  suffix="%"
+                                  replaySeed={debuggerSeed}
+                                  durationMs={1250}
+                                />
                               </strong>
                             </span>
                           </div>
@@ -1528,7 +1545,15 @@ function SolvaInteractiveDebuggerSection({ lang }: { lang: Lang }) {
                         <strong style={{ color: 'var(--solva-ink)' }}>
                           {activeCitation.marker}
                         </strong>
-                        <span>· Confidence {activeCitation.confidence}%</span>
+                        <span>
+                          · Confidence{' '}
+                          <SolvaLiveNumber
+                            value={activeCitation.confidence}
+                            suffix="%"
+                            replaySeed={debuggerSeed}
+                            durationMs={1150}
+                          />
+                        </span>
                       </div>
                       <h3
                         style={{ color: 'var(--solva-ink)' }}
@@ -1799,6 +1824,15 @@ function SolvaUseCasesSection({
   isAuthenticated: boolean;
 }) {
   const [activeTab, setActiveTab] = useState(0);
+  const [autoCycleTabs, setAutoCycleTabs] = useState(true);
+
+  useEffect(() => {
+    if (!autoCycleTabs) return;
+    const timer = window.setInterval(() => {
+      setActiveTab((prev) => (prev + 1) % 4);
+    }, 4600);
+    return () => window.clearInterval(timer);
+  }, [autoCycleTabs]);
 
   const tabs = [
     {
@@ -2005,7 +2039,10 @@ function SolvaUseCasesSection({
                   <button
                     key={tab.label}
                     type="button"
-                    onClick={() => setActiveTab(idx)}
+                    onClick={() => {
+                      setActiveTab(idx);
+                      setAutoCycleTabs(false);
+                    }}
                     style={{
                       backgroundColor: isActive ? 'var(--solva-bg)' : 'transparent',
                       color: isActive ? 'var(--solva-ink)' : 'var(--solva-muted)',
@@ -2236,12 +2273,13 @@ function SolvaTaxonomyPricingSection({
   isAuthenticated: boolean;
 }) {
   const [annualBilling, setAnnualBilling] = useState(false);
+  const { containerRef: pricingRef, replaySeed: pricingSeed } = useFloralCardAnimation(5400);
 
   const tiers = [
     {
       name: lang === 'vi' ? 'Basic (Cơ bản)' : 'Basic',
       badge: null,
-      metric: '$0',
+      metricNum: 0,
       unit: lang === 'vi' ? 'tháng · Miễn phí' : 'month',
       desc:
         lang === 'vi'
@@ -2271,7 +2309,7 @@ function SolvaTaxonomyPricingSection({
     {
       name: lang === 'vi' ? 'Pro (Nghiên cứu & Luận văn)' : 'Pro',
       badge: lang === 'vi' ? 'Phổ biến' : 'Popular',
-      metric: annualBilling ? '$16' : '$20',
+      metricNum: annualBilling ? 16 : 20,
       unit:
         lang === 'vi'
           ? annualBilling
@@ -2311,7 +2349,7 @@ function SolvaTaxonomyPricingSection({
     {
       name: lang === 'vi' ? 'Ultra (Hội đồng & Khoa Viện)' : 'Ultra',
       badge: null,
-      metric: annualBilling ? '$160' : '$200',
+      metricNum: annualBilling ? 160 : 200,
       unit:
         lang === 'vi'
           ? annualBilling
@@ -2412,7 +2450,7 @@ function SolvaTaxonomyPricingSection({
           </SolvaScrollReveal>
 
           {/* 3 Plan Cards (`389x483px` equivalent, `bg: #F4F2EC`, `rounded-[16px]`, `p-[32px]`) */}
-          <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-[16px]">
+          <div ref={pricingRef} className="w-full grid grid-cols-1 lg:grid-cols-3 gap-[16px]">
             {tiers.map((tier, idx) => (
               <SolvaScrollReveal
                 key={tier.name}
@@ -2466,7 +2504,12 @@ function SolvaTaxonomyPricingSection({
                         style={{ color: 'var(--solva-ink)' }}
                         className="font-solva-serif font-light text-[36px] sm:text-[40px] leading-[46px] tracking-[-0.05em]"
                       >
-                        {tier.metric}
+                        <SolvaLiveNumber
+                          value={tier.metricNum}
+                          prefix="$"
+                          replaySeed={pricingSeed}
+                          durationMs={1350}
+                        />
                       </span>
                       <span
                         style={{ color: 'var(--solva-muted)' }}
