@@ -39,6 +39,7 @@
     "dashboard": "Dashboard",
     "newCheck": "New Check",
     "upload": "New Check",
+    "liveSandbox": "Live Sandbox",
     "batchCheck": "Batch Check",
     "batchUpload": "Batch Check",
     "history": "History",
@@ -217,6 +218,10 @@
     "uploadFailed": "Upload failed. Please try again.",
     "processing": "Processing your document...",
     "processingComplete": "Processing complete!"
+  },
+  "sandbox": {
+    "title": "Live Citation Sandbox",
+    "subtitle": "Sample real ACL Anthology papers, inject metadata or in-text linking errors live, and synthesize a complete academic PDF manuscript for end-to-end verification."
   },
   "batchUpload": {
     "title": "Batch Verification",

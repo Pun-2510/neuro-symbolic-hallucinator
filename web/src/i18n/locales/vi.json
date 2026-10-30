@@ -39,6 +39,7 @@
     "dashboard": "Bảng điều khiển",
     "newCheck": "Kiểm tra mới",
     "upload": "Kiểm tra mới",
+    "liveSandbox": "Live Sandbox",
     "batchCheck": "Kiểm tra hàng loạt",
     "batchUpload": "Kiểm tra hàng loạt",
     "history": "Lịch sử",
@@ -217,6 +218,10 @@
     "uploadFailed": "Tải lên thất bại. Vui lòng thử lại.",
     "processing": "Đang xử lý tài liệu...",
     "processingComplete": "Xử lý hoàn tất!"
+  },
+  "sandbox": {
+    "title": "Live Citation Sandbox",
+    "subtitle": "Lấy ngẫu nhiên bài báo thực tế từ CSDL ACL, tùy chỉnh metadata hoặc liên kết In-text ↔ References trực tiếp và tự động xuất bản thảo PDF hoàn chỉnh để kiểm chứng."
   },
   "batchUpload": {
     "title": "Kiểm tra hàng loạt",

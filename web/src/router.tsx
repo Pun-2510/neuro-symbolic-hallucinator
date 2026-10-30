@@ -53,6 +53,7 @@ function LegacyEssayRedirect() {
 // Each route is fetched on first navigation, then cached by the browser.
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const UploadPage = lazy(() => import('./pages/UploadPage').then((m) => ({ default: m.UploadPage })));
+const SandboxPage = lazy(() => import('./pages/SandboxPage').then((m) => ({ default: m.SandboxPage })));
 const BatchUploadPage = lazy(() => import('./pages/BatchUploadPage').then((m) => ({ default: m.BatchUploadPage })));
 const ProcessingPage = lazy(() => import('./pages/ProcessingPage').then((m) => ({ default: m.ProcessingPage })));
 const EssayPage = lazy(() => import('./pages/EssayPage').then((m) => ({ default: m.EssayPage })));
@@ -115,6 +116,7 @@ const PAGE_TITLE_ROUTES: Array<{ pattern: string; title: string }> = [
   { pattern: '/reset-password', title: 'Reset Password' },
   { pattern: '/dashboard', title: 'Dashboard' },
   { pattern: '/upload', title: 'New Check' },
+  { pattern: '/sandbox', title: 'Live Sandbox' },
   { pattern: '/batch-upload', title: 'Batch Check' },
   { pattern: '/verification/processing', title: 'Processing' },
   { pattern: '/verification/processing/:id', title: 'Processing' },
@@ -237,6 +239,7 @@ export const router = createBrowserRouter([
         children: [
           { path: '/dashboard', element: withSuspense(DashboardPage) },
           { path: '/upload', element: withSuspense(UploadPage) },
+          { path: '/sandbox', element: withSuspense(SandboxPage) },
           {
             path: '/batch-upload',
             element: (

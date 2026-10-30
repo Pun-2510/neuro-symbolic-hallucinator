@@ -325,6 +325,7 @@ test.describe('Responsive Layout — Authenticated Workspaces (Student, Teacher,
       const routes = [
         '/dashboard',
         '/upload',
+        '/sandbox',
         '/batch',
         '/history',
         '/verification/report/1',

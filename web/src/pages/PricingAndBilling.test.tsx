@@ -11,6 +11,7 @@ import { PricingPage } from './PricingPage';
 import { StripeDemoCheckoutPage } from './StripeDemoCheckoutPage';
 import { BillingSuccessPage } from './BillingSuccessPage';
 import { UploadPage } from './UploadPage';
+import { SandboxPage } from './SandboxPage';
 import { ProcessingPage } from './ProcessingPage';
 import { SettingsPage } from './SettingsPage';
 import { EssayHeader } from './essay/EssayHeader';
@@ -669,7 +670,7 @@ describe('Premium Subscription, Pricing, Stripe Checkout & Paywall UI/UX Flows',
     expect(document.body.textContent).not.toContain('интерактив');
   });
 
-  it('UploadPage LiveCitationSandbox samples random ACL papers, injects defense suite, edits metadata, and generates full PDF manuscript', async () => {
+  it('SandboxPage LiveCitationSandbox samples random ACL papers, injects defense suite, edits metadata, and generates full PDF manuscript', async () => {
     vi.spyOn(api, 'listEnrolledClasses').mockResolvedValue([]);
     const sampleSpy = vi.spyOn(api, 'sampleSandboxAclPapers').mockResolvedValue({
       count: 2,
@@ -736,15 +737,21 @@ describe('Premium Subscription, Pricing, Stripe Checkout & Paywall UI/UX Flows',
 
     renderWithAuth(
       <Routes>
-        <Route path="/verification/new" element={<UploadPage />} />
+        <Route path="/upload" element={<UploadPage />} />
+        <Route path="/sandbox" element={<SandboxPage />} />
         <Route path="/verification/processing/:id" element={<div>Processing #77</div>} />
       </Routes>,
       {
         user: createMockUser({ plan_tier: 'ultra', role: 'user' }),
-        initialEntries: ['/verification/new'],
+        initialEntries: ['/upload'],
       },
     );
 
+    // Navigate from UploadPage to dedicated SandboxPage
+    const openSandboxLink = screen.getByTestId('upload-open-sandbox-link');
+    fireEvent.click(openSandboxLink);
+
+    expect(screen.getByTestId('sandbox-page')).toBeDefined();
     const sampleBtn = screen.getByTestId('sandbox-random-acl-btn');
     fireEvent.click(sampleBtn);
 

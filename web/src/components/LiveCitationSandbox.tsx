@@ -384,25 +384,25 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
       className="p-0 overflow-hidden rounded-2xl border-2 border-indigo-200/90 dark:border-indigo-800/80 bg-white dark:bg-slate-900 shadow-md"
     >
       {/* Top Studio Header */}
-      <div className="px-5 py-4 bg-gradient-to-r from-indigo-950 via-slate-900 to-violet-950 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800">
-        <div className="flex items-start sm:items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-indigo-500/25 border border-indigo-400/40 flex items-center justify-center shrink-0">
-            <Sparkles className="h-5 w-5 text-indigo-300" />
+      <div className="px-4 sm:px-5 py-3.5 sm:py-4 bg-gradient-to-r from-indigo-950 via-slate-900 to-violet-950 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800">
+        <div className="flex items-start sm:items-center gap-3 min-w-0">
+          <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-indigo-500/25 border border-indigo-400/40 flex items-center justify-center shrink-0">
+            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-300" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base sm:text-lg font-display font-bold tracking-tight">
+              <h1 className="text-base sm:text-lg font-display font-bold tracking-tight leading-snug">
                 {lang === 'vi'
                   ? 'Live Citation Sandbox & Trình Tạo Bản Thảo PDF Học Thuật Tự Động (CSDL ACL)'
                   : 'Live Citation Sandbox & Synthetic Academic PDF Generator (ACL Database)'}
-              </h2>
+              </h1>
               <Badge className="bg-emerald-500/25 text-emerald-200 border border-emerald-400/40 font-mono text-[10px]">
                 {dbTotalPapers.toLocaleString()} ACL PAPERS
               </Badge>
             </div>
-            <p className="text-xs text-slate-300 mt-0.5">
+            <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5 leading-relaxed">
               {lang === 'vi'
-                ? 'Lấy ngẫu nhiên 10–20 bài báo thật từ CSDL ACL, tùy ý chỉnh sửa Metadata / In-text ↔ Refs ngay trước mặt Hội đồng và tự động xuất File PDF hoàn chỉnh để kiểm chứng toàn diện!'
+                ? 'Lấy ngẫu nhiên 10–20 bài báo thật từ CSDL ACL, tùy chỉnh Metadata / In-text ↔ Refs và xuất File PDF hoàn chỉnh để kiểm chứng!'
                 : 'Sample 10–20 real ACL papers, tweak metadata or in-text linking live, and synthesize a complete academic PDF manuscript to verify In-Text ↔ Refs!'}
             </p>
           </div>
@@ -437,7 +437,7 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
         </div>
       </div>
 
-      <div className="p-4 sm:p-6 space-y-5">
+      <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-5">
         {mode === 'acl_studio' ? (
           <>
             {/* Control Bar: Count, Style, Random Sample Button & Defense Suite Injector */}
@@ -519,14 +519,14 @@ export function LiveCitationSandbox({ lang }: LiveCitationSandboxProps) {
             </div>
 
             {items.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center bg-slate-50/50 dark:bg-slate-950/30">
-                <BookOpen className="h-9 w-9 text-indigo-500 mx-auto mb-2.5 opacity-85" />
-                <p className="text-sm font-display font-bold text-slate-800 dark:text-slate-200">
+              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-5 sm:p-8 text-center bg-slate-50/50 dark:bg-slate-950/30">
+                <BookOpen className="h-8 w-8 sm:h-9 sm:w-9 text-indigo-500 mx-auto mb-2 opacity-85" />
+                <p className="text-sm font-display font-bold text-slate-800 dark:text-slate-200 leading-snug">
                   {lang === 'vi'
-                    ? 'Bấm nút "Random 12 Bài báo từ CSDL ACL" ở trên để khởi tạo danh sách bài báo thực tế'
-                    : 'Click "Sample 12 Random ACL Papers" above to load real papers from the ACL Anthology database'}
+                    ? `Bấm nút "Random ${sampleCount} Bài báo từ CSDL ACL" ở trên để khởi tạo danh sách bài báo thực tế`
+                    : `Click "Sample ${sampleCount} Random ACL Papers" above to load real papers from the ACL Anthology database`}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl mx-auto">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 max-w-xl mx-auto leading-relaxed">
                   {lang === 'vi'
                     ? 'Sau khi lấy ngẫu nhiên 10–20 bài báo, bạn có thể sửa Năm, Tác giả, Tiêu đề, DOI hoặc bật/tắt liên kết In-text ↔ References rồi nhấn "Tạo File PDF Hoàn chỉnh & Chạy Kiểm chứng" ngay trước mặt thầy cô!'
                     : 'Once loaded, you can edit any metadata field or toggle In-text ↔ Reference linking, then synthesize a full PDF manuscript to run through the verification pipeline.'}

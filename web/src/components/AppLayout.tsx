@@ -17,6 +17,7 @@ import {
   FileText,
   Globe,
   Sparkles,
+  FlaskConical,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -54,6 +55,7 @@ const SIDEBAR_GROUPS: NavGroup[] = [
     items: [
       { path: '/dashboard', labelKey: 'nav.dashboard', icon: FileSearch, capability: 'upload_essay' },
       { path: '/upload', labelKey: 'nav.newCheck', icon: Upload, capability: 'upload_essay' },
+      { path: '/sandbox', labelKey: 'nav.liveSandbox', icon: FlaskConical, capability: 'upload_essay' },
       { path: '/batch-upload', labelKey: 'nav.batchCheck', icon: Layers, capability: 'view_class_history' },
       { path: '/history', labelKey: 'nav.history', icon: History, capability: 'view_own_history' },
     ],

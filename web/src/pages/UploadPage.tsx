@@ -16,13 +16,13 @@ import {
   Sparkles,
   GraduationCap,
   KeyRound,
+  FlaskConical,
 } from 'lucide-react';
 import { api, type Class } from '../api/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import { useToast } from '@/contexts/ToastContext';
 import { UpgradeModal } from '@/components/UpgradeModal';
-import { LiveCitationSandbox } from '@/components/LiveCitationSandbox';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -268,19 +268,32 @@ export function UploadPage() {
           </p>
         </div>
 
-        {(isTeacher || isAdmin) && (
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <Button
             asChild
             variant="outline"
             size="sm"
-            className="h-10 rounded-xl font-medium shrink-0"
+            className="h-10 rounded-xl font-medium"
           >
-            <Link to="/batch-upload">
-              <Layers className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-              <span>{t('nav.batchCheck')}</span>
+            <Link to="/sandbox" data-testid="upload-open-sandbox-link">
+              <FlaskConical className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <span>{t('nav.liveSandbox')}</span>
             </Link>
           </Button>
-        )}
+          {(isTeacher || isAdmin) && (
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-10 rounded-xl font-medium"
+            >
+              <Link to="/batch-upload">
+                <Layers className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <span>{t('nav.batchCheck')}</span>
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Subscription Plan Quota & Limits Strip */}
@@ -567,9 +580,6 @@ export function UploadPage() {
           </div>
         </div>
       </Card>
-
-      {/* P3 Killer Feature #1: Live Citation Sandbox & Synthetic Academic PDF Generator from ACL Database */}
-      <LiveCitationSandbox lang={lang} />
 
       {/* 3-Step Verification Pipeline Architecture Strip (Teacher / Admin only) */}
       {!isUser && (

@@ -19,6 +19,11 @@ test.describe('Navigation', () => {
     await expect(page).toHaveURL(/\/upload/);
   });
 
+  test('should navigate from Dashboard to Live Sandbox via sidebar', async ({ page }) => {
+    await page.getByRole('link', { name: /live sandbox/i }).first().click();
+    await expect(page).toHaveURL(/\/sandbox/);
+  });
+
   test('should navigate from Dashboard to History via sidebar', async ({ page }) => {
     await page.getByRole('link', { name: /history/i }).click();
     await expect(page).toHaveURL(/\/history/);
